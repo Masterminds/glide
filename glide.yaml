@@ -1,10 +1,9 @@
 package: github.com/technosophos/glide
 import:
   # Minimal definition
-  github.com/lib/pq:
-  github.com/kylelemons/go-gypsy/yaml:
+  - package: github.com/kylelemons/go-gypsy/yaml
   # Full definition
-  github.com/Masterminds/cookoo:
+  - package: github.com/Masterminds/cookoo
     vcs: git
     ref: 1.1.1
     repo: git@github.com:Masterminds/cookoo.git
