@@ -1,7 +1,7 @@
 # Glide: Managing Go Projects With Ease
 
-**WARNING:** Glide is currently not stable and not complete. It's highly
-experimental.
+**WARNING:** Glide is a toy project right now, and should not really be
+used for anything at all.
 
 Glide is a tool for managing Go projects. It is intended to do the
 following:
@@ -13,6 +13,21 @@ following:
 * Support "prebuilding" of dependencies
 in
 And it does all of this with a simple tool and a simple JSON format.
+
+## Usage
+
+```
+$ `glide in` # backticks are currently necessary
+$ glide init
+$ open glide.yaml # and edit away!
+$ glide install
+# work, work, work
+$ glide update
+$ `glide out`
+```
+
+Check out the `glide.yaml` in this directory, or examples in the `docs/`
+directory.
 
 ## LICENSE
 
