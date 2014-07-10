@@ -74,9 +74,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("summary").WithDefault(Summary).
 		Using("usage").WithDefault(Usage).
 		Using("flags").WithDefault(flags).
-		Does(cmd.ParseYaml, "cfg").
 		Does(subcommand, "subcommand").
 		Using("args").From("cxt:os.Args")
+
+	reg.Route("@ready", "Prepare for glide commands.").
+		Does(cmd.ReadyToGlide, "ready").
+		Does(cmd.ParseYaml, "cfg")
 
 	reg.Route("help", "Print help.").
 		Does(cli.ShowHelp, "help").
@@ -85,16 +88,22 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("usage").WithDefault(Usage).
 		Using("flags").WithDefault(flags)
 
-	reg.Route("in", "Set GOPATH and supporting env vars.").Does(cmd.In, "gopath")
-	reg.Route("out", "Set GOPATH back to former val.").Does(cmd.Out, "gopath")
+	reg.Route("in", "Set GOPATH and supporting env vars.").
+		Includes("@ready").
+		Does(cmd.AlreadyGliding, "isGliding").
+		Does(cmd.In, "gopath")
+	reg.Route("out", "Set GOPATH back to former val.").
+		Does(cmd.Out, "gopath")
 
 	reg.Route("install", "Install dependencies.").
+		Includes("@ready").
 		Does(cmd.Mkdir, "dir").Using("dir").WithDefault("_vendor").
 		Does(cmd.LinkPackage, "alias").
 		Does(cmd.GetImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
 
 	reg.Route("update", "Update dependencies.").
+		Includes("@ready").
 		Does(cmd.CowardMode, "_").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
@@ -103,6 +112,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.InitGlide, "init")
 
 	reg.Route("@plugin", "Try to send to a plugin.").
+		Includes("@ready").
 		Does(func (c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 			fmt.Printf("Command '%s' not found.", c.Get("subcommand", "").(string))
 			return nil, nil
