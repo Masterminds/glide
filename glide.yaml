@@ -1,9 +1,15 @@
 package: github.com/technosophos/glide
 import:
   # Minimal definition
+  # This will use "go get [-u]" to fetch and update the package, and it will
+  # attempt to keep the release at the tip of master.
   - package: github.com/kylelemons/go-gypsy/yaml
   # Full definition
+  # This will check out the given Git repo, set the reference to master,
+  # use "git" (not "go get") to manage it, and alias the package to the
+  # import path github.com/Masterminds/cookoo
   - package: github.com/Masterminds/cookoo
     vcs: git
-    ref: 1.1.1
+    ref: master
     repo: git@github.com:Masterminds/cookoo.git
+  - package: github.com/aokoli/goutils

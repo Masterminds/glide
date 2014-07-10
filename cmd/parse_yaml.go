@@ -33,7 +33,7 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 			dep := Dependency {
 				Name: valOrEmpty("package", pkg),
 				Reference: valOrEmpty("ref", pkg),
-				VcsType: valOrEmpty("vcs", pkg),
+				VcsType: getVcsType(pkg),
 				Repository: valOrEmpty("repo", pkg),
 			}
 			conf.Imports = append(conf.Imports, &dep)
@@ -51,6 +51,29 @@ func valOrEmpty(key string, store map[string]yaml.Node) string {
 	return val.(yaml.Scalar).String()
 }
 
+func getVcsType(store map[string]yaml.Node) uint {
+
+	val, ok := store["vcs"]
+	if !ok {
+		return NoVCS
+	}
+
+	name := val.(yaml.Scalar).String()
+
+	switch name {
+	case "git":
+		return Git
+	case "hg", "mercurial":
+		return Hg
+	case "bzr", "bazaar":
+		return Bzr
+	case "svn", "subversion":
+		return Svn
+	default:
+		return NoVCS
+	}
+}
+
 // Config is the top-level configuration object.
 type Config struct {
 	Name string
@@ -60,5 +83,6 @@ type Config struct {
 
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
-	Name, Reference, Repository, VcsType string
+	Name, Reference, Repository string
+	VcsType uint
 }

@@ -91,7 +91,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("install", "Install dependencies.").
 		Does(cmd.Mkdir, "dir").Using("dir").WithDefault("_vendor").
 		Does(cmd.LinkPackage, "alias").
-		Does(cmd.GetImports, "dependencies").Using("conf").From("cxt:cfg")
+		Does(cmd.GetImports, "dependencies").Using("conf").From("cxt:cfg").
+		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
+
+	reg.Route("update", "Update dependencies.").
+		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
+		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
 
 	reg.Route("init", "Initialize Glide").
 		Does(cmd.InitGlide, "init")

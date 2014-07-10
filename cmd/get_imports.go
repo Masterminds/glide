@@ -4,7 +4,14 @@ import (
 	"github.com/Masterminds/cookoo"
 	"fmt"
 	"os"
-	"os/exec"
+)
+
+const (
+	NoVCS uint = iota
+	Git
+	Bzr
+	Hg
+	Svn
 )
 
 func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
@@ -23,24 +30,107 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 		}
 	}
 
-	return nil, nil
+	return true, nil
 }
+
+func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	cfg := p.Get("conf", nil).(*Config)
+
+	if len(cfg.Imports) == 0 {
+		fmt.Printf("[INFO] No dependencies found. Nothing updated.")
+		return false, nil
+	}
+
+	for _, dep := range cfg.Imports {
+		if err := VcsUpdate(dep); err != nil {
+			fmt.Printf("[WARN] Update failed for %s: %s\n", dep.Name, err)
+		}
+	}
+
+	return true, nil
+}
+
+func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	cfg := p.Get("conf", nil).(*Config)
+
+	if len(cfg.Imports) == 0 {
+		fmt.Printf("[INFO] No dependencies found.")
+		return false, nil
+	}
+
+	for _, dep := range cfg.Imports {
+		if err := VcsVersion(dep); err != nil {
+			fmt.Printf("[WARN] Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+		}
+	}
+
+	return true, nil
+}
+
+type VCS interface {
+	Get(*Dependency) error
+	Update(*Dependency) error
+	Version(*Dependency) error
+}
+
+var (
+	goGet VCS = new(GoGetVCS)
+	git VCS = new(GitVCS)
+)
 
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
 // Usually it delegates to lower-level *Get functions.
+//
+// See https://code.google.com/p/go/source/browse/src/cmd/go/vcs.go
 func VcsGet(dep *Dependency) error {
 	if dep.Repository == "" {
-		return GoGet(dep)
+		return goGet.Get(dep)
 	}
 
 	switch dep.VcsType {
-	case "git":
-		return GitGet(dep)
+	case Git:
+		return git.Get(dep)
 	default:
 		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get'.\n", dep.VcsType)
-		return GoGet(dep)
+		return goGet.Get(dep)
 	}
+}
+
+func VcsUpdate(dep *Dependency) error {
+
+	//if dep.VcsType == NoVCS {
+		//dep.VcsType, _ = GuessVCS(dep)
+	//}
+
+	// If no repository is set, we assume that the user wants us to use
+	// 'go get'.
+	if dep.Repository == "" {
+		return goGet.Update(dep)
+	}
+
+	switch dep.VcsType {
+	case Git:
+		return git.Update(dep)
+	default:
+		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get -u'.\n", dep.VcsType)
+		return goGet.Update(dep)
+	}
+}
+
+func VcsVersion(dep *Dependency) error {
+	if dep.VcsType == NoVCS {
+		dep.VcsType, _ = GuessVCS(dep)
+	}
+
+	switch dep.VcsType {
+	case Git:
+		return git.Version(dep)
+	default:
+		fmt.Printf("[WARN] Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
+		return goGet.Version(dep)
+	}
+
 }
 
 func VcsSetReference(dep *Dependency) error {
@@ -48,14 +138,18 @@ func VcsSetReference(dep *Dependency) error {
 	return nil
 }
 
-func GoGet(dep *Dependency) error {
-	err := exec.Command("go", "get", dep.Name).Run()
-	return err
-}
 
-// GitGet implements the getting logic for Git.
-func GitGet(dep *Dependency) error {
+func GuessVCS(dep *Dependency) (uint, error) {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
-	fmt.Printf("[INFO] Cloning %s into %s\n", dep.Repository, dest)
-	return exec.Command("git", "clone", dep.Repository, dest).Run()
+
+	if _, err := os.Stat(dest + "/.git"); err == nil {
+		fmt.Printf("[INFO] Looks like %s is a Git repo.\n", dest)
+		return Git, nil
+	} else if _, err := os.Stat(dest + "/.bzr"); err == nil {
+		return Bzr, nil
+	} else if _, err := os.Stat(dest + "/.hg"); err == nil {
+		return Hg, nil
+	} else {
+		return NoVCS, nil
+	}
 }
