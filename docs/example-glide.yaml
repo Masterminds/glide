@@ -1,10 +1,35 @@
-package: github.com/technosophos/glide
+package: github.com/Masterminds/glide
 import:
   # Minimal definition
-  github.com/lib/pq
-  github.com/kylelemons/go-gypsy/yaml
+  # This will use "go get [-u]" to fetch and update the package, and it will
+  # attempt to keep the release at the tip of master. It does this by looking
+  # for telltale signs that this is a git, bzr, or hg repo, and then acting
+  # accordingly.
+  - package: github.com/kylelemons/go-gypsy
+
   # Full definition
-  github.com/Masterminds/cookoo:
+  # This will check out the given Git repo, set the reference to master,
+  # use "git" (not "go get") to manage it, and alias the package to the
+  # import path github.com/Masterminds/cookoo
+  - package: github.com/Masterminds/cookoo
     vcs: git
-    ref: 1.1.1
+    ref: master
     repo: git@github.com:Masterminds/cookoo.git
+
+  # Here's an example with a commit hash for a ref. Since repo is not specified,
+  # this will use "go get" to fetch and update the package, but try to use
+  # the VCS (git, in this case) to set the ref.
+  - package: github.com/aokoli/goutils
+    vcs: git
+    ref: 9c37978a95bd5c709a15883b6242714ea6709e64
+
+  # MASKING: This takes my fork of goamz (technosophos/goamz) and clones it
+  # as if it were the crowdmob/goamz package. This is incredibly useful for
+  # masking packages and/or working with forks or clones.
+  #
+  # Note that absolutely no namespace munging happens on the code. If you want
+  # that, you'll have to do it on your own. The intent of this masking was to
+  # make it so you don't have to vendor imports.
+  - package: github.com/crowdmob/goamz
+    vcs: git
+    repo: git@github.com:technosophos/goamz.git

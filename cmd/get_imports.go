@@ -98,19 +98,16 @@ func VcsGet(dep *Dependency) error {
 }
 
 func VcsUpdate(dep *Dependency) error {
-
-	//if dep.VcsType == NoVCS {
-		//dep.VcsType, _ = GuessVCS(dep)
-	//}
-
 	// If no repository is set, we assume that the user wants us to use
 	// 'go get'.
 	if dep.Repository == "" {
+		fmt.Printf("[INFO] Updating %s with 'go get -u'\n", dep.Name)
 		return goGet.Update(dep)
 	}
 
 	switch dep.VcsType {
 	case Git:
+		fmt.Printf("[INFO] Updating %s with Git\n", dep.Name)
 		return git.Update(dep)
 	default:
 		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get -u'.\n", dep.VcsType)
@@ -127,8 +124,11 @@ func VcsVersion(dep *Dependency) error {
 	case Git:
 		return git.Version(dep)
 	default:
-		fmt.Printf("[WARN] Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
-		return goGet.Version(dep)
+		if len(dep.Reference) > 0 {
+			fmt.Printf("[WARN] Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
+			return goGet.Version(dep)
+		}
+		return nil
 	}
 
 }

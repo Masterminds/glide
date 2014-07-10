@@ -20,7 +20,7 @@ func (g *GitVCS) Update(dep *Dependency) error {
 
 	if _, err := os.Stat(dest); err != nil {
 		// Assume a new package?
-		fmt.Sprintf("[INFO] Looks like %s is a new package. Cloning.", dep.Name)
+		fmt.Printf("[INFO] Looks like %s is a new package. Cloning.", dep.Name)
 		return exec.Command("git", "clone", dep.Repository, dest).Run()
 	}
 
@@ -35,10 +35,9 @@ func (g *GitVCS) Update(dep *Dependency) error {
 	// we want to set checkouts explicitly, we should probably fetch.
 	//out, err :=  exec.Command("git", "pull", "--ff-only").CombinedOutput()
 	out, err :=  exec.Command("git", "fetch", "--all").CombinedOutput()
-	fmt.Println(string(out))
+	fmt.Print(string(out))
 	return err
 }
-
 
 func (g *GitVCS) Version(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
@@ -61,7 +60,7 @@ func (g *GitVCS) Version(dep *Dependency) error {
 		if dep.Reference != "" {
 			updatedTo = dep.Reference
 		}
-		fmt.Printf("[INFO] Updated %s to %s\n", dep.Name, updatedTo)
+		fmt.Printf("[INFO] Set version to %s to %s\n", dep.Name, updatedTo)
 		//fmt.Print(string(out))
 	}
 
