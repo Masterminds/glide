@@ -11,8 +11,11 @@ type GitVCS struct {}
 // GitGet implements the getting logic for Git.
 func (g *GitVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
-	fmt.Printf("[INFO] Cloning %s into %s\n", dep.Repository, dest)
-	return exec.Command("git", "clone", dep.Repository, dest).Run()
+	//fmt.Printf("[INFO] Cloning %s into %s\n", dep.Repository, dest)
+	fmt.Print("[INFO] Git: ")
+	out, err := exec.Command("git", "clone", dep.Repository, dest).CombinedOutput()
+	fmt.Print(string(out))
+	return err
 }
 
 func (g *GitVCS) Update(dep *Dependency) error {

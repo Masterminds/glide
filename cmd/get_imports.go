@@ -23,8 +23,7 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 		return false, nil
 	}
 
-	for i, dep := range cfg.Imports {
-		fmt.Printf("[INFO] %d: Getting %s\n", i, dep.Name)
+	for _, dep := range cfg.Imports {
 		if err := VcsGet(dep); err != nil {
 			fmt.Printf("[WARN] Skipped getting %s: %s\n", dep.Name, err)
 		}
@@ -47,6 +46,18 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 		}
 	}
 
+	return true, nil
+}
+
+func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	gopath := os.Getenv("GOPATH")
+	if len(gopath) == 0 {
+		return false, fmt.Errorf("No GOPATH is set.")
+	}
+
+	if _, err := os.Stat(gopath); err != nil {
+		return false, fmt.Errorf("Did you forget to 'glide install'? GOPATH=%s seems not to exist: %s", gopath, err)
+	}
 	return true, nil
 }
 
@@ -85,11 +96,13 @@ var (
 // See https://code.google.com/p/go/source/browse/src/cmd/go/vcs.go
 func VcsGet(dep *Dependency) error {
 	if dep.Repository == "" {
+		fmt.Printf("[INFO] Installing %s with 'go get'\n", dep.Name)
 		return goGet.Get(dep)
 	}
 
 	switch dep.VcsType {
 	case Git:
+		fmt.Printf("[INFO] Installing %s with Git (From %s)\n", dep.Name, dep.Repository)
 		return git.Get(dep)
 	default:
 		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get'.\n", dep.VcsType)
@@ -107,7 +120,7 @@ func VcsUpdate(dep *Dependency) error {
 
 	switch dep.VcsType {
 	case Git:
-		fmt.Printf("[INFO] Updating %s with Git\n", dep.Name)
+		fmt.Printf("[INFO] Updating %s with Git (From %s)\n", dep.Name, dep.Repository)
 		return git.Update(dep)
 	default:
 		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get -u'.\n", dep.VcsType)
@@ -146,8 +159,10 @@ func GuessVCS(dep *Dependency) (uint, error) {
 		fmt.Printf("[INFO] Looks like %s is a Git repo.\n", dest)
 		return Git, nil
 	} else if _, err := os.Stat(dest + "/.bzr"); err == nil {
+		fmt.Printf("[INFO] Looks like %s is a Bzr repo.\n", dest)
 		return Bzr, nil
 	} else if _, err := os.Stat(dest + "/.hg"); err == nil {
+		fmt.Printf("[INFO] Looks like %s is a Mercurial repo.\n", dest)
 		return Hg, nil
 	} else {
 		return NoVCS, nil

@@ -95,6 +95,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
 
 	reg.Route("update", "Update dependencies.").
+		Does(cmd.CowardMode, "_").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
 
