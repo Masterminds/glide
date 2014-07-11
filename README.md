@@ -9,20 +9,22 @@ following:
 * Manage project-specific `GOPATH`s
 * Ease dependency management
 * Support versioning in packages
+* Support aliasing packages (e.g. for working with github forks)
 * Remove the need for "vendoring" or munging import statements
-* Support "prebuilding" of dependencies
-in
-And it does all of this with a simple tool and a simple JSON format.
+* Work with all of the `go` tools
+
 
 ## Usage
 
 ```
-$ glide init
-$ glide in
+$ glide init      # Start a new project
+$ glide in        # Switch into the new project
 $ open glide.yaml # and edit away!
-$ glide install
+$ glide install   # Install packages and dependencies
 # work, work, work
-$ glide update
+$ go build        # Go tools work normally
+$ glide update    # Update to newest versions of the package
+$ exit            # Exit the glide session (started with glide in)
 ```
 
 Check out the `glide.yaml` in this directory, or examples in the `docs/`
