@@ -23,12 +23,16 @@ COMMANDS
 ========
 
 - help: Show this help message (alias of -h)
-- in: Set the GOPATH. Usage: "source glide in"
-- init: Initialize a new project
+
+- init: Initialize a new project, creating a template glide.yaml
 - install: Install all packages in the glide.yaml
 - update: Update existing packages
-- prebuild: Prebuild libraries into .a files.
-- clean: Remove prebuilt libraries.
+
+- in: Glide into a commandline shell preconfigured for your project (with
+  GOPATH set).
+- into: "glide into /my/project" is the same as running "cd /my/project && glide in"
+- gopath: Emits the GOPATH for the current project. Useful for things like
+  manually setting GOPATH: GOPATH=$(glide gopath)
 
 `
 
@@ -100,6 +104,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		//Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(1).
 		Does(cmd.Into, "in").
 		Using("into").WithDefault("").From("cxt:toPath")
+
+	reg.Route("gopath", "Return the GOPATH for the present project.").
+		Does(cmd.In, "gopath")
 	/*
 		Includes("@ready").
 		Does(cmd.AlreadyGliding, "isGliding").
