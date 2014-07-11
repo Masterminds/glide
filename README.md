@@ -17,13 +17,12 @@ And it does all of this with a simple tool and a simple JSON format.
 ## Usage
 
 ```
-$ `glide in` # backticks are currently necessary
 $ glide init
+$ glide in
 $ open glide.yaml # and edit away!
 $ glide install
 # work, work, work
 $ glide update
-$ `glide out`
 ```
 
 Check out the `glide.yaml` in this directory, or examples in the `docs/`
@@ -33,8 +32,35 @@ directory.
 
 This package is made available under an MIT-style license.
 
+## Thanks!
+
+We owe a huge debt of gratitude to the GPM and GVP projects, which
+inspired many of the features of this package. If `glide` isn't the
+right Go project manager for you, check out those.
+
+The Composer (PHP), npm (JavaScript), and Bundler (Ruby) projects all
+inspired various aspects of this tool, as well.
+
 ## The Name
 
 Aside from being catchy, "glide" is a contraction of "Go Elide". The
 idea is to compress the tasks that normally take us lots of time into a
 just a few seconds.
+
+## Troubleshooting
+
+**Q: When I `glide in` a project, my $GOPATH goes to the default.
+Why?**
+
+If you're shell's startup (`.profile`, `.bashrc`, `.zshrc`) sets a
+default `$GOPATH`, this will override the `GOPATH` that glide sets. The
+simple work-around is to use this in your profile:
+
+```bash
+if [ "" = "${ALREADY_GLIDING}" ]; then
+  export GOPATH="/some/dir"
+fi
+```
+
+The above will *only* set GOPATH if you're not using `glide in` or
+`glide into`.
