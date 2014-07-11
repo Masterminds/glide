@@ -58,6 +58,11 @@ func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	if _, err := os.Stat(gopath); err != nil {
 		return false, fmt.Errorf("Did you forget to 'glide install'? GOPATH=%s seems not to exist: %s", gopath, err)
 	}
+
+	ggpath := os.Getenv("GLIDE_GOPATH")
+	if len(ggpath) > 0 && ggpath != gopath {
+		fmt.Printf("[WARN] Your GOPATH is set to %s, and we expected %s\n", gopath, ggpath)
+	}
 	return true, nil
 }
 

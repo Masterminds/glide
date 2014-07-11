@@ -90,13 +90,16 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("into", "Creates a new Glide shell.").
 		Does(cmd.AlreadyGliding, "isGliding").
-		Includes("@ready").
-		Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(1).
-		Does(cmd.Into, "in").
-		Using("into").WithDefault("").From("args:1")
+		Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(2).
+		Does(cmd.Into, "in").Using("into").From("cxt:toPath").
+		Includes("@ready")
 
 	reg.Route("in", "Set GOPATH and supporting env vars.").
-		Does(cookoo.ForwardTo, "fwd").Using("route").WithDefault("into")
+		Does(cmd.AlreadyGliding, "isGliding").
+		Includes("@ready").
+		//Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(1).
+		Does(cmd.Into, "in").
+		Using("into").WithDefault("").From("cxt:toPath")
 	/*
 		Includes("@ready").
 		Does(cmd.AlreadyGliding, "isGliding").
