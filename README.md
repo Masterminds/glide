@@ -12,7 +12,48 @@ following:
 * Support aliasing packages (e.g. for working with github forks)
 * Remove the need for "vendoring" or munging import statements
 * Work with all of the `go` tools
+* Support the VCS tools that Go supports:
+    - git
+    - bzr
+    - hg
+    - svn
 
+## How It Works
+
+Glide is an opinionated tool for managing Go projects. Glide associates
+a GOPATH with a particular project with its own particular dependencies.
+And it assumes that each project has its main source code and also some
+number of dependent packages.
+
+Projects are structured like this:
+
+```
+- myProject (Your project)
+  |
+  |-- glide.yaml
+  |
+  |-- main.go (Your main go code can live here)
+  |
+  |-- mySubpackage (You can create your own subpackages, too)
+  |    |
+  |    |-- foo.go
+  |
+  |-- _vendor (This is $GOPATH)
+       |
+       |-- bin
+       |
+       |-- src
+            |
+            |-- github.com
+                  |
+                  |-- Masterminds
+                       |
+                       |-- ... etc.
+```
+
+Through some trickery, the GOPATH is set to `_vendor`, but the go tools
+will still find `main.go` and subpackages. Make sure, though, that you
+set the name of your package in `glide.yaml`.
 
 ## Usage
 
@@ -29,6 +70,43 @@ $ exit            # Exit the glide session (started with glide in)
 
 Check out the `glide.yaml` in this directory, or examples in the `docs/`
 directory.
+
+### glide init
+
+Initialize a new project. Among other things, this creates a stub
+`glide.yaml`
+
+### glide in
+
+Configure an interactive shell for working in a project. This configures
+the GOPATH and so on. For ease of use, there's a special variant of
+`glide in` called `glide into`:
+
+```
+glide into /foo/bar
+```
+
+The above will change directories into `/foo/bar`, make sure it's a Go
+project, and then launch a new Glide shell.
+
+### glide install
+
+Download all of the libraries listed in the `glide.yaml` file and put
+them where they should go.
+
+### glide update
+
+Update all of the existing repositories. If a new new repository has
+been added to the YAML file, try to download that, too.
+
+### glide gopath
+
+Emit the GOPATH to this project. Useful for things like `GOPATH=$(glide
+gopath)`.
+
+### glide help
+
+Print the glide help.
 
 ## Supported Version Control Systems
 
@@ -82,7 +160,8 @@ This package is made available under an MIT-style license.
 
 ## Thanks!
 
-We owe a huge debt of gratitude to the GPM and GVP projects, which
+We owe a huge debt of gratitude to the [GPM and
+GVP](https://github.com/pote/gpm) projects, which
 inspired many of the features of this package. If `glide` isn't the
 right Go project manager for you, check out those.
 
