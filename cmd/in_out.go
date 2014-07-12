@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"github.com/Masterminds/cookoo"
+	"strings"
 	"fmt"
 	"os"
 	//"os/user"
-	//"os/exec"
+	"os/exec"
 )
 
 // AlreadyGliding emits a warning (and stops) if we're in a glide session.
@@ -69,15 +70,18 @@ func In(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 // 	- into (string): The directory to glide into.
 func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
+	cfg := p.Get("conf", &Config{}).(*Config)
+
 	into := p.Get("into", "").(string)
-	fmt.Printf("Gliding into %s\n", into)
 	if len(into) > 0 {
 		if err := os.Chdir(into); err != nil {
 			return nil, err
 		}
 	}
 
+	// Shell and command args can be overwritten by config.InCommand.
 	shell := os.Getenv("SHELL")
+	cmdArgs := []string{shell}
 	path := os.Getenv("PATH")
 	/*
 	u, err := user.Current()
@@ -109,10 +113,21 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	}
 	*/
 
-	fmt.Printf(">> You are now gliding into a new shell. To exit, type 'exit'\n")
+	// Allow incmd to override the Glide In default command.
+	if len(cfg.InCommand) > 0 {
+		cmdArgs = strings.Split(cfg.InCommand, " ")
+		fmt.Printf(">> Running custom 'glide in': %v\n", cmdArgs)
+		shell, err = exec.LookPath(cmdArgs[0])
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		fmt.Printf(">> You are now gliding into a new shell. To exit, type 'exit'\n")
+	}
+
 	// Login may work better than executing the shell manually.
 	//proc, err := os.StartProcess(loginPath, []string{"login", "-fpl", u.Username}, &pa)
-	proc, err := os.StartProcess(shell, []string{shell}, &pa)
+	proc, err := os.StartProcess(shell, cmdArgs, &pa)
 	if err != nil {
 		return nil, err
 	}

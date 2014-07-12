@@ -1,4 +1,11 @@
+# The name of this package.
 package: github.com/Masterminds/glide
+
+# Provide an alternate command to be run on 'glide in'. Normally, a glide in
+# will just spawn a new shell.
+incmd: bash -l
+
+# External dependencies.
 import:
   # Minimal definition
   # This will use "go get [-u]" to fetch and update the package, and it will
@@ -46,6 +53,8 @@ import:
     repo: http://hg.example.com/foo/bar
     ref: ae081cd1d6cc
 
+  # For SVN, the only valid ref is a commit number. Tags and branches go in
+  # the repo URL.
   - package: svn.example.com/foo/bar/trunk
     vcs: svn
     repo: http://svn.example.com/foo/bar/trunk

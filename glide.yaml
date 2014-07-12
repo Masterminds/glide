@@ -16,3 +16,5 @@ import:
   - package: github.com/crowdmob/goamz
     vcs: git
     repo: git@github.com:technosophos/goamz.git
+
+#incmd: bash -l

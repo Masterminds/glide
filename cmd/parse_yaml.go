@@ -40,6 +40,12 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		}
 	}
 
+	// Allow the user to override the behavior of `glide in`.
+	if incmd, ok := vals["incmd"]; ok {
+		conf.InCommand = incmd.(yaml.Scalar).String()
+		//fmt.Printf("[DEBUG] Custom glide in: %s\n", conf.InCommand)
+	}
+
 	return conf, nil
 }
 
@@ -79,6 +85,9 @@ type Config struct {
 	Name string
 	Imports []*Dependency
 	DevImports []*Dependency
+	// InCommand is the default shell command run to start a 'glide in'
+	// session.
+	InCommand string
 }
 
 // Dependency describes a package that the present package depends upon.

@@ -96,6 +96,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.AlreadyGliding, "isGliding").
 		Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(2).
 		Does(cmd.Into, "in").Using("into").From("cxt:toPath").
+		Using("into").WithDefault("").From("cxt:toPath").
 		Includes("@ready")
 
 	reg.Route("in", "Set GOPATH and supporting env vars.").
@@ -103,7 +104,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@ready").
 		//Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(1).
 		Does(cmd.Into, "in").
-		Using("into").WithDefault("").From("cxt:toPath")
+		Using("into").WithDefault("").From("cxt:toPath").
+		Using("conf").From("cxt:cfg")
 
 	reg.Route("gopath", "Return the GOPATH for the present project.").
 		Does(cmd.In, "gopath")
