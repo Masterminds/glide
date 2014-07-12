@@ -32,13 +32,22 @@ func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	return true, nil
 }
 
+func GlideGopath() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	gopath := fmt.Sprintf("%s/_vendor", cwd)
+
+	return gopath, nil
+}
+
 // Emits GOPATH for editors and such.
 func In(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cwd, err := os.Getwd()
+	gopath, err := GlideGopath()
 	if err != nil {
 		return nil, err
 	}
-	gopath := fmt.Sprintf("%s/_vendor", cwd)
 
 	/*
 	fmt.Printf("export OLD_PATH=%s\n", os.Getenv("PATH"))

@@ -33,3 +33,19 @@ import:
   - package: github.com/crowdmob/goamz
     vcs: git
     repo: git@github.com:technosophos/goamz.git
+
+  - package: bzr.example.com/foo/bar/trunk
+    vcs: bzr
+    repo: bzr://bzr.example.com/foo/bar/trunk
+    # Only tags can be used as refs. If you'd like to change that... please
+    # submit a patch. We don't know much about bzr
+    ref: 1.0.0
+
+  - package: hg.example.com/foo/bar
+    vcs: hg
+    repo: http://hg.example.com/foo/bar
+    ref: ae081cd1d6cc
+
+  - package: svn.example.com/foo/bar/trunk
+    vcs: svn
+    repo: http://svn.example.com/foo/bar/trunk

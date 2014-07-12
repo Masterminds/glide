@@ -92,6 +92,9 @@ type VCS interface {
 var (
 	goGet VCS = new(GoGetVCS)
 	git VCS = new(GitVCS)
+	svn VCS = new(SvnVCS)
+	bzr VCS = new(BzrVCS)
+	hg VCS = new(HgVCS)
 )
 
 // VcsGet figures out how to fetch a dependency, and then gets it.
@@ -109,6 +112,15 @@ func VcsGet(dep *Dependency) error {
 	case Git:
 		fmt.Printf("[INFO] Installing %s with Git (From %s)\n", dep.Name, dep.Repository)
 		return git.Get(dep)
+	case Bzr:
+		fmt.Printf("[INFO] Installing %s with Bzr (From %s)\n", dep.Name, dep.Repository)
+		return bzr.Get(dep)
+	case Hg:
+		fmt.Printf("[INFO] Installing %s with Hg (From %s)\n", dep.Name, dep.Repository)
+		return hg.Get(dep)
+	case Svn:
+		fmt.Printf("[INFO] Installing %s with Svn (From %s)\n", dep.Name, dep.Repository)
+		return svn.Get(dep)
 	default:
 		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get'.\n", dep.VcsType)
 		return goGet.Get(dep)
@@ -127,6 +139,15 @@ func VcsUpdate(dep *Dependency) error {
 	case Git:
 		fmt.Printf("[INFO] Updating %s with Git (From %s)\n", dep.Name, dep.Repository)
 		return git.Update(dep)
+	case Bzr:
+		fmt.Printf("[INFO] Updating %s with Bzr (From %s)\n", dep.Name, dep.Repository)
+		return bzr.Update(dep)
+	case Hg:
+		fmt.Printf("[INFO] Updating %s with Hg (From %s)\n", dep.Name, dep.Repository)
+		return hg.Update(dep)
+	case Svn:
+		fmt.Printf("[INFO] Updating %s with Svn (From %s)\n", dep.Name, dep.Repository)
+		return svn.Update(dep)
 	default:
 		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get -u'.\n", dep.VcsType)
 		return goGet.Update(dep)
@@ -141,6 +162,12 @@ func VcsVersion(dep *Dependency) error {
 	switch dep.VcsType {
 	case Git:
 		return git.Version(dep)
+	case Bzr:
+		return bzr.Version(dep)
+	case Hg:
+		return hg.Version(dep)
+	case Svn:
+		return svn.Version(dep)
 	default:
 		if len(dep.Reference) > 0 {
 			fmt.Printf("[WARN] Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
@@ -169,6 +196,9 @@ func GuessVCS(dep *Dependency) (uint, error) {
 	} else if _, err := os.Stat(dest + "/.hg"); err == nil {
 		fmt.Printf("[INFO] Looks like %s is a Mercurial repo.\n", dest)
 		return Hg, nil
+	} else if _, err := os.Stat(dest + "/.svn"); err == nil {
+		fmt.Printf("[INFO] Looks like %s is a Subversion repo.\n", dest)
+		return Svn, nil
 	} else {
 		return NoVCS, nil
 	}

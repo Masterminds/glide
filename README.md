@@ -30,6 +30,52 @@ $ exit            # Exit the glide session (started with glide in)
 Check out the `glide.yaml` in this directory, or examples in the `docs/`
 directory.
 
+## Supported Version Control Systems
+
+Anything supported by `go get` works out of the box. By default, we use
+'go get' to fetch and install dependencies. However, if you use
+`repository` or `ref` statements in your `glide.yaml` file, the native
+client will be used directly.
+
+Support for these is a little harder, and requires some expertise in
+each system.
+
+### Fully supported:
+
+- git
+
+### Supported, but not tested well:
+
+- bzr: All operations supported, but maybe not ideally.
+- hg: All operations supported, but maybe not ideally.
+- svn: Checkout and update are supported. Checkout by branch or tag is
+  done by setting the `repository` URL appropriately. Checkout by `ref`
+  supports revision numbers and symbolic references.
+
+## Troubleshooting
+
+**Q: When I `glide in` a project, my $GOPATH goes to the default.
+Why?**
+
+If you're shell's startup (`.profile`, `.bashrc`, `.zshrc`) sets a
+default `$GOPATH`, this will override the `GOPATH` that glide sets. The
+simple work-around is to use this in your profile:
+
+```bash
+if [ "" = "${ALREADY_GLIDING}" ]; then
+  export GOPATH="/some/dir"
+fi
+```
+
+The above will *only* set GOPATH if you're not using `glide in` or
+`glide into`.
+
+**Q: bzr (or hg) is not working the way I expected. Why?**
+
+These are works in progress, and may need some additional tuning. Please
+take a look at `cmd/bzr.go` and `cmd/hg.go` to see what we do. If you
+can make it better, please submit a patch.
+
 ## LICENSE
 
 This package is made available under an MIT-style license.
@@ -49,20 +95,3 @@ Aside from being catchy, "glide" is a contraction of "Go Elide". The
 idea is to compress the tasks that normally take us lots of time into a
 just a few seconds.
 
-## Troubleshooting
-
-**Q: When I `glide in` a project, my $GOPATH goes to the default.
-Why?**
-
-If you're shell's startup (`.profile`, `.bashrc`, `.zshrc`) sets a
-default `$GOPATH`, this will override the `GOPATH` that glide sets. The
-simple work-around is to use this in your profile:
-
-```bash
-if [ "" = "${ALREADY_GLIDING}" ]; then
-  export GOPATH="/some/dir"
-fi
-```
-
-The above will *only* set GOPATH if you're not using `glide in` or
-`glide into`.

@@ -29,6 +29,11 @@ import:
 `
 
 func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+
+	if gopath := os.Getenv("GOPATH"); gopath != "" {
+		fmt.Printf("[WARN] If your GOPATH is automatically set by your shell, 'glide in' may not correctly set it.")
+	}
+
 	if _, err := os.Stat("./glide.yaml"); err == nil {
 		cwd, _ := os.Getwd()
 		return false, fmt.Errorf("Cowardly refusing to overwrite glide.yaml in %s", cwd)
@@ -41,6 +46,10 @@ func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 	f.WriteString(yamlTpl)
 
+
+	if newgopath, err := GlideGopath(); err == nil {
+		fmt.Printf("[INFO] Your new GOPATH is %s. Run 'glide gopath' to see it again.\n", newgopath)
+	}
 	fmt.Printf("[INFO] Initialized. You can now edit 'glide.yaml'\n")
 	return true, nil
 }
