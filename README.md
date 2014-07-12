@@ -153,7 +153,7 @@ Print the glide help.
 $ glide help
 ```
 
-### `glide.yaml`
+### glide.yaml
 
 The `glide.yaml` file does two critical things:
 
