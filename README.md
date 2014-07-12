@@ -235,6 +235,19 @@ These are works in progress, and may need some additional tuning. Please
 take a look at `cmd/bzr.go` and `cmd/hg.go` to see what we do. If you
 can make it better, please submit a patch.
 
+**Q: When I 'glide in', I want to do something cooler than what you do.
+How?**
+
+You can use `incmd: some custom command` in your glide.yaml file.
+Example:
+
+```
+incmd: bash -l
+```
+
+With the above, running `glide in` will start a new Bash shell
+simulating a login environment.
+
 ## LICENSE
 
 This package is made available under an MIT-style license.
