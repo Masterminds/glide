@@ -76,10 +76,28 @@ directory.
 Initialize a new project. Among other things, this creates a stub
 `glide.yaml`
 
+```
+$ glide init
+[INFO] Your new GOPATH is /Users/mbutcher/Code/glide/docs/_vendor. Run 'glide gopath' to see it again.
+[INFO] Initialized. You can now edit 'glide.yaml'
+```
+
 ### glide in
 
 Configure an interactive shell for working in a project. This configures
-the GOPATH and so on. For ease of use, there's a special variant of
+the GOPATH and so on.
+
+```
+$ glide in
+>> You are now gliding into a new shell. To exit, type 'exit'
+$ echo $GOPATH
+/Users/mbutcher/Code/glide/_vendor
+$ exit
+>> Exited glide shell
+$
+```
+
+For ease of use, there's a special variant of
 `glide in` called `glide into`:
 
 ```
@@ -94,19 +112,82 @@ project, and then launch a new Glide shell.
 Download all of the libraries listed in the `glide.yaml` file and put
 them where they should go.
 
+```
+$ glide install
+```
+
 ### glide update
 
 Update all of the existing repositories. If a new new repository has
 been added to the YAML file, try to download that, too.
+
+```
+$ glide update
+[INFO] Updating github.com/kylelemons/go-gypsy/yaml with 'go get -u'
+[INFO] Updating github.com/Masterminds/cookoo with Git (From git@github.com:Masterminds/cookoo.git)
+Fetching origin
+[INFO] Updating github.com/aokoli/goutils with 'go get -u'
+[INFO] Updating github.com/crowdmob/goamz with Git (From git@github.com:technosophos/goamz.git)
+Fetching origin
+[INFO] Set version to github.com/Masterminds/cookoo to master
+[INFO] Looks like /Users/mbutcher/Code/glide/_vendor/src/github.com/aokoli/goutils is a Git repo.
+[INFO] Set version to github.com/aokoli/goutils to the latest
+[INFO] Set version to github.com/crowdmob/goamz to the latest
+```
 
 ### glide gopath
 
 Emit the GOPATH to this project. Useful for things like `GOPATH=$(glide
 gopath)`.
 
+```
+$ glide gopath
+/Users/mbutcher/Code/glide/_vendor
+```
+
 ### glide help
 
 Print the glide help.
+
+```
+$ glide help
+```
+
+### `glide.yaml`
+
+The `glide.yaml` file does two critical things:
+
+1. It names the current package
+2. It declares external dependencies
+
+A brief `glide.yaml` file looks like this:
+
+```yaml
+package: github.com/technosophos/glide
+import:
+  - package: github.com/kylelemons/go-gypsy
+  - package: github.com/Masterminds/cookoo
+    vcs: git
+    ref: master
+    repo: git@github.com:Masterminds/cookoo.git
+```
+
+The above tells `glide` that...
+
+1. This package is named `github.com/technosophos/glide`
+2. That this package depends on two libraries.
+
+The first library exemplifies a minimal package import. It merely gives
+the fully qualified import path. Glide will use `go get` to initially
+fetch it.
+
+The second library forgoes `go get` and uses `git` directly. When Glide
+reads this definition, it will get the repo from the source in `repo`
+and then checkout the master branch, and put it in
+`github.com/Masterminds/cookoo` in the GOPATH. (Note that `package` and
+`repo` can be completely different)
+
+See the `docs/` folder for more examples.
 
 ## Supported Version Control Systems
 
