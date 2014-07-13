@@ -22,11 +22,18 @@ Examples:
 COMMANDS
 ========
 
+Utilities:
+
 - help: Show this help message (alias of -h)
+- status: Print a status report.
+
+Dependency management:
 
 - init: Initialize a new project, creating a template glide.yaml
 - install: Install all packages in the glide.yaml
 - update: Update existing packages
+
+Project tools:
 
 - in: Glide into a commandline shell preconfigured for your project (with
   GOPATH set).
@@ -109,13 +116,10 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("gopath", "Return the GOPATH for the present project.").
 		Does(cmd.In, "gopath")
-	/*
-		Includes("@ready").
-		Does(cmd.AlreadyGliding, "isGliding").
-		Does(cmd.In, "gopath")
-	*/
+
 	reg.Route("out", "Set GOPATH back to former val.").
 		Does(cmd.Out, "gopath")
+
 	reg.Route("install", "Install dependencies.").
 		Includes("@ready").
 		Does(cmd.Mkdir, "dir").Using("dir").WithDefault("_vendor").
@@ -131,6 +135,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("init", "Initialize Glide").
 		Does(cmd.InitGlide, "init")
+
+	reg.Route("status", "Status").
+		Does(cmd.Status, "status")
 
 	reg.Route("@plugin", "Try to send to a plugin.").
 		Includes("@ready").
