@@ -1,15 +1,19 @@
-# Glide: Managing Go Projects With Ease
+# Glide: Managing Go Workspaces With Ease
 
-**WARNING:** Glide is a toy project right now, and should not really be
-used for anything at all.
+**WARNING:** Glide is experimental.
 
-Glide is a tool for managing Go projects. It is intended to do the
-following:
+*Never vendor again.* Glide is a tool for managing Go dependencies and
+[Go workspaces](http://golang.org/doc/code.html#GOPATH). Subscribing to the
+view that each project should have its
+own GOPATH, Glide provides tools for versioning Go libraries and
+managing the environment in which your normal Go tools run.
+
+### Features
 
 * Manage project-specific `GOPATH`s
 * Ease dependency management
-* Support versioning in packages
-* Support aliasing packages (e.g. for working with github forks)
+* Support **versioning packages**
+* Support **aliasing packages** (e.g. for working with github forks)
 * Remove the need for "vendoring" or munging import statements
 * Work with all of the `go` tools
 * Support the VCS tools that Go supports:
@@ -21,8 +25,8 @@ following:
 
 ## How It Works
 
-Glide is an opinionated tool for managing Go projects. Glide associates
-a GOPATH with a particular project with its own particular dependencies.
+Glide is an opinionated tool for managing Go workspaces. Glide associates
+a GOPATH to a particular workspace with its own particular dependencies.
 And it assumes that each project has its main source code and also some
 number of dependent packages.
 
@@ -56,11 +60,14 @@ Through some trickery, the GOPATH is set to `_vendor`, but the go tools
 will still find `main.go` and subpackages. Make sure, though, that you
 set the name of your package in `glide.yaml`.
 
+*Take a look at [the Glide source code](http://github.com/Masterminds/glide)
+to see this philosophy in action.*
+
 ## Usage
 
 ```
-$ glide init      # Start a new project
-$ glide in        # Switch into the new project
+$ glide init      # Start a new workspaces
+$ glide in        # Switch into the workspace
 $ open glide.yaml # and edit away!
 $ glide install   # Install packages and dependencies
 # work, work, work
@@ -74,7 +81,7 @@ directory.
 
 ### glide init
 
-Initialize a new project. Among other things, this creates a stub
+Initialize a new workspace. Among other things, this creates a stub
 `glide.yaml`
 
 ```
@@ -82,6 +89,9 @@ $ glide init
 [INFO] Your new GOPATH is /Users/mbutcher/Code/glide/docs/_vendor. Run 'glide gopath' to see it again.
 [INFO] Initialized. You can now edit 'glide.yaml'
 ```
+
+**If you set your GOPATH in your shell's profile or RC scripts, you may
+need to tweak those settings. See the Troubleshooting section below.**
 
 ### glide in
 
@@ -106,7 +116,10 @@ glide into /foo/bar
 ```
 
 The above will change directories into `/foo/bar`, make sure it's a Go
-project, and then launch a new Glide shell.
+workspace, and then launch a new Glide shell.
+
+**If you set your GOPATH in your shell's profile or RC scripts, you may
+need to tweak those settings. See the Troubleshooting section below.**
 
 ### glide install
 

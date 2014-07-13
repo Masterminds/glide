@@ -70,7 +70,7 @@ func (g *GitVCS) Version(dep *Dependency) error {
 	branchref := fmt.Sprintf("origin/%s", dep.Reference)
 	err = exec.Command("git", "showref", "-q", branchref).Run()
 	if err == nil {
-		fmt.Printf("[DEBUG] Reference %s is to a branch.", dep.Reference)
+		Debug("Reference %s is to a branch.", dep.Reference)
 		// git merge --ff-only origin $VERSION
 		out, err := exec.Command("git", "merge", "--ff-only", "origin", dep.Reference).CombinedOutput()
 		fmt.Println(out)
