@@ -249,9 +249,32 @@ incmd: bash -l
 With the above, running `glide in` will start a new Bash shell
 simulating a login environment.
 
+**Q: I don't want to use 'glide in'. How do I set my GOPATH?**
+
+You may explicitly set the GOPATH like this:
+
+```bash
+export GOPATH=$(glide gopath)
+```
+
+The command `glide gopath` will emit the correct path to set as GOPATH.
+
+**Q: Is using the Glide GOPATH required? Do I have to use `_vendor`?**
+
+No, it is not required, and you do not need to use `_vendor`. You may
+choose to use another GOPATH manager, like
+[GVP](http://github.com/pote/gvp), or you may simply manage GOPATH on
+your own.
+
+**Q: Should I check `_vendor` into version control?**
+
+That's up to you. It's not necessary, but it may also cause you extra
+work and lots of extra space in your VCS.
+
 ## LICENSE
 
-This package is made available under an MIT-style license.
+This package is made available under an MIT-style license. See
+LICENSE.txt.
 
 ## Thanks!
 

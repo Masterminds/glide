@@ -144,16 +144,6 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 }
 
 func Out(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	/*
-	os.Setenv("GOPATH", os.Getenv("OLD_GOPATH"))
-	os.Setenv("PATH_TEST", os.Getenv("OLD_PATH"))
-
-	fmt.Printf("export GOPATH=%s\n", os.Getenv("OLD_GOPATH"))
-	fmt.Printf("export PATH=%s\n", os.Getenv("OLD_PATH"))
-	fmt.Printf("export OLD_GOPATH=\n")
-	fmt.Printf("export OLD_PATH=\n")
-	fmt.Printf("export ALREADY_GLIDING=\n")
-	*/
 	if os.Getenv("ALREADY_GLIDING") != "1" {
 		fmt.Println("You are not currently gliding. To begin, try 'glide in'.")
 		return false, nil
