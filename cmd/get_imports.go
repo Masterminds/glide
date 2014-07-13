@@ -19,13 +19,13 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	cfg := p.Get("conf", nil).(*Config)
 
 	if len(cfg.Imports) == 0 {
-		fmt.Printf("[INFO] No dependencies found. Nothing downloaded.")
+		Info("No dependencies found. Nothing downloaded.")
 		return false, nil
 	}
 
 	for _, dep := range cfg.Imports {
 		if err := VcsGet(dep); err != nil {
-			fmt.Printf("[WARN] Skipped getting %s: %s\n", dep.Name, err)
+			Warn("Skipped getting %s: %s\n", dep.Name, err)
 		}
 	}
 
@@ -36,13 +36,13 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	cfg := p.Get("conf", nil).(*Config)
 
 	if len(cfg.Imports) == 0 {
-		fmt.Printf("[INFO] No dependencies found. Nothing updated.")
+		Info("No dependencies found. Nothing updated.")
 		return false, nil
 	}
 
 	for _, dep := range cfg.Imports {
 		if err := VcsUpdate(dep); err != nil {
-			fmt.Printf("[WARN] Update failed for %s: %s\n", dep.Name, err)
+			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}
 	}
 
@@ -61,7 +61,7 @@ func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 
 	ggpath := os.Getenv("GLIDE_GOPATH")
 	if len(ggpath) > 0 && ggpath != gopath {
-		fmt.Printf("[WARN] Your GOPATH is set to %s, and we expected %s\n", gopath, ggpath)
+		Warn("Your GOPATH is set to %s, and we expected %s\n", gopath, ggpath)
 	}
 	return true, nil
 }
@@ -70,13 +70,13 @@ func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	cfg := p.Get("conf", nil).(*Config)
 
 	if len(cfg.Imports) == 0 {
-		fmt.Printf("[INFO] No dependencies found.")
+		Info("No dependencies found.")
 		return false, nil
 	}
 
 	for _, dep := range cfg.Imports {
 		if err := VcsVersion(dep); err != nil {
-			fmt.Printf("[WARN] Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+			Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
 		}
 	}
 
@@ -104,25 +104,25 @@ var (
 // See https://code.google.com/p/go/source/browse/src/cmd/go/vcs.go
 func VcsGet(dep *Dependency) error {
 	if dep.Repository == "" {
-		fmt.Printf("[INFO] Installing %s with 'go get'\n", dep.Name)
+		Info("Installing %s with 'go get'\n", dep.Name)
 		return goGet.Get(dep)
 	}
 
 	switch dep.VcsType {
 	case Git:
-		fmt.Printf("[INFO] Installing %s with Git (From %s)\n", dep.Name, dep.Repository)
+		Info("Installing %s with Git (From %s)\n", dep.Name, dep.Repository)
 		return git.Get(dep)
 	case Bzr:
-		fmt.Printf("[INFO] Installing %s with Bzr (From %s)\n", dep.Name, dep.Repository)
+		Info("Installing %s with Bzr (From %s)\n", dep.Name, dep.Repository)
 		return bzr.Get(dep)
 	case Hg:
-		fmt.Printf("[INFO] Installing %s with Hg (From %s)\n", dep.Name, dep.Repository)
+		Info("Installing %s with Hg (From %s)\n", dep.Name, dep.Repository)
 		return hg.Get(dep)
 	case Svn:
-		fmt.Printf("[INFO] Installing %s with Svn (From %s)\n", dep.Name, dep.Repository)
+		Info("Installing %s with Svn (From %s)\n", dep.Name, dep.Repository)
 		return svn.Get(dep)
 	default:
-		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get'.\n", dep.VcsType)
+		Warn("No handler for %s. Falling back to 'go get'.\n", dep.VcsType)
 		return goGet.Get(dep)
 	}
 }
@@ -131,25 +131,25 @@ func VcsUpdate(dep *Dependency) error {
 	// If no repository is set, we assume that the user wants us to use
 	// 'go get'.
 	if dep.Repository == "" {
-		fmt.Printf("[INFO] Updating %s with 'go get -u'\n", dep.Name)
+		Info("Updating %s with 'go get -u'\n", dep.Name)
 		return goGet.Update(dep)
 	}
 
 	switch dep.VcsType {
 	case Git:
-		fmt.Printf("[INFO] Updating %s with Git (From %s)\n", dep.Name, dep.Repository)
+		Info("Updating %s with Git (From %s)\n", dep.Name, dep.Repository)
 		return git.Update(dep)
 	case Bzr:
-		fmt.Printf("[INFO] Updating %s with Bzr (From %s)\n", dep.Name, dep.Repository)
+		Info("Updating %s with Bzr (From %s)\n", dep.Name, dep.Repository)
 		return bzr.Update(dep)
 	case Hg:
-		fmt.Printf("[INFO] Updating %s with Hg (From %s)\n", dep.Name, dep.Repository)
+		Info("Updating %s with Hg (From %s)\n", dep.Name, dep.Repository)
 		return hg.Update(dep)
 	case Svn:
-		fmt.Printf("[INFO] Updating %s with Svn (From %s)\n", dep.Name, dep.Repository)
+		Info("Updating %s with Svn (From %s)\n", dep.Name, dep.Repository)
 		return svn.Update(dep)
 	default:
-		fmt.Printf("[WARN] No handler for %s. Falling back to 'go get -u'.\n", dep.VcsType)
+		Warn("No handler for %s. Falling back to 'go get -u'.\n", dep.VcsType)
 		return goGet.Update(dep)
 	}
 }
@@ -170,7 +170,7 @@ func VcsVersion(dep *Dependency) error {
 		return svn.Version(dep)
 	default:
 		if len(dep.Reference) > 0 {
-			fmt.Printf("[WARN] Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
+			Warn("Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
 			return goGet.Version(dep)
 		}
 		return nil
@@ -179,7 +179,7 @@ func VcsVersion(dep *Dependency) error {
 }
 
 func VcsSetReference(dep *Dependency) error {
-	fmt.Printf("[WARN] Cannot set reference. not implemented.\n")
+	Warn("Cannot set reference. not implemented.\n")
 	return nil
 }
 
@@ -188,16 +188,16 @@ func GuessVCS(dep *Dependency) (uint, error) {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
 	if _, err := os.Stat(dest + "/.git"); err == nil {
-		fmt.Printf("[INFO] Looks like %s is a Git repo.\n", dest)
+		Info("Looks like %s is a Git repo.\n", dest)
 		return Git, nil
 	} else if _, err := os.Stat(dest + "/.bzr"); err == nil {
-		fmt.Printf("[INFO] Looks like %s is a Bzr repo.\n", dest)
+		Info("Looks like %s is a Bzr repo.\n", dest)
 		return Bzr, nil
 	} else if _, err := os.Stat(dest + "/.hg"); err == nil {
-		fmt.Printf("[INFO] Looks like %s is a Mercurial repo.\n", dest)
+		Info("Looks like %s is a Mercurial repo.\n", dest)
 		return Hg, nil
 	} else if _, err := os.Stat(dest + "/.svn"); err == nil {
-		fmt.Printf("[INFO] Looks like %s is a Subversion repo.\n", dest)
+		Info("Looks like %s is a Subversion repo.\n", dest)
 		return Svn, nil
 	} else {
 		return NoVCS, nil

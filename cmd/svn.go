@@ -13,7 +13,7 @@ type SvnVCS struct {}
 // svnGet implements the getting logic for svn.
 func (s *SvnVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
-	//fmt.Printf("[INFO] Cloning %s into %s\n", dep.Repository, dest)
+	//Info("Cloning %s into %s\n", dep.Repository, dest)
 	fmt.Print("[INFO] svn: ")
 	out, err := exec.Command("svn", "checkout", dep.Repository, dest).CombinedOutput()
 	fmt.Print(string(out))
@@ -25,7 +25,7 @@ func (s *SvnVCS) Update(dep *Dependency) error {
 
 	if _, err := os.Stat(dest); err != nil {
 		// Assume a new package?
-		fmt.Printf("[INFO] Looks like %s is a new package. Cloning.", dep.Name)
+		Info("Looks like %s is a new package. Cloning.", dep.Name)
 		return exec.Command("svn", "checkout", dep.Repository, dest).Run()
 	}
 

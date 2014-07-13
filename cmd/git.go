@@ -11,7 +11,7 @@ type GitVCS struct {}
 // GitGet implements the getting logic for Git.
 func (g *GitVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
-	//fmt.Printf("[INFO] Cloning %s into %s\n", dep.Repository, dest)
+	//Info("Cloning %s into %s\n", dep.Repository, dest)
 	fmt.Print("[INFO] Git: ")
 	out, err := exec.Command("git", "clone", dep.Repository, dest).CombinedOutput()
 	fmt.Print(string(out))
@@ -23,7 +23,7 @@ func (g *GitVCS) Update(dep *Dependency) error {
 
 	if _, err := os.Stat(dest); err != nil {
 		// Assume a new package?
-		fmt.Printf("[INFO] Looks like %s is a new package. Cloning.", dep.Name)
+		Info("Looks like %s is a new package. Cloning.", dep.Name)
 		return exec.Command("git", "clone", dep.Repository, dest).Run()
 	}
 
@@ -52,7 +52,7 @@ func (g *GitVCS) Version(dep *Dependency) error {
 	os.Chdir(dest)
 	defer os.Chdir(oldDir)
 
-	//fmt.Printf("[INFO] Setting %s with 'git checkout'\n", dep.Name)
+	//Info("Setting %s with 'git checkout'\n", dep.Name)
 
 	// Now get to the right reference.
 	if out, err := exec.Command("git", "checkout", dep.Reference).CombinedOutput(); err != nil {
@@ -63,7 +63,7 @@ func (g *GitVCS) Version(dep *Dependency) error {
 		if dep.Reference != "" {
 			updatedTo = dep.Reference
 		}
-		fmt.Printf("[INFO] Set version to %s to %s\n", dep.Name, updatedTo)
+		Info("Set version to %s to %s\n", dep.Name, updatedTo)
 		//fmt.Print(string(out))
 	}
 

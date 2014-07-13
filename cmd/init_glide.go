@@ -33,7 +33,7 @@ import:
 func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
-		fmt.Printf("[WARN] If your GOPATH is automatically set by your shell, 'glide in' may not correctly set it.\n")
+		Warn("If your GOPATH is automatically set by your shell, 'glide in' may not correctly set it.\n")
 	}
 
 	if _, err := os.Stat("./glide.yaml"); err == nil {
@@ -50,8 +50,8 @@ func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 
 	if newgopath, err := GlideGopath(); err == nil {
-		fmt.Printf("[INFO] Your new GOPATH is %s. Run 'glide gopath' to see it again.\n", newgopath)
+		Info("Your new GOPATH is %s. Run 'glide gopath' to see it again.\n", newgopath)
 	}
-	fmt.Printf("[INFO] Initialized. You can now edit 'glide.yaml'\n")
+	Info("Initialized. You can now edit 'glide.yaml'\n")
 	return true, nil
 }

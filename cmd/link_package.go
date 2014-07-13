@@ -35,7 +35,7 @@ func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 	ldest := fmt.Sprintf("%s/src/%s", gopath, pname)
 	if err := os.Symlink(here, ldest); err != nil {
 		if os.IsExist(err) {
-			fmt.Printf("[INFO] Link to %s already exists. Skipping.\n", ldest)
+			Info("Link to %s already exists. Skipping.\n", ldest)
 		} else {
 			return nil, fmt.Errorf("Failed to create symlink from %s to %s: %s", gopath, ldest, err)
 		}

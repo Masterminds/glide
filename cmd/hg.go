@@ -13,7 +13,7 @@ type HgVCS struct {}
 // hgGet implements the getting logic for hg.
 func (h *HgVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
-	//fmt.Printf("[INFO] Cloning %s into %s\n", dep.Repository, dest)
+	//Info("Cloning %s into %s\n", dep.Repository, dest)
 	fmt.Print("[INFO] hg: ")
 	out, err := exec.Command("hg", "clone", "-U", dep.Repository, dest).CombinedOutput()
 	fmt.Print(string(out))
@@ -25,7 +25,7 @@ func (h *HgVCS) Update(dep *Dependency) error {
 
 	if _, err := os.Stat(dest); err != nil {
 		// Assume a new package?
-		fmt.Printf("[INFO] Looks like %s is a new package. Cloning.", dep.Name)
+		Info("Looks like %s is a new package. Cloning.", dep.Name)
 		return exec.Command("hg", "clone", "-U", dep.Repository, dest).Run()
 	}
 
@@ -51,7 +51,7 @@ func (h *HgVCS) Version(dep *Dependency) error {
 	os.Chdir(dest)
 	defer os.Chdir(oldDir)
 
-	//fmt.Printf("[INFO] Setting %s with 'hg checkout'\n", dep.Name)
+	//Info("Setting %s with 'hg checkout'\n", dep.Name)
 
 	// Now get to the right reference.
 	if len(dep.Reference) > 0 {
@@ -59,7 +59,7 @@ func (h *HgVCS) Version(dep *Dependency) error {
 			fmt.Println(string(out))
 			return err
 		}
-		fmt.Printf("[INFO] Set version to %s to %s\n", dep.Name, dep.Reference)
+		Info("Set version to %s to %s\n", dep.Name, dep.Reference)
 	}
 	return nil
 }

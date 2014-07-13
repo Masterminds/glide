@@ -15,7 +15,7 @@ import (
 // glide environment.
 func AlreadyGliding(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	if os.Getenv("ALREADY_GLIDING") == "1" {
-		fmt.Printf("[WARN] You're already gliding. Run `glide out` to stop your current glide.\n")
+		Warn("You're already gliding. Run `glide out` to stop your current glide.\n")
 		return true, &cookoo.Stop{}
 	}
 	return false, nil

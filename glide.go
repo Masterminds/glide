@@ -49,10 +49,11 @@ func main() {
 	routes(reg, cxt)
 
 	if err := router.HandleRequest("@startup", cxt, false); err != nil {
-		fmt.Printf("Starup error: %s\n", err)
+		fmt.Printf("Oops! %s\n", err)
 		os.Exit(1)
 	}
 
+	/*
 	next := cxt.Get("subcommand", "help").(string)
 	if router.HasRoute(next) {
 		if err := router.HandleRequest(next, cxt, false); err != nil {
@@ -65,6 +66,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	*/
 
 }
 
@@ -72,12 +74,13 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	flags := flag.NewFlagSet("global", flag.PanicOnError)
 	flags.Bool("h", false, "Print help text.")
+	flags.Bool("q", false, "Quiet (no info or debug messages)")
 
 	cxt.Put("os.Args", os.Args)
 
 	reg.Route("@startup", "Parse args and send to the right subcommand.").
 		Does(cli.ShiftArgs, "_").Using("n").WithDefault(1).
-		Does(cli.ParseArgs, "parseargs").
+		Does(cli.ParseArgs, "remainingArgs").
 		Using("flagset").WithDefault(flags).
 		Using("args").From("cxt:os.Args").
 		Does(cli.ShowHelp, "help").
@@ -85,8 +88,14 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("summary").WithDefault(Summary).
 		Using("usage").WithDefault(Usage).
 		Using("flags").WithDefault(flags).
-		Does(subcommand, "subcommand").
-		Using("args").From("cxt:os.Args")
+		Does(cmd.BeQuiet, "quiet").
+		Using("quiet").From("cxt:q").
+		//Does(subcommand, "subcommand").
+		Does(cli.RunSubcommand, "subcommand").
+		Using("default").WithDefault("help").
+		Using("offset").WithDefault(0).
+		Using("args").From("cxt:remainingArgs")
+
 
 	reg.Route("@ready", "Prepare for glide commands.").
 		Does(cmd.ReadyToGlide, "ready").
@@ -144,6 +153,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.DropToShell, "plugin")
 }
 
+/* Switched to cli.RunSubcommand
 func subcommand(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	args := p.Get("args", []string{"help"}).([]string)
 	if len(args) == 0 {
@@ -151,3 +161,4 @@ func subcommand(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	}
 	return args[0], nil
 }
+*/
