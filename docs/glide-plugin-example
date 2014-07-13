@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# You can execute me through Glide by doing the following:
+# - Copy me to a directory on $PATH. _vendor/bin/ will work just fine.
+# - Execute `glide plugin-example`
+# - ???
+# - Profit
+
+echo "I received arguments '$@'"
+
+# This should match the directory from which you executed glide.
+echo "My current working directory is $(pwd)"
+
+# This is the GOPATH for the current glide session.
+echo "My GOPATH is $GOPATH"
+
+# This is the base directory of your project.
+echo "The project directory is $GLIDE_PROJECT"
+
+# This is the location of the glide.yaml file.
+echo "The Glide YAML is in $GLIDE_YAML"
+
+# This is the PATH that the plugin inherited.
+echo "My PATH is $PATH"
+

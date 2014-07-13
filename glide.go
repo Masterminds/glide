@@ -134,10 +134,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("@plugin", "Try to send to a plugin.").
 		Includes("@ready").
-		Does(func (c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-			fmt.Printf("Command '%s' not found.", c.Get("subcommand", "").(string))
-			return nil, nil
-		}, "_")
+		Does(cmd.DropToShell, "plugin")
 }
 
 func subcommand(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {

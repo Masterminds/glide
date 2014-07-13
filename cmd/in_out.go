@@ -100,6 +100,8 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	os.Setenv("GOPATH", gopath)
 	os.Setenv("GLIDE_GOPATH", gopath)
 	os.Setenv("PATH", path + ":" + gopath + "/bin")
+	os.Setenv("GLIDE_PROJECT", cwd)
+	os.Setenv("GLIDE_YAML", fmt.Sprintf("%s/glide.yaml", cwd))
 
 	pa := os.ProcAttr {
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
