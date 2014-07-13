@@ -9,7 +9,7 @@ import (
 
 func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := c.Get("cfg", "").(*Config)
-	pname := cfg.Name
+	pname := p.Get("path", cfg.Name).(string)
 
 	here, err := os.Getwd()
 	if err != nil {

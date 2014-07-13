@@ -2,6 +2,7 @@
 
  import (
 	 "os/exec"
+	 "strings"
 	 "fmt"
  )
 
@@ -9,12 +10,24 @@
 type GoGetVCS struct {}
 
 func (g *GoGetVCS) Get(dep *Dependency) error {
-	err := exec.Command("go", "get", dep.Name).Run()
+	out, err := exec.Command("go", "get", dep.Name).CombinedOutput()
+	if err != nil {
+		fmt.Print(string(out))
+		if strings.Contains(string(out), "no buildable Go source") {
+			return nil
+		}
+	}
 	return err
 }
 
 func (g *GoGetVCS) Update(dep *Dependency) error {
-	err := exec.Command("go", "get", "-u", dep.Name).Run()
+	out, err := exec.Command("go", "get", "-u", dep.Name).CombinedOutput()
+	if err != nil {
+		fmt.Print(string(out))
+		if strings.Contains(string(out), "no buildable Go source") {
+			return nil
+		}
+	}
 	return err
 }
 

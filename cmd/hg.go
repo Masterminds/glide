@@ -59,6 +59,7 @@ func (h *HgVCS) Version(dep *Dependency) error {
 			fmt.Println(string(out))
 			return err
 		}
+		fmt.Printf("[INFO] Set version to %s to %s\n", dep.Name, dep.Reference)
 	}
 	return nil
 }

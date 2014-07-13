@@ -27,6 +27,9 @@ import:
   #  vcs: git
 `
 
+// InitGlide initializes a new Glide project.
+//
+// Among other things, it creates a default glide.yaml.
 func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
