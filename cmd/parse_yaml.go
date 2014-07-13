@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// ParseYaml parses the glide.yaml format and returns a Configuration object.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	conf := new(Config)
 	f, err := yaml.ReadFile("./glide.yaml")
@@ -23,27 +24,32 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	if name, ok := vals["package"]; ok {
 		//c.Put("cfg.package", name.(yaml.Scalar).String())
 		conf.Name = name.(yaml.Scalar).String()
-	}
-
-	conf.Imports = make([]*Dependency, 0, 1)
-	if imp, ok := vals["import"]; ok {
-		imports := imp.(yaml.List)
-		for _, v := range imports {
-			pkg := v.(yaml.Map)
-			dep := Dependency {
-				Name: valOrEmpty("package", pkg),
-				Reference: valOrEmpty("ref", pkg),
-				VcsType: getVcsType(pkg),
-				Repository: valOrEmpty("repo", pkg),
-			}
-			conf.Imports = append(conf.Imports, &dep)
-		}
+	} else {
+		fmt.Println("[WARN] 'package' is required in glide.yaml.")
 	}
 
 	// Allow the user to override the behavior of `glide in`.
 	if incmd, ok := vals["incmd"]; ok {
 		conf.InCommand = incmd.(yaml.Scalar).String()
 		//fmt.Printf("[DEBUG] Custom glide in: %s\n", conf.InCommand)
+	}
+
+	conf.Imports = make([]*Dependency, 0, 1)
+	if imp, ok := vals["import"]; ok {
+		imports, ok := imp.(yaml.List)
+
+		if ok {
+			for _, v := range imports {
+				pkg := v.(yaml.Map)
+				dep := Dependency {
+					Name: valOrEmpty("package", pkg),
+					Reference: valOrEmpty("ref", pkg),
+					VcsType: getVcsType(pkg),
+					Repository: valOrEmpty("repo", pkg),
+				}
+				conf.Imports = append(conf.Imports, &dep)
+			}
+		}
 	}
 
 	return conf, nil
