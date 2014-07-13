@@ -17,6 +17,7 @@ following:
     - bzr
     - hg
     - svn
+* Support custom local and global plugins (see docs/plugins.md)
 
 ## How It Works
 
