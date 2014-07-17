@@ -63,6 +63,17 @@ set the name of your package in `glide.yaml`.
 *Take a look at [the Glide source code](http://github.com/Masterminds/glide)
 to see this philosophy in action.*
 
+## Install
+
+In the future we will provide binary packages. Right now, the easiest
+way to get started is:
+
+1. Clone this repository and change directory into it
+2. Run `./bootstrap.sh`
+
+This will leave you with `./glide`, which you can put in your `$PATH` if
+you'd like.
+
 ## Usage
 
 ```
