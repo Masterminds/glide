@@ -72,7 +72,8 @@ way to get started is:
 2. Run `./bootstrap.sh`
 
 This will leave you with `./glide`, which you can put in your `$PATH` if
-you'd like.
+you'd like. The Glide repo has now been configured to use glide to
+manage itself, too.
 
 ## Usage
 
