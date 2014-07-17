@@ -191,6 +191,7 @@ The above tells `glide` that...
 1. This package is named `github.com/technosophos/glide`
 2. That this package depends on two libraries.
 
+
 The first library exemplifies a minimal package import. It merely gives
 the fully qualified import path. Glide will use `go get` to initially
 fetch it.
@@ -200,6 +201,11 @@ reads this definition, it will get the repo from the source in `repo`
 and then checkout the master branch, and put it in
 `github.com/Masterminds/cookoo` in the GOPATH. (Note that `package` and
 `repo` can be completely different)
+
+**TIP:** In general, you are advised to use the *base package name* for
+importing a package, not a subpackage name. For example, use
+`github.com/kylelemons/go-gypsy` and not
+`github.com/kylelemons/go-gypsy/yaml`.
 
 See the `docs/` folder for more examples.
 
@@ -224,6 +230,8 @@ each system.
 - svn: Checkout and update are supported. Checkout by branch or tag is
   done by setting the `repository` URL appropriately. Checkout by `ref`
   supports revision numbers and symbolic references.
+
+See [docs/vcs.md](docs/vcs.md) for more info.
 
 ## Troubleshooting
 
