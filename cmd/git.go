@@ -12,7 +12,7 @@ type GitVCS struct {}
 func (g *GitVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 	//Info("Cloning %s into %s\n", dep.Repository, dest)
-	fmt.Print("[INFO] Git: ")
+	Info("Git: ")
 	out, err := exec.Command("git", "clone", dep.Repository, dest).CombinedOutput()
 	fmt.Print(string(out))
 	return err
@@ -37,6 +37,7 @@ func (g *GitVCS) Update(dep *Dependency) error {
 	// Because we can't predict which branch we want to be on, and since
 	// we want to set checkouts explicitly, we should probably fetch.
 	//out, err :=  exec.Command("git", "pull", "--ff-only").CombinedOutput()
+	Info("Git: ")
 	out, err :=  exec.Command("git", "fetch", "--all").CombinedOutput()
 	fmt.Print(string(out))
 	return err

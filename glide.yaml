@@ -13,6 +13,8 @@ import:
     ref: master
     repo: git@github.com:Masterminds/cookoo.git
   - package: github.com/aokoli/goutils
+    ref: 1.0.0
+    vcs: git
   - package: github.com/crowdmob/goamz
     vcs: git
     repo: git@github.com:technosophos/goamz.git

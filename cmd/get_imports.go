@@ -103,36 +103,67 @@ var (
 //
 // See https://code.google.com/p/go/source/browse/src/cmd/go/vcs.go
 func VcsGet(dep *Dependency) error {
-	if dep.Repository == "" {
+
+	// See note in VcsUpdate.
+	if dep.Repository == "" && dep.Reference == "" {
 		Info("Installing %s with 'go get'\n", dep.Name)
 		return goGet.Get(dep)
 	}
 
 	switch dep.VcsType {
 	case Git:
+		if dep.Repository == "" {
+			dep.Repository = "http://" + dep.Name
+		}
 		Info("Installing %s with Git (From %s)\n", dep.Name, dep.Repository)
 		return git.Get(dep)
 	case Bzr:
 		Info("Installing %s with Bzr (From %s)\n", dep.Name, dep.Repository)
 		return bzr.Get(dep)
 	case Hg:
+		if dep.Repository == "" {
+			dep.Repository = "http://" + dep.Name
+		}
 		Info("Installing %s with Hg (From %s)\n", dep.Name, dep.Repository)
 		return hg.Get(dep)
 	case Svn:
 		Info("Installing %s with Svn (From %s)\n", dep.Name, dep.Repository)
 		return svn.Get(dep)
 	default:
-		Warn("No handler for %s. Falling back to 'go get'.\n", dep.VcsType)
+		if dep.VcsType == NoVCS {
+			Info("Defaulting to 'go get %s'\n", dep.Name)
+			if len(dep.Reference) > 0 {
+				Warn("Ref is set to %s, but no VCS is set. This can cause inconsistencies.\n", dep.Reference)
+			}
+		}  else {
+			Warn("No handler for %d. Falling back to 'go get %s'.\n", dep.VcsType, dep.Name)
+		}
 		return goGet.Get(dep)
 	}
 }
 
+// VcsUpdate updates to a particular checkout based on the VCS setting.
 func VcsUpdate(dep *Dependency) error {
-	// If no repository is set, we assume that the user wants us to use
-	// 'go get'.
-	if dep.Repository == "" {
-		Info("Updating %s with 'go get -u'\n", dep.Name)
+
+	// If there is no Ref set, and if Repository is empty, we should just
+	// default to Go Get.
+	//
+	// Why do we care if Ref is blank? As of Go 1.3, go get builds a .a
+	// file for each library. But if we set a Ref, that will switch the source
+	// code, but not necessarily build a .a file. So we want to make sure not
+	// to default to 'go get' if we're then going to grab a specific version.
+	if dep.Reference == "" && dep.Repository == "" {
+		Info("No ref or repo. Falling back to 'go get -u %s'.\n", dep.Name)
 		return goGet.Update(dep)
+	}
+
+	if dep.VcsType == NoVCS {
+		guess, err := GuessVCS(dep)
+		if err != nil {
+			Warn("Tried to guess VCS type, but failed: %s", err)
+		} else {
+			dep.VcsType = guess
+		}
 	}
 
 	switch dep.VcsType {
@@ -149,7 +180,14 @@ func VcsUpdate(dep *Dependency) error {
 		Info("Updating %s with Svn (From %s)\n", dep.Name, dep.Repository)
 		return svn.Update(dep)
 	default:
-		Warn("No handler for %s. Falling back to 'go get -u'.\n", dep.VcsType)
+		if dep.VcsType == NoVCS {
+			Info("No VCS set. Updating with 'go get -u %s'\n", dep.Name)
+			if len(dep.Reference) > 0 {
+				Warn("Ref is set to %s, but no VCS is set. This can cause inconsistencies.\n", dep.Reference)
+			}
+		} else {
+			Warn("No handler for this repo type. Falling back to 'go get -u %s'.\n", dep.Name)
+		}
 		return goGet.Update(dep)
 	}
 }
@@ -186,6 +224,7 @@ func VcsSetReference(dep *Dependency) error {
 
 func GuessVCS(dep *Dependency) (uint, error) {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
+	//Debug("Looking in %s for hints about VCS type.\n", dest)
 
 	if _, err := os.Stat(dest + "/.git"); err == nil {
 		Info("Looks like %s is a Git repo.\n", dest)

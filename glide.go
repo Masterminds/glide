@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/technosophos/glide/cmd"
+	"github.com/Masterminds/glide/cmd"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/cookoo/cli"
