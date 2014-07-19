@@ -48,6 +48,13 @@ import:
     subpackages:
       - foo
       - bar
+      # Shell globs are also supported:
+      - pa?e
+      - [wc]*
+
+  # Use '...' to tell glide to build ALL of the subpackages.
+  - package: github.com/Masterminds/blarg
+    subpackages: ...
 
   - package: bzr.example.com/foo/bar/trunk
     vcs: bzr

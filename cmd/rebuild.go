@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"fmt"
+	//"fmt"
 )
 
 // Rebuild run 'go build' in a directory.
@@ -41,21 +41,30 @@ func buildDep(c cookoo.Context, dep *Dependency, gopath string) error {
 
 	for _, pkg := range dep.Subpackages {
 
-		if pkg == "**" {
-			//buildAll(c, path.Join(gopath, "src", dep.Name))
-			Info("Building all packages in %s\n", dep.Name)
+		if pkg == "**" || pkg == "..." {
+			//Info("Building all packages in %s\n", dep.Name)
 			buildPath(c, path.Join(dep.Name, "..."))
 		} else {
-			buildPath(c, path.Join(dep.Name, pkg))
+			paths, err := resolvePackages(gopath, dep.Name, pkg)
+			if err != nil {
+				Warn("Error resolving packages: %s", err)
+			}
+			//buildPath(c, path.Join(dep.Name, pkg))
+			buildPaths(c, paths)
 		}
 	}
 
 	return nil
 }
 
-func joinAndResolv(c cookoo.Context, parts ...string) ([]string, error) {
-	path := path.Join(parts...)
-	return filepath.Glob(path)
+func resolvePackages(gopath, pkg, subpkg string) ([]string, error) {
+	sdir, _ := os.Getwd()
+	if err := os.Chdir(path.Join(gopath, "src")); err != nil {
+		return []string{}, err
+	}
+	defer os.Chdir(sdir)
+
+	return filepath.Glob(path.Join(pkg, subpkg))
 }
 
 func buildPaths(c cookoo.Context, paths []string) error {
@@ -69,35 +78,10 @@ func buildPaths(c cookoo.Context, paths []string) error {
 }
 
 func buildPath(c cookoo.Context, path string) error {
-	/*
-	if err := os.Chdir(path); err != nil {
-		//return err
-		Warn("%s is not a directory. Skipping.\n", path)
-	}
-	*/
-
-	//out, err := exec.Command("go", "build", "./...").CombinedOutput()
 	Info("Running go build %s\n", path)
 	out, err := exec.Command("go", "install", path).CombinedOutput()
 	if err != nil {
 		Warn("Failed to run 'go install' for %s: %s", path, string(out))
 	}
 	return err
-}
-
-// buildAll builds all subpackages in the given path.
-func buildAll(c cookoo.Context, path string) error {
-	Info("Building all subpackages in %s\n", path)
-	return buildPath(c, fmt.Sprintf("%s/...", path))
-	/*
-	if err := os.Chdir(path); err != nil {
-		Warn("%s is not a directory. Skipping.\n", path)
-	}
-
-	out, err := exec.Command("go", "build", "./...").CombinedOutput()
-	if err != nil {
-		Warn("Failed to run 'go build' for %s: %s", path, string(out))
-	}
-	return err
-	*/
 }
