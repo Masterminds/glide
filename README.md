@@ -161,6 +161,20 @@ Fetching origin
 [INFO] Set version to github.com/crowdmob/goamz to the latest
 ```
 
+### glide rebuild
+
+Re-run `go install` on the packages in the `glide.yaml` file. This
+(along with `glide install` and `glide update`) pays special attention
+to the contents of the `subpackages:` directive in the YAML file.
+
+```
+$ glide rebuild
+[INFO] Building dependencies.
+[INFO] Running go build github.com/kylelemons/go-gypsy/yaml
+[INFO] Running go build github.com/Masterminds/cookoo/cli
+[INFO] Running go build github.com/Masterminds/cookoo
+```
+
 ### glide gopath
 
 Emit the GOPATH to this project. Useful for things like `GOPATH=$(glide
@@ -177,6 +191,15 @@ Print the glide help.
 
 ```
 $ glide help
+```
+
+### glide version
+
+Print the version and exit.
+
+```
+$ glide version
+0.0.2-3-g4ac84b4
 ```
 
 ### glide.yaml
@@ -218,6 +241,30 @@ and then checkout the master branch, and put it in
 importing a package, not a subpackage name. For example, use
 `github.com/kylelemons/go-gypsy` and not
 `github.com/kylelemons/go-gypsy/yaml`.
+
+In addition to fetching packages, Glide builds the packages with `go
+install`. The YAML file can give special instructions about how to build
+a package. Example:
+
+```yaml
+package: github.com/technosophos/glide
+import:
+  - package: github.com/kylelemons/go-gypsy
+    subpackage: yaml
+  - package: github.com/Masterminds/cookoo
+    subpackage:
+      - .
+      - cli
+      - web
+  - package: github.com/crowdmob/amz
+    subpackage: ...
+```
+
+According to the above, the following packages will be built:
+
+1. The `go-gypsy/yaml` package
+2. The `cookoo` package (`.`), along with `cookoo/web` and `cookoo/cli`
+3. Everything in `awz` (`...`)
 
 See the `docs/` folder for more examples.
 
