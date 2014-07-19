@@ -242,6 +242,8 @@ importing a package, not a subpackage name. For example, use
 `github.com/kylelemons/go-gypsy` and not
 `github.com/kylelemons/go-gypsy/yaml`.
 
+### Controlling package and subpackage builds
+
 In addition to fetching packages, Glide builds the packages with `go
 install`. The YAML file can give special instructions about how to build
 a package. Example:
