@@ -4,6 +4,7 @@ import:
   # This will use "go get [-u]" to fetch and update the package, and it will
   # attempt to keep the release at the tip of master.
   - package: github.com/kylelemons/go-gypsy
+    subpackages: yaml
   # Full definition
   # This will check out the given Git repo, set the reference to master,
   # use "git" (not "go get") to manage it, and alias the package to the
@@ -12,11 +13,8 @@ import:
     vcs: git
     ref: master
     repo: git@github.com:Masterminds/cookoo.git
-  - package: github.com/aokoli/goutils
-    ref: 1.0.0
-    vcs: git
-  - package: github.com/crowdmob/goamz
-    vcs: git
-    repo: git@github.com:technosophos/goamz.git
-
+    # Compile the cookoo/cli and the cookoo package.
+    subpackages:
+      - cli
+      - .
 #incmd: bash -l

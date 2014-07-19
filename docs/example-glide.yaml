@@ -24,8 +24,8 @@ import:
     repo: git@github.com:Masterminds/cookoo.git
 
   # Here's an example with a commit hash for a ref. Since repo is not specified,
-  # this will use "go get" to fetch and update the package, but try to use
-  # the VCS (git, in this case) to set the ref.
+  # this will use git to to try to clone 'http://github.com/aokoli/goutils'
+  # and then set the revision to the given hash.
   - package: github.com/aokoli/goutils
     vcs: git
     ref: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -40,6 +40,14 @@ import:
   - package: github.com/crowdmob/goamz
     vcs: git
     repo: git@github.com:technosophos/goamz.git
+
+  # This will fetch the entire technosophos/luge package, but only
+  # 'go build' the technosophos/luge/foo and technosophos/luge/bar packages.
+  - package: github.com/technosophos/luge
+    vcs: git
+    subpackages:
+      - foo
+      - bar
 
   - package: bzr.example.com/foo/bar/trunk
     vcs: bzr

@@ -11,6 +11,8 @@ import (
 	"os"
 )
 
+var version string = "DEV"
+
 const Summary = "Manage Go projects with ease."
 const Usage = `Manage dependencies, naming, and GOPATH for your Go projects.
 
@@ -18,6 +20,8 @@ Examples:
 	$ glide init
 	$ glide in
 	$ glide install
+	$ glide update
+	$ glide rebuild
 
 COMMANDS
 ========
@@ -26,12 +30,14 @@ Utilities:
 
 - help: Show this help message (alias of -h)
 - status: Print a status report.
+- version: Print the version and exit.
 
 Dependency management:
 
-- init: Initialize a new project, creating a template glide.yaml
-- install: Install all packages in the glide.yaml
-- update: Update existing packages
+- init: Initialize a new project, creating a template glide.yaml.
+- install: Install all packages in the glide.yaml.
+- update: Update existing packages (alias: 'up').
+- rebuild: Rebuild ('go build') the dependencies.
 
 Project tools:
 
@@ -41,6 +47,20 @@ Project tools:
 - gopath: Emits the GOPATH for the current project. Useful for things like
   manually setting GOPATH: GOPATH=$(glide gopath)
 
+FILES
+=====
+
+Each project should have a 'glide.yaml' file in the project directory. Files
+look something like this:
+
+	package: github.com/Masterminds/glide
+	imports:
+		- package: github.com/Masterminds/cookoo
+		  vcs: git
+		  ref: 1.1.0
+		  subpackages: **
+  		- package: github.com/kylelemons/go-gypsy
+		  subpackages: yaml
 `
 
 func main() {
@@ -108,6 +128,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("usage").WithDefault(Usage).
 		Using("flags").WithDefault(flags)
 
+	reg.Route("version", "Print the version and exit.").Does(showVersion, "_")
+
 	reg.Route("into", "Creates a new Glide shell.").
 		Does(cmd.AlreadyGliding, "isGliding").
 		Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(2).
@@ -134,13 +156,23 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.Mkdir, "dir").Using("dir").WithDefault("_vendor").
 		Does(cmd.LinkPackage, "alias").
 		Does(cmd.GetImports, "dependencies").Using("conf").From("cxt:cfg").
-		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
+		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
+		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
+
+	reg.Route("up", "Update dependencies (alias of 'update')").
+		Does(cookoo.ForwardTo, "fwd").Using("route").WithDefault("update")
 
 	reg.Route("update", "Update dependencies.").
 		Includes("@ready").
 		Does(cmd.CowardMode, "_").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
-		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
+		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
+		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
+
+	reg.Route("rebuild", "Rebuild dependencies").
+		Includes("@ready").
+		Does(cmd.CowardMode, "_").
+		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
 	reg.Route("init", "Initialize Glide").
 		Does(cmd.InitGlide, "init")
@@ -162,3 +194,8 @@ func subcommand(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	return args[0], nil
 }
 */
+
+func showVersion(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	fmt.Println(version)
+	return version, nil
+}

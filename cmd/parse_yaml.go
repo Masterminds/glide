@@ -46,6 +46,7 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 					Reference: valOrEmpty("ref", pkg),
 					VcsType: getVcsType(pkg),
 					Repository: valOrEmpty("repo", pkg),
+					Subpackages: subpkg("subpackages", pkg),
 				}
 				conf.Imports = append(conf.Imports, &dep)
 			}
@@ -61,6 +62,34 @@ func valOrEmpty(key string, store map[string]yaml.Node) string {
 		return ""
 	}
 	return val.(yaml.Scalar).String()
+}
+
+func subpkg(key string, store map[string]yaml.Node) []string {
+	val, ok := store[key]
+
+	subpackages := []string{}
+	if !ok {
+		return subpackages
+	}
+
+	pkgs, ok := val.(yaml.List)
+
+	if !ok {
+
+		// Special case: Allow 'subpackages: justOne'
+		if one, ok := val.(yaml.Scalar); ok {
+			return []string{ one.String() }
+		}
+
+		Warn("Expected list of subpackages.\n")
+		return subpackages
+	}
+
+
+	for _, pkg := range pkgs {
+		subpackages = append(subpackages, pkg.(yaml.Scalar).String())
+	}
+	return subpackages
 }
 
 func getVcsType(store map[string]yaml.Node) uint {
@@ -100,4 +129,5 @@ type Config struct {
 type Dependency struct {
 	Name, Reference, Repository string
 	VcsType uint
+	Subpackages []string
 }
