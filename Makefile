@@ -14,4 +14,11 @@ clean:
 	rm -f ./glide.test
 	rm -f ./glide
 
-.PHONY: build test clean install
+bootstrap:
+	mkdir ./_vendor
+	GOPATH=${PWD}/_vendor go get github.com/Masterminds/cookoo
+	GOPATH=${PWD}/_vendor go get github.com/kylelemons/go-gypsy/yaml
+	ln -s . _vendor/src/github.com/Masterminds/glide
+	GOPATH=${PWD}/_vendor go build -o glide glide.go
+
+.PHONY: build test install clean
