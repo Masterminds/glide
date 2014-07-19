@@ -8,8 +8,9 @@ import (
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	fname := p.Get("filename", "glide.yaml").(string)
 	conf := new(Config)
-	f, err := yaml.ReadFile("./glide.yaml")
+	f, err := yaml.ReadFile(fname)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +26,7 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		//c.Put("cfg.package", name.(yaml.Scalar).String())
 		conf.Name = name.(yaml.Scalar).String()
 	} else {
-		fmt.Println("[WARN] 'package' is required in glide.yaml.")
+		Warn("The 'package' directive is required in Glide YAML.\n")
 	}
 
 	// Allow the user to override the behavior of `glide in`.

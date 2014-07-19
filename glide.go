@@ -95,6 +95,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	flags := flag.NewFlagSet("global", flag.PanicOnError)
 	flags.Bool("h", false, "Print help text.")
 	flags.Bool("q", false, "Quiet (no info or debug messages)")
+	flags.String("yaml", "glide.yaml", "Set a YAML configuration file.")
 
 	cxt.Put("os.Args", os.Args)
 
@@ -110,7 +111,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("flags").WithDefault(flags).
 		Does(cmd.BeQuiet, "quiet").
 		Using("quiet").From("cxt:q").
-		//Does(subcommand, "subcommand").
 		Does(cli.RunSubcommand, "subcommand").
 		Using("default").WithDefault("help").
 		Using("offset").WithDefault(0).
@@ -119,7 +119,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("@ready", "Prepare for glide commands.").
 		Does(cmd.ReadyToGlide, "ready").
-		Does(cmd.ParseYaml, "cfg")
+		Does(cmd.ParseYaml, "cfg").Using("filename").From("cxt:yaml")
 
 	reg.Route("help", "Print help.").
 		Does(cli.ShowHelp, "help").
@@ -184,16 +184,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@ready").
 		Does(cmd.DropToShell, "plugin")
 }
-
-/* Switched to cli.RunSubcommand
-func subcommand(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	args := p.Get("args", []string{"help"}).([]string)
-	if len(args) == 0 {
-		return "help", nil
-	}
-	return args[0], nil
-}
-*/
 
 func showVersion(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fmt.Println(version)
