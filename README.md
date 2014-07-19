@@ -69,10 +69,13 @@ In the future we will provide binary packages. Right now, the easiest
 way to get started is:
 
 1. Clone this repository and change directory into it
-2. Run `./bootstrap.sh`
+2. Run `make bootstrap`
 
 This will leave you with `./glide`, which you can put in your `$PATH` if
-you'd like. The Glide repo has now been configured to use glide to
+you'd like. (You can also take a look at `make install` to install for
+you.)
+
+The Glide repo has now been configured to use glide to
 manage itself, too.
 
 ## Usage
