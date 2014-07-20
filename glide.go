@@ -174,6 +174,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.CowardMode, "_").
 		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
+	reg.Route("pin", "Print a YAML file with all of the packages pinned to the current version.").
+		Includes("@ready").
+		Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
+		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
+		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+
 	reg.Route("init", "Initialize Glide").
 		Does(cmd.InitGlide, "init")
 

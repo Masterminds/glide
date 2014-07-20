@@ -7,6 +7,15 @@ import (
 )
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
+//
+// Params:
+// 	- filename (string): YAML filename as a string
+//
+// Context:
+// 	- yaml.File: This puts the parsed YAML file into the context.
+//
+// Returns:
+// 	- *Config: The configuration.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
 	conf := new(Config)
@@ -14,6 +23,8 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	if err != nil {
 		return nil, err
 	}
+
+	c.Put("yaml.File", f)
 
 	// Convenience:
 	top, ok := f.Root.(yaml.Map)
@@ -32,7 +43,6 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	// Allow the user to override the behavior of `glide in`.
 	if incmd, ok := vals["incmd"]; ok {
 		conf.InCommand = incmd.(yaml.Scalar).String()
-		//fmt.Printf("[DEBUG] Custom glide in: %s\n", conf.InCommand)
 	}
 
 	conf.Imports = make([]*Dependency, 0, 1)
@@ -55,6 +65,85 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	}
 
 	return conf, nil
+}
+
+// WriteYaml writes a yaml.Node to the console as a string.
+//
+// Params:
+// 	- yaml.Node: A yaml.Node to render.
+func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	top := p.Get("yaml.Node", yaml.Scalar("nothing to print")).(yaml.Node)
+
+	fmt.Print(yaml.Render(top))
+
+	return true, nil
+}
+
+// Convert a Config object and a yaml.File to a single yaml.File.
+func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	root := c.Get("yaml.File", nil).(*yaml.File).Root
+	cfg := p.Get("conf", nil).(*Config)
+
+	rootMap, ok := root.(yaml.Map)
+	if !ok {
+		return nil, fmt.Errorf("Expected root node to be a map.")
+	}
+
+	rootMap["package"] = yaml.Scalar(cfg.Name)
+	if cfg.InCommand != "" {
+		rootMap["incmd"] = yaml.Scalar(cfg.InCommand)
+	}
+
+	// Imports
+	imports := make([]yaml.Node, len(cfg.Imports))
+	for i, imp := range cfg.Imports {
+
+		if imp.VcsType == NoVCS {
+			imp.VcsType, _ = GuessVCS(imp)
+		}
+
+		impmap := make(map[string]yaml.Node)
+		impmap["package"] = yaml.Scalar(imp.Name)
+		if imp.VcsType != NoVCS {
+			impmap["vcs"] = yaml.Scalar(vcsString(imp.VcsType))
+		}
+		if imp.Reference != "" {
+			impmap["ref"] = yaml.Scalar(imp.Reference)
+		}
+		if imp.Repository != "" {
+			impmap["repo"] = yaml.Scalar(imp.Repository)
+		}
+
+		if len(imp.Subpackages) > 0 {
+			subs := make([]yaml.Node, len(imp.Subpackages))
+			for ii, sub := range imp.Subpackages {
+				subs[ii] = yaml.Scalar(sub)
+			}
+			impmap["subpackages"] = yaml.List(subs)
+		}
+
+		imports[i] = yaml.Map(impmap)
+	}
+
+	rootMap["import"] = yaml.List(imports)
+
+
+	return root, nil
+}
+
+func vcsString(vtype uint) string {
+	switch vtype {
+	case Git:
+		return "git"
+	case Hg:
+		return "hg"
+	case Bzr:
+		return "bzr"
+	case Svn:
+		return "svn"
+	default:
+		return ""
+	}
 }
 
 func valOrEmpty(key string, store map[string]yaml.Node) string {

@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"fmt"
+	"strings"
 )
 
 type SvnVCS struct {}
@@ -58,4 +59,20 @@ func (s *SvnVCS) Version(dep *Dependency) error {
 		}
 	}
 	return nil
+}
+
+func (s *SvnVCS) LastCommit(dep *Dependency) (string, error) {
+	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
+
+	oldDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	os.Chdir(dest)
+	defer os.Chdir(oldDir)
+	out, err := exec.Command("svnversion", ".").CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
 }

@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"fmt"
+	"strings"
 )
 
 type HgVCS struct {}
@@ -62,4 +63,24 @@ func (h *HgVCS) Version(dep *Dependency) error {
 		Info("Set version to %s to %s\n", dep.Name, dep.Reference)
 	}
 	return nil
+}
+
+func (h *HgVCS) LastCommit(dep *Dependency) (string, error) {
+	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
+
+	oldDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	os.Chdir(dest)
+	defer os.Chdir(oldDir)
+
+	out, err := exec.Command("hg", "identify").CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	parts := strings.SplitN(string(out), " ", 2)
+
+	sha := parts[0]
+	return sha, nil
 }

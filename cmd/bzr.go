@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"fmt"
+	"strings"
 )
 
 type BzrVCS struct {}
@@ -63,4 +64,23 @@ func (b *BzrVCS) Version(dep *Dependency) error {
 		}
 	}
 	return nil
+}
+
+func (b *BzrVCS) LastCommit(dep *Dependency) (string, error) {
+	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
+
+	oldDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	os.Chdir(dest)
+	defer os.Chdir(oldDir)
+	out, err := exec.Command("bzr", "revno").CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	parts := strings.SplitN(string(out), " ", 2)
+
+	revno:= parts[0]
+	return revno, nil
 }

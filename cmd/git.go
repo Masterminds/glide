@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/exec"
 	"fmt"
+	"strings"
+	"regexp"
 )
 
 type GitVCS struct {}
@@ -82,3 +84,34 @@ func (g *GitVCS) Version(dep *Dependency) error {
 
 	return nil
 }
+
+func (g *GitVCS) LastCommit(dep *Dependency) (string, error) {
+	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
+
+	oldDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	os.Chdir(dest)
+	defer os.Chdir(oldDir)
+
+	out, err := exec.Command("git", "log", "-n", "1", "--pretty=format:%h%d").CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	parts := strings.SplitN(string(out), " ", 2)
+
+	sha := parts[0]
+
+	// Send back a tag if a tag matches.
+	if len(parts) > 1 && strings.Contains(parts[1], "tag: ") {
+		re := regexp.MustCompile("tag: ([^,)]*)")
+		subs := re.FindStringSubmatch(parts[1])
+		if len(subs) > 1 {
+			return subs[1], nil
+		}
+	}
+
+	return sha, nil
+}
+

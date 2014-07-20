@@ -34,3 +34,8 @@ func (g *GoGetVCS) Update(dep *Dependency) error {
 func (g *GoGetVCS) Version(dep *Dependency) error {
 	return fmt.Errorf("%s does not have a repository/VCS set. No way to set version.", dep.Name)
 }
+
+// LastCommit always retuns "" for GoGet, which is not revision-aware.
+func (g *GoGetVCS) LastCommit(dep *Dependency) (string, error) {
+	return "", nil
+}

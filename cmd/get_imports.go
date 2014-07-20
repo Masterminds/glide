@@ -87,6 +87,7 @@ type VCS interface {
 	Get(*Dependency) error
 	Update(*Dependency) error
 	Version(*Dependency) error
+	LastCommit(*Dependency) (string, error)
 }
 
 var (
@@ -212,6 +213,30 @@ func VcsVersion(dep *Dependency) error {
 			return goGet.Version(dep)
 		}
 		return nil
+	}
+
+}
+
+func VcsLastCommit(dep *Dependency) (string, error) {
+	if dep.VcsType == NoVCS {
+		dep.VcsType, _ = GuessVCS(dep)
+	}
+
+	switch dep.VcsType {
+	case Git:
+		return git.LastCommit(dep)
+	case Bzr:
+		return bzr.LastCommit(dep)
+	case Hg:
+		return hg.LastCommit(dep)
+	case Svn:
+		return svn.LastCommit(dep)
+	default:
+		if len(dep.Reference) > 0 {
+			Warn("Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
+			return goGet.LastCommit(dep)
+		}
+		return "", nil
 	}
 
 }
