@@ -17,7 +17,7 @@ const Summary = "Manage Go projects with ease."
 const Usage = `Manage dependencies, naming, and GOPATH for your Go projects.
 
 Examples:
-	$ glide init
+	$ glide create
 	$ glide in
 	$ glide install
 	$ glide update
@@ -34,7 +34,7 @@ Utilities:
 
 Dependency management:
 
-- init: Initialize a new project, creating a template glide.yaml.
+- create: Initialize a new project, creating a template glide.yaml.
 - install: Install all packages in the glide.yaml.
 - update: Update existing packages (alias: 'up').
 - rebuild: Rebuild ('go build') the dependencies.
@@ -180,7 +180,10 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
 
-	reg.Route("init", "Initialize Glide").
+	reg.Route("init", "Initialize Glide (deprecated; use 'create'").
+		Does(cookoo.ForwardTo, "fwd").Using("route").WithDefault("create")
+
+	reg.Route("create", "Initialize Glide").
 		Does(cmd.InitGlide, "init")
 
 	reg.Route("status", "Status").
