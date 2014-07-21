@@ -70,13 +70,23 @@ func (g *GitVCS) Version(dep *Dependency) error {
 		//fmt.Print(string(out))
 	}
 
+	// EXPERIMENTAL: This will keep the repo up to date according to the
+	// master branch on Git. Since 'master' is convention only, this isn't
+	// a 100% reliable way to do things.
+	if dep.Reference == "" {
+		Info("No Git reference set. Trying to update 'master'...\n")
+		dep.Reference = "master"
+	}
+
 	branchref := fmt.Sprintf("origin/%s", dep.Reference)
-	err = exec.Command("git", "show-ref", "-q", branchref).Run()
+	//err = exec.Command("git", "show-ref", "-q", branchref).Run()
+	out, err := exec.Command("git", "show-ref", branchref).CombinedOutput()
 	if err == nil {
-		Debug("Reference %s is to a branch.", dep.Reference)
+		Info("Git: Found branch %s", string(out))
+		//Debug("Reference %s is to a branch.", dep.Reference)
 		// git merge --ff-only origin $VERSION
 		out, err := exec.Command("git", "merge", "--ff-only", "origin", dep.Reference).CombinedOutput()
-		fmt.Println(out)
+		Info("Git: %s", string(out))
 		if err != nil {
 			return err
 		}
