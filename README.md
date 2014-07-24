@@ -81,7 +81,7 @@ manage itself, too.
 ## Usage
 
 ```
-$ glide init      # Start a new workspaces
+$ glide create    # Start a new workspaces
 $ glide in        # Switch into the workspace
 $ open glide.yaml # and edit away!
 $ glide install   # Install packages and dependencies
@@ -94,13 +94,13 @@ $ exit            # Exit the glide session (started with glide in)
 Check out the `glide.yaml` in this directory, or examples in the `docs/`
 directory.
 
-### glide init
+### glide create
 
 Initialize a new workspace. Among other things, this creates a stub
 `glide.yaml`
 
 ```
-$ glide init
+$ glide create
 [INFO] Your new GOPATH is /Users/mbutcher/Code/glide/docs/_vendor. Run 'glide gopath' to see it again.
 [INFO] Initialized. You can now edit 'glide.yaml'
 ```
