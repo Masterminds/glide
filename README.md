@@ -307,13 +307,19 @@ default `$GOPATH`, this will override the `GOPATH` that glide sets. The
 simple work-around is to use this in your profile:
 
 ```bash
-if [ "" = "${ALREADY_GLIDING}" ]; then
+if [ "" = "${GOPATH}" ]; then
   export GOPATH="/some/dir"
 fi
 ```
 
-The above will *only* set GOPATH if you're not using `glide in` or
-`glide into`.
+This will only set a GOPATH if one does not exist. Alternately, if you want to
+set the GOPATH when you're not using `glide in` or `glide into` try the following:
+
+```bash
+if [ "" = "${ALREADY_GLIDING}" ]; then
+  export GOPATH="/some/dir"
+fi
+```
 
 **Q: bzr (or hg) is not working the way I expected. Why?**
 
