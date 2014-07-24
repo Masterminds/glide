@@ -66,7 +66,7 @@ func (g *GitVCS) Version(dep *Dependency) error {
 		if dep.Reference != "" {
 			updatedTo = dep.Reference
 		}
-		Info("Set version to %s to %s\n", dep.Name, updatedTo)
+		Info("Settting version of %s to %s\n", dep.Name, updatedTo)
 		//fmt.Print(string(out))
 	}
 
@@ -82,13 +82,35 @@ func (g *GitVCS) Version(dep *Dependency) error {
 	//err = exec.Command("git", "show-ref", "-q", branchref).Run()
 	out, err := exec.Command("git", "show-ref", branchref).CombinedOutput()
 	if err == nil {
-		Info("Git: Found branch %s", string(out))
+		//Info("Git: Found branch %s", string(out))
 		//Debug("Reference %s is to a branch.", dep.Reference)
 		// git merge --ff-only origin $VERSION
 		out, err := exec.Command("git", "merge", "--ff-only", "origin", dep.Reference).CombinedOutput()
 		Info("Git: %s", string(out))
 		if err != nil {
 			return err
+		}
+
+	}
+
+	// EXPERIMENTAL: Show how far behind we are.
+	out, err = exec.Command("git", "rev-list", "--count", "HEAD..origin").CombinedOutput()
+	if err == nil {
+		count := strings.TrimSpace(string(out))
+		if count != "0" {
+			var c string
+			switch len(count) {
+			// 0-9, not that bad
+			case 1:
+				c = Yellow
+			// 10-99, we're getting behind
+			case 2:
+				c = Red
+			// Whoa! We're falling way behind!
+			default:
+				c = BoldRed
+			}
+			Info(Color(c, fmt.Sprintf("Git: %s is %s behind origin.\n", dep.Name, count)))
 		}
 	}
 

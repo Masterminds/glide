@@ -12,10 +12,12 @@ type GoGetVCS struct {}
 func (g *GoGetVCS) Get(dep *Dependency) error {
 	out, err := exec.Command("go", "get", dep.Name).CombinedOutput()
 	if err != nil {
-		fmt.Print(string(out))
+		//fmt.Print(string(out))
 		if strings.Contains(string(out), "no buildable Go source") {
+			Info("Go Get: %s", out)
 			return nil
 		}
+		Warn("Go Get: %s", out)
 	}
 	return err
 }
@@ -23,10 +25,11 @@ func (g *GoGetVCS) Get(dep *Dependency) error {
 func (g *GoGetVCS) Update(dep *Dependency) error {
 	out, err := exec.Command("go", "get", "-u", dep.Name).CombinedOutput()
 	if err != nil {
-		fmt.Print(string(out))
 		if strings.Contains(string(out), "no buildable Go source") {
+			Info("Go Get: %s", out)
 			return nil
 		}
+		Warn("Go Get: %s", out)
 	}
 	return err
 }
