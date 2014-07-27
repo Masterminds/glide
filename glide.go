@@ -180,6 +180,20 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
 
+	reg.Route("godeps", "Read a Godeps file").
+		Includes("@ready").
+		Does(cmd.Godeps, "godeps").
+		Does(cmd.AddDependencies, "addGodeps").
+		Using("dependencies").From("cxt:godeps").
+		Using("conf").From("cxt:cfg").
+		Does(cmd.GodepsGit, "godepsGit").
+		Does(cmd.AddDependencies, "addGodepsGit").
+		Using("dependencies").From("cxt:godepsGit").
+		Using("conf").From("cxt:cfg").
+		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
+		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
+		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+
 	reg.Route("init", "Initialize Glide (deprecated; use 'create'").
 		Does(cookoo.ForwardTo, "fwd").Using("route").WithDefault("create")
 

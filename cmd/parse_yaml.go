@@ -131,6 +131,31 @@ func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 	return root, nil
 }
 
+// AddDependencies adds a list of *Dependency objects to the given *Config.
+//
+// This is used to merge in packages from other sources or config files.
+func AddDependencies(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	deps := p.Get("dependencies", []*Dependency{}).([]*Dependency)
+	config := p.Get("conf", nil).(*Config)
+
+	// Make a set of existing package names for quick comparison.
+	pkgSet := make(map[string]bool, len(config.Imports))
+	for _, p := range config.Imports {
+		pkgSet[p.Name] = true
+	}
+
+	// If a dep is not already present, add it.
+	for _, dep := range deps {
+		if _, ok := pkgSet[dep.Name]; ok {
+			Warn("Package %s is already in glide.yaml. Skipping.\n", dep.Name)
+			continue
+		}
+		config.Imports = append(config.Imports, dep)
+	}
+
+	return true, nil
+}
+
 func vcsString(vtype uint) string {
 	switch vtype {
 	case Git:
