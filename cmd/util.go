@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/Masterminds/cookoo"
 	"fmt"
+	"os"
 )
 
 var Quiet bool = false
@@ -38,13 +39,22 @@ func Debug(msg string, args ...interface{}) {
 }
 
 func Warn(msg string, args ...interface{}) {
-	fmt.Print(Color(Red, "[WARN] "))
-	Msg(msg, args...)
+	fmt.Fprint(os.Stderr, Color(Red, "[WARN] "))
+	ErrMsg(msg, args...)
 }
 
 func Error(msg string, args ...interface{}) {
-	fmt.Print(Color(BoldRed, "[ERROR] "))
-	Msg(msg, args...)
+	fmt.Fprint(os.Stderr, Color(BoldRed, "[ERROR] "))
+	ErrMsg(msg, args...)
+}
+
+// ErrMsg sends a message to Stderr
+func ErrMsg(msg string, args...interface{}) {
+	if len(args) == 0 {
+		fmt.Fprint(os.Stderr, msg)
+		return
+	}
+	fmt.Fprintf(os.Stderr, msg, args...)
 }
 
 func Msg(msg string, args...interface{}) {

@@ -47,6 +47,10 @@ Project tools:
 - gopath: Emits the GOPATH for the current project. Useful for things like
   manually setting GOPATH: GOPATH=$(glide gopath)
 
+Importing:
+
+- godeps: Import Godeps and Godeps-Git files and display the would-be yaml file.
+
 FILES
 =====
 
@@ -72,21 +76,6 @@ func main() {
 		fmt.Printf("Oops! %s\n", err)
 		os.Exit(1)
 	}
-
-	/*
-	next := cxt.Get("subcommand", "help").(string)
-	if router.HasRoute(next) {
-		if err := router.HandleRequest(next, cxt, false); err != nil {
-			fmt.Printf("Oops! %s\n", err)
-			os.Exit(1)
-		}
-	} else {
-		if err := router.HandleRequest("@plugin", cxt, false); err != nil {
-			fmt.Printf("Oops! %s\n", err)
-			os.Exit(1)
-		}
-	}
-	*/
 
 }
 
