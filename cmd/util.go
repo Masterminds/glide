@@ -20,29 +20,32 @@ func Color(code, msg string) string {
 	return fmt.Sprintf("\033[%sm%s\033[m", code, msg)
 }
 
-
+// BeQuiet supresses Info and Debug messages.
 func BeQuiet(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	qstr := p.Get("quiet", "false").(string)
 	Quiet = qstr == "true"
 	return Quiet, nil
 }
 
+// Info logs information
 func Info(msg string, args ...interface{}) {
 	if Quiet { return }
 	fmt.Print(Color(Yellow, "[INFO] "))
 	Msg(msg, args...)
 }
+// Debug logs debug information
 func Debug(msg string, args ...interface{}) {
 	if Quiet { return }
 	fmt.Print("[DEBUG] ")
 	Msg(msg, args...)
 }
-
+// Warn logs a warning
 func Warn(msg string, args ...interface{}) {
 	fmt.Fprint(os.Stderr, Color(Red, "[WARN] "))
 	ErrMsg(msg, args...)
 }
 
+// Error logs and error.
 func Error(msg string, args ...interface{}) {
 	fmt.Fprint(os.Stderr, Color(BoldRed, "[ERROR] "))
 	ErrMsg(msg, args...)
