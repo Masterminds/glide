@@ -85,8 +85,8 @@ func (g *GitVCS) Version(dep *Dependency) error {
 		//Info("Git: Found branch %s", string(out))
 		//Debug("Reference %s is to a branch.", dep.Reference)
 		// git merge --ff-only origin $VERSION
-		out, err := exec.Command("git", "merge", "--ff-only", "origin", dep.Reference).CombinedOutput()
-		Info("Git: %s", string(out))
+		out, err := exec.Command("git", "pull", "--ff-only", "origin", dep.Reference).CombinedOutput()
+		Info("Git: (merge) %s", string(out))
 		if err != nil {
 			return err
 		}
