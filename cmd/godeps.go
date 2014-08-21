@@ -27,7 +27,7 @@ func Godeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	dir := cookoo.GetString("dir", "", p)
 	path := filepath.Join(dir, "Godeps")
 	if _, err := os.Stat(path); err != nil {
-		return []string{}, nil
+		return []*Dependency{}, nil
 	}
 	Info("Found Godeps file.\n")
 
@@ -60,7 +60,7 @@ func GodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	dir := cookoo.GetString("dir", "", p)
 	path := filepath.Join(dir, "Godeps-Git")
 	if _, err := os.Stat(path); err != nil {
-		return []string{}, nil
+		return []*Dependency{}, nil
 	}
 	Info("Found Godeps-Git file.\n")
 
