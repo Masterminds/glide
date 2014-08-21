@@ -1,12 +1,16 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
 	"fmt"
+	"github.com/Masterminds/cookoo"
 	"os"
 )
 
-var Quiet bool = false
+// Quiet, when set to true, can suppress Into and Debug messages.
+var Quiet = false
+
+// These contanstants map to color codes for shell scripts making them
+// human readable.
 const (
 	Blue    = "0;34"
 	Red     = "0;31"
@@ -16,6 +20,11 @@ const (
 	Pink    = "1;35"
 )
 
+// Color returns a string in a certain color. The first argument is a string
+// containing the color code or a constant from the table above mapped to a code.
+//
+// The following will print the string "Foo" in yellow:
+//     fmt.Print(Color(Yellow, "Foo"))
 func Color(code, msg string) string {
 	return fmt.Sprintf("\033[%sm%s\033[m", code, msg)
 }
@@ -29,16 +38,22 @@ func BeQuiet(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 // Info logs information
 func Info(msg string, args ...interface{}) {
-	if Quiet { return }
+	if Quiet {
+		return
+	}
 	fmt.Print(Color(Yellow, "[INFO] "))
 	Msg(msg, args...)
 }
+
 // Debug logs debug information
 func Debug(msg string, args ...interface{}) {
-	if Quiet { return }
+	if Quiet {
+		return
+	}
 	fmt.Print("[DEBUG] ")
 	Msg(msg, args...)
 }
+
 // Warn logs a warning
 func Warn(msg string, args ...interface{}) {
 	fmt.Fprint(os.Stderr, Color(Red, "[WARN] "))
@@ -52,7 +67,7 @@ func Error(msg string, args ...interface{}) {
 }
 
 // ErrMsg sends a message to Stderr
-func ErrMsg(msg string, args...interface{}) {
+func ErrMsg(msg string, args ...interface{}) {
 	if len(args) == 0 {
 		fmt.Fprint(os.Stderr, msg)
 		return
@@ -60,7 +75,9 @@ func ErrMsg(msg string, args...interface{}) {
 	fmt.Fprintf(os.Stderr, msg, args...)
 }
 
-func Msg(msg string, args...interface{}) {
+// Msg prints a message with optional arguments, that can be printed, of
+// varying types.
+func Msg(msg string, args ...interface{}) {
 	if len(args) == 0 {
 		fmt.Print(msg)
 		return
