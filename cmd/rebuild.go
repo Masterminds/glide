@@ -9,7 +9,7 @@ import (
 	//"fmt"
 )
 
-// Rebuild run 'go build' in a directory.
+// Rebuild runs 'go build' in a directory.
 //
 // Params:
 // 	- conf: the *Config.

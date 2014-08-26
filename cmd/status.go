@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
 	"fmt"
+	"github.com/Masterminds/cookoo"
 	"os"
 )
 
+// Status is a command that prints the status of the glide and expected gopath.
 func Status(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	if os.Getenv("ALREADY_GLIDING") == "1" {
 		fmt.Println("glide in: true")
