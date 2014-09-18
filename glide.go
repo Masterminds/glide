@@ -1,3 +1,35 @@
+// Glide is a command line utility that manages Go project dependencies and
+// your GOPATH.
+//
+// Dependencies are managed via a glide.yaml in the root of a project. The yaml
+// file lets you specify projects, versions (tags, branches, or references),
+// and even alias one location in as other one. Aliasing is useful when supporting
+// forks without needing to rewrite the imports in a codebase.
+//
+// A glide.yaml file looks like:
+//
+//   	package: github.com/Masterminds/glide
+// 		imports:
+//	 		- package: github.com/Masterminds/cookoo
+//			  vcs: git
+//			  ref: 1.1.0
+// 	  		  subpackages: **
+//  		- package: github.com/kylelemons/go-gypsy
+// 	  		  subpackages: yaml
+//
+// Glide puts dependencies in a _vendor directory. Go utilities require this to
+// be in your GOPATH. Glide makes this easy. Use the `glide in` command to enter
+// a shell (your default) with the GOPATH set to the projects _vendor directory.
+// To leave this shell simply exit it.
+//
+// If your .bashrc, .zshrc, or other startup shell sets your GOPATH you many need
+// to optionally set it using something like:
+//
+//		if [ "" = "${GOPATH}" ]; then
+//		  export GOPATH="/some/dir"
+//		fi
+//
+// For more information use the `glide help` command or see https://github.com/Masterminds/glide
 package main
 
 import (
@@ -104,7 +136,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("default").WithDefault("help").
 		Using("offset").WithDefault(0).
 		Using("args").From("cxt:remainingArgs")
-
 
 	reg.Route("@ready", "Prepare for glide commands.").
 		Does(cmd.ReadyToGlide, "ready").
