@@ -8,14 +8,14 @@
 //
 // A glide.yaml file looks like:
 //
-//   	package: github.com/Masterminds/glide
+// 		package: github.com/Masterminds/glide
 // 		imports:
-//	 		- package: github.com/Masterminds/cookoo
+//			- package: github.com/Masterminds/cookoo
 //			  vcs: git
 //			  ref: 1.1.0
-// 	  		  subpackages: **
-//  		- package: github.com/kylelemons/go-gypsy
-// 	  		  subpackages: yaml
+//			  subpackages: **
+//			- package: github.com/kylelemons/go-gypsy
+//			  subpackages: yaml
 //
 // Glide puts dependencies in a _vendor directory. Go utilities require this to
 // be in your GOPATH. Glide makes this easy. Use the `glide in` command to enter
