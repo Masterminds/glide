@@ -43,7 +43,7 @@ import (
 	"os"
 )
 
-var version string = "DEV"
+var version string = "0.1.0"
 
 const Summary = "Manage Go projects with ease."
 const Usage = `Manage dependencies, naming, and GOPATH for your Go projects.
