@@ -19,7 +19,7 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	cfg := p.Get("conf", nil).(*Config)
 
 	if len(cfg.Imports) == 0 {
-		Info("No dependencies found. Nothing downloaded.")
+		Info("No dependencies found. Nothing downloaded.\n")
 		return false, nil
 	}
 
@@ -36,7 +36,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	cfg := p.Get("conf", nil).(*Config)
 
 	if len(cfg.Imports) == 0 {
-		Info("No dependencies found. Nothing updated.")
+		Info("No dependencies found. Nothing updated.\n")
 		return false, nil
 	}
 
@@ -52,11 +52,11 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	gopath := os.Getenv("GOPATH")
 	if len(gopath) == 0 {
-		return false, fmt.Errorf("No GOPATH is set.")
+		return false, fmt.Errorf("No GOPATH is set.\n")
 	}
 
 	if _, err := os.Stat(gopath); err != nil {
-		return false, fmt.Errorf("Did you forget to 'glide install'? GOPATH=%s seems not to exist: %s", gopath, err)
+		return false, fmt.Errorf("Did you forget to 'glide install'? GOPATH=%s seems not to exist: %s\n", gopath, err)
 	}
 
 	ggpath := os.Getenv("GLIDE_GOPATH")
@@ -70,7 +70,7 @@ func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	cfg := p.Get("conf", nil).(*Config)
 
 	if len(cfg.Imports) == 0 {
-		Info("No dependencies found.")
+		Info("No dependencies found.\n")
 		return false, nil
 	}
 
