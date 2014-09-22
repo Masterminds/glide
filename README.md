@@ -65,8 +65,9 @@ to see this philosophy in action.*
 
 ## Install
 
-In the future we will provide binary packages. Right now, the easiest
-way to get started is:
+[Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac and Linux.
+
+To build from source you can:
 
 1. Clone this repository and change directory into it
 2. Run `make bootstrap`
