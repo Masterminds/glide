@@ -14,6 +14,7 @@ func InGopath(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 	if err != nil {
 		return false, err
 	}
+	cwd = filepath.Join(cwd, "_vendor")
 	// Get GOPATH
 	gopath, err := filepath.Abs(os.Getenv("GOPATH"))
 	if err != nil {
