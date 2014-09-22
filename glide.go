@@ -172,6 +172,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.Out, "gopath")
 
 	reg.Route("install", "Install dependencies.").
+		Does(cmd.InGopath, "pathIsRight").
 		Includes("@ready").
 		Does(cmd.Mkdir, "dir").Using("dir").WithDefault("_vendor").
 		Does(cmd.LinkPackage, "alias").
