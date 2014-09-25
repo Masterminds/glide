@@ -134,15 +134,6 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []ccli.Command {
 			},
 		},
 		{
-			Name:      "status",
-			ShortName: "s",
-			Usage:     "Display a status report",
-			Action: func(c *ccli.Context) {
-				cxt.Put("cxt:yaml", c.String("yaml"))
-				router.HandleRequest("status", cxt, false)
-			},
-		},
-		{
 			Name:  "gopath",
 			Usage: "Display the GOPATH for the present project",
 			Description: `Emits the GOPATH for the current project. Useful for
@@ -150,6 +141,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []ccli.Command {
 			Action: func(c *ccli.Context) {
 				cxt.Put("cxt:yaml", c.String("yaml"))
 				router.HandleRequest("gopath", cxt, false)
+			},
+		},
+		{
+			Name:      "status",
+			ShortName: "s",
+			Usage:     "Display a status report",
+			Action: func(c *ccli.Context) {
+				cxt.Put("cxt:yaml", c.String("yaml"))
+				router.HandleRequest("status", cxt, false)
 			},
 		},
 	}
