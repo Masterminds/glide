@@ -18,6 +18,4 @@ import:
       - cli
       - .
   - package: github.com/codegangsta/cli
-    vcs: git
-    ref: 1.2.0
 #incmd: bash -l

@@ -36,10 +36,9 @@ import (
 	"github.com/Masterminds/glide/cmd"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/cookoo/cli"
+	//"github.com/Masterminds/cookoo/cli"
 
-	// Aliasing to ccli as long as cookoo/cli is imported with the same name.
-	ccli "github.com/codegangsta/cli"
+	"github.com/codegangsta/cli"
 
 	"flag"
 	"os"
@@ -71,10 +70,6 @@ Project tools:
 
 - into: "glide into /my/project" is the same as running "cd /my/project && glide in"
 
-Importing:
-
-- godeps: Import Godeps and Godeps-Git files and display the would-be yaml file.
-
 FILES
 =====
 
@@ -96,17 +91,17 @@ func main() {
 
 	routes(reg, cxt)
 
-	app := ccli.NewApp()
+	app := cli.NewApp()
 	app.Name = "glide"
 	app.Usage = Usage
 	app.Version = version
-	app.Flags = []ccli.Flag{
-		ccli.StringFlag{
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
 			Name:  "yaml, y",
 			Value: "glide.yaml",
 			Usage: "Set a YAML configuration file.",
 		},
-		ccli.BoolFlag{
+		cli.BoolFlag{
 			Name:  "quiet, q",
 			Usage: "Quiet (no info or debug messages)",
 		},
@@ -123,14 +118,24 @@ func main() {
 
 }
 
-func commands(cxt cookoo.Context, router *cookoo.Router) []ccli.Command {
-	return []ccli.Command{
+func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
+	return []cli.Command{
 		{
 			Name:  "in",
 			Usage: "Glide into a commandline shell preconfigured for your project",
-			Action: func(c *ccli.Context) {
-				cxt.Put("cxt:yaml", c.String("yaml"))
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
 				router.HandleRequest("in", cxt, false)
+			},
+		},
+		{
+			Name:  "godeps",
+			Usage: "Import Godeps and Godeps-Git files and display the would-be yaml file",
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
+				router.HandleRequest("godeps", cxt, false)
 			},
 		},
 		{
@@ -138,8 +143,9 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []ccli.Command {
 			Usage: "Display the GOPATH for the present project",
 			Description: `Emits the GOPATH for the current project. Useful for
    things like manually setting GOPATH: GOPATH=$(glide gopath)`,
-			Action: func(c *ccli.Context) {
-				cxt.Put("cxt:yaml", c.String("yaml"))
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
 				router.HandleRequest("gopath", cxt, false)
 			},
 		},
@@ -147,8 +153,9 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []ccli.Command {
 			Name:      "status",
 			ShortName: "s",
 			Usage:     "Display a status report",
-			Action: func(c *ccli.Context) {
-				cxt.Put("cxt:yaml", c.String("yaml"))
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
 				router.HandleRequest("status", cxt, false)
 			},
 		},
@@ -164,18 +171,18 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	cxt.Put("os.Args", os.Args)
 
-	//reg.Route("@startup", "Parse args and send to the right subcommand.").
-	// Does(cli.ShiftArgs, "_").Using("n").WithDefault(1).
-	// Does(cli.ParseArgs, "remainingArgs").
-	// Using("flagset").WithDefault(flags).
-	// Using("args").From("cxt:os.Args").
-	// Does(cli.ShowHelp, "help").
-	// Using("show").From("cxt:h cxt:help").
-	// Using("summary").WithDefault(Summary).
-	// Using("usage").WithDefault(Usage).
-	// Using("flags").WithDefault(flags).
-	// Does(cmd.BeQuiet, "quiet").
-	// Using("quiet").From("cxt:q").
+	reg.Route("@startup", "Parse args and send to the right subcommand.").
+		// Does(cli.ShiftArgs, "_").Using("n").WithDefault(1).
+		// Does(cli.ParseArgs, "remainingArgs").
+		// Using("flagset").WithDefault(flags).
+		// Using("args").From("cxt:os.Args").
+		// Does(cli.ShowHelp, "help").
+		// Using("show").From("cxt:h cxt:help").
+		// Using("summary").WithDefault(Summary).
+		// Using("usage").WithDefault(Usage).
+		// Using("flags").WithDefault(flags).
+		Does(cmd.BeQuiet, "quiet").
+		Using("quiet").From("cxt:q")
 	// Does(cli.RunSubcommand, "subcommand").
 	// Using("default").WithDefault("help").
 	// Using("offset").WithDefault(0).
@@ -187,12 +194,13 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("into", "Creates a new Glide shell.").
 		Does(cmd.AlreadyGliding, "isGliding").
-		Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(2).
+		//Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(2).
 		Does(cmd.Into, "in").Using("into").From("cxt:toPath").
 		Using("into").WithDefault("").From("cxt:toPath").
 		Includes("@ready")
 
 	reg.Route("in", "Set GOPATH and supporting env vars.").
+		Includes("@startup").
 		Does(cmd.AlreadyGliding, "isGliding").
 		Includes("@ready").
 		//Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(1).
@@ -201,6 +209,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg")
 
 	reg.Route("gopath", "Return the GOPATH for the present project.").
+		Includes("@startup").
 		Does(cmd.In, "gopath")
 
 	reg.Route("out", "Set GOPATH back to former val.").
@@ -237,6 +246,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
 
 	reg.Route("godeps", "Read a Godeps file").
+		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.Godeps, "godeps").
 		Does(cmd.AddDependencies, "addGodeps").
@@ -257,6 +267,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.InitGlide, "init")
 
 	reg.Route("status", "Status").
+		Includes("@startup").
 		Does(cmd.Status, "status")
 
 	reg.Route("@plugin", "Try to send to a plugin.").

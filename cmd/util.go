@@ -31,8 +31,7 @@ func Color(code, msg string) string {
 
 // BeQuiet supresses Info and Debug messages.
 func BeQuiet(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	qstr := p.Get("quiet", "false").(string)
-	Quiet = qstr == "true"
+	Quiet = p.Get("quiet", false).(bool)
 	return Quiet, nil
 }
 
