@@ -98,6 +98,7 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	os.Setenv("ALREADY_GLIDING", "1")
 	os.Setenv("GOPATH", gopath)
+	os.Setenv("GOBIN", gopath + "/bin")
 	os.Setenv("GLIDE_GOPATH", gopath)
 	os.Setenv("PATH", path + ":" + gopath + "/bin")
 	os.Setenv("GLIDE_PROJECT", cwd)
