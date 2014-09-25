@@ -7,6 +7,8 @@ import (
 	"os"
 	//"os/user"
 	"os/exec"
+	"path/filepath"
+
 )
 
 // AlreadyGliding emits a warning (and stops) if we're in a glide session.
@@ -119,12 +121,20 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	if len(cfg.InCommand) > 0 {
 		cmdArgs = strings.Split(cfg.InCommand, " ")
 		fmt.Printf(">> Running custom 'glide in': %v\n", cmdArgs)
-		shell, err = exec.LookPath(cmdArgs[0])
+		//shell, err = exec.LookPath(cmdArgs[0])
+		//if err != nil {
+			//return nil, err
+		//}
+		shell = cmdArgs[0]
+	} else {
+		fmt.Printf(">> You are now gliding into a new shell. To exit, type 'exit'\n")
+	}
+
+	if !filepath.IsAbs(shell) {
+		shell, err = exec.LookPath(shell)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		fmt.Printf(">> You are now gliding into a new shell. To exit, type 'exit'\n")
 	}
 
 	// Login may work better than executing the shell manually.
