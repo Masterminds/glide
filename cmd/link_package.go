@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/Masterminds/cookoo"
+	"strings"
 	"path"
 	"fmt"
 	"os"
@@ -18,7 +19,9 @@ func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 
 	// Per issue #10, this may be nicer to work with in cases where repos are
 	// moved.
-	here := "../.."
+	//here := "../.."
+	depth := strings.Count(pname, "/")
+	here := "../.." + strings.Repeat("/..", depth)
 
 	gopath := os.Getenv("GOPATH")
 	if len(gopath) == 0 {
