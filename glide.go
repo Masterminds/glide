@@ -60,10 +60,6 @@ Examples:
 COMMANDS
 ========
 
-Utilities:
-
-- status: Print a status report.
-
 Dependency management:
 
 - create: Initialize a new project, creating a template glide.yaml.
