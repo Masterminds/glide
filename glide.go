@@ -38,6 +38,9 @@ import (
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/cookoo/cli"
 
+	// Aliasing to ccli as long as cookoo/cli is imported with the same name.
+	ccli "github.com/codegangsta/cli"
+
 	"flag"
 	"fmt"
 	"os"
@@ -60,7 +63,6 @@ COMMANDS
 
 Utilities:
 
-- help: Show this help message (alias of -h)
 - status: Print a status report.
 - version: Print the version and exit.
 
@@ -73,8 +75,6 @@ Dependency management:
 
 Project tools:
 
-- in: Glide into a commandline shell preconfigured for your project (with
-  GOPATH set).
 - into: "glide into /my/project" is the same as running "cd /my/project && glide in"
 - gopath: Emits the GOPATH for the current project. Useful for things like
   manually setting GOPATH: GOPATH=$(glide gopath)
@@ -104,11 +104,44 @@ func main() {
 
 	routes(reg, cxt)
 
-	if err := router.HandleRequest("@startup", cxt, false); err != nil {
-		fmt.Printf("Oops! %s\n", err)
-		os.Exit(1)
+	app := ccli.NewApp()
+	app.Name = "glide"
+	app.Usage = Usage
+	app.Version = version
+	app.Flags = []ccli.Flag{
+		ccli.StringFlag{
+			Name:  "yaml, y",
+			Value: "glide.yaml",
+			Usage: "Set a YAML configuration file.",
+		},
+		ccli.BoolFlag{
+			Name:  "quiet, q",
+			Usage: "Quiet (no info or debug messages)",
+		},
 	}
 
+	app.Commands = commands(cxt, router)
+
+	app.Run(os.Args)
+
+	// if err := router.HandleRequest("@startup", cxt, false); err != nil {
+	// 	fmt.Printf("Oops! %s\n", err)
+	// 	os.Exit(1)
+	// }
+
+}
+
+func commands(cxt cookoo.Context, router *cookoo.Router) []ccli.Command {
+	return []ccli.Command{
+		{
+			Name:  "in",
+			Usage: "Glide into a commandline shell preconfigured for your project",
+			Action: func(c *ccli.Context) {
+				cxt.Put("cxt:yaml", c.String("yaml"))
+				router.HandleRequest("in", cxt, false)
+			},
+		},
+	}
 }
 
 func routes(reg *cookoo.Registry, cxt cookoo.Context) {
@@ -120,22 +153,22 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	cxt.Put("os.Args", os.Args)
 
-	reg.Route("@startup", "Parse args and send to the right subcommand.").
-		Does(cli.ShiftArgs, "_").Using("n").WithDefault(1).
-		Does(cli.ParseArgs, "remainingArgs").
-		Using("flagset").WithDefault(flags).
-		Using("args").From("cxt:os.Args").
-		Does(cli.ShowHelp, "help").
-		Using("show").From("cxt:h cxt:help").
-		Using("summary").WithDefault(Summary).
-		Using("usage").WithDefault(Usage).
-		Using("flags").WithDefault(flags).
-		Does(cmd.BeQuiet, "quiet").
-		Using("quiet").From("cxt:q").
-		Does(cli.RunSubcommand, "subcommand").
-		Using("default").WithDefault("help").
-		Using("offset").WithDefault(0).
-		Using("args").From("cxt:remainingArgs")
+	//reg.Route("@startup", "Parse args and send to the right subcommand.").
+	// Does(cli.ShiftArgs, "_").Using("n").WithDefault(1).
+	// Does(cli.ParseArgs, "remainingArgs").
+	// Using("flagset").WithDefault(flags).
+	// Using("args").From("cxt:os.Args").
+	// Does(cli.ShowHelp, "help").
+	// Using("show").From("cxt:h cxt:help").
+	// Using("summary").WithDefault(Summary).
+	// Using("usage").WithDefault(Usage).
+	// Using("flags").WithDefault(flags).
+	// Does(cmd.BeQuiet, "quiet").
+	// Using("quiet").From("cxt:q").
+	// Does(cli.RunSubcommand, "subcommand").
+	// Using("default").WithDefault("help").
+	// Using("offset").WithDefault(0).
+	// Using("args").From("cxt:remainingArgs")
 
 	reg.Route("@ready", "Prepare for glide commands.").
 		Does(cmd.ReadyToGlide, "ready").

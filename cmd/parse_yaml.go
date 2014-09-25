@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/Masterminds/cookoo"
 	"github.com/kylelemons/go-gypsy/yaml"
-	"fmt"
 )
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
@@ -52,11 +52,11 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		if ok {
 			for _, v := range imports {
 				pkg := v.(yaml.Map)
-				dep := Dependency {
-					Name: valOrEmpty("package", pkg),
-					Reference: valOrEmpty("ref", pkg),
-					VcsType: getVcsType(pkg),
-					Repository: valOrEmpty("repo", pkg),
+				dep := Dependency{
+					Name:        valOrEmpty("package", pkg),
+					Reference:   valOrEmpty("ref", pkg),
+					VcsType:     getVcsType(pkg),
+					Repository:  valOrEmpty("repo", pkg),
 					Subpackages: subpkg("subpackages", pkg),
 				}
 				conf.Imports = append(conf.Imports, &dep)
@@ -127,7 +127,6 @@ func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 
 	rootMap["import"] = yaml.List(imports)
 
-
 	return root, nil
 }
 
@@ -193,13 +192,12 @@ func subpkg(key string, store map[string]yaml.Node) []string {
 
 		// Special case: Allow 'subpackages: justOne'
 		if one, ok := val.(yaml.Scalar); ok {
-			return []string{ one.String() }
+			return []string{one.String()}
 		}
 
 		Warn("Expected list of subpackages.\n")
 		return subpackages
 	}
-
 
 	for _, pkg := range pkgs {
 		subpackages = append(subpackages, pkg.(yaml.Scalar).String())
@@ -232,8 +230,8 @@ func getVcsType(store map[string]yaml.Node) uint {
 
 // Config is the top-level configuration object.
 type Config struct {
-	Name string
-	Imports []*Dependency
+	Name       string
+	Imports    []*Dependency
 	DevImports []*Dependency
 	// InCommand is the default shell command run to start a 'glide in'
 	// session.
@@ -243,6 +241,6 @@ type Config struct {
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
 	Name, Reference, Repository string
-	VcsType uint
-	Subpackages []string
+	VcsType                     uint
+	Subpackages                 []string
 }
