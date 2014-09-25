@@ -42,7 +42,6 @@ import (
 	ccli "github.com/codegangsta/cli"
 
 	"flag"
-	"fmt"
 	"os"
 )
 
@@ -64,7 +63,6 @@ COMMANDS
 Utilities:
 
 - status: Print a status report.
-- version: Print the version and exit.
 
 Dependency management:
 
@@ -174,15 +172,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.ReadyToGlide, "ready").
 		Does(cmd.ParseYaml, "cfg").Using("filename").From("cxt:yaml")
 
-	reg.Route("help", "Print help.").
-		Does(cli.ShowHelp, "help").
-		Using("show").WithDefault(true).
-		Using("summary").WithDefault(Summary).
-		Using("usage").WithDefault(Usage).
-		Using("flags").WithDefault(flags)
-
-	reg.Route("version", "Print the version and exit.").Does(showVersion, "_")
-
 	reg.Route("into", "Creates a new Glide shell.").
 		Does(cmd.AlreadyGliding, "isGliding").
 		Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(2).
@@ -260,9 +249,4 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("@plugin", "Try to send to a plugin.").
 		Includes("@ready").
 		Does(cmd.DropToShell, "plugin")
-}
-
-func showVersion(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	fmt.Println(version)
-	return version, nil
 }
