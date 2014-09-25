@@ -11,10 +11,14 @@ func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 	cfg := c.Get("cfg", "").(*Config)
 	pname := p.Get("path", cfg.Name).(string)
 
-	here, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("Could not get current directory: %s", err)
-	}
+	//here, err := os.Getwd()
+	//if err != nil {
+	//	return nil, fmt.Errorf("Could not get current directory: %s", err)
+	//}
+
+	// Per issue #10, this may be nicer to work with in cases where repos are
+	// moved.
+	here := "../.."
 
 	gopath := os.Getenv("GOPATH")
 	if len(gopath) == 0 {
