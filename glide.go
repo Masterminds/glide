@@ -70,8 +70,6 @@ Dependency management:
 Project tools:
 
 - into: "glide into /my/project" is the same as running "cd /my/project && glide in"
-- gopath: Emits the GOPATH for the current project. Useful for things like
-  manually setting GOPATH: GOPATH=$(glide gopath)
 
 Importing:
 
@@ -142,6 +140,16 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []ccli.Command {
 			Action: func(c *ccli.Context) {
 				cxt.Put("cxt:yaml", c.String("yaml"))
 				router.HandleRequest("status", cxt, false)
+			},
+		},
+		{
+			Name:  "gopath",
+			Usage: "Display the GOPATH for the present project",
+			Description: `Emits the GOPATH for the current project. Useful for
+   things like manually setting GOPATH: GOPATH=$(glide gopath)`,
+			Action: func(c *ccli.Context) {
+				cxt.Put("cxt:yaml", c.String("yaml"))
+				router.HandleRequest("gopath", cxt, false)
 			},
 		},
 	}
