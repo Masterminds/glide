@@ -139,6 +139,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []ccli.Command {
 				router.HandleRequest("in", cxt, false)
 			},
 		},
+		{
+			Name:      "status",
+			ShortName: "s",
+			Usage:     "Display a status report",
+			Action: func(c *ccli.Context) {
+				cxt.Put("cxt:yaml", c.String("yaml"))
+				router.HandleRequest("status", cxt, false)
+			},
+		},
 	}
 }
 
