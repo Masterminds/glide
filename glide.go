@@ -49,20 +49,6 @@ var version string = "0.2.0-dev"
 const Summary = "Manage Go projects with ease."
 const Usage = `Manage dependencies, naming, and GOPATH for your Go projects.
 
-Examples:
-	$ glide create
-	$ glide in
-	$ glide install
-	$ glide update
-	$ glide rebuild
-
-COMMANDS
-========
-
-Dependency management:
-- update: Update existing packages (alias: 'up').
-- rebuild: Rebuild ('go build') the dependencies.
-
 FILES
 =====
 
@@ -171,6 +157,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
+			Name:  "rebuild",
+			Usage: "Rebuild ('go build') the dependencies",
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
+				router.HandleRequest("rebuild", cxt, false)
+			},
+		},
+		{
 			Name:      "status",
 			ShortName: "s",
 			Usage:     "Display a status report",
@@ -178,6 +173,16 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				cxt.Put("q", c.GlobalBool("quiet"))
 				cxt.Put("yaml", c.GlobalString("yaml"))
 				router.HandleRequest("status", cxt, false)
+			},
+		},
+		{
+			Name:      "update",
+			ShortName: "up",
+			Usage:     "Update existing packages",
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
+				router.HandleRequest("update", cxt, false)
 			},
 		},
 	}
@@ -251,6 +256,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cookoo.ForwardTo, "fwd").Using("route").WithDefault("update")
 
 	reg.Route("update", "Update dependencies.").
+		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.CowardMode, "_").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
@@ -258,6 +264,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
 	reg.Route("rebuild", "Rebuild dependencies").
+		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.CowardMode, "_").
 		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
