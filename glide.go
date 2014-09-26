@@ -49,9 +49,6 @@ var version string = "0.2.0-dev"
 const Summary = "Manage Go projects with ease."
 const Usage = `Manage dependencies, naming, and GOPATH for your Go projects.
 
-FILES
-=====
-
 Each project should have a 'glide.yaml' file in the project directory. Files
 look something like this:
 
