@@ -66,10 +66,6 @@ Dependency management:
 - update: Update existing packages (alias: 'up').
 - rebuild: Rebuild ('go build') the dependencies.
 
-Project tools:
-
-- into: "glide into /my/project" is the same as running "cd /my/project && glide in"
-
 FILES
 =====
 
@@ -127,6 +123,16 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				cxt.Put("q", c.GlobalBool("quiet"))
 				cxt.Put("yaml", c.GlobalString("yaml"))
 				router.HandleRequest("in", cxt, false)
+			},
+		},
+		{
+			Name:  "into",
+			Usage: "The same as running \"cd /my/project && glide in\"",
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
+				cxt.Put("toPath", c.Args()[0])
+				router.HandleRequest("into", cxt, false)
 			},
 		},
 		{
@@ -193,6 +199,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.ParseYaml, "cfg").Using("filename").From("cxt:yaml")
 
 	reg.Route("into", "Creates a new Glide shell.").
+		Includes("@startup").
 		Does(cmd.AlreadyGliding, "isGliding").
 		//Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(2).
 		Does(cmd.Into, "in").Using("into").From("cxt:toPath").
