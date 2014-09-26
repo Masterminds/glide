@@ -216,8 +216,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Does(cmd.In, "gopath")
 
-	reg.Route("out", "Set GOPATH back to former val.").
-		Does(cmd.Out, "gopath")
+	// reg.Route("out", "Set GOPATH back to former val.").
+	// 	Does(cmd.Out, "gopath")
 
 	reg.Route("install", "Install dependencies.").
 		Includes("@startup").
