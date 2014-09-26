@@ -1,14 +1,13 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
-	"strings"
 	"fmt"
+	"github.com/Masterminds/cookoo"
 	"os"
+	"strings"
 	//"os/user"
 	"os/exec"
 	"path/filepath"
-
 )
 
 // AlreadyGliding emits a warning (and stops) if we're in a glide session.
@@ -28,9 +27,10 @@ func AlreadyGliding(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Int
 // Most importantly, it fails if glide.yaml is not present in the current
 // working directory.
 func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	if _, err := os.Stat("./glide.yaml"); err != nil {
+	fname := p.Get("filename", "glide.yaml").(string)
+	if _, err := os.Stat(fname); err != nil {
 		cwd, _ := os.Getwd()
-		return false, fmt.Errorf("glide.yaml is missing from %s", cwd)
+		return false, fmt.Errorf("%s is missing from %s", fname, cwd)
 	}
 	return true, nil
 }
@@ -53,10 +53,10 @@ func In(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	}
 
 	/*
-	fmt.Printf("export OLD_PATH=%s\n", os.Getenv("PATH"))
-	fmt.Printf("export PATH=%s:%s\n", os.Getenv("PATH"), gopath + "/bin")
-	fmt.Printf("export GOPATH=%s\n", gopath)
-	fmt.Printf("export ALREADY_GLIDING=1\n")
+		fmt.Printf("export OLD_PATH=%s\n", os.Getenv("PATH"))
+		fmt.Printf("export PATH=%s:%s\n", os.Getenv("PATH"), gopath + "/bin")
+		fmt.Printf("export GOPATH=%s\n", gopath)
+		fmt.Printf("export ALREADY_GLIDING=1\n")
 	*/
 	fmt.Println(gopath)
 
@@ -86,10 +86,10 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cmdArgs := []string{shell}
 	path := os.Getenv("PATH")
 	/*
-	u, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
+		u, err := user.Current()
+		if err != nil {
+			return nil, err
+		}
 	*/
 
 	cwd, err := os.Getwd()
@@ -100,22 +100,22 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	os.Setenv("ALREADY_GLIDING", "1")
 	os.Setenv("GOPATH", gopath)
-	os.Setenv("GOBIN", gopath + "/bin")
+	os.Setenv("GOBIN", gopath+"/bin")
 	os.Setenv("GLIDE_GOPATH", gopath)
-	os.Setenv("PATH", path + ":" + gopath + "/bin")
+	os.Setenv("PATH", path+":"+gopath+"/bin")
 	os.Setenv("GLIDE_PROJECT", cwd)
 	os.Setenv("GLIDE_YAML", fmt.Sprintf("%s/glide.yaml", cwd))
 
-	pa := os.ProcAttr {
+	pa := os.ProcAttr{
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
-		Dir: cwd,
+		Dir:   cwd,
 	}
 
 	/*
-	loginPath, err := exec.LookPath("login")
-	if err != nil {
-		return nil, err
-	}
+		loginPath, err := exec.LookPath("login")
+		if err != nil {
+			return nil, err
+		}
 	*/
 
 	// Allow incmd to override the Glide In default command.
@@ -124,7 +124,7 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 		fmt.Printf(">> Running custom 'glide in': %v\n", cmdArgs)
 		//shell, err = exec.LookPath(cmdArgs[0])
 		//if err != nil {
-			//return nil, err
+		//return nil, err
 		//}
 		shell = cmdArgs[0]
 	} else {

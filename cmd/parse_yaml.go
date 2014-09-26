@@ -18,7 +18,6 @@ import (
 // 	- *Config: The configuration.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
-	fmt.Println(fname)
 	conf := new(Config)
 	f, err := yaml.ReadFile(fname)
 	if err != nil {

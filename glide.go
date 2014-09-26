@@ -194,7 +194,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("quiet").From("cxt:q")
 
 	reg.Route("@ready", "Prepare for glide commands.").
-		Does(cmd.ReadyToGlide, "ready").
+		Does(cmd.ReadyToGlide, "ready").Using("filename").From("cxt:yaml").
 		Does(cmd.ParseYaml, "cfg").Using("filename").From("cxt:yaml")
 
 	reg.Route("into", "Creates a new Glide shell.").
