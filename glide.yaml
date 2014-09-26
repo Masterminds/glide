@@ -15,7 +15,6 @@ import:
     repo: git@github.com:Masterminds/cookoo.git
     # Compile the cookoo/cli and the cookoo package.
     subpackages:
-      - cli
       - .
   - package: github.com/codegangsta/cli
 #incmd: bash -l

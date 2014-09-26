@@ -36,11 +36,8 @@ import (
 	"github.com/Masterminds/glide/cmd"
 
 	"github.com/Masterminds/cookoo"
-	//"github.com/Masterminds/cookoo/cli"
-
 	"github.com/codegangsta/cli"
 
-	"flag"
 	"os"
 )
 
@@ -86,12 +83,6 @@ func main() {
 	app.Commands = commands(cxt, router)
 
 	app.Run(os.Args)
-
-	// if err := router.HandleRequest("@startup", cxt, false); err != nil {
-	// 	fmt.Printf("Oops! %s\n", err)
-	// 	os.Exit(1)
-	// }
-
 }
 
 func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
@@ -187,29 +178,10 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 
 func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
-	flags := flag.NewFlagSet("global", flag.PanicOnError)
-	flags.Bool("h", false, "Print help text.")
-	flags.Bool("q", false, "Quiet (no info or debug messages)")
-	flags.String("yaml", "glide.yaml", "Set a YAML configuration file.")
-
-	cxt.Put("os.Args", os.Args)
-
 	reg.Route("@startup", "Parse args and send to the right subcommand.").
-		// Does(cli.ShiftArgs, "_").Using("n").WithDefault(1).
-		// Does(cli.ParseArgs, "remainingArgs").
-		// Using("flagset").WithDefault(flags).
-		// Using("args").From("cxt:os.Args").
-		// Does(cli.ShowHelp, "help").
-		// Using("show").From("cxt:h cxt:help").
-		// Using("summary").WithDefault(Summary).
-		// Using("usage").WithDefault(Usage).
-		// Using("flags").WithDefault(flags).
+		// TODO: Add setup for debug in addition to quiet.
 		Does(cmd.BeQuiet, "quiet").
 		Using("quiet").From("cxt:q")
-	// Does(cli.RunSubcommand, "subcommand").
-	// Using("default").WithDefault("help").
-	// Using("offset").WithDefault(0).
-	// Using("args").From("cxt:remainingArgs")
 
 	reg.Route("@ready", "Prepare for glide commands.").
 		Does(cmd.ReadyToGlide, "ready").
@@ -218,7 +190,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("into", "Creates a new Glide shell.").
 		Includes("@startup").
 		Does(cmd.AlreadyGliding, "isGliding").
-		//Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(2).
 		Does(cmd.Into, "in").Using("into").From("cxt:toPath").
 		Using("into").WithDefault("").From("cxt:toPath").
 		Includes("@ready")
@@ -227,7 +198,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Does(cmd.AlreadyGliding, "isGliding").
 		Includes("@ready").
-		//Does(cli.ShiftArgs, "toPath").Using("n").WithDefault(1).
 		Does(cmd.Into, "in").
 		Using("into").WithDefault("").From("cxt:toPath").
 		Using("conf").From("cxt:cfg")
