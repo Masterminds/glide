@@ -146,6 +146,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
+			Name:  "pin",
+			Usage: "Print a YAML file with all of the packages pinned to the current version",
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
+				router.HandleRequest("pin", cxt, false)
+			},
+		},
+		{
 			Name:  "rebuild",
 			Usage: "Rebuild ('go build') the dependencies",
 			Action: func(c *cli.Context) {
@@ -235,6 +244,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
 	reg.Route("pin", "Print a YAML file with all of the packages pinned to the current version.").
+		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
