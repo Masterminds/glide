@@ -38,6 +38,7 @@ import (
 	"github.com/Masterminds/cookoo"
 	"github.com/codegangsta/cli"
 
+	"fmt"
 	"os"
 )
 
@@ -92,46 +93,36 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			ShortName: "init",
 			Usage:     "Initialize a new project, creating a template glide.yaml",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("create", cxt, false)
+				setupHandler(c, "create", cxt, router)
 			},
 		},
 		{
 			Name:  "in",
 			Usage: "Glide into a commandline shell preconfigured for your project",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("in", cxt, false)
+				setupHandler(c, "in", cxt, router)
 			},
 		},
 		{
 			Name:  "install",
 			Usage: "Install all packages in the glide.yaml",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("install", cxt, false)
+				setupHandler(c, "install", cxt, router)
 			},
 		},
 		{
 			Name:  "into",
 			Usage: "The same as running \"cd /my/project && glide in\"",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
 				cxt.Put("toPath", c.Args()[0])
-				router.HandleRequest("into", cxt, false)
+				setupHandler(c, "into", cxt, router)
 			},
 		},
 		{
 			Name:  "godeps",
 			Usage: "Import Godeps and Godeps-Git files and display the would-be yaml file",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("godeps", cxt, false)
+				setupHandler(c, "godeps", cxt, router)
 			},
 		},
 		{
@@ -140,27 +131,21 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Description: `Emits the GOPATH for the current project. Useful for
    things like manually setting GOPATH: GOPATH=$(glide gopath)`,
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("gopath", cxt, false)
+				setupHandler(c, "gopath", cxt, router)
 			},
 		},
 		{
 			Name:  "pin",
 			Usage: "Print a YAML file with all of the packages pinned to the current version",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("pin", cxt, false)
+				setupHandler(c, "pin", cxt, router)
 			},
 		},
 		{
 			Name:  "rebuild",
 			Usage: "Rebuild ('go build') the dependencies",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("rebuild", cxt, false)
+				setupHandler(c, "rebuild", cxt, router)
 			},
 		},
 		{
@@ -168,9 +153,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			ShortName: "s",
 			Usage:     "Display a status report",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("status", cxt, false)
+				setupHandler(c, "status", cxt, router)
 			},
 		},
 		{
@@ -178,20 +161,25 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			ShortName: "up",
 			Usage:     "Update existing packages",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("update", cxt, false)
+				setupHandler(c, "update", cxt, router)
 			},
 		},
 		{
 			Name:  "guess",
 			Usage: "Guess dependencies for existing source.",
 			Action: func(c *cli.Context) {
-				cxt.Put("q", c.GlobalBool("quiet"))
-				cxt.Put("yaml", c.GlobalString("yaml"))
-				router.HandleRequest("guess", cxt, false)
+				setupHandler(c, "guess", cxt, router)
 			},
 		},
+	}
+}
+
+func setupHandler(c *cli.Context, route string, cxt cookoo.Context, router *cookoo.Router) {
+	cxt.Put("q", c.GlobalBool("quiet"))
+	cxt.Put("yaml", c.GlobalString("yaml"))
+	if err := router.HandleRequest(route, cxt, false); err != nil {
+		fmt.Printf("Oops! %s\n", err)
+		os.Exit(1)
 	}
 }
 

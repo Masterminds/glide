@@ -37,7 +37,6 @@ func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	}
 
 	if _, err := os.Stat(fname); err == nil {
-		fmt.Println(err)
 		cwd, _ := os.Getwd()
 		return false, fmt.Errorf("Cowardly refusing to overwrite %s in %s", fname, cwd)
 	}
