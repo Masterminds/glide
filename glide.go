@@ -60,8 +60,6 @@ COMMANDS
 ========
 
 Dependency management:
-
-- create: Initialize a new project, creating a template glide.yaml.
 - install: Install all packages in the glide.yaml.
 - update: Update existing packages (alias: 'up').
 - rebuild: Rebuild ('go build') the dependencies.
@@ -116,6 +114,15 @@ func main() {
 
 func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	return []cli.Command{
+		{
+			Name:  "create",
+			Usage: "Initialize a new project, creating a template glide.yaml",
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
+				router.HandleRequest("create", cxt, false)
+			},
+		},
 		{
 			Name:  "in",
 			Usage: "Glide into a commandline shell preconfigured for your project",
@@ -271,6 +278,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cookoo.ForwardTo, "fwd").Using("route").WithDefault("create")
 
 	reg.Route("create", "Initialize Glide").
+		Includes("@startup").
 		Does(cmd.InitGlide, "init")
 
 	reg.Route("status", "Status").
