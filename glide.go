@@ -183,6 +183,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				router.HandleRequest("update", cxt, false)
 			},
 		},
+		{
+			Name: "guess",
+			Usage: "Guess dependencies for existing source.",
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
+				router.HandleRequest("guess", cxt, false)
+			},
+		},
 	}
 }
 
@@ -264,6 +273,10 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+
+	reg.Route("guess", "Guess dependencies").
+		Includes("@ready").
+		Does(cmd.GuessDeps, "")
 
 	reg.Route("create", "Initialize Glide").
 		Includes("@startup").
