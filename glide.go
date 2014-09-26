@@ -88,8 +88,9 @@ func main() {
 func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	return []cli.Command{
 		{
-			Name:  "create",
-			Usage: "Initialize a new project, creating a template glide.yaml",
+			Name:      "create",
+			ShortName: "init",
+			Usage:     "Initialize a new project, creating a template glide.yaml",
 			Action: func(c *cli.Context) {
 				cxt.Put("q", c.GlobalBool("quiet"))
 				cxt.Put("yaml", c.GlobalString("yaml"))
@@ -219,9 +220,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
-	reg.Route("up", "Update dependencies (alias of 'update')").
-		Does(cookoo.ForwardTo, "fwd").Using("route").WithDefault("update")
-
 	reg.Route("update", "Update dependencies.").
 		Includes("@startup").
 		Includes("@ready").
@@ -256,9 +254,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
-
-	reg.Route("init", "Initialize Glide (deprecated; use 'create'").
-		Does(cookoo.ForwardTo, "fwd").Using("route").WithDefault("create")
 
 	reg.Route("create", "Initialize Glide").
 		Includes("@startup").
