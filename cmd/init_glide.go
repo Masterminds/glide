@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
 	"fmt"
+	"github.com/Masterminds/cookoo"
 	"os"
 )
 
@@ -31,16 +31,17 @@ import:
 //
 // Among other things, it creates a default glide.yaml.
 func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-
+	fname := p.Get("filename", "glide.yaml").(string)
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
 		Warn("If your GOPATH is automatically set by your shell, 'glide in' may not correctly set it.\n")
 	}
 
-	if _, err := os.Stat("./glide.yaml"); err == nil {
+	if _, err := os.Stat(fname); err == nil {
+		fmt.Println(err)
 		cwd, _ := os.Getwd()
-		return false, fmt.Errorf("Cowardly refusing to overwrite glide.yaml in %s", cwd)
+		return false, fmt.Errorf("Cowardly refusing to overwrite %s in %s", fname, cwd)
 	}
-	f, err := os.Create("./glide.yaml")
+	f, err := os.Create(fname)
 	if err != nil {
 		return false, err
 	}
@@ -48,10 +49,9 @@ func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 	f.WriteString(yamlTpl)
 
-
 	if newgopath, err := GlideGopath(); err == nil {
 		Info("Your new GOPATH is %s. Run 'glide gopath' to see it again.\n", newgopath)
 	}
-	Info("Initialized. You can now edit 'glide.yaml'\n")
+	Info("Initialized. You can now edit '%s'\n", fname)
 	return true, nil
 }

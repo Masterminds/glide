@@ -184,7 +184,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
-			Name: "guess",
+			Name:  "guess",
 			Usage: "Guess dependencies for existing source.",
 			Action: func(c *cli.Context) {
 				cxt.Put("q", c.GlobalBool("quiet"))
@@ -280,7 +280,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("create", "Initialize Glide").
 		Includes("@startup").
-		Does(cmd.InitGlide, "init")
+		Does(cmd.InitGlide, "init").Using("filename").From("cxt:yaml")
 
 	reg.Route("status", "Status").
 		Includes("@startup").
