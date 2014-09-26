@@ -60,7 +60,6 @@ COMMANDS
 ========
 
 Dependency management:
-- install: Install all packages in the glide.yaml.
 - update: Update existing packages (alias: 'up').
 - rebuild: Rebuild ('go build') the dependencies.
 
@@ -130,6 +129,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				cxt.Put("q", c.GlobalBool("quiet"))
 				cxt.Put("yaml", c.GlobalString("yaml"))
 				router.HandleRequest("in", cxt, false)
+			},
+		},
+		{
+			Name:  "install",
+			Usage: "Install all packages in the glide.yaml",
+			Action: func(c *cli.Context) {
+				cxt.Put("q", c.GlobalBool("quiet"))
+				cxt.Put("yaml", c.GlobalString("yaml"))
+				router.HandleRequest("install", cxt, false)
 			},
 		},
 		{
@@ -230,6 +238,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.Out, "gopath")
 
 	reg.Route("install", "Install dependencies.").
+		Includes("@startup").
 		Does(cmd.InGopath, "pathIsRight").
 		Includes("@ready").
 		Does(cmd.Mkdir, "dir").Using("dir").WithDefault("_vendor").
