@@ -1,6 +1,6 @@
 # Glide Plugins
 
-(Not to be confused wiht Glade Plugins. Pew.)
+(Not to be confused with Glade Plugins. Pew.)
 
 Glide supports a simple plugin system similar to Git. When Glide
 encounters a subcommand that it does not know, it will try to delegate
