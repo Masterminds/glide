@@ -363,6 +363,32 @@ your own.
 That's up to you. It's not necessary, but it may also cause you extra
 work and lots of extra space in your VCS.
 
+**Q: How can I get my `_vendor` path to work with Sublime Text and GoSublime?**
+
+GoSublime uses an application wide GOPATH. If you want a different GOPATH codebase
+set them up as different projects. Then, in the project settings (your `.sublime-project`
+file) add an entry to set the GOPATH. For example:
+
+```json
+{
+    "settings": {
+        "GoSublime": {
+            "env": {
+                "GOPATH": "$HOME/path/to/project/_vendor"
+            }
+        }
+    },
+    "folders":
+    [
+        {
+            "follow_symlinks": true,
+            "path": "."
+        }
+    ]
+}
+```
+Once you've done this feature like autocomplete will work.
+
 ## LICENSE
 
 This package is made available under an MIT-style license. See

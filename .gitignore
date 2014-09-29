@@ -1,3 +1,5 @@
 _vendor
 glide
 *.a
+*.sublime-project
+*.sublime-workspace
