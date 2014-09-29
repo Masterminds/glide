@@ -66,7 +66,7 @@ func (g *GitVCS) Version(dep *Dependency) error {
 		if dep.Reference != "" {
 			updatedTo = dep.Reference
 		}
-		Info("Settting version of %s to %s\n", dep.Name, updatedTo)
+		Info("Setting version of %s to %s\n", dep.Name, updatedTo)
 		//fmt.Print(string(out))
 	}
 
