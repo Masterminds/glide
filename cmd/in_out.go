@@ -16,7 +16,7 @@ import (
 // glide environment.
 func AlreadyGliding(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	if os.Getenv("ALREADY_GLIDING") == "1" {
-		Warn("You're already gliding. Run `glide out` to stop your current glide.\n")
+		Warn("You're already gliding. Use `exit` to leave the glide shell.\n")
 		return true, &cookoo.Stop{}
 	}
 	return false, nil
@@ -152,13 +152,4 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	fmt.Printf("Exited glide shell: %s", state.String())
 	return nil, nil
-}
-
-func Out(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	if os.Getenv("ALREADY_GLIDING") != "1" {
-		fmt.Println("You are not currently gliding. To begin, try 'glide in'.")
-		return false, nil
-	}
-	fmt.Printf("To exit this glide, type 'exit'\n")
-	return true, nil
 }
