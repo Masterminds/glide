@@ -1,6 +1,8 @@
 
 # Release 0.2.0 (Upcomming)
 
+- Issue #15, #18: `glide guess` can guess dependencies for an existing
+  repo. (HUGE thanks to dz0ny)
 - Issue #14: Glide fails now when YAML is invalid.
 - Issue #13: cli.go added to Makefile (via roblillack)
 - Issue #12: InitGlide takes YAML file now
