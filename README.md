@@ -65,7 +65,7 @@ to see this philosophy in action.*
 
 ## Install
 
-Install the latest release via [Homebrew](https://github.com/Homebrew/homebrew):
+On Mac OS X you can install the latest release via [Homebrew](https://github.com/Homebrew/homebrew):
 
 ```
 $ brew install glide
