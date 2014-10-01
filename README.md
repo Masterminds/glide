@@ -65,6 +65,12 @@ to see this philosophy in action.*
 
 ## Install
 
+Install the latest release via [Homebrew](https://github.com/Homebrew/homebrew):
+
+```
+$ brew install glide
+```
+
 [Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac and Linux.
 
 To build from source you can:
