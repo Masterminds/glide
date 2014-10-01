@@ -1,14 +1,15 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
 	"fmt"
+	"github.com/Masterminds/cookoo"
 	"os"
 	"os/exec"
 )
 
 func DropToShell(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	args := c.Get("os.Args", nil).([]string)
+	command := p.Get("command", "").(string)
 
 	if len(args) == 0 {
 		return nil, fmt.Errorf("Could not get os.Args.")
@@ -24,7 +25,7 @@ func DropToShell(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 		projpath = tmp
 	}
 
-	cmd := "glide-" + args[0]
+	cmd := "glide-" + command
 	var fullcmd string
 	if fullcmd, err = exec.LookPath(cmd); err != nil {
 		fullcmd = projpath + "/" + cmd
@@ -33,10 +34,19 @@ func DropToShell(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 		}
 	}
 
+	// Turning os.Args first argument from `glide` to `glide-command`
 	args[0] = cmd
-	pa := os.ProcAttr {
+	// Removing the first argument (command)
+	removed := false
+	for i, v := range args {
+		if removed == false && v == command {
+			args = append(args[:i], args[i+1:]...)
+			removed = true
+		}
+	}
+	pa := os.ProcAttr{
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
-		Dir: cwd,
+		Dir:   cwd,
 	}
 
 	fmt.Printf("Delegating to plugin %s (%v)\n", fullcmd, args)

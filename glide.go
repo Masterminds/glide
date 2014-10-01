@@ -80,6 +80,11 @@ func main() {
 			Usage: "Quiet (no info or debug messages)",
 		},
 	}
+	app.CommandNotFound = func(c *cli.Context, command string) {
+		cxt.Put("os.Args", os.Args)
+		cxt.Put("command", command)
+		setupHandler(c, "@plugin", cxt, router)
+	}
 
 	app.Commands = commands(cxt, router)
 
@@ -273,5 +278,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("@plugin", "Try to send to a plugin.").
 		Includes("@ready").
-		Does(cmd.DropToShell, "plugin")
+		Does(cmd.DropToShell, "plugin").
+		Using("command").From("cxt:command")
 }
