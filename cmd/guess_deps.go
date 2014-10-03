@@ -24,7 +24,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	base := p.Get("dirname", ".").(string)
 	deps := make(map[string]bool)
 	err := findDeps(deps, base)
-	compactDeps(deps)
+	deps = compactDeps(deps)
 	delete(deps, base)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,8 @@ func findDeps(soFar map[string]bool, name string) error {
 // Minimize the package imports. For example, importing github.com/Masterminds/cookoo
 // and github.com/Masterminds/cookoo/io should not import two packages. Only one
 // package needs to be referenced.
-func compactDeps(soFar map[string]bool) {
+func compactDeps(soFar map[string]bool) map[string]bool {
+	/*
 	for k, _ := range soFar {
 		for subkey, _ := range soFar {
 			if strings.HasPrefix(subkey, k) && subkey != k {
@@ -77,4 +78,18 @@ func compactDeps(soFar map[string]bool) {
 			}
 		}
 	}
+	*/
+
+	// MPB: Making this a little more aggressive.
+	basePackages := make(map[string]bool, len(soFar))
+	for k, _ := range soFar {
+		parts := strings.SplitN(k, "/", 4)
+		if len(parts) < 4 {
+			basePackages[k] = true
+		} else {
+			basePackages[strings.Join(parts[0:3], "/")] = true
+		}
+	}
+	return basePackages
+
 }
