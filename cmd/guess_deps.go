@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"text/template"
+	"fmt"
 )
 
 var yamlGuessTpl = `
@@ -34,7 +35,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	}
 	var doc bytes.Buffer
 	tmpl.Execute(&doc, deps)
-	Info(doc.String())
+	fmt.Println(doc.String())
 	return doc, nil
 }
 
