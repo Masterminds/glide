@@ -12,4 +12,4 @@
   packages. (Thanks gsalgado)
 - Issue #11: Add GOBIN to glide environment (via dz0ny)
 - Typos fixed (#17 by lamielle, #16 by roblillack)
-
+- Moved the CLI handling to cli.go (github.com/codegangsta/cli)
