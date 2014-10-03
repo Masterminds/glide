@@ -5,6 +5,7 @@ import (
 	"github.com/Masterminds/cookoo"
 	"go/build"
 	"os"
+	"strings"
 	"text/template"
 )
 
@@ -22,6 +23,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	base := p.Get("dirname", ".").(string)
 	deps := make(map[string]bool)
 	err := findDeps(deps, base)
+	compactDeps(deps)
 	delete(deps, base)
 	if err != nil {
 		return nil, err
@@ -61,4 +63,17 @@ func findDeps(soFar map[string]bool, name string) error {
 		}
 	}
 	return nil
+}
+
+// Minimize the package imports. For example, importing github.com/Masterminds/cookoo
+// and github.com/Masterminds/cookoo/io should not import two packages. Only one
+// package needs to be referenced.
+func compactDeps(soFar map[string]bool) {
+	for k, _ := range soFar {
+		for subkey, _ := range soFar {
+			if strings.HasPrefix(subkey, k) && subkey != k {
+				delete(soFar, subkey)
+			}
+		}
+	}
 }
