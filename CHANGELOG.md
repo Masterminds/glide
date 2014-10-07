@@ -1,5 +1,5 @@
 
-# Release 0.2.0 (Upcomming)
+# Release 0.2.0 (2014-10-03)
 
 - Issue #15, #18: `glide guess` can guess dependencies for an existing
   repo. (HUGE thanks to dz0ny)
