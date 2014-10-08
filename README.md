@@ -1,8 +1,6 @@
 # Glide: Managing Go Workspaces With Ease
 
-**WARNING:** Glide is experimental.
-
-*Never vendor again.* Glide is a tool for managing Go dependencies and
+*Never vendor again.* Glide is a tool for managing Go package dependencies and
 [Go workspaces](http://golang.org/doc/code.html#GOPATH). Subscribing to the
 view that each project should have its
 own GOPATH, Glide provides tools for versioning Go libraries and
