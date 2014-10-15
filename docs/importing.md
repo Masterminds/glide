@@ -9,7 +9,7 @@ requests. Just take a look at `cmd/godeps.git`.
 
 To import from Godeps or Godeps-Git format, run `glide godeps`. This
 will read the `glide.yaml`, then look for `Godeps` or `Godeps-Git` files
-to also read. It iwll then attempt to merge the packages in those files
+to also read. It will then attempt to merge the packages in those files
 into the current YAML, printing the resulting YAML to standard out.
 
 The preferred procedure for merging:
