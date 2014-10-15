@@ -189,7 +189,6 @@ func setupHandler(c *cli.Context, route string, cxt cookoo.Context, router *cook
 }
 
 func routes(reg *cookoo.Registry, cxt cookoo.Context) {
-
 	reg.Route("@startup", "Parse args and send to the right subcommand.").
 		// TODO: Add setup for debug in addition to quiet.
 		Does(cmd.BeQuiet, "quiet").

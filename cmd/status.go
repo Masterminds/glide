@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Masterminds/cookoo"
 	"os"
+
+	"github.com/Masterminds/cookoo"
 )
 
 // Status is a command that prints the status of the glide and expected gopath.

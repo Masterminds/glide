@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
-	"fmt"
 	"strings"
 )
 
-type SvnVCS struct {}
+type SvnVCS struct{}
 
 // If you can help clean this up or improve it, please submit patches!
 
@@ -37,7 +37,7 @@ func (s *SvnVCS) Update(dep *Dependency) error {
 	os.Chdir(dest)
 	defer os.Chdir(oldDir)
 
-	out, err :=  exec.Command("svn", "update").CombinedOutput()
+	out, err := exec.Command("svn", "update").CombinedOutput()
 	fmt.Print(string(out))
 	return err
 }

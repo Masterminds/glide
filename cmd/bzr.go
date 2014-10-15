@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
-	"fmt"
 	"strings"
 )
 
-type BzrVCS struct {}
+type BzrVCS struct{}
 
 // We're not big Bazaar users, so we don't know whether we got this right.
 // If you can help, please submit patches.
@@ -39,7 +39,7 @@ func (b *BzrVCS) Update(dep *Dependency) error {
 
 	// Because we can't predict which branch we want to be on, and since
 	// we want to set checkouts explicitly, we should probably fetch.
-	out, err :=  exec.Command("bzr", "pull", "--overwrite").CombinedOutput()
+	out, err := exec.Command("bzr", "pull", "--overwrite").CombinedOutput()
 	fmt.Print(string(out))
 	return err
 }
@@ -81,6 +81,6 @@ func (b *BzrVCS) LastCommit(dep *Dependency) (string, error) {
 	}
 	parts := strings.SplitN(string(out), " ", 2)
 
-	revno:= parts[0]
+	revno := parts[0]
 	return revno, nil
 }

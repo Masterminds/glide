@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Masterminds/cookoo"
 	"os"
+
+	"github.com/Masterminds/cookoo"
 )
 
 var yamlTpl = `# Glide YAML configuration file

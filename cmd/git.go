@@ -1,14 +1,14 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
-	"fmt"
-	"strings"
 	"regexp"
+	"strings"
 )
 
-type GitVCS struct {}
+type GitVCS struct{}
 
 // GitGet implements the getting logic for Git.
 func (g *GitVCS) Get(dep *Dependency) error {
@@ -40,7 +40,7 @@ func (g *GitVCS) Update(dep *Dependency) error {
 	// we want to set checkouts explicitly, we should probably fetch.
 	//out, err :=  exec.Command("git", "pull", "--ff-only").CombinedOutput()
 	Info("Git: ")
-	out, err :=  exec.Command("git", "fetch", "--all").CombinedOutput()
+	out, err := exec.Command("git", "fetch", "--all").CombinedOutput()
 	fmt.Print(string(out))
 	return err
 }
@@ -90,7 +90,6 @@ func (g *GitVCS) Version(dep *Dependency) error {
 		if err != nil {
 			return err
 		}
-
 	}
 
 	// EXPERIMENTAL: Show how far behind we are.
@@ -146,4 +145,3 @@ func (g *GitVCS) LastCommit(dep *Dependency) (string, error) {
 
 	return sha, nil
 }
-

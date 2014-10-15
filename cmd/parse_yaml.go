@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/Masterminds/cookoo"
 	"github.com/kylelemons/go-gypsy/yaml"
 )
@@ -206,7 +207,6 @@ func subpkg(key string, store map[string]yaml.Node) []string {
 }
 
 func getVcsType(store map[string]yaml.Node) uint {
-
 	val, ok := store["vcs"]
 	if !ok {
 		return NoVCS
