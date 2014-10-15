@@ -212,7 +212,6 @@ func VcsVersion(dep *Dependency) error {
 		}
 		return nil
 	}
-
 }
 
 func VcsLastCommit(dep *Dependency) (string, error) {
@@ -236,7 +235,6 @@ func VcsLastCommit(dep *Dependency) (string, error) {
 		}
 		return "", nil
 	}
-
 }
 
 func VcsSetReference(dep *Dependency) error {

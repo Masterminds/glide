@@ -91,6 +91,6 @@ func compactDeps(soFar map[string]bool) map[string]bool {
 			basePackages[strings.Join(parts[0:3], "/")] = true
 		}
 	}
-	return basePackages
 
+	return basePackages
 }
