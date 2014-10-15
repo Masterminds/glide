@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
 	"fmt"
 	"os"
+
+	"github.com/Masterminds/cookoo"
 )
 
 const (
@@ -15,7 +16,6 @@ const (
 )
 
 func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-
 	cfg := p.Get("conf", nil).(*Config)
 
 	if len(cfg.Imports) == 0 {
@@ -92,10 +92,10 @@ type VCS interface {
 
 var (
 	goGet VCS = new(GoGetVCS)
-	git VCS = new(GitVCS)
-	svn VCS = new(SvnVCS)
-	bzr VCS = new(BzrVCS)
-	hg VCS = new(HgVCS)
+	git   VCS = new(GitVCS)
+	svn   VCS = new(SvnVCS)
+	bzr   VCS = new(BzrVCS)
+	hg    VCS = new(HgVCS)
 )
 
 // VcsGet figures out how to fetch a dependency, and then gets it.
@@ -104,7 +104,6 @@ var (
 //
 // See https://code.google.com/p/go/source/browse/src/cmd/go/vcs.go
 func VcsGet(dep *Dependency) error {
-
 	// See note in VcsUpdate.
 	if dep.Repository == "" && dep.Reference == "" {
 		Info("Installing %s with 'go get'\n", dep.Name)
@@ -136,7 +135,7 @@ func VcsGet(dep *Dependency) error {
 			if len(dep.Reference) > 0 {
 				Warn("Ref is set to %s, but no VCS is set. This can cause inconsistencies.\n", dep.Reference)
 			}
-		}  else {
+		} else {
 			Warn("No handler for %d. Falling back to 'go get %s'.\n", dep.VcsType, dep.Name)
 		}
 		return goGet.Get(dep)
@@ -145,7 +144,6 @@ func VcsGet(dep *Dependency) error {
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
 func VcsUpdate(dep *Dependency) error {
-
 	// If there is no Ref set, and if Repository is empty, we should just
 	// default to Go Get.
 	//
@@ -245,7 +243,6 @@ func VcsSetReference(dep *Dependency) error {
 	Warn("Cannot set reference. not implemented.\n")
 	return nil
 }
-
 
 func GuessVCS(dep *Dependency) (uint, error) {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)

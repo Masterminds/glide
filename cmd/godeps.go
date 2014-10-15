@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
-	"path/filepath"
 	"bufio"
-	"strings"
 	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/Masterminds/cookoo"
 )
 
 // Indicates whether a Godeps file exists.
@@ -15,7 +16,6 @@ func HasGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	_, err := os.Stat(path)
 	return err == nil, nil
 }
-
 
 // Godeps parses a Godeps file.
 //
@@ -31,7 +31,7 @@ func Godeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	}
 	Info("Found Godeps file.\n")
 
-	buf :=[]*Dependency{}
+	buf := []*Dependency{}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -41,7 +41,7 @@ func Godeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	for scanner.Scan() {
 		parts, ok := parseGodepsLine(scanner.Text())
 		if ok {
-			dep := &Dependency{ Name: parts[0] }
+			dep := &Dependency{Name: parts[0]}
 			if len(parts) > 1 {
 				dep.Reference = parts[1]
 			}
@@ -64,7 +64,7 @@ func GodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	}
 	Info("Found Godeps-Git file.\n")
 
-	buf :=[]*Dependency{}
+	buf := []*Dependency{}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -74,7 +74,7 @@ func GodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	for scanner.Scan() {
 		parts, ok := parseGodepsLine(scanner.Text())
 		if ok {
-			dep := &Dependency{ Name: parts[1], Repository: parts[0] }
+			dep := &Dependency{Name: parts[1], Repository: parts[0]}
 			if len(parts) > 2 {
 				dep.Reference = parts[2]
 			}

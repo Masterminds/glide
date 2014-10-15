@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Masterminds/cookoo"
 	"os"
-	"strings"
-	//"os/user"
 	"os/exec"
 	"path/filepath"
+	"strings"
+
+	"github.com/Masterminds/cookoo"
 )
 
 // AlreadyGliding emits a warning (and stops) if we're in a glide session.

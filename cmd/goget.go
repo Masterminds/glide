@@ -1,13 +1,13 @@
- package cmd
+package cmd
 
- import (
-	 "os/exec"
-	 "strings"
-	 "fmt"
- )
+import (
+	"fmt"
+	"os/exec"
+	"strings"
+)
 
 // GoGetVCS implements a VCS for 'go get'.
-type GoGetVCS struct {}
+type GoGetVCS struct{}
 
 func (g *GoGetVCS) Get(dep *Dependency) error {
 	out, err := exec.Command("go", "get", "-d", dep.Name).CombinedOutput()

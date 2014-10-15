@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	//"fmt"
+
+	"github.com/Masterminds/cookoo"
 )
 
 // Rebuild runs 'go build' in a directory.
@@ -40,7 +40,6 @@ func buildDep(c cookoo.Context, dep *Dependency, gopath string) error {
 	}
 
 	for _, pkg := range dep.Subpackages {
-
 		if pkg == "**" || pkg == "..." {
 			//Info("Building all packages in %s\n", dep.Name)
 			buildPath(c, path.Join(dep.Name, "..."))

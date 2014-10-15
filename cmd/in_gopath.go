@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
-
-	"path/filepath"
 	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/Masterminds/cookoo"
 )
 
 func InGopath(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
@@ -28,7 +28,6 @@ func InGopath(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 		Info("If you are using an external GOPATH, skip to `glide update`.\n")
 		return false, fmt.Errorf("GOPATH is %s, but current directory is %s", gopath, cwd)
 	}
-
 
 	return true, nil
 }

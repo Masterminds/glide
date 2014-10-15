@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Masterminds/cookoo"
 	"os"
+
+	"github.com/Masterminds/cookoo"
 )
 
 // Quiet, when set to true, can suppress Into and Debug messages.

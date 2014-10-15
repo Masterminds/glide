@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Masterminds/cookoo"
 	"os"
 	"os/exec"
+
+	"github.com/Masterminds/cookoo"
 )
 
 func DropToShell(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {

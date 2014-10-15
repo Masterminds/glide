@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
-	"strings"
-	"path"
 	"fmt"
 	"os"
+	"path"
+	"strings"
+
+	"github.com/Masterminds/cookoo"
 )
 
 func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
@@ -34,7 +35,7 @@ func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 	base := path.Dir(pname)
 	if base != "." {
 		dir := fmt.Sprintf("%s/src/%s", gopath, base)
-		if err := os.MkdirAll(dir, os.ModeDir | 0755); err != nil {
+		if err := os.MkdirAll(dir, os.ModeDir|0755); err != nil {
 			return nil, fmt.Errorf("Failed to make directory %s: %s", dir, err)
 		}
 	}

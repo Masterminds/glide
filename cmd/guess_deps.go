@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"bytes"
-	"github.com/Masterminds/cookoo"
+	"fmt"
 	"go/build"
 	"os"
 	"strings"
 	"text/template"
-	"fmt"
+
+	"github.com/Masterminds/cookoo"
 )
 
 var yamlGuessTpl = `
@@ -71,13 +72,13 @@ func findDeps(soFar map[string]bool, name string) error {
 // package needs to be referenced.
 func compactDeps(soFar map[string]bool) map[string]bool {
 	/*
-	for k, _ := range soFar {
-		for subkey, _ := range soFar {
-			if strings.HasPrefix(subkey, k) && subkey != k {
-				delete(soFar, subkey)
+		for k, _ := range soFar {
+			for subkey, _ := range soFar {
+				if strings.HasPrefix(subkey, k) && subkey != k {
+					delete(soFar, subkey)
+				}
 			}
 		}
-	}
 	*/
 
 	// MPB: Making this a little more aggressive.
