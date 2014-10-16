@@ -8,8 +8,8 @@
 //
 // A glide.yaml file looks like:
 //
-// 		package: github.com/Masterminds/glide
-// 		imports:
+//		package: github.com/Masterminds/glide
+//		imports:
 //			- package: github.com/Masterminds/cookoo
 //			  vcs: git
 //			  ref: 1.1.0
@@ -56,7 +56,7 @@ look something like this:
 		  vcs: git
 		  ref: 1.1.0
 		  subpackages: **
-  		- package: github.com/kylelemons/go-gypsy
+		- package: github.com/kylelemons/go-gypsy
 		  subpackages: yaml
 `
 

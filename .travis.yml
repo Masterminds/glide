@@ -1,0 +1,3 @@
+language: go
+install: make bootstrap
+script: GOPATH=${PWD}/_vendor go test -v ./...
