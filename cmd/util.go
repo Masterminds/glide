@@ -7,7 +7,7 @@ import (
 	"github.com/Masterminds/cookoo"
 )
 
-// Quiet, when set to true, can suppress Into and Debug messages.
+// Quiet, when set to true, can suppress Info and Debug messages.
 var Quiet = false
 
 // These contanstants map to color codes for shell scripts making them
