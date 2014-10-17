@@ -6,7 +6,7 @@ view that each project should have its
 own GOPATH, Glide provides tools for versioning Go libraries and
 managing the environment in which your normal Go tools run.
 
-![Build Status](https://travis-ci.org/Masterminds/glide.svg)](https://travis-ci.org/Masterminds/glide)
+[![Build Status](https://travis-ci.org/Masterminds/glide.svg)](https://travis-ci.org/Masterminds/glide)
 
 ### Features
 
