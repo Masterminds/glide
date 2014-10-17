@@ -10,13 +10,13 @@ import (
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
 //
 // Params:
-// 	- filename (string): YAML filename as a string
+//	- filename (string): YAML filename as a string
 //
 // Context:
-// 	- yaml.File: This puts the parsed YAML file into the context.
+//	- yaml.File: This puts the parsed YAML file into the context.
 //
 // Returns:
-// 	- *Config: The configuration.
+//	- *Config: The configuration.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
 	//conf := new(Config)
@@ -27,49 +27,6 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 	c.Put("yaml.File", f)
 	return FromYaml(f.Root)
-
-	/*
-
-	// Convenience:
-	top, ok := f.Root.(yaml.Map)
-	if !ok {
-		return nil, fmt.Errorf("Expected YAML root to be map, got %t", f.Root)
-	}
-
-	vals := map[string]yaml.Node(top)
-	if name, ok := vals["package"]; ok {
-		//c.Put("cfg.package", name.(yaml.Scalar).String())
-		conf.Name = name.(yaml.Scalar).String()
-	} else {
-		Warn("The 'package' directive is required in Glide YAML.\n")
-	}
-
-	// Allow the user to override the behavior of `glide in`.
-	if incmd, ok := vals["incmd"]; ok {
-		conf.InCommand = incmd.(yaml.Scalar).String()
-	}
-
-	conf.Imports = make([]*Dependency, 0, 1)
-	if imp, ok := vals["import"]; ok {
-		imports, ok := imp.(yaml.List)
-
-		if ok {
-			for _, v := range imports {
-				pkg := v.(yaml.Map)
-				dep := Dependency{
-					Name:        valOrEmpty("package", pkg),
-					Reference:   valOrEmpty("ref", pkg),
-					VcsType:     getVcsType(pkg),
-					Repository:  valOrEmpty("repo", pkg),
-					Subpackages: subpkg("subpackages", pkg),
-				}
-				conf.Imports = append(conf.Imports, &dep)
-			}
-		}
-	}
-
-	return conf, nil
-	*/
 }
 
 // WriteYaml writes a yaml.Node to the console as a string.
