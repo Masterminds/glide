@@ -265,7 +265,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("guess", "Guess dependencies").
 		Includes("@ready").
-		Does(cmd.GuessDeps, "")
+		Does(cmd.GuessDeps, "cfg").
+		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
+		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
 
 	reg.Route("create", "Initialize Glide").
 		Includes("@startup").

@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"bytes"
-	"fmt"
+	//"bytes"
+	//"fmt"
 	"go/build"
 	"os"
 	"strings"
-	"text/template"
+	//"text/template"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -30,6 +30,22 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	if err != nil {
 		return nil, err
 	}
+
+	config := new(Config)
+	config.Imports = make([]*Dependency, len(deps))
+	i := 0
+	for p, _ := range deps {
+		Info("Found reference to %s\n", p)
+		d := &Dependency {
+			Name: p,
+		}
+		config.Imports[i] = d
+		i++
+	}
+
+	return config, nil
+
+	/*
 	tmpl, err := template.New("main").Parse(yamlGuessTpl)
 	if err != nil {
 		return nil, err
@@ -38,6 +54,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	tmpl.Execute(&doc, deps)
 	fmt.Println(doc.String())
 	return doc, nil
+	*/
 }
 
 // https://golang.org/src/cmd/go/pkg.go#485

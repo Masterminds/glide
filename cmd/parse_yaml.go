@@ -19,13 +19,16 @@ import (
 // 	- *Config: The configuration.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
-	conf := new(Config)
+	//conf := new(Config)
 	f, err := yaml.ReadFile(fname)
 	if err != nil {
 		return nil, err
 	}
 
 	c.Put("yaml.File", f)
+	return FromYaml(f.Root)
+
+	/*
 
 	// Convenience:
 	top, ok := f.Root.(yaml.Map)
@@ -66,6 +69,7 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	}
 
 	return conf, nil
+	*/
 }
 
 // WriteYaml writes a yaml.Node to the console as a string.
@@ -84,13 +88,16 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	root := c.Get("yaml.File", nil).(*yaml.File).Root
 	cfg := p.Get("conf", nil).(*Config)
+	overwrite := p.Get("overwriteImports", true).(bool)
 
 	rootMap, ok := root.(yaml.Map)
 	if !ok {
 		return nil, fmt.Errorf("Expected root node to be a map.")
 	}
 
-	rootMap["package"] = yaml.Scalar(cfg.Name)
+	if len(cfg.Name) > 0 {
+		rootMap["package"] = yaml.Scalar(cfg.Name)
+	}
 	if cfg.InCommand != "" {
 		rootMap["incmd"] = yaml.Scalar(cfg.InCommand)
 	}
@@ -126,10 +133,34 @@ func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 		imports[i] = yaml.Map(impmap)
 	}
 
-	rootMap["import"] = yaml.List(imports)
+	if overwrite {
+		rootMap["import"] = yaml.List(imports)
+	} else {
+	}
 
 	return root, nil
 }
+
+/*
+func mergeImports(rootMap yaml.Map, imports []yaml.Map) yaml.List {
+	rootList, ok := rootMap["import"].([]yaml.Map)
+	if !ok {
+		return yaml.List(imports)
+	}
+
+	for _, item := range imports {
+		missing := true
+		for _, existing := range rootList {
+			if item.Name == existing.Name {
+				missing = false
+			}
+		}
+		if missing {
+			rootList = append(rootList, item)
+		}
+	}
+}
+*/
 
 // AddDependencies adds a list of *Dependency objects to the given *Config.
 //
@@ -238,9 +269,136 @@ type Config struct {
 	InCommand string
 }
 
+// FromYaml creates a *Config from a  YAML node.
+func FromYaml(top yaml.Node) (*Config, error) {
+	conf := new(Config)
+
+	vals, ok := top.(yaml.Map)
+	if !ok {
+		return conf, fmt.Errorf("Top YAML node must be a map.")
+	}
+
+	if name, ok := vals["package"]; ok {
+		conf.Name = name.(yaml.Scalar).String()
+	} else {
+		Warn("The 'package' directive is required in Glide YAML.\n")
+		conf.Name = "main"
+	}
+
+	// Allow the user to override the behavior of `glide in`.
+	if incmd, ok := vals["incmd"]; ok {
+		conf.InCommand = incmd.(yaml.Scalar).String()
+	}
+
+	conf.Imports = make([]*Dependency, 0, 1)
+	if imp, ok := vals["import"]; ok {
+		imports, ok := imp.(yaml.List)
+
+		if ok {
+			for _, v := range imports {
+				/*
+				pkg := v.(yaml.Map)
+				dep := Dependency{
+					Name:        valOrEmpty("package", pkg),
+					Reference:   valOrEmpty("ref", pkg),
+					VcsType:     getVcsType(pkg),
+					Repository:  valOrEmpty("repo", pkg),
+					Subpackages: subpkg("subpackages", pkg),
+				}
+				*/
+				dep, err := DependencyFromYaml(v)
+				if err != nil {
+					Warn("Could not add a dependency: %s\n", err)
+				}
+				conf.Imports = append(conf.Imports, dep)
+			}
+		}
+	}
+
+	// Same for (experimental) devimport.
+	// These are currently unused. Not sure what we'll do with it yet.
+	conf.DevImports = []*Dependency{}
+	if imp, ok := vals["devimport"]; ok {
+		imports, ok := imp.(yaml.List)
+		if ok {
+			for _, v := range imports {
+				dep, err := DependencyFromYaml(v)
+				if err != nil {
+					Warn("Could not add a dependency: %s\n", err)
+				}
+				conf.DevImports = append(conf.DevImports, dep)
+			}
+		}
+	}
+
+	return conf, nil
+}
+
+// ToYaml returns a yaml.Map containing the data from Config.
+func (c *Config) ToYaml() yaml.Node {
+	cfg := make(map[string]yaml.Node, 4)
+
+	cfg["package"] = yaml.Scalar(c.Name)
+	if len(c.InCommand) > 0 {
+		cfg["incmd"] = yaml.Scalar(c.InCommand)
+	}
+
+	imps := make([]yaml.Node, len(c.Imports))
+	for i, imp := range c.Imports {
+		imps[i] = imp.ToYaml()
+	}
+	devimps := make([]yaml.Node, len(c.DevImports))
+	for i, dimp := range c.DevImports {
+		devimps[i] = dimp.ToYaml()
+	}
+
+	return yaml.Map(cfg)
+}
+
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
 	Name, Reference, Repository string
 	VcsType                     uint
 	Subpackages                 []string
+}
+
+// DependencyFromYaml creates a dependency from a yaml.Node.
+func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
+	pkg, ok := node.(yaml.Map)
+	if !ok {
+		return &Dependency{}, fmt.Errorf("Expected yaml.Node to be a dependency map.")
+	}
+	dep := &Dependency{
+		Name:        valOrEmpty("package", pkg),
+		Reference:   valOrEmpty("ref", pkg),
+		VcsType:     getVcsType(pkg),
+		Repository:  valOrEmpty("repo", pkg),
+		Subpackages: subpkg("subpackages", pkg),
+	}
+
+	return dep, nil
+}
+
+// ToYaml converts a *Dependency to a YAML Map node.
+func (d *Dependency) ToYaml() yaml.Node {
+	dep := make(map[string]yaml.Node, 5)
+	dep["package"] = yaml.Scalar(d.Name)
+
+	subp := make([]yaml.Node, len(d.Subpackages))
+	for i, item := range d.Subpackages {
+		subp[i] = yaml.Scalar(item)
+	}
+
+	dep["subpackages"] = yaml.List(subp)
+	vcs := vcsString(d.VcsType)
+	if len(vcs) > 0 {
+		dep["vcs"] = yaml.Scalar(vcs)
+	}
+	if len(d.Reference) > 0 {
+		dep["ref"] = yaml.Scalar(d.Reference)
+	}
+	if len(d.Repository) > 0 {
+		dep["repo"] = yaml.Scalar(d.Repository)
+	}
+	return yaml.Map(dep)
 }
