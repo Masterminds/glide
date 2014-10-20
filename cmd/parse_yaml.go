@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/kylelemons/go-gypsy/yaml"
@@ -32,7 +33,7 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 // WriteYaml writes a yaml.Node to the console as a string.
 //
 // Params:
-// 	- yaml.Node: A yaml.Node to render.
+//	- yaml.Node: A yaml.Node to render.
 func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	top := p.Get("yaml.Node", yaml.Scalar("nothing to print")).(yaml.Node)
 
@@ -42,6 +43,18 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 }
 
 // Convert a Config object and a yaml.File to a single yaml.File.
+//
+// Params:
+//	- conf (*Config): The configuration to merge.
+//	- overwriteImports (bool, default true): If this is true, old config will
+//		overwritten. If false, we attempt to merge the old and new config, with
+//		preference to the old.
+//
+// Returns:
+//	- The root yaml.Node of the modified config.
+//
+// Uses:
+//	- cxt.Get("yaml.File") as the source for the YAML file.
 func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	root := c.Get("yaml.File", nil).(*yaml.File).Root
 	cfg := p.Get("conf", nil).(*Config)
@@ -59,65 +72,44 @@ func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 		rootMap["incmd"] = yaml.Scalar(cfg.InCommand)
 	}
 
-	// Imports
-	imports := make([]yaml.Node, len(cfg.Imports))
-	for i, imp := range cfg.Imports {
-
-		if imp.VcsType == NoVCS {
-			imp.VcsType, _ = GuessVCS(imp)
-		}
-
-		impmap := make(map[string]yaml.Node)
-		impmap["package"] = yaml.Scalar(imp.Name)
-		if imp.VcsType != NoVCS {
-			impmap["vcs"] = yaml.Scalar(vcsString(imp.VcsType))
-		}
-		if imp.Reference != "" {
-			impmap["ref"] = yaml.Scalar(imp.Reference)
-		}
-		if imp.Repository != "" {
-			impmap["repo"] = yaml.Scalar(imp.Repository)
-		}
-
-		if len(imp.Subpackages) > 0 {
-			subs := make([]yaml.Node, len(imp.Subpackages))
-			for ii, sub := range imp.Subpackages {
-				subs[ii] = yaml.Scalar(sub)
-			}
-			impmap["subpackages"] = yaml.List(subs)
-		}
-
-		imports[i] = yaml.Map(impmap)
-	}
-
 	if overwrite {
+		// Imports
+		imports := make([]yaml.Node, len(cfg.Imports))
+		for i, imp := range cfg.Imports {
+			imports[i] = imp.ToYaml()
+		}
 		rootMap["import"] = yaml.List(imports)
 	} else {
+		var err error
+		rootMap, err = mergeImports(rootMap, cfg)
+		if err != nil {
+			Warn("Problem merging imports: %s\n", err)
+		}
 	}
 
 	return root, nil
 }
 
-/*
-func mergeImports(rootMap yaml.Map, imports []yaml.Map) yaml.List {
-	rootList, ok := rootMap["import"].([]yaml.Map)
-	if !ok {
-		return yaml.List(imports)
+// mergeImports merges the imports on a *Config into an existing YAML doc.
+func mergeImports(root yaml.Map, cfg *Config) (yaml.Map, error) {
+	left, err := FromYaml(root)
+	if err != nil {
+		return root, err
 	}
 
-	for _, item := range imports {
-		missing := true
-		for _, existing := range rootList {
-			if item.Name == existing.Name {
-				missing = false
-			}
-		}
-		if missing {
-			rootList = append(rootList, item)
+	leftnames := make(map[string]bool, len(left.Imports))
+	for _, i := range left.Imports {
+		leftnames[i.Name] = true
+	}
+
+	for _, right := range cfg.Imports {
+		if _, ok := leftnames[right.Name]; !ok {
+			left.Imports = append(left.Imports, right)
 		}
 	}
+
+	return left.ToYaml().(yaml.Map), nil
 }
-*/
 
 // AddDependencies adds a list of *Dependency objects to the given *Config.
 //
@@ -164,7 +156,7 @@ func valOrEmpty(key string, store map[string]yaml.Node) string {
 	if !ok {
 		return ""
 	}
-	return val.(yaml.Scalar).String()
+	return strings.TrimSpace(val.(yaml.Scalar).String())
 }
 
 func subpkg(key string, store map[string]yaml.Node) []string {
