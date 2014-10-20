@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -28,6 +29,18 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 	c.Put("yaml.File", f)
 	return FromYaml(f.Root)
+}
+
+func ParseYamlString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	yamlString := p.Get("yaml", "").(string)
+
+	// Unfortunately, this does not wrap the root in a YAML file object.
+	root, err := yaml.Parse(bytes.NewBufferString(yamlString))
+	if err != nil {
+		return nil, err
+	}
+
+	return FromYaml(root)
 }
 
 // WriteYaml writes a yaml.Node to the console as a string.
