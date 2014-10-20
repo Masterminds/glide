@@ -245,16 +245,6 @@ func FromYaml(top yaml.Node) (*Config, error) {
 
 		if ok {
 			for _, v := range imports {
-				/*
-				pkg := v.(yaml.Map)
-				dep := Dependency{
-					Name:        valOrEmpty("package", pkg),
-					Reference:   valOrEmpty("ref", pkg),
-					VcsType:     getVcsType(pkg),
-					Repository:  valOrEmpty("repo", pkg),
-					Subpackages: subpkg("subpackages", pkg),
-				}
-				*/
 				dep, err := DependencyFromYaml(v)
 				if err != nil {
 					Warn("Could not add a dependency: %s\n", err)
