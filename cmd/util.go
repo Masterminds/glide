@@ -13,12 +13,12 @@ var Quiet = false
 // These contanstants map to color codes for shell scripts making them
 // human readable.
 const (
-	Blue    = "0;34"
-	Red     = "0;31"
-	BoldRed = "1;31"
-	Yellow  = "0;33"
-	Cyan    = "0;36"
-	Pink    = "1;35"
+	Blue   = "0;34"
+	Red    = "0;31"
+	Green  = "0;32"
+	Yellow = "0;33"
+	Cyan   = "0;36"
+	Pink   = "1;35"
 )
 
 // Color returns a string in a certain color. The first argument is a string
@@ -41,7 +41,7 @@ func Info(msg string, args ...interface{}) {
 	if Quiet {
 		return
 	}
-	fmt.Print(Color(Yellow, "[INFO] "))
+	fmt.Print(Color(Green, "[INFO] "))
 	Msg(msg, args...)
 }
 
@@ -56,13 +56,13 @@ func Debug(msg string, args ...interface{}) {
 
 // Warn logs a warning
 func Warn(msg string, args ...interface{}) {
-	fmt.Fprint(os.Stderr, Color(Red, "[WARN] "))
+	fmt.Fprint(os.Stderr, Color(Yellow, "[WARN] "))
 	ErrMsg(msg, args...)
 }
 
 // Error logs and error.
 func Error(msg string, args ...interface{}) {
-	fmt.Fprint(os.Stderr, Color(BoldRed, "[ERROR] "))
+	fmt.Fprint(os.Stderr, Color(Red, "[ERROR] "))
 	ErrMsg(msg, args...)
 }
 

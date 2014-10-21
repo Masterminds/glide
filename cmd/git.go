@@ -101,13 +101,13 @@ func (g *GitVCS) Version(dep *Dependency) error {
 			switch len(count) {
 			// 0-9, not that bad
 			case 1:
-				c = Yellow
+				c = Green
 			// 10-99, we're getting behind
 			case 2:
-				c = Red
+				c = Yellow
 			// Whoa! We're falling way behind!
 			default:
-				c = BoldRed
+				c = Red
 			}
 			Info(Color(c, fmt.Sprintf("Git: %s is %s behind origin.\n", dep.Name, count)))
 		}
