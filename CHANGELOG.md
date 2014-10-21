@@ -1,4 +1,7 @@
 
+- Issue #28: Use HTTPS instead of HTTP for git and hg. (Thanks chendo)
+- Issue #26: 'glide gopath' is smarter. It now looks for glide.yaml.
+
 # Release 0.2.0 (2014-10-03)
 
 - Issue #15, #18: `glide guess` can guess dependencies for an existing
