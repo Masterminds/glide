@@ -35,14 +35,44 @@ func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	return true, nil
 }
 
+// GlideGopath returns the GOPATH for a Glide project.
+//
+// It determines the GOPATH by searching for the glide.yaml file, and then
+// assuming the _vendor/ directory is in that directory. It traverses
+// the tree upwards (e.g. only ancestors).
+//
+// If no glide.yaml is found, or if a directory cannot be read, this returns
+// an error.
 func GlideGopath() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
-	gopath := fmt.Sprintf("%s/_vendor", cwd)
+
+	// Find the directory that contains glide.yaml
+	yamldir, err := glideWD(cwd)
+	if err != nil {
+		return cwd, err
+	}
+
+	gopath := fmt.Sprintf("%s/_vendor", yamldir)
 
 	return gopath, nil
+}
+
+func glideWD(dir string) (string, error) {
+	fullpath := filepath.Join(dir, "glide.yaml")
+
+	if _, err := os.Stat(fullpath); err == nil {
+		return dir, nil
+	}
+
+	base := filepath.Dir(dir)
+	if base == dir {
+		return "", fmt.Errorf("Cannot resolve parent of %s", base)
+	}
+
+	return glideWD(base)
 }
 
 // Emits GOPATH for editors and such.

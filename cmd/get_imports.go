@@ -113,7 +113,7 @@ func VcsGet(dep *Dependency) error {
 	switch dep.VcsType {
 	case Git:
 		if dep.Repository == "" {
-			dep.Repository = "http://" + dep.Name
+			dep.Repository = "https://" + dep.Name
 		}
 		Info("Installing %s with Git (From %s)\n", dep.Name, dep.Repository)
 		return git.Get(dep)
@@ -122,7 +122,7 @@ func VcsGet(dep *Dependency) error {
 		return bzr.Get(dep)
 	case Hg:
 		if dep.Repository == "" {
-			dep.Repository = "http://" + dep.Name
+			dep.Repository = "https://" + dep.Name
 		}
 		Info("Installing %s with Hg (From %s)\n", dep.Name, dep.Repository)
 		return hg.Get(dep)
