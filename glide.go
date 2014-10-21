@@ -140,6 +140,14 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
+			Name:            "exec",
+			Usage:           "Execute a command with the Go environment setup",
+			SkipFlagParsing: true,
+			Action: func(c *cli.Context) {
+				setupHandler(c, "exec", cxt, router)
+			},
+		},
+		{
 			Name:  "pin",
 			Usage: "Print a YAML file with all of the packages pinned to the current version",
 			Action: func(c *cli.Context) {
@@ -182,6 +190,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 func setupHandler(c *cli.Context, route string, cxt cookoo.Context, router *cookoo.Router) {
 	cxt.Put("q", c.GlobalBool("quiet"))
 	cxt.Put("yaml", c.GlobalString("yaml"))
+	cxt.Put("cliArgs", c.Args())
 	if err := router.HandleRequest(route, cxt, false); err != nil {
 		fmt.Printf("Oops! %s\n", err)
 		os.Exit(1)
@@ -216,6 +225,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("gopath", "Return the GOPATH for the present project.").
 		Includes("@startup").
 		Does(cmd.In, "gopath")
+
+	reg.Route("exec", "Execute command with GOPATH set.").
+		Includes("@startup").
+		Includes("@ready").
+		Does(cmd.ExecCmd, "cmd").
+		Using("args").From("cxt:cliArgs")
 
 	reg.Route("install", "Install dependencies.").
 		Includes("@startup").
