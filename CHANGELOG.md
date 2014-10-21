@@ -1,6 +1,8 @@
+# Release 0.3.0 (Forthcoming)
 
 - Issue #28: Use HTTPS instead of HTTP for git and hg. (Thanks chendo)
 - Issue #26: 'glide gopath' is smarter. It now looks for glide.yaml.
+- Issue #24: Trim whitespace off of package names.(Thanks roblillack)
 
 # Release 0.2.0 (2014-10-03)
 
