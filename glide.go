@@ -224,13 +224,14 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("gopath", "Return the GOPATH for the present project.").
 		Includes("@startup").
-		Does(cmd.In, "gopath")
+		Does(cmd.In, "gopath").Using("filename").From("cxt:yaml")
 
 	reg.Route("exec", "Execute command with GOPATH set.").
 		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.ExecCmd, "cmd").
-		Using("args").From("cxt:cliArgs")
+		Using("args").From("cxt:cliArgs").
+		Using("filename").From("cxt:yaml")
 
 	reg.Route("install", "Install dependencies.").
 		Includes("@startup").

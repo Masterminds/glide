@@ -43,14 +43,14 @@ func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 //
 // If no glide.yaml is found, or if a directory cannot be read, this returns
 // an error.
-func GlideGopath() (string, error) {
+func GlideGopath(filename string) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 
 	// Find the directory that contains glide.yaml
-	yamldir, err := glideWD(cwd)
+	yamldir, err := glideWD(cwd, filename)
 	if err != nil {
 		return cwd, err
 	}
@@ -60,8 +60,8 @@ func GlideGopath() (string, error) {
 	return gopath, nil
 }
 
-func glideWD(dir string) (string, error) {
-	fullpath := filepath.Join(dir, "glide.yaml")
+func glideWD(dir, filename string) (string, error) {
+	fullpath := filepath.Join(dir, filename)
 
 	if _, err := os.Stat(fullpath); err == nil {
 		return dir, nil
@@ -72,12 +72,14 @@ func glideWD(dir string) (string, error) {
 		return "", fmt.Errorf("Cannot resolve parent of %s", base)
 	}
 
-	return glideWD(base)
+	return glideWD(base, filename)
 }
 
 // Emits GOPATH for editors and such.
 func In(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	gopath, err := GlideGopath()
+	fname := p.Get("filename", "glide.yaml").(string)
+
+	gopath, err := GlideGopath(fname)
 	if err != nil {
 		return nil, err
 	}

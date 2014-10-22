@@ -1,14 +1,15 @@
 package cmd
 
 import (
-	"testing"
-	"path/filepath"
 	"os"
+	"path/filepath"
+	"testing"
 )
 
 func TestGlideWD(t *testing.T) {
 	cwd, _ := os.Getwd()
-	found, err := glideWD(cwd)
+	filename := "glide.yaml"
+	found, err := glideWD(cwd, filename)
 	if err != nil {
 		t.Errorf("Failed to get Glide directory: %s", err)
 	}
@@ -19,7 +20,7 @@ func TestGlideWD(t *testing.T) {
 
 	// This should fail
 	cwd = "/No/Such/Dir"
-	found, err = glideWD(cwd)
+	found, err = glideWD(cwd, filename)
 	if err == nil {
 		t.Errorf("Expected to get an error on a non-existent directory, not %s", found)
 	}

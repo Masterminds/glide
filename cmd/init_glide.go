@@ -49,7 +49,7 @@ func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 	f.WriteString(yamlTpl)
 
-	if newgopath, err := GlideGopath(); err == nil {
+	if newgopath, err := GlideGopath(fname); err == nil {
 		Info("Your new GOPATH is %s. Run 'glide gopath' to see it again.\n", newgopath)
 	}
 	Info("Initialized. You can now edit '%s'\n", fname)
