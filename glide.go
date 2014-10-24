@@ -184,6 +184,13 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				setupHandler(c, "guess", cxt, router)
 			},
 		},
+		{
+			Name:  "about",
+			Usage: "Learn about Glide",
+			Action: func(c *cli.Context) {
+				setupHandler(c, "about", cxt, router)
+			},
+		},
 	}
 }
 
@@ -292,6 +299,10 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("status", "Status").
 		Includes("@startup").
 		Does(cmd.Status, "status")
+
+	reg.Route("about", "Status").
+		Includes("@startup").
+		Does(cmd.About, "about")
 
 	reg.Route("@plugin", "Try to send to a plugin.").
 		Includes("@ready").
