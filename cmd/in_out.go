@@ -86,7 +86,7 @@ func In(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	/*
 		fmt.Printf("export OLD_PATH=%s\n", os.Getenv("PATH"))
-		fmt.Printf("export PATH=%s:%s\n", os.Getenv("PATH"), gopath + "/bin")
+		fmt.Printf("export PATH=%s:%s\n", gopath + "/bin", os.Getenv("PATH"))
 		fmt.Printf("export GOPATH=%s\n", gopath)
 		fmt.Printf("export ALREADY_GLIDING=1\n")
 	*/
@@ -134,7 +134,7 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	os.Setenv("GOPATH", gopath)
 	os.Setenv("GOBIN", gopath+"/bin")
 	os.Setenv("GLIDE_GOPATH", gopath)
-	os.Setenv("PATH", path+":"+gopath+"/bin")
+	os.Setenv("PATH", gopath+"/bin:"+path)
 	os.Setenv("GLIDE_PROJECT", cwd)
 	os.Setenv("GLIDE_YAML", fmt.Sprintf("%s/glide.yaml", cwd))
 
