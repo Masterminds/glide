@@ -1,5 +1,7 @@
 # Release 0.3.0 (Forthcoming)
 
+- Issue #31: The local Go bin should be higher precedence in the
+  system's PATH (via jarod).
 - Issue #28: Use HTTPS instead of HTTP for git and hg. (Thanks chendo)
 - Issue #26: 'glide gopath' is smarter. It now looks for glide.yaml.
 - Issue #24: Trim whitespace off of package names.(Thanks roblillack)
