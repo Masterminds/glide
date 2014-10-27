@@ -26,6 +26,12 @@ func ExecCmd(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 		return false, err
 	}
 
+	path := os.Getenv("PATH")
+	err = os.Setenv("PATH", gopath+"/bin:"+path)
+	if err != nil {
+		return false, err
+	}
+
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
