@@ -15,6 +15,7 @@ const (
 	Svn
 )
 
+// GetImports iterates over the imported packages and gets them.
 func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
 
@@ -32,6 +33,7 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	return true, nil
 }
 
+// UpdateImports iterates over the imported packages and updates them.
 func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
 
@@ -49,6 +51,8 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	return true, nil
 }
 
+// CowardMode checks that the environment is setup before continuing on. If not
+// setup and error is returned.
 func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	gopath := os.Getenv("GOPATH")
 	if len(gopath) == 0 {
@@ -242,6 +246,7 @@ func VcsSetReference(dep *Dependency) error {
 	return nil
 }
 
+// GuessVCS attempts to guess guess the VCS used by a package.
 func GuessVCS(dep *Dependency) (uint, error) {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 	//Debug("Looking in %s for hints about VCS type.\n", dest)
