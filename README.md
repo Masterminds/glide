@@ -280,6 +280,32 @@ According to the above, the following packages will be built:
 
 See the `docs/` folder for more examples.
 
+### Displaying glide environment indicator in bash
+
+To display an indicator in a custom Bash prompt whenever you are
+"in" the glide environment, add the following check to your $PS1
+environment variable (likely in `.bashrc`):
+
+```bash
+$(if [ "$ALREADY_GLIDING" = "1" ]; then echo " (gliding)"; fi)
+```
+
+Example:
+
+```bash
+export PS1='\u@\h \w$(if [ "$ALREADY_GLIDING" = "1" ]; then echo " (gliding)"; fi) \n$ '
+```
+
+Result:
+
+```
+user@hostname ~/your/go/project
+$ glide in
+>> You are now gliding into a new shell. To exit, type 'exit'
+user@hostname ~/your/go/project (gliding)
+$
+```
+
 ## Supported Version Control Systems
 
 Anything supported by `go get` works out of the box. By default, we use
@@ -415,4 +441,3 @@ inspired various aspects of this tool, as well.
 Aside from being catchy, "glide" is a contraction of "Go Elide". The
 idea is to compress the tasks that normally take us lots of time into a
 just a few seconds.
-
