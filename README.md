@@ -421,6 +421,25 @@ file) add an entry to set the GOPATH. For example:
 ```
 Once you've done this feature like autocomplete will work.
 
+**Q: How do I import settings from GPM or Godep?**
+
+Glide can import from GPM's `Godeps` file format or from Godep's
+`Godeps/Godeps.json` file format.
+
+For GPM, use `glide import gpm`.
+
+For Godep, use `glide import godep`.
+
+Each of these will merge your existing `glide.yaml` file with the
+dependencies it finds for those managers, and then emit the file as
+output. **It will not overwrite your glide.yaml file.**
+
+You can write it to file like this:
+
+```
+$ glide import godep > new-glide.yaml
+```
+
 ## LICENSE
 
 This package is made available under an MIT-style license. See

@@ -125,9 +125,29 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		},
 		{
 			Name:  "godeps",
-			Usage: "Import Godeps and Godeps-Git files and display the would-be yaml file",
+			Usage: "DEPRECATED. Use `import gpm`. Import Godeps and Godeps-Git files and display the would-be yaml file",
 			Action: func(c *cli.Context) {
-				setupHandler(c, "godeps", cxt, router)
+				setupHandler(c, "import gpm", cxt, router)
+			},
+		},
+		{
+			Name:  "import",
+			Usage: "Import files from other dependency management systems.",
+			Subcommands: []cli.Command {
+				{
+					Name:  "godeps",
+					Usage: "Import Godep's Godeps.json files and display the would-be yaml file",
+					Action: func(c *cli.Context) {
+						setupHandler(c, "import godep", cxt, router)
+					},
+				},
+				{
+					Name:  "gpm",
+					Usage: "Import GPM's Godeps and Godeps-Git files and display the would-be yaml file",
+					Action: func(c *cli.Context) {
+						setupHandler(c, "import gpm", cxt, router)
+					},
+				},
 			},
 		},
 		{
@@ -271,16 +291,27 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
 
-	reg.Route("godeps", "Read a Godeps file").
+	reg.Route("import gpm", "Read a Godeps file").
 		Includes("@startup").
 		Includes("@ready").
-		Does(cmd.Godeps, "godeps").
+		Does(cmd.GPMGodeps, "godeps").
 		Does(cmd.AddDependencies, "addGodeps").
 		Using("dependencies").From("cxt:godeps").
 		Using("conf").From("cxt:cfg").
-		Does(cmd.GodepsGit, "godepsGit").
+		Does(cmd.GPMGodepsGit, "godepsGit").
 		Does(cmd.AddDependencies, "addGodepsGit").
 		Using("dependencies").From("cxt:godepsGit").
+		Using("conf").From("cxt:cfg").
+		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
+		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
+		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+
+	reg.Route("import godep", "Read a Godeps.json file").
+		Includes("@startup").
+		Includes("@ready").
+		Does(cmd.ParseGodepGodeps, "godeps").
+		Does(cmd.AddDependencies, "addGodeps").
+		Using("dependencies").From("cxt:godeps").
 		Using("conf").From("cxt:cfg").
 		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").

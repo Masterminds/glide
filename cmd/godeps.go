@@ -1,100 +1,82 @@
 package cmd
 
 import (
-	"bufio"
+	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/Masterminds/cookoo"
 )
 
-// Indicates whether a Godeps file exists.
-func HasGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+// This file contains commands for working with Godep.
+
+// The Godeps struct from Godep.
+//
+// https://raw.githubusercontent.com/tools/godep/master/dep.go
+//
+// We had to copy this because it's in the package main for Godep.
+type Godeps struct {
+	ImportPath string
+	GoVersion  string
+	Packages   []string `json:",omitempty"` // Arguments to save, if any.
+	Deps       []GodepDependency
+
+	outerRoot string
+}
+
+// GodepDependency is a modified version of Godep's Dependency struct.
+// It drops all of the unexported fields.
+type GodepDependency struct {
+	ImportPath string
+	Comment    string `json:",omitempty"` // Description of commit, if present.
+	Rev        string // VCS-specific commit ID.
+}
+
+func HasGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
-	path := filepath.Join(dir, "Godeps")
+	path := filepath.Join(dir, "Godeps/Godeps.json")
 	_, err := os.Stat(path)
 	return err == nil, nil
 }
 
-// Godeps parses a Godeps file.
+// Parse the Godep Godeps.json file.
 //
-// Params
-// 	- dir (string): Directory root.
+// Params:
+// - dir (string): the project's directory
 //
 // Returns an []*Dependency
-func Godeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+func ParseGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
-	path := filepath.Join(dir, "Godeps")
+	path := filepath.Join(dir, "Godeps/Godeps.json")
 	if _, err := os.Stat(path); err != nil {
 		return []*Dependency{}, nil
 	}
-	Info("Found Godeps file.\n")
+	// Info("Found Godeps.json file.\n")
 
 	buf := []*Dependency{}
 
+	godeps := new(Godeps)
+
+	// Get a handle to the file.
 	file, err := os.Open(path)
 	if err != nil {
 		return buf, err
 	}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		parts, ok := parseGodepsLine(scanner.Text())
-		if ok {
-			dep := &Dependency{Name: parts[0]}
-			if len(parts) > 1 {
-				dep.Reference = parts[1]
-			}
-			buf = append(buf, dep)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		Warn("Scan failed: %s\n", err)
+	defer file.Close()
+
+
+	dec := json.NewDecoder(file)
+	if err := dec.Decode(godeps); err != nil {
 		return buf, err
+	}
+
+	// Info("Importing %d packages from %s.\n", len(godeps.Deps), godeps.ImportPath)
+
+	for _, d := range godeps.Deps {
+		// Info("Adding package %s\n", d.ImportPath)
+		dep := &Dependency{ Name: d.ImportPath, Reference: d.Rev }
+		buf = append(buf, dep)
 	}
 
 	return buf, nil
-}
-
-func GodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	dir := cookoo.GetString("dir", "", p)
-	path := filepath.Join(dir, "Godeps-Git")
-	if _, err := os.Stat(path); err != nil {
-		return []*Dependency{}, nil
-	}
-	Info("Found Godeps-Git file.\n")
-
-	buf := []*Dependency{}
-
-	file, err := os.Open(path)
-	if err != nil {
-		return buf, err
-	}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		parts, ok := parseGodepsLine(scanner.Text())
-		if ok {
-			dep := &Dependency{Name: parts[1], Repository: parts[0]}
-			if len(parts) > 2 {
-				dep.Reference = parts[2]
-			}
-			buf = append(buf, dep)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		Warn("Scan failed: %s\n", err)
-		return buf, err
-	}
-
-	return buf, nil
-}
-
-func parseGodepsLine(line string) ([]string, bool) {
-	line = strings.TrimSpace(line)
-
-	if len(line) == 0 || strings.HasPrefix(line, "#") {
-		return []string{}, false
-	}
-
-	return strings.Fields(line), true
 }
