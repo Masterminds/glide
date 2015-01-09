@@ -158,6 +158,11 @@ $ glide install
 Update all of the existing repositories. If a new new repository has
 been added to the YAML file, try to download that, too.
 
+This will look through all of the dependencies in the `glide.yaml`. If
+they are present in `_vendor`, it will check for new versions (using `go
+get -u` or the appropriate VCS). If the dependency is new, it will fetch
+and install for the first time.
+
 ```
 $ glide update
 [INFO] Updating github.com/kylelemons/go-gypsy/yaml with 'go get -u'
