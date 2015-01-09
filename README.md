@@ -22,6 +22,7 @@ managing the environment in which your normal Go tools run.
     - hg
     - svn
 * Support custom local and global plugins (see docs/plugins.md)
+* Support building packages by OS and architecture
 
 ## How It Works
 
@@ -439,6 +440,23 @@ You can write it to file like this:
 ```
 $ glide import godep > new-glide.yaml
 ```
+
+**Q: Can Glide fetch a package based on OS or Arch?**
+
+A: Yes. Using the `os` and `arch` fields on a `package`, you can speficy
+which OSes and architectures the package should be fetched for. For
+example, the following package will only be fetched for 64-bit
+Darwin/OSX systems:
+
+```yaml
+- package: some/package
+  os:
+    - darwin
+  arch:
+    - amd64
+```
+
+The package will not be fetched for other architectures or OSes.
 
 ## LICENSE
 

@@ -172,7 +172,18 @@ func valOrEmpty(key string, store map[string]yaml.Node) string {
 	return strings.TrimSpace(val.(yaml.Scalar).String())
 }
 
-func subpkg(key string, store map[string]yaml.Node) []string {
+// valOrList gets a single value or a list of values.
+//
+// Supports syntaxes like:
+//
+// 	subpkg: foo
+//
+// and
+//
+// 	supkpg:
+// 		-foo
+// 		-bar
+func valOrList(key string, store map[string]yaml.Node) []string {
 	val, ok := store[key]
 
 	subpackages := []string{}
@@ -311,7 +322,7 @@ func (c *Config) ToYaml() yaml.Node {
 type Dependency struct {
 	Name, Reference, Repository string
 	VcsType                     uint
-	Subpackages                 []string
+	Subpackages, Arch, Os       []string
 }
 
 // DependencyFromYaml creates a dependency from a yaml.Node.
@@ -325,7 +336,9 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 		Reference:   valOrEmpty("ref", pkg),
 		VcsType:     getVcsType(pkg),
 		Repository:  valOrEmpty("repo", pkg),
-		Subpackages: subpkg("subpackages", pkg),
+		Subpackages: valOrList("subpackages", pkg),
+		Arch:        valOrList("arch", pkg),
+		Os:          valOrList("os", pkg),
 	}
 
 	return dep, nil
@@ -336,12 +349,14 @@ func (d *Dependency) ToYaml() yaml.Node {
 	dep := make(map[string]yaml.Node, 5)
 	dep["package"] = yaml.Scalar(d.Name)
 
-	subp := make([]yaml.Node, len(d.Subpackages))
-	for i, item := range d.Subpackages {
-		subp[i] = yaml.Scalar(item)
-	}
+	if len(d.Subpackages) > 0 {
+		subp := make([]yaml.Node, len(d.Subpackages))
+		for i, item := range d.Subpackages {
+			subp[i] = yaml.Scalar(item)
+		}
 
-	dep["subpackages"] = yaml.List(subp)
+		dep["subpackages"] = yaml.List(subp)
+	}
 	vcs := vcsString(d.VcsType)
 	if len(vcs) > 0 {
 		dep["vcs"] = yaml.Scalar(vcs)
@@ -352,5 +367,21 @@ func (d *Dependency) ToYaml() yaml.Node {
 	if len(d.Repository) > 0 {
 		dep["repo"] = yaml.Scalar(d.Repository)
 	}
+
+	if len(d.Arch) > 0 {
+		archs := make([]yaml.Node, len(d.Arch))
+		for i, a := range d.Arch {
+			archs[i] = yaml.Scalar(a)
+		}
+		dep["arch"] = yaml.List(archs)
+	}
+	if len(d.Os) > 0 {
+		oses := make([]yaml.Node, len(d.Os))
+		for i, a := range d.Os {
+			oses[i] = yaml.Scalar(a)
+		}
+		dep["os"] = yaml.List(oses)
+	}
+
 	return yaml.Map(dep)
 }

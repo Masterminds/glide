@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -102,12 +103,50 @@ var (
 	hg    VCS = new(HgVCS)
 )
 
+// filterArchOs indicates a dependency should be filtered out because it is
+// the wrong GOOS or GOARCH.
+func filterArchOs(dep *Dependency) bool {
+	found := false
+	if len(dep.Arch) > 0 {
+		for _, a := range dep.Arch {
+			if a == runtime.GOARCH {
+				found = true
+			}
+		}
+		// If it's not found, it should be filtered out.
+		if !found {
+			return true
+		}
+	}
+
+	found = false
+	if len(dep.Os) > 0 {
+		for _, o := range dep.Os {
+			if o == runtime.GOOS {
+				found = true
+			}
+		}
+		if !found {
+			return true
+		}
+
+	}
+
+	return false
+}
+
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
 // Usually it delegates to lower-level *Get functions.
 //
 // See https://code.google.com/p/go/source/browse/src/cmd/go/vcs.go
 func VcsGet(dep *Dependency) error {
+
+	if filterArchOs(dep) {
+		Info("Ignoring %s for OS/ARch %s/%s", dep.Name, runtime.GOOS, runtime.GOARCH)
+		return nil
+	}
+
 	// See note in VcsUpdate.
 	if dep.Repository == "" && dep.Reference == "" {
 		Info("Installing %s with 'go get'\n", dep.Name)
@@ -148,6 +187,12 @@ func VcsGet(dep *Dependency) error {
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
 func VcsUpdate(dep *Dependency) error {
+
+	if filterArchOs(dep) {
+		Info("%s is not used for %s/%s.\n", dep.Name, runtime.GOOS, runtime.GOARCH)
+		return nil
+	}
+
 	// If there is no Ref set, and if Repository is empty, we should just
 	// default to Go Get.
 	//
