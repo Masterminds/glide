@@ -26,7 +26,7 @@ func (g *GitVCS) Update(dep *Dependency) error {
 	if _, err := os.Stat(dest); err != nil {
 		// Assume a new package?
 		Info("Looks like %s is a new package. Cloning.\n", dep.Name)
-		return exec.Command("git", "clone", dep.Repository, dest).Run()
+		return g.Get(dep)
 	}
 
 	oldDir, err := os.Getwd()
