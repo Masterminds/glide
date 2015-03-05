@@ -45,7 +45,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 
 	for _, dep := range cfg.Imports {
 		if err := VcsUpdate(dep); err != nil {
-			Warn("Update failed for %s: %s\n", dep.Name, err)
+			Error("Update failed for %s: %s\n", dep.Name, err)
 		}
 	}
 
@@ -81,7 +81,7 @@ func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 
 	for _, dep := range cfg.Imports {
 		if err := VcsVersion(dep); err != nil {
-			Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+			Error("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
 		}
 	}
 
