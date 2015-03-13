@@ -205,6 +205,10 @@ func VcsUpdate(dep *Dependency) error {
 		return goGet.Update(dep)
 	}
 
+	if dep.Repository == "" && (dep.VcsType == Git || dep.VcsType == Hg) {
+		dep.Repository = "https://" + dep.Name
+	}
+
 	if dep.VcsType == NoVCS {
 		guess, err := GuessVCS(dep)
 		if err != nil {
