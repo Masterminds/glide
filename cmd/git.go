@@ -69,6 +69,7 @@ func (g *GitVCS) Update(dep *Dependency) error {
 		default:
 			Info("Unable to determine currently checkout out repository ('%s'). I'm doing a fresh clone.\n", err)
 		}
+		os.Chdir(oldDir)
 		if err := os.RemoveAll(dest); err != nil {
 			return err
 		}
