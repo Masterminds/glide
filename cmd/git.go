@@ -14,7 +14,6 @@ type GitVCS struct{}
 var _ VCS = &GitVCS{}
 
 var (
-	NoWorkingDirectory  error = errors.New("Working directory does not exist")
 	WrongVCS            error = errors.New("Wrong VCS detected")
 	CannotDetermineRepo error = errors.New("Unable to determine repository")
 )
@@ -51,17 +50,23 @@ func (g *GitVCS) Get(dep *Dependency) error {
 func (g *GitVCS) Update(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
+	if _, err := os.Stat(dest); err != nil {
+		Info("Looks like %s is a new package. Cloning.\n", dep.Name)
+		return g.Get(dep)
+	}
+
 	oldDir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	os.Chdir(dest)
+	if err := os.Chdir(dest); err != nil {
+		return err
+	}
+
 	defer os.Chdir(oldDir)
 
 	if oldRepo, err := g.currentRepository(); err != nil || oldRepo != dep.Repository {
 		switch err {
-		case NoWorkingDirectory:
-			Info("Looks like %s is a new package. Cloning.\n", dep.Name)
 		case WrongVCS:
 			Info("VCS type changed ('%s'). I'm doing a fresh clone.\n", err)
 		case nil:
