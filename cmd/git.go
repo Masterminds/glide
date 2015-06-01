@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,33 @@ import (
 )
 
 type GitVCS struct{}
+
+var _ VCS = &GitVCS{}
+
+var (
+	NoWorkingDirectory  error = errors.New("Working directory does not exist")
+	WrongVCS            error = errors.New("Wrong VCS detected")
+	CannotDetermineRepo error = errors.New("Unable to determine repository")
+)
+
+var remoteRegex = regexp.MustCompile("^origin\\s+(\\S+)\\s+\\S+$")
+
+// returns the currently checked out remote repository
+// according to the state of the working directory
+func (g *GitVCS) currentRepository() (string, error) {
+	out, err := exec.Command("git", "remote", "-v").CombinedOutput()
+	if err != nil {
+		return "", WrongVCS
+	}
+
+	for _, line := range strings.Split(string(out), "\n") {
+		if m := remoteRegex.FindStringSubmatch(line); len(m) == 2 {
+			return m[1], nil
+		}
+	}
+
+	return "", CannotDetermineRepo
+}
 
 // GitGet implements the getting logic for Git.
 func (g *GitVCS) Get(dep *Dependency) error {
@@ -23,18 +51,29 @@ func (g *GitVCS) Get(dep *Dependency) error {
 func (g *GitVCS) Update(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
-	if _, err := os.Stat(dest); err != nil {
-		// Assume a new package?
-		Info("Looks like %s is a new package. Cloning.\n", dep.Name)
-		return g.Get(dep)
-	}
-
 	oldDir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 	os.Chdir(dest)
 	defer os.Chdir(oldDir)
+
+	if oldRepo, err := g.currentRepository(); err != nil || oldRepo != dep.Repository {
+		switch err {
+		case NoWorkingDirectory:
+			Info("Looks like %s is a new package. Cloning.\n", dep.Name)
+		case WrongVCS:
+			Info("VCS type changed ('%s'). I'm doing a fresh clone.\n", err)
+		case nil:
+			Info("Repository changed from %s to %s. I'm doing a clean checkout.\n", oldRepo, dep.Repository)
+		default:
+			Info("Unable to determine currently checkout out repository ('%s'). I'm doing a fresh clone.\n", err)
+		}
+		if err := os.RemoveAll(dest); err != nil {
+			return err
+		}
+		return g.Get(dep)
+	}
 
 	// Because we can't predict which branch we want to be on, and since
 	// we want to set checkouts explicitly, we should probably fetch.
