@@ -10,6 +10,30 @@ import (
 
 type GitVCS struct{}
 
+func (g *GitVCS) currentCheckoutMatchesTagOrRef(ref string) bool {
+	out, err := exec.Command("git", "log", "-n", "1", "--pretty=format:%H%d").CombinedOutput()
+	if err != nil {
+		return false
+	}
+	parts := strings.SplitN(string(out), " ", 2)
+
+	sha := parts[0]
+	if strings.HasPrefix(sha, ref) {
+		return true
+	}
+
+	if len(parts) > 1 && strings.Contains(parts[1], "tag: ") {
+		re := regexp.MustCompile("tag: ([^,)]*)")
+		for _, tagMatch := range re.FindAllStringSubmatch(parts[1], 10) {
+			if len(tagMatch) == 2 && tagMatch[1] == ref {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // GitGet implements the getting logic for Git.
 func (g *GitVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
@@ -35,6 +59,11 @@ func (g *GitVCS) Update(dep *Dependency) error {
 	}
 	os.Chdir(dest)
 	defer os.Chdir(oldDir)
+
+	if g.currentCheckoutMatchesTagOrRef(dep.Reference) {
+		Info("%s is up to date.\n", dep.Name)
+		return nil
+	}
 
 	// Because we can't predict which branch we want to be on, and since
 	// we want to set checkouts explicitly, we should probably fetch.
