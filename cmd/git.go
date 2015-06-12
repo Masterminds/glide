@@ -1,14 +1,55 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"strings"
 )
 
 type GitVCS struct{}
+
+var _ VCS = &GitVCS{}
+
+var (
+	WrongVCS            error = errors.New("Wrong VCS detected")
+	CannotDetermineRepo error = errors.New("Unable to determine repository")
+)
+
+var remoteRegex = regexp.MustCompile("^origin\\s+(\\S+)\\s+\\S+$")
+
+// returns the currently checked out remote repository
+// according to the state of the working directory
+func (g *GitVCS) currentRepository(directory string) (string, error) {
+
+	// Make sure to stop bubbling up the directory structures. If the
+	// repo is another VCS sype, such as HG, git will try to bubble
+	// up to a parent git repo.
+	location, err := exec.Command("git", "rev-parse", "--git-dir").CombinedOutput()
+	if err != nil {
+		return "", WrongVCS
+	}
+	repoDir := path.Dir(string(location))
+	if repoDir != directory {
+		return "", WrongVCS
+	}
+
+	out, err := exec.Command("git", "remote", "-v").CombinedOutput()
+	if err != nil {
+		return "", WrongVCS
+	}
+
+	for _, line := range strings.Split(string(out), "\n") {
+		if m := remoteRegex.FindStringSubmatch(line); len(m) == 2 {
+			return m[1], nil
+		}
+	}
+
+	return "", CannotDetermineRepo
+}
 
 func (g *GitVCS) currentCheckoutMatchesTagOrRef(ref string) bool {
 	out, err := exec.Command("git", "log", "-n", "1", "--pretty=format:%H%d").CombinedOutput()
@@ -48,7 +89,6 @@ func (g *GitVCS) Update(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
 	if _, err := os.Stat(dest); err != nil {
-		// Assume a new package?
 		Info("Looks like %s is a new package. Cloning.\n", dep.Name)
 		return g.Get(dep)
 	}
@@ -57,8 +97,27 @@ func (g *GitVCS) Update(dep *Dependency) error {
 	if err != nil {
 		return err
 	}
-	os.Chdir(dest)
+	if err := os.Chdir(dest); err != nil {
+		return err
+	}
+
 	defer os.Chdir(oldDir)
+
+	if oldRepo, err := g.currentRepository(dest); err != nil || oldRepo != dep.Repository {
+		switch err {
+		case WrongVCS:
+			Info("VCS type changed ('%s'). I'm doing a fresh clone.\n", err)
+		case nil:
+			Info("Repository changed from %s to %s. I'm doing a clean checkout.\n", oldRepo, dep.Repository)
+		default:
+			Info("Unable to determine currently checkout out repository ('%s'). I'm doing a fresh clone.\n", err)
+		}
+		os.Chdir(oldDir)
+		if err := os.RemoveAll(dest); err != nil {
+			return err
+		}
+		return g.Get(dep)
+	}
 
 	if g.currentCheckoutMatchesTagOrRef(dep.Reference) {
 		Info("%s is up to date.\n", dep.Name)
