@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -32,7 +32,8 @@ func (g *GitVCS) currentRepository(directory string) (string, error) {
 	if err != nil {
 		return "", WrongVCS
 	}
-	repoDir := path.Dir(string(location))
+	absPath, err := filepath.Abs(string(location))
+	repoDir := filepath.Dir(absPath)
 	if repoDir != directory {
 		return "", WrongVCS
 	}
