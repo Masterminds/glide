@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"strings"
 )
@@ -22,7 +23,20 @@ var remoteRegex = regexp.MustCompile("^origin\\s+(\\S+)\\s+\\S+$")
 
 // returns the currently checked out remote repository
 // according to the state of the working directory
-func (g *GitVCS) currentRepository() (string, error) {
+func (g *GitVCS) currentRepository(directory string) (string, error) {
+
+	// Make sure to stop bubbling up the directory structures. If the
+	// repo is another VCS sype, such as HG, git will try to bubble
+	// up to a parent git repo.
+	location, err := exec.Command("git", "rev-parse", "--git-dir").CombinedOutput()
+	if err != nil {
+		return "", WrongVCS
+	}
+	repoDir := path.Dir(string(location))
+	if repoDir != directory {
+		return "", WrongVCS
+	}
+
 	out, err := exec.Command("git", "remote", "-v").CombinedOutput()
 	if err != nil {
 		return "", WrongVCS
@@ -65,7 +79,7 @@ func (g *GitVCS) Update(dep *Dependency) error {
 
 	defer os.Chdir(oldDir)
 
-	if oldRepo, err := g.currentRepository(); err != nil || oldRepo != dep.Repository {
+	if oldRepo, err := g.currentRepository(dest); err != nil || oldRepo != dep.Repository {
 		switch err {
 		case WrongVCS:
 			Info("VCS type changed ('%s'). I'm doing a fresh clone.\n", err)
