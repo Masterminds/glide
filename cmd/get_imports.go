@@ -193,15 +193,15 @@ func VcsUpdate(dep *Dependency) error {
 		return nil
 	}
 
-	// If there is no Ref set, and if Repository is empty, we should just
-	// default to Go Get.
+	// If there is no Ref set, if Repository is empty, and if the VCS not known
+	// we should just default to Go Get.
 	//
 	// Why do we care if Ref is blank? As of Go 1.3, go get builds a .a
 	// file for each library. But if we set a Ref, that will switch the source
 	// code, but not necessarily build a .a file. So we want to make sure not
 	// to default to 'go get' if we're then going to grab a specific version.
-	if dep.Reference == "" && dep.Repository == "" {
-		Info("No ref or repo. Falling back to 'go get -u %s'.\n", dep.Name)
+	if dep.Reference == "" && dep.Repository == "" && dep.VcsType == NoVCS {
+		Info("Reference, repo, and VCS not set. Falling back to 'go get -u %s'.\n", dep.Name)
 		return goGet.Update(dep)
 	}
 
