@@ -1,4 +1,4 @@
-# Release 0.3.0 (Forthcoming)
+# Release 0.3.0 (2015-06-17)
 
 - Issue #46: If VCS type is set use that rather than go get.
 - Issue #45: Added git fastpath if configured ref or tag matches current
