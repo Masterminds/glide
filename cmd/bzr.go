@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// BzrVCS describes the BZR version control backend.
 type BzrVCS struct{}
 
 // We're not big Bazaar users, so we don't know whether we got this right.

@@ -1,3 +1,5 @@
+/* Package cmd provides re-usable commands for Glide.
+ */
 package cmd
 
 import (
