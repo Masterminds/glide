@@ -8,6 +8,11 @@ import (
 	"github.com/Masterminds/cookoo"
 )
 
+// DropToShell executes a glide plugin. A command that's implemented by
+// another application is executed in a similar manner to the way git commands
+// work. For example, 'glide foo' would try to execute the application glide-foo.
+// Params:
+//   - command: the name of the command to attempt executing.
 func DropToShell(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	args := c.Get("os.Args", nil).([]string)
 	command := p.Get("command", "").(string)
