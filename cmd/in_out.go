@@ -75,7 +75,7 @@ func glideWD(dir, filename string) (string, error) {
 	return glideWD(base, filename)
 }
 
-// Emits GOPATH for editors and such.
+// In emits GOPATH for editors and such.
 func In(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
 

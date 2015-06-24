@@ -58,7 +58,7 @@ func GPMGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	return buf, nil
 }
 
-// Reads a Godeps-Git file for gpm-git.
+// GPMGodepsGit reads a Godeps-Git file for gpm-git.
 func GPMGodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
 	path := filepath.Join(dir, "Godeps-Git")

@@ -8,6 +8,8 @@ import (
 	"github.com/Masterminds/cookoo"
 )
 
+// InGopath validates that the current directory is the root of the project
+// and the GOPATH is set for the _vendor folder.
 func InGopath(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	// Get current dir
 	cwd, err := os.Getwd()
