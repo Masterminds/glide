@@ -42,10 +42,9 @@ import (
 	"os"
 )
 
-var version string = "0.3.0-dev"
+var version = "0.3.0-dev"
 
-const Summary = "Manage Go projects with ease."
-const Usage = `Manage dependencies, naming, and GOPATH for your Go projects.
+const usage = `Manage dependencies, naming, and GOPATH for your Go projects.
 
 Each project should have a 'glide.yaml' file in the project directory. Files
 look something like this:
@@ -67,7 +66,7 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "glide"
-	app.Usage = Usage
+	app.Usage = usage
 	app.Version = version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -133,7 +132,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:  "import",
 			Usage: "Import files from other dependency management systems.",
-			Subcommands: []cli.Command {
+			Subcommands: []cli.Command{
 				{
 					Name:  "godeps",
 					Usage: "Import Godep's Godeps.json files and display the would-be yaml file",
