@@ -42,7 +42,7 @@ import (
 	"os"
 )
 
-var version = "0.3.0-dev"
+var version = "0.4.0-dev"
 
 const usage = `Manage dependencies, naming, and GOPATH for your Go projects.
 
