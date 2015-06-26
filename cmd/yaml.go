@@ -54,7 +54,7 @@ func ParseYamlString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	top := p.Get("yaml.Node", yaml.Scalar("nothing to print")).(yaml.Node)
 	var out io.Writer
-	if nn, ok := p.Has("filename"); ok {
+	if nn, ok := p.Has("filename"); ok && len(nn.(string)) > 0 {
 		file, err := os.Create(nn.(string))
 		if err != nil {
 		}

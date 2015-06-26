@@ -103,6 +103,8 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:  "in",
 			Usage: "Glide into a commandline shell preconfigured for your project",
+			Description: `This is roughly the same as starting a new shell and
+	then running GOPATH=$(glide gopath).`,
 			Action: func(c *cli.Context) {
 				setupHandler(c, "in", cxt, router)
 			},
@@ -129,6 +131,13 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:  "get",
 			Usage: "Run 'go get' and update the glide.yaml file with the new package.",
+			Description: `Gets the package using 'go get' and then adds that file
+	to the glide.yaml file.
+
+		$ glide get github.com/Masterminds/cookoo/web
+
+	The above will install the package github.com/Masterminds/cookoo and add
+	the subpackage 'web'.`,
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! Package name is required.")
@@ -215,6 +224,8 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:  "rebuild",
 			Usage: "Rebuild ('go build') the dependencies",
+			Description: `This rebuilds the packages' '.a' files. On some systems
+	this can improve performance on subsequent 'go run' and 'go build' calls.`,
 			Action: func(c *cli.Context) {
 				setupHandler(c, "rebuild", cxt, router)
 			},
@@ -231,6 +242,10 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Name:      "update",
 			ShortName: "up",
 			Usage:     "Update existing packages",
+			Description: `This uses the native VCS of each package to try to
+	pull the most applicable updates. Packages with fixed refs (Versions or
+	tags) will not be updated. Packages with no ref or with a branch ref will
+	be updated as expected.`,
 			Action: func(c *cli.Context) {
 				setupHandler(c, "update", cxt, router)
 			},
@@ -238,7 +253,21 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:  "guess",
 			Usage: "Guess dependencies for existing source.",
+			Description: `This looks through existing source and dependencies,
+	and tries to guess all of the dependent packages.
+
+	By default, 'glide guess' writes to standard output. But if a filename
+	is supplied, the results are written to the file:
+
+		$ glide guess glide.yaml
+
+	The above will overwrite the glide.yaml file.`,
 			Action: func(c *cli.Context) {
+				outfile := ""
+				if len(c.Args()) == 1 {
+					outfile = c.Args()[0]
+				}
+				cxt.Put("toPath", outfile)
 				setupHandler(c, "guess", cxt, router)
 			},
 		},
@@ -373,7 +402,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@ready").
 		Does(cmd.GuessDeps, "cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+		Does(cmd.WriteYaml, "out").
+		Using("yaml.Node").From("cxt:merged").
+		Using("filename").From("cxt:toPath")
 
 	reg.Route("create", "Initialize Glide").
 		Includes("@startup").
