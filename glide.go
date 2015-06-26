@@ -186,6 +186,11 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Name:  "pin",
 			Usage: "Print a YAML file with all of the packages pinned to the current version",
 			Action: func(c *cli.Context) {
+				outfile := ""
+				if len(c.Args()) == 1 {
+					outfile = c.Args()[0]
+				}
+				cxt.Put("toPath", outfile)
 				setupHandler(c, "pin", cxt, router)
 			},
 		},
@@ -316,7 +321,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@ready").
 		Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+		Does(cmd.WriteYaml, "out").
+		Using("yaml.Node").From("cxt:merged").
+		Using("filename").From("cxt:toPath")
 
 	reg.Route("import gpm", "Read a Godeps file").
 		Includes("@startup").
