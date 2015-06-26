@@ -1,12 +1,8 @@
 package cmd
 
 import (
-	//"bytes"
-	//"fmt"
 	"go/build"
 	"os"
-	"strings"
-	//"text/template"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -36,7 +32,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	i := 0
 	for p, _ := range deps {
 		Info("Found reference to %s\n", p)
-		d := &Dependency {
+		d := &Dependency{
 			Name: p,
 		}
 		config.Imports[i] = d
@@ -46,17 +42,18 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	return config, nil
 
 	/*
-	tmpl, err := template.New("main").Parse(yamlGuessTpl)
-	if err != nil {
-		return nil, err
-	}
-	var doc bytes.Buffer
-	tmpl.Execute(&doc, deps)
-	fmt.Println(doc.String())
-	return doc, nil
+		tmpl, err := template.New("main").Parse(yamlGuessTpl)
+		if err != nil {
+			return nil, err
+		}
+		var doc bytes.Buffer
+		tmpl.Execute(&doc, deps)
+		fmt.Println(doc.String())
+		return doc, nil
 	*/
 }
 
+// findDeps finds all of the dependenices.
 // https://golang.org/src/cmd/go/pkg.go#485
 func findDeps(soFar map[string]bool, name string) error {
 	cwd, err := os.Getwd()
@@ -84,29 +81,16 @@ func findDeps(soFar map[string]bool, name string) error {
 	return nil
 }
 
+// compactDeps registers only top level packages.
+//
 // Minimize the package imports. For example, importing github.com/Masterminds/cookoo
 // and github.com/Masterminds/cookoo/io should not import two packages. Only one
 // package needs to be referenced.
 func compactDeps(soFar map[string]bool) map[string]bool {
-	/*
-		for k, _ := range soFar {
-			for subkey, _ := range soFar {
-				if strings.HasPrefix(subkey, k) && subkey != k {
-					delete(soFar, subkey)
-				}
-			}
-		}
-	*/
-
-	// MPB: Making this a little more aggressive.
 	basePackages := make(map[string]bool, len(soFar))
 	for k, _ := range soFar {
-		parts := strings.SplitN(k, "/", 4)
-		if len(parts) < 4 {
-			basePackages[k] = true
-		} else {
-			basePackages[strings.Join(parts[0:3], "/")] = true
-		}
+		base, _ := NormalizeName(k)
+		basePackages[base] = true
 	}
 
 	return basePackages
