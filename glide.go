@@ -246,7 +246,14 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	pull the most applicable updates. Packages with fixed refs (Versions or
 	tags) will not be updated. Packages with no ref or with a branch ref will
 	be updated as expected.`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "preserve-packages",
+					Usage: "Set to keep unspecified vendor packages.",
+				},
+			},
 			Action: func(c *cli.Context) {
+				cxt.Put("deleteOptOut", c.Bool("preserve-packages"))
 				setupHandler(c, "update", cxt, router)
 			},
 		},
@@ -353,6 +360,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.CowardMode, "_").
+		Does(cmd.DeleteUnusedPackages, "deleted").
+		Using("conf").From("cxt:cfg").
+		Using("optOut").From("cxt:deleteOptOut").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
