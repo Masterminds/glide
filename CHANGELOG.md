@@ -1,3 +1,11 @@
+# Release 0.4.0 (PENDING)
+
+- Added 'glide exec COMMAND'
+- Added 'glide get PACKAGE'
+- Added 'glide pin FILENAME'
+- Added 'glide guess FILENAME'
+- Updated help text
+
 # Release 0.3.0 (2015-06-17)
 
 - Issue #46: If VCS type is set use that rather than go get.
