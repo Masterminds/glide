@@ -118,8 +118,24 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Name:  "into",
 			Usage: "The same as running \"cd /my/project && glide in\"",
 			Action: func(c *cli.Context) {
+				if len(c.Args()) < 1 {
+					fmt.Println("Oops! directory name is required.")
+					os.Exit(1)
+				}
 				cxt.Put("toPath", c.Args()[0])
 				setupHandler(c, "into", cxt, router)
+			},
+		},
+		{
+			Name:  "get",
+			Usage: "Run 'go get' and update the glide.yaml file with the new package.",
+			Action: func(c *cli.Context) {
+				if len(c.Args()) < 1 {
+					fmt.Println("Oops! Package name is required.")
+					os.Exit(1)
+				}
+				cxt.Put("package", c.Args()[0])
+				setupHandler(c, "get", cxt, router)
 			},
 		},
 		{
@@ -251,6 +267,18 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("gopath", "Return the GOPATH for the present project.").
 		Includes("@startup").
 		Does(cmd.In, "gopath").Using("filename").From("cxt:yaml")
+
+	reg.Route("get", "Run 'go get' and install the results in the glide.yaml").
+		Includes("@startup").
+		Includes("@ready").
+		Does(cmd.Get, "goget").
+		Using("filename").From("cxt:yaml").
+		Using("package").From("cxt:package").
+		Using("conf").From("cxt:cfg").
+		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
+		Does(cmd.WriteYaml, "out").
+		Using("yaml.Node").From("cxt:merged").
+		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
 
 	reg.Route("exec", "Execute command with GOPATH set.").
 		Includes("@startup").

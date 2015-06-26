@@ -3,6 +3,8 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -46,11 +48,23 @@ func ParseYamlString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 // WriteYaml writes a yaml.Node to the console as a string.
 //
 // Params:
-//	- yaml.Node: A yaml.Node to render.
+//	- yaml.Node (yaml.Node): A yaml.Node to render.
+// 	- out (io.Writer): An output stream to write to. Default is os.Stdout.
+// 	- filename (string): If set, the file will be opened and the content will be written to it.
 func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	top := p.Get("yaml.Node", yaml.Scalar("nothing to print")).(yaml.Node)
+	var out io.Writer
+	if nn, ok := p.Has("filename"); ok {
+		file, err := os.Create(nn.(string))
+		if err != nil {
+		}
+		defer file.Close()
+		out = io.Writer(file)
+	} else {
+		out = p.Get("out", os.Stdout).(io.Writer)
+	}
 
-	fmt.Print(yaml.Render(top))
+	fmt.Fprint(out, yaml.Render(top))
 
 	return true, nil
 }
@@ -232,6 +246,22 @@ func getVcsType(store map[string]yaml.Node) uint {
 	}
 }
 
+// Normalize takes a package name and normalizes it to the top level package.
+//
+// For example, golang.org/x/crypto/ssh becomes golang.org/x/crypto. 'ssh' is
+// returned as extra data.
+func NormalizeName(name string) (string, string) {
+	parts := strings.SplitN(name, "/", 4)
+	extra := ""
+	if len(parts) < 3 {
+		return name, extra
+	}
+	if len(parts) == 4 {
+		extra = parts[3]
+	}
+	return strings.Join(parts[0:3], "/"), extra
+}
+
 // Config is the top-level configuration object.
 type Config struct {
 	Name       string
@@ -240,6 +270,21 @@ type Config struct {
 	// InCommand is the default shell command run to start a 'glide in'
 	// session.
 	InCommand string
+}
+
+// HasDependency returns true if the given name is listed as an import or dev import.
+func (c *Config) HasDependency(name string) bool {
+	for _, d := range c.Imports {
+		if d.Name == name {
+			return true
+		}
+	}
+	for _, d := range c.DevImports {
+		if d.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // FromYaml creates a *Config from a  YAML node.

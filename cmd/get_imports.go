@@ -16,6 +16,41 @@ const (
 	Svn
 )
 
+// Get fetches a single package using the default `go get`.
+//
+// Params:
+//	- package (string): Name of the package to get.
+//
+// Returns:
+// 	- *Dependency: A dependency describing this package.
+func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	name := p.Get("package", "").(string)
+	cfg := p.Get("conf", nil).(*Config)
+
+	pkg, subpkg := NormalizeName(name)
+
+	if cfg.HasDependency(pkg) {
+		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", pkg)
+	}
+
+	if len(pkg) == 0 {
+		return nil, fmt.Errorf("Package name is required.")
+	}
+
+	dep := &Dependency{Name: pkg}
+	if len(subpkg) > 0 {
+		dep.Subpackages = []string{subpkg}
+	}
+
+	if err := VcsGet(dep); err != nil {
+		return dep, err
+	}
+
+	cfg.Imports = append(cfg.Imports, dep)
+
+	return dep, nil
+}
+
 // GetImports iterates over the imported packages and gets them.
 func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
