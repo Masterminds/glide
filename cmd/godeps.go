@@ -64,18 +64,32 @@ func ParseGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.I
 	}
 	defer file.Close()
 
-
 	dec := json.NewDecoder(file)
 	if err := dec.Decode(godeps); err != nil {
 		return buf, err
 	}
 
 	// Info("Importing %d packages from %s.\n", len(godeps.Deps), godeps.ImportPath)
+	seen := map[string]bool{}
 
 	for _, d := range godeps.Deps {
 		// Info("Adding package %s\n", d.ImportPath)
-		dep := &Dependency{ Name: d.ImportPath, Reference: d.Rev }
-		buf = append(buf, dep)
+		pkg, sub := NormalizeName(d.ImportPath)
+		if _, ok := seen[pkg]; ok {
+			if len(sub) == 0 {
+				continue
+			}
+			// Modify existing dep with additional subpackages.
+			for _, dep := range buf {
+				if dep.Name == pkg {
+					dep.Subpackages = append(dep.Subpackages, sub)
+				}
+			}
+		} else {
+			seen[pkg] = true
+			dep := &Dependency{Name: pkg, Reference: d.Rev, Subpackages: []string{sub}}
+			buf = append(buf, dep)
+		}
 	}
 
 	return buf, nil
