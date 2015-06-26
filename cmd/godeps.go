@@ -87,7 +87,10 @@ func ParseGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.I
 			}
 		} else {
 			seen[pkg] = true
-			dep := &Dependency{Name: pkg, Reference: d.Rev, Subpackages: []string{sub}}
+			dep := &Dependency{Name: pkg, Reference: d.Rev}
+			if len(sub) > 0 {
+				dep.Subpackages = []string{sub}
+			}
 			buf = append(buf, dep)
 		}
 	}
