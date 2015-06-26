@@ -175,8 +175,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
-			Name:            "exec",
-			Usage:           "Execute a command with the Go environment setup",
+			Name:  "exec",
+			Usage: "Execute a command with the Go environment setup",
+			Description: `Execute a command inside of the GOPATH. Some commands
+    (notably 'go cover') expect themselves to be run from a particular place
+    within the GOPATH. This command sets up the environment for such tools.
+
+        $ glide exec go cover
+
+    Most Go tools do not need this.`,
 			SkipFlagParsing: true,
 			Action: func(c *cli.Context) {
 				setupHandler(c, "exec", cxt, router)
@@ -185,6 +192,17 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:  "pin",
 			Usage: "Print a YAML file with all of the packages pinned to the current version",
+			Description: `Begins with the current glide.yaml and sets an absolute ref
+    for every package. The version is derived from the repository version. It will be
+    either a commit or a tag, depending on the state of the VCS tree.
+
+    By default, output is written to standard out. However, if you supply a filename,
+    the data will be written to that:
+
+        $ glide pin glide.yaml
+
+    The above will overwrite your glide.yaml file. You have been warned.
+	`,
 			Action: func(c *cli.Context) {
 				outfile := ""
 				if len(c.Args()) == 1 {
