@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/cookoo"
 )
 
+// LinkPackage creates a symlink to the project within the GOPATH.
 func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := c.Get("cfg", "").(*Config)
 	pname := p.Get("path", cfg.Name).(string)
@@ -26,7 +27,7 @@ func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 
 	gopath := os.Getenv("GOPATH")
 	if len(gopath) == 0 {
-		return nil, fmt.Errorf("$GOPATH appears to be unset.")
+		return nil, fmt.Errorf("$GOPATH appears to be unset")
 	}
 	if len(pname) == 0 {
 		return nil, fmt.Errorf("glide.yaml is missing 'package:'")

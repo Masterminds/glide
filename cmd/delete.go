@@ -27,7 +27,7 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
-		return false, errors.New("GOPATH not set.")
+		return false, errors.New("GOPATH not set")
 	}
 
 	// Callback function for filepath.Walk to delete packages not in yaml file.

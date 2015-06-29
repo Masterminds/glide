@@ -7,10 +7,11 @@ import (
 	"github.com/Masterminds/cookoo"
 )
 
+// Mkdir creates the src directory within the GOPATH.
 func Mkdir(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	target := os.Getenv("GOPATH")
 	if len(target) == 0 {
-		return nil, fmt.Errorf("$GOPATH appears to be unset.")
+		return nil, fmt.Errorf("$GOPATH appears to be unset")
 	}
 
 	target = fmt.Sprintf("%s/src", target)
