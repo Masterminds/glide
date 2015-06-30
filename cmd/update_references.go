@@ -4,7 +4,7 @@ import (
 	"github.com/Masterminds/cookoo"
 )
 
-// UpdateRevisions updates the revision numbers on all of the imports.
+// UpdateReferences updates the revision numbers on all of the imports.
 func UpdateReferences(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", &Config{}).(*Config)
 

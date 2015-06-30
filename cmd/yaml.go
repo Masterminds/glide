@@ -33,6 +33,14 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	return FromYaml(f.Root)
 }
 
+// ParseYamlString parses a YAML string. This is similar but different to
+// ParseYaml that parses an external file.
+//
+// Params:
+//	- yaml (string): YAML as a string.
+//
+// Returns:
+//	- *Config: The configuration.
 func ParseYamlString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	yamlString := p.Get("yaml", "").(string)
 
@@ -69,7 +77,7 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	return true, nil
 }
 
-// Convert a Config object and a yaml.File to a single yaml.File.
+// MergeToYaml converts a Config object and a yaml.File to a single yaml.File.
 //
 // Params:
 //	- conf (*Config): The configuration to merge.
@@ -246,7 +254,7 @@ func getVcsType(store map[string]yaml.Node) uint {
 	}
 }
 
-// Normalize takes a package name and normalizes it to the top level package.
+// NormalizeName takes a package name and normalizes it to the top level package.
 //
 // For example, golang.org/x/crypto/ssh becomes golang.org/x/crypto. 'ssh' is
 // returned as extra data.
