@@ -123,6 +123,7 @@ func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	return true, nil
 }
 
+// TODO: Document the VCS Interface.
 type VCS interface {
 	Get(*Dependency) error
 	Update(*Dependency) error

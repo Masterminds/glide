@@ -7,11 +7,12 @@ import (
 	"strings"
 )
 
+// SvnVCS implements the VCS interface for the Svn source control.
 type SvnVCS struct{}
 
 // If you can help clean this up or improve it, please submit patches!
 
-// svnGet implements the getting logic for svn.
+// Get implements the getting logic for checking out a codebase from SVN.
 func (s *SvnVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 	//Info("Cloning %s into %s\n", dep.Repository, dest)
@@ -21,6 +22,7 @@ func (s *SvnVCS) Get(dep *Dependency) error {
 	return err
 }
 
+// Update performs an SVN update to an existing checkout.
 func (s *SvnVCS) Update(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
@@ -42,6 +44,8 @@ func (s *SvnVCS) Update(dep *Dependency) error {
 	return err
 }
 
+// Version sets the version of a package currently checked out via SVN. For
+// more detail see the SetReference function.
 func (s *SvnVCS) Version(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
@@ -61,6 +65,7 @@ func (s *SvnVCS) Version(dep *Dependency) error {
 	return nil
 }
 
+// LastCommit retrieves the current version.
 func (s *SvnVCS) LastCommit(dep *Dependency) (string, error) {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
