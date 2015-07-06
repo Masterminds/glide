@@ -2,6 +2,10 @@
 // your GOPATH.
 //
 // Dependencies are managed via a glide.yaml in the root of a project. The yaml
+//
+// Params:
+// 	- filename (string): The name of the glide YAML file. Default is glide.yaml.
+// 	- project (string): The name of the project. Default is 'main'.
 // file lets you specify projects, versions (tags, branches, or references),
 // and even alias one location in as other one. Aliasing is useful when supporting
 // forks without needing to rewrite the imports in a codebase.
@@ -96,7 +100,21 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Name:      "create",
 			ShortName: "init",
 			Usage:     "Initialize a new project, creating a template glide.yaml",
+			Description: `This command starts from a project without Glide and
+	sets it up. Once this step is done, you may edit the glide.yaml file and then
+	you may run 'glide install' to fetch your initial dependencies.
+
+	By default, the project name is 'main'. You can specify an alternative on
+	the commandline:
+
+		$ glide create github.com/Masterminds/foo
+
+	For a project that already has a glide.yaml file, you may skip 'glide create'
+	and instead run 'glide install'.`,
 			Action: func(c *cli.Context) {
+				if len(c.Args()) >= 1 {
+					cxt.Put("project", c.Args()[0])
+				}
 				setupHandler(c, "create", cxt, router)
 			},
 		},
@@ -112,6 +130,8 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:  "install",
 			Usage: "Install all packages in the glide.yaml",
+			Description: `This reads an existing glide.yaml and then installs everything
+	listed in that file. For a fresh project, you may need to run 'glide create' first.`,
 			Action: func(c *cli.Context) {
 				setupHandler(c, "install", cxt, router)
 			},
@@ -418,7 +438,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("create", "Initialize Glide").
 		Includes("@startup").
-		Does(cmd.InitGlide, "init").Using("filename").From("cxt:yaml")
+		Does(cmd.InitGlide, "init").
+		Using("filename").From("cxt:yaml").
+		Using("project").From("cxt:project").WithDefault("main")
 
 	reg.Route("status", "Status").
 		Includes("@startup").

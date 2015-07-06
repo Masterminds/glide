@@ -11,7 +11,7 @@ var yamlTpl = `# Glide YAML configuration file
 # Set this to your fully qualified package name, e.g.
 # github.com/Masterminds/foo. This should be the
 # top level package.
-package: main
+package: %s
 
 # Declare your project's dependencies.
 import:
@@ -31,8 +31,13 @@ import:
 // InitGlide initializes a new Glide project.
 //
 // Among other things, it creates a default glide.yaml.
+//
+// Params:
+// 	- filename (string): The name of the glide YAML file. Default is glide.yaml.
+// 	- project (string): The name of the project. Default is 'main'.
 func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
+	pname := p.Get("project", "main").(string)
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
 		Warn("If your GOPATH is automatically set by your shell, 'glide in' may not correctly set it.\n")
 	}
@@ -47,7 +52,8 @@ func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	}
 	defer f.Close()
 
-	f.WriteString(yamlTpl)
+	//f.WriteString(yamlTpl)
+	fmt.Fprintf(f, yamlTpl, pname)
 
 	if newgopath, err := GlideGopath(fname); err == nil {
 		Info("Your new GOPATH is %s. Run 'glide gopath' to see it again.\n", newgopath)
