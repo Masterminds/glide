@@ -7,11 +7,12 @@ import (
 	"strings"
 )
 
+// HgVCS implements the VCS interface for the Mercurial source control.
 type HgVCS struct{}
 
 // If you can help clean this up or improve it, please submit patches!
 
-// hgGet implements the getting logic for hg.
+// Get implements the getting logic for hg.
 func (h *HgVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 	//Info("Cloning %s into %s\n", dep.Repository, dest)
@@ -21,6 +22,7 @@ func (h *HgVCS) Get(dep *Dependency) error {
 	return err
 }
 
+// Update performs an hg update for an existing checkout.
 func (h *HgVCS) Update(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
@@ -42,6 +44,8 @@ func (h *HgVCS) Update(dep *Dependency) error {
 	return err
 }
 
+// Version sets the version of a package currently checked out via Hg. For
+// more detail see the SetReference function.
 func (h *HgVCS) Version(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
@@ -65,6 +69,7 @@ func (h *HgVCS) Version(dep *Dependency) error {
 	return nil
 }
 
+// LastCommit retrieves the current version.
 func (h *HgVCS) LastCommit(dep *Dependency) (string, error) {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
