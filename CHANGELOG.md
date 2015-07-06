@@ -1,6 +1,7 @@
 # Release 0.4.0 (PENDING)
 
 - Issue #34: Delete unused packages on update unless flag set.
+- Added 'glide create PACKAGE'
 - Added 'glide exec COMMAND'
 - Added 'glide get PACKAGE'
 - Added 'glide pin FILENAME'
