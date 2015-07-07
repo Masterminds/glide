@@ -1,4 +1,4 @@
-# Release 0.4.0 (PENDING)
+# Release 0.4.0 (2015-07-07)
 
 - Issue #34: Delete unused packages on update unless flag set.
 - Added 'glide create PACKAGE'
