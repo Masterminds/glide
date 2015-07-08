@@ -123,14 +123,6 @@ func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	return true, nil
 }
 
-// TODO: Document the VCS Interface.
-type VCS interface {
-	Get(*Dependency) error
-	Update(*Dependency) error
-	Version(*Dependency) error
-	LastCommit(*Dependency) (string, error)
-}
-
 var (
 	goGet VCS = new(GoGetVCS)
 	git   VCS = new(GitVCS)

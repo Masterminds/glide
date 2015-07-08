@@ -13,6 +13,7 @@ type BzrVCS struct{}
 // We're not big Bazaar users, so we don't know whether we got this right.
 // If you can help, please submit patches.
 
+// Get implements the logic for the initial checkout of a codebase from Bzr.
 func (b *BzrVCS) Get(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 	//fmt.Printf("[INFO] Cloning %s into %s\n", dep.Repository, dest)
@@ -22,6 +23,7 @@ func (b *BzrVCS) Get(dep *Dependency) error {
 	return err
 }
 
+// Update performs an Bzr update to an existing checkout.
 func (b *BzrVCS) Update(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
@@ -45,6 +47,8 @@ func (b *BzrVCS) Update(dep *Dependency) error {
 	return err
 }
 
+// Version sets the version of a package currently checked out via Bzr. For
+// more detail see the SetReference function.
 func (b *BzrVCS) Version(dep *Dependency) error {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
@@ -67,6 +71,7 @@ func (b *BzrVCS) Version(dep *Dependency) error {
 	return nil
 }
 
+// LastCommit retrieves the current version.
 func (b *BzrVCS) LastCommit(dep *Dependency) (string, error) {
 	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
 
