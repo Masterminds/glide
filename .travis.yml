@@ -7,7 +7,7 @@ language: go
 sudo: false
 
 install: make bootstrap
-script: GOPATH=${PWD}/_vendor go test -v ./...
+script: GOPATH=${PWD}/vendor go test -v ./...
 
 notifications:
   irc: "irc.freenode.net#masterminds"
