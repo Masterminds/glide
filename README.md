@@ -44,7 +44,7 @@ Projects are structured like this:
   |    |
   |    |-- foo.go
   |
-  |-- _vendor (This is $GOPATH)
+  |-- vendor (This is $GOPATH)
        |
        |-- bin
        |
@@ -57,7 +57,7 @@ Projects are structured like this:
                        |-- ... etc.
 ```
 
-Through some trickery, the GOPATH is set to `_vendor`, but the go tools
+Through some trickery, the GOPATH is set to `vendor/`, but the go tools
 will still find `main.go` and subpackages. Make sure, though, that you
 set the name of your package in `glide.yaml`.
 
@@ -109,7 +109,7 @@ Initialize a new workspace. Among other things, this creates a stub
 
 ```
 $ glide create
-[INFO] Your new GOPATH is /Users/mbutcher/Code/glide/docs/_vendor. Run 'glide gopath' to see it again.
+[INFO] Your new GOPATH is /Users/mbutcher/Code/glide/docs/vendor/. Run 'glide gopath' to see it again.
 [INFO] Initialized. You can now edit 'glide.yaml'
 ```
 
@@ -125,7 +125,7 @@ the GOPATH and so on.
 $ glide in
 >> You are now gliding into a new shell. To exit, type 'exit'
 $ echo $GOPATH
-/Users/mbutcher/Code/glide/_vendor
+/Users/mbutcher/Code/glide/vendor/
 $ exit
 >> Exited glide shell
 $
@@ -159,7 +159,7 @@ Update all of the existing repositories. If a new new repository has
 been added to the YAML file, try to download that, too.
 
 This will look through all of the dependencies in the `glide.yaml`. If
-they are present in `_vendor`, it will check for new versions (using `go
+they are present in `vendor/`, it will check for new versions (using `go
 get -u` or the appropriate VCS). If the dependency is new, it will fetch
 and install for the first time.
 
@@ -172,7 +172,7 @@ Fetching origin
 [INFO] Updating github.com/crowdmob/goamz with Git (From git@github.com:technosophos/goamz.git)
 Fetching origin
 [INFO] Set version to github.com/Masterminds/cookoo to master
-[INFO] Looks like /Users/mbutcher/Code/glide/_vendor/src/github.com/aokoli/goutils is a Git repo.
+[INFO] Looks like /Users/mbutcher/Code/glide/vendor//src/github.com/aokoli/goutils is a Git repo.
 [INFO] Set version to github.com/aokoli/goutils to the latest
 [INFO] Set version to github.com/crowdmob/goamz to the latest
 ```
@@ -198,7 +198,7 @@ gopath)`.
 
 ```
 $ glide gopath
-/Users/mbutcher/Code/glide/_vendor
+/Users/mbutcher/Code/glide/vendor/
 ```
 
 ### glide help
@@ -389,19 +389,19 @@ export GOPATH=$(glide gopath)
 
 The command `glide gopath` will emit the correct path to set as GOPATH.
 
-**Q: Is using the Glide GOPATH required? Do I have to use `_vendor`?**
+**Q: Is using the Glide GOPATH required? Do I have to use `vendor/`?**
 
-No, it is not required, and you do not need to use `_vendor`. You may
+No, it is not required, and you do not need to use `vendor/`. You may
 choose to use another GOPATH manager, like
 [GVP](http://github.com/pote/gvp), or you may simply manage GOPATH on
 your own.
 
-**Q: Should I check `_vendor` into version control?**
+**Q: Should I check `vendor/` into version control?**
 
 That's up to you. It's not necessary, but it may also cause you extra
 work and lots of extra space in your VCS.
 
-**Q: How can I get my `_vendor` path to work with Sublime Text and GoSublime?**
+**Q: How can I get my `vendor/` path to work with Sublime Text and GoSublime?**
 
 GoSublime uses an application wide GOPATH. If you want a different GOPATH codebase
 set them up as different projects. Then, in the project settings (your `.sublime-project`
@@ -412,7 +412,7 @@ file) add an entry to set the GOPATH. For example:
     "settings": {
         "GoSublime": {
             "env": {
-                "GOPATH": "$HOME/path/to/project/_vendor"
+                "GOPATH": "$HOME/path/to/project/vendor/"
             }
         }
     },

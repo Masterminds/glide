@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -17,8 +18,9 @@ func Status(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 
 	cwd, _ := os.Getwd()
 	gopath := os.Getenv("GOPATH")
+	vendor := c.Get("VendorDir", "vendor").(string)
 
-	expected := fmt.Sprintf("%s/_vendor", cwd)
+	expected := path.Join(cwd, vendor)
 	if gopath != expected {
 		fmt.Println("gopath: unexpected")
 	} else {

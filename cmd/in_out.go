@@ -38,12 +38,13 @@ func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 // GlideGopath returns the GOPATH for a Glide project.
 //
 // It determines the GOPATH by searching for the glide.yaml file, and then
-// assuming the _vendor/ directory is in that directory. It traverses
+// assuming the vendor/ directory is in that directory. It traverses
 // the tree upwards (e.g. only ancestors).
 //
 // If no glide.yaml is found, or if a directory cannot be read, this returns
 // an error.
-func GlideGopath(filename string) (string, error) {
+func GlideGopath(c cookoo.Context, filename string) (string, error) {
+	vendor := c.Get("VendorDir", "vendor").(string)
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -55,7 +56,8 @@ func GlideGopath(filename string) (string, error) {
 		return cwd, err
 	}
 
-	gopath := fmt.Sprintf("%s/_vendor", yamldir)
+	//gopath := fmt.Sprintf("%s/_vendor", yamldir)
+	gopath := filepath.Join(yamldir, vendor)
 
 	return gopath, nil
 }
@@ -79,7 +81,7 @@ func glideWD(dir, filename string) (string, error) {
 func In(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
 
-	gopath, err := GlideGopath(fname)
+	gopath, err := GlideGopath(c, fname)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +107,7 @@ func In(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	cfg := p.Get("conf", &Config{}).(*Config)
+	vendor := c.Get("VendorDir", "vendor").(string)
 
 	into := p.Get("into", "").(string)
 	if len(into) > 0 {
@@ -128,7 +131,8 @@ func Into(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	if err != nil {
 		return nil, err
 	}
-	gopath := fmt.Sprintf("%s/_vendor", cwd)
+	//gopath := fmt.Sprintf("%s/_vendor", cwd)
+	gopath := filepath.Join(cwd, vendor)
 
 	os.Setenv("ALREADY_GLIDING", "1")
 	os.Setenv("GOPATH", gopath)

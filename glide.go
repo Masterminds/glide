@@ -21,9 +21,9 @@
 //			- package: github.com/kylelemons/go-gypsy
 //			  subpackages: yaml
 //
-// Glide puts dependencies in a _vendor directory. Go utilities require this to
+// Glide puts dependencies in a vendor directory. Go utilities require this to
 // be in your GOPATH. Glide makes this easy. Use the `glide in` command to enter
-// a shell (your default) with the GOPATH set to the projects _vendor directory.
+// a shell (your default) with the GOPATH set to the projects vendor directory.
 // To leave this shell simply exit it.
 //
 // If your .bashrc, .zshrc, or other startup shell sets your GOPATH you many need
@@ -63,8 +63,11 @@ look something like this:
 		  subpackages: yaml
 `
 
+var VendorDir = "vendor"
+
 func main() {
 	reg, router, cxt := cookoo.Cookoo()
+	cxt.Put("VendorDir", VendorDir)
 
 	routes(reg, cxt)
 
@@ -370,7 +373,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Does(cmd.InGopath, "pathIsRight").
 		Includes("@ready").
-		Does(cmd.Mkdir, "dir").Using("dir").WithDefault("_vendor").
+		Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
 		Does(cmd.LinkPackage, "alias").
 		Does(cmd.GetImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
