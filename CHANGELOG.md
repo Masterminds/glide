@@ -1,3 +1,7 @@
+# Release 0.4.1 (2015-07-13)
+
+- Issue #48: When GOPATH not _vendor directory not deleting unused packages.
+
 # Release 0.4.0 (2015-07-07)
 
 - Issue #34: Delete unused packages on update unless flag set.
