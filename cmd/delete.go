@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	//"fmt"
 	"github.com/Masterminds/cookoo"
 	"os"
 	"path/filepath"
@@ -11,6 +10,18 @@ import (
 
 // DeleteUnusedPackages removes packages no
 func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+
+	// Verify the GOPATH is the _vendor directory before deleting anything.
+	gopath := os.Getenv("GOPATH")
+	fname := p.Get("filename", "glide.yaml").(string)
+	glideGopath, perr := GlideGopath(fname)
+	if perr != nil {
+		return nil, perr
+	}
+	if gopath != glideGopath {
+		Info("GOPATH not set to _vendor directory so not deleting unused packages.\n")
+		return nil, nil
+	}
 
 	// Conditional opt-out to keep the unused dependencies.
 	optOut := p.Get("optOut", false).(bool)
@@ -25,7 +36,6 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 		pkgList = append(pkgList, dep.Name)
 	}
 
-	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
 		return false, errors.New("GOPATH not set")
 	}
