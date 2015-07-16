@@ -1,7 +1,7 @@
 VERSION := $(shell git describe --tags)
 
 build:
-	GOPATH=${PWD}/vendor go build -o glide -ldflags "-X main.version ${VERSION}" glide.go
+	go build -o glide -ldflags "-X main.version=${VERSION}" glide.go
 
 install: build
 	install -d ${DESTDIR}/usr/local/bin/

@@ -45,10 +45,10 @@ func VersionGuard(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, err
 	} else if !strings.Contains(string(out), "go1.5") {
-		Warn("You must install the Go 1.5 or greater toolchain to work with Glide.")
+		Warn("You must install the Go 1.5 or greater toolchain to work with Glide.\n")
 	}
 	if os.Getenv("GO15VENDOREXPERIMENT") != "1" {
-		Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1")
+		Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1\n")
 	}
 	return out, nil
 }
