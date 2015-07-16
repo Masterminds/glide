@@ -32,7 +32,7 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
 	verbose := p.Get("verbose", false).(bool)
 
-	cwd, err := VendorPath(c, c.Get("yaml", "glide.yaml").(string))
+	cwd, err := VendorPath(c)
 	if err != nil {
 		return nil, err
 	}
