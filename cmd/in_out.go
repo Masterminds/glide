@@ -62,6 +62,25 @@ func GlideGopath(c cookoo.Context, filename string) (string, error) {
 	return gopath, nil
 }
 
+// Return the path to the vendor directory.
+func VendorPath(c cookoo.Context, filename string) (string, error) {
+	vendor := c.Get("VendorDir", "vendor").(string)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	// Find the directory that contains glide.yaml
+	yamldir, err := glideWD(cwd, filename)
+	if err != nil {
+		return cwd, err
+	}
+
+	gopath := filepath.Join(yamldir, vendor)
+
+	return gopath, nil
+}
+
 func glideWD(dir, filename string) (string, error) {
 	fullpath := filepath.Join(dir, filename)
 

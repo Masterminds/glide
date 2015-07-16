@@ -32,6 +32,11 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
 	verbose := p.Get("verbose", false).(bool)
 
+	cwd, err := VendorPath(c, c.Get("yaml", "glide.yaml").(string))
+	if err != nil {
+		return nil, err
+	}
+
 	repo, err := vcs.RepoRootForImportPath(name, verbose)
 	if err != nil {
 		return nil, err
@@ -51,7 +56,8 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 		dep.Subpackages = []string{subpkg}
 	}
 
-	if err := repo.VCS.Create(path.Join("vendor/", repo.Root), repo.Repo); err != nil {
+	dest := path.Join(cwd, repo.Root)
+	if err := repo.VCS.Create(dest, repo.Repo); err != nil {
 		return dep, err
 	}
 
