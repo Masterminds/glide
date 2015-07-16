@@ -366,9 +366,10 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.CowardMode, "_").
-		Does(cmd.DeleteUnusedPackages, "deleted").
-		Using("conf").From("cxt:cfg").
-		Using("optOut").From("cxt:deleteOptOut").
+		Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
+		//Does(cmd.DeleteUnusedPackages, "deleted").
+		//Using("conf").From("cxt:cfg").
+		//Using("optOut").From("cxt:deleteOptOut").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
