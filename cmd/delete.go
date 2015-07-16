@@ -14,7 +14,7 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 	// Verify the GOPATH is the _vendor directory before deleting anything.
 	gopath := os.Getenv("GOPATH")
 	fname := p.Get("filename", "glide.yaml").(string)
-	glideGopath, perr := GlideGopath(fname)
+	glideGopath, perr := GlideGopath(c, fname)
 	if perr != nil {
 		return nil, perr
 	}
