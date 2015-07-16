@@ -3,9 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path"
 	"runtime"
+	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"golang.org/x/tools/go/vcs"
 )
 
 const (
@@ -20,31 +23,43 @@ const (
 //
 // Params:
 //	- package (string): Name of the package to get.
+// 	- verbose (bool): default false
 //
 // Returns:
 // 	- *Dependency: A dependency describing this package.
 func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	name := p.Get("package", "").(string)
 	cfg := p.Get("conf", nil).(*Config)
+	verbose := p.Get("verbose", false).(bool)
 
-	pkg, subpkg := NormalizeName(name)
-
-	if cfg.HasDependency(pkg) {
-		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", pkg)
+	repo, err := vcs.RepoRootForImportPath(name, verbose)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(pkg) == 0 {
+	if cfg.HasDependency(repo.Root) {
+		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", repo.Root)
+	}
+
+	if len(repo.Root) == 0 {
 		return nil, fmt.Errorf("Package name is required.")
 	}
 
-	dep := &Dependency{Name: pkg}
-	if len(subpkg) > 0 {
+	dep := &Dependency{Name: repo.Root}
+	subpkg := strings.TrimPrefix(name, repo.Root)
+	if len(subpkg) > 0 && subpkg != "/" {
 		dep.Subpackages = []string{subpkg}
 	}
 
-	if err := VcsGet(dep); err != nil {
+	if err := repo.VCS.Create(path.Join("vendor/", repo.Root), repo.Repo); err != nil {
 		return dep, err
 	}
+
+	/*
+		if err := VcsGet(dep); err != nil {
+			return dep, err
+		}
+	*/
 
 	cfg.Imports = append(cfg.Imports, dep)
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	//"golang.org/x/tools/go/vcs"
 	"os/exec"
 	"strings"
 )
@@ -11,6 +12,14 @@ type GoGetVCS struct{}
 
 // Get uses `go get` to retrieve a package. This is used for first time installs.
 func (g *GoGetVCS) Get(dep *Dependency) error {
+
+	/*
+		repo, err := vcs.RepoRootFromImportPath(dep.Name)
+		if err != nil {
+			return nil, err
+		}
+	*/
+
 	out, err := exec.Command("go", "get", "-d", dep.Name).CombinedOutput()
 	if err != nil {
 		//fmt.Print(string(out))

@@ -16,10 +16,10 @@ clean:
 
 bootstrap:
 	mkdir ./vendor
-	GOPATH=${PWD}/vendor go get github.com/Masterminds/cookoo
-	GOPATH=${PWD}/vendor go get github.com/kylelemons/go-gypsy/yaml
-	GOPATH=${PWD}/vendor go get github.com/codegangsta/cli
-	ln -s ${PWD} vendor/src/github.com/Masterminds/glide
-	GOPATH=${PWD}/vendor go build -o glide -ldflags "-X main.version ${VERSION}" glide.go
+	cd ./vendor
+	git clone https://github.com/Masterminds/cookoo
+	git clone https://github.com/kylelemons/go-gypsy
+	git clone https://github.com/codegangsta/cli
+	go get golang.org/x/tools/go/vcs
 
 .PHONY: build test install clean
