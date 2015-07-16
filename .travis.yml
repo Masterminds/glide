@@ -15,7 +15,7 @@ install: make bootstrap
 
 # The default script is go test -v ./... unless you have a Makefile, which
 # we do. In this case we actually want the script below.
-script: go test -v ./...
+script: GO15VENDOREXPERIMENT=1 go test -v ./...
 
 notifications:
   irc: "irc.freenode.net#masterminds"
