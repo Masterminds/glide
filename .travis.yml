@@ -1,8 +1,8 @@
 language: go
 
+# The feature/go15 branch uses new features in go15. Only testing this branch
+# against tip which has the features.
 go:
-  - 1.3
-  - 1.4
   - tip
 
 # Setting sudo access to false will let Travis CI use containers rather than
