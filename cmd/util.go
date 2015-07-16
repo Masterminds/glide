@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -34,6 +36,21 @@ func Color(code, msg string) string {
 func BeQuiet(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	Quiet = p.Get("quiet", false).(bool)
 	return Quiet, nil
+}
+
+// VersionGuard ensures that the Go version is correct.
+func VersionGuard(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	cmd := exec.Command("go", "version")
+	var out string
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return nil, err
+	} else if !strings.Contains(string(out), "go1.5") {
+		Warn("You must install the Go 1.5 or greater toolchain to work with Glide.")
+	}
+	if os.Getenv("GO15VENDOREXPERIMENT") != "1" {
+		Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1")
+	}
+	return out, nil
 }
 
 // Info logs information

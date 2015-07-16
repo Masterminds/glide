@@ -121,15 +121,17 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				setupHandler(c, "create", cxt, router)
 			},
 		},
-		{
-			Name:  "in",
-			Usage: "Glide into a commandline shell preconfigured for your project",
-			Description: `This is roughly the same as starting a new shell and
-	then running GOPATH=$(glide gopath).`,
-			Action: func(c *cli.Context) {
-				setupHandler(c, "in", cxt, router)
-			},
-		},
+		/*
+				{
+					Name:  "in",
+					Usage: "Glide into a commandline shell preconfigured for your project",
+					Description: `This is roughly the same as starting a new shell and
+			then running GOPATH=$(glide gopath).`,
+					Action: func(c *cli.Context) {
+						setupHandler(c, "in", cxt, router)
+					},
+				},
+		*/
 		{
 			Name:  "install",
 			Usage: "Install all packages in the glide.yaml",
@@ -139,18 +141,20 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				setupHandler(c, "install", cxt, router)
 			},
 		},
-		{
-			Name:  "into",
-			Usage: "The same as running \"cd /my/project && glide in\"",
-			Action: func(c *cli.Context) {
-				if len(c.Args()) < 1 {
-					fmt.Println("Oops! directory name is required.")
-					os.Exit(1)
-				}
-				cxt.Put("toPath", c.Args()[0])
-				setupHandler(c, "into", cxt, router)
+		/*
+			{
+				Name:  "into",
+				Usage: "The same as running \"cd /my/project && glide in\"",
+				Action: func(c *cli.Context) {
+					if len(c.Args()) < 1 {
+						fmt.Println("Oops! directory name is required.")
+						os.Exit(1)
+					}
+					cxt.Put("toPath", c.Args()[0])
+					setupHandler(c, "into", cxt, router)
+				},
 			},
-		},
+		*/
 		{
 			Name:  "get",
 			Usage: "Run 'go get' and update the glide.yaml file with the new package.",
@@ -168,13 +172,6 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				}
 				cxt.Put("package", c.Args()[0])
 				setupHandler(c, "get", cxt, router)
-			},
-		},
-		{
-			Name:  "godeps",
-			Usage: "DEPRECATED. Use `import gpm`. Import Godeps and Godeps-Git files and display the would-be yaml file",
-			Action: func(c *cli.Context) {
-				setupHandler(c, "import gpm", cxt, router)
 			},
 		},
 		{
@@ -204,21 +201,6 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
    things like manually setting GOPATH: GOPATH=$(glide gopath)`,
 			Action: func(c *cli.Context) {
 				setupHandler(c, "gopath", cxt, router)
-			},
-		},
-		{
-			Name:  "exec",
-			Usage: "Execute a command with the Go environment setup",
-			Description: `Execute a command inside of the GOPATH. Some commands
-    (notably 'go cover') expect themselves to be run from a particular place
-    within the GOPATH. This command sets up the environment for such tools.
-
-        $ glide exec go cover
-
-    Most Go tools do not need this.`,
-			SkipFlagParsing: true,
-			Action: func(c *cli.Context) {
-				setupHandler(c, "exec", cxt, router)
 			},
 		},
 		{
@@ -325,7 +307,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("@startup", "Parse args and send to the right subcommand.").
 		// TODO: Add setup for debug in addition to quiet.
 		Does(cmd.BeQuiet, "quiet").
-		Using("quiet").From("cxt:q")
+		Using("quiet").From("cxt:q").
+		Does(cmd.VersionGuard, "v")
 
 	reg.Route("@ready", "Prepare for glide commands.").
 		Does(cmd.ReadyToGlide, "ready").Using("filename").From("cxt:yaml").
