@@ -4,10 +4,15 @@ import:
     subpackages:
       - yaml
   - package: github.com/Masterminds/cookoo
-    ref:     master
+    ref:     origin/master
     repo:    git@github.com:Masterminds/cookoo.git
     vcs:     git
     subpackages:
       - .
   - package: github.com/codegangsta/cli
   - package: github.com/Masterminds/sprig
+  - package: golang.org/x/tools
+    repo:    https://go.googlesource.com/tools
+    vcs:     git
+    subpackages:
+      - /go/vcs

@@ -398,7 +398,7 @@ func (d *Dependency) VCSCmd() (*vcs.Cmd, error) {
 		path := stripScheme(d.Repository)
 		root, err := vcs.RepoRootForImportPath(path, false)
 		if err == nil {
-			d.VcsType = root.VCS.Name
+			d.VcsType = root.VCS.Cmd
 			return root.VCS, nil
 		}
 	}
@@ -411,7 +411,7 @@ func (d *Dependency) VCSCmd() (*vcs.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.VcsType = root.VCS.Name
+	d.VcsType = root.VCS.Cmd
 	d.Repository = root.Repo
 	return root.VCS, nil
 }

@@ -51,7 +51,7 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	dep := &Dependency{
 		Name:       repo.Root,
-		VcsType:    repo.VCS.Name,
+		VcsType:    repo.VCS.Cmd,
 		Repository: repo.Repo,
 	}
 	subpkg := strings.TrimPrefix(name, repo.Root)
@@ -207,6 +207,7 @@ func VcsGet(dep *Dependency, toPath string) error {
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
 func VcsUpdate(dep *Dependency, vend string) error {
+	Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
 		Info("%s is not used for %s/%s.\n", dep.Name, runtime.GOOS, runtime.GOARCH)
@@ -236,6 +237,7 @@ func VcsUpdate(dep *Dependency, vend string) error {
 }
 
 func VcsVersion(dep *Dependency, vend string) error {
+	Info("Setting version for %s.\n", dep.Name)
 
 	cwd := path.Join(vend, dep.Name)
 	cmd, err := dep.VCSCmd()
@@ -248,7 +250,7 @@ func VcsVersion(dep *Dependency, vend string) error {
 		return err
 	}
 
-	if cmd.Name == "git" {
+	if cmd.Cmd == "git" {
 		Info("XXX: Implement history-since function.")
 	}
 
@@ -262,7 +264,7 @@ func VcsLastCommit(dep *Dependency) (string, error) {
 		return "", err
 	}
 
-	switch cmd.Name {
+	switch cmd.Cmd {
 	case Git:
 		return git.LastCommit(dep)
 	case Bzr:
@@ -290,5 +292,5 @@ func GuessVCS(dep *Dependency) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return cmd.Name, nil
+	return cmd.Cmd, nil
 }
