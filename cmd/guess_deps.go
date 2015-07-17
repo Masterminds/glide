@@ -40,17 +40,6 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	}
 
 	return config, nil
-
-	/*
-		tmpl, err := template.New("main").Parse(yamlGuessTpl)
-		if err != nil {
-			return nil, err
-		}
-		var doc bytes.Buffer
-		tmpl.Execute(&doc, deps)
-		fmt.Println(doc.String())
-		return doc, nil
-	*/
 }
 
 // findDeps finds all of the dependenices.

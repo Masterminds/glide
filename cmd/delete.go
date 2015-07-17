@@ -8,25 +8,20 @@ import (
 	"strings"
 )
 
-// DeleteUnusedPackages removes packages no
+// DeleteUnusedPackages removes packages from vendor/ that no longer used.
 func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-
-	// Verify the GOPATH is the _vendor directory before deleting anything.
-	gopath := os.Getenv("GOPATH")
-	fname := p.Get("filename", "glide.yaml").(string)
-	glideGopath, perr := GlideGopath(c, fname)
-	if perr != nil {
-		return nil, perr
-	}
-	if gopath != glideGopath {
-		Info("GOPATH not set to _vendor directory so not deleting unused packages.\n")
-		return nil, nil
-	}
-
 	// Conditional opt-out to keep the unused dependencies.
 	optOut := p.Get("optOut", false).(bool)
 	if optOut == true {
 		return nil, nil
+	}
+
+	vpath, err := VendorPath(c)
+	if err != nil {
+		return nil, err
+	}
+	if vpath == "" {
+		return false, errors.New("Vendor not set")
 	}
 
 	// Build directory tree of what to keep.
@@ -34,10 +29,6 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 	var pkgList []string
 	for _, dep := range cfg.Imports {
 		pkgList = append(pkgList, dep.Name)
-	}
-
-	if gopath == "" {
-		return false, errors.New("GOPATH not set")
 	}
 
 	// Callback function for filepath.Walk to delete packages not in yaml file.
@@ -51,7 +42,7 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 			return err
 		}
 
-		if info.IsDir() == false || path == searchPath || path == gopath {
+		if info.IsDir() == false || path == searchPath || path == vpath {
 			return nil
 		}
 
@@ -91,9 +82,9 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 		return nil
 	}
 
-	// Walk src directories (only 2 levels deep)
-	searchPath = gopath + "/src/"
-	err := filepath.Walk(searchPath, fn)
+	// Walk src directories (only 1 level deep)
+	searchPath = vpath
+	err = filepath.Walk(searchPath, fn)
 	if err != nil {
 		return false, err
 	}

@@ -61,6 +61,9 @@ look something like this:
 		  subpackages: **
 		- package: github.com/kylelemons/go-gypsy
 		  subpackages: yaml
+
+NOTE: As of Glide 0.5, the commands 'in', 'into', 'gopath', and 'instal' no
+longer exist.
 `
 
 var VendorDir = "vendor"
@@ -113,7 +116,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		$ glide create github.com/Masterminds/foo
 
 	For a project that already has a glide.yaml file, you may skip 'glide create'
-	and instead run 'glide install'.`,
+	and instead run 'glide up'.`,
 			Action: func(c *cli.Context) {
 				if len(c.Args()) >= 1 {
 					cxt.Put("project", c.Args()[0])
@@ -121,40 +124,6 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				setupHandler(c, "create", cxt, router)
 			},
 		},
-		/*
-				{
-					Name:  "in",
-					Usage: "Glide into a commandline shell preconfigured for your project",
-					Description: `This is roughly the same as starting a new shell and
-			then running GOPATH=$(glide gopath).`,
-					Action: func(c *cli.Context) {
-						setupHandler(c, "in", cxt, router)
-					},
-				},
-		*/
-		{
-			Name:  "install",
-			Usage: "Install all packages in the glide.yaml",
-			Description: `This reads an existing glide.yaml and then installs everything
-	listed in that file. For a fresh project, you may need to run 'glide create' first.`,
-			Action: func(c *cli.Context) {
-				setupHandler(c, "install", cxt, router)
-			},
-		},
-		/*
-			{
-				Name:  "into",
-				Usage: "The same as running \"cd /my/project && glide in\"",
-				Action: func(c *cli.Context) {
-					if len(c.Args()) < 1 {
-						fmt.Println("Oops! directory name is required.")
-						os.Exit(1)
-					}
-					cxt.Put("toPath", c.Args()[0])
-					setupHandler(c, "into", cxt, router)
-				},
-			},
-		*/
 		{
 			Name:  "get",
 			Usage: "Run 'go get' and update the glide.yaml file with the new package.",
@@ -195,12 +164,13 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
-			Name:  "gopath",
-			Usage: "Display the GOPATH for the present project",
-			Description: `Emits the GOPATH for the current project. Useful for
+			Name:      "env",
+			ShortName: "gopath",
+			Usage:     "Display environment variables for the present project",
+			Description: `Emits the environment for the current project. Useful for
    things like manually setting GOPATH: GOPATH=$(glide gopath)`,
 			Action: func(c *cli.Context) {
-				setupHandler(c, "gopath", cxt, router)
+				setupHandler(c, "env", cxt, router)
 			},
 		},
 		{
@@ -246,7 +216,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:      "update",
 			ShortName: "up",
-			Usage:     "Update existing packages",
+			Usage:     "Update a project's dependencies",
 			Description: `This uses the native VCS of each package to try to
 	pull the most applicable updates. Packages with fixed refs (Versions or
 	tags) will not be updated. Packages with no ref or with a branch ref will
@@ -314,26 +284,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.ReadyToGlide, "ready").Using("filename").From("cxt:yaml").
 		Does(cmd.ParseYaml, "cfg").Using("filename").From("cxt:yaml")
 
-	reg.Route("into", "Creates a new Glide shell.").
-		Includes("@startup").
-		Does(cmd.AlreadyGliding, "isGliding").
-		Does(cmd.Into, "in").Using("into").From("cxt:toPath").
-		Using("into").WithDefault("").From("cxt:toPath").
-		Includes("@ready")
-
-	reg.Route("in", "Set GOPATH and supporting env vars.").
-		Includes("@startup").
-		Does(cmd.AlreadyGliding, "isGliding").
-		Includes("@ready").
-		Does(cmd.Into, "in").
-		Using("into").WithDefault("").From("cxt:toPath").
-		Using("conf").From("cxt:cfg")
-
-	reg.Route("gopath", "Return the GOPATH for the present project.").
-		Includes("@startup").
-		Does(cmd.In, "gopath").Using("filename").From("cxt:yaml")
-
-	reg.Route("get", "Run 'go get' and install the results in the glide.yaml").
+	reg.Route("get", "Install a pkg in vendor, and store the results in the glide.yaml").
 		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.Get, "goget").
@@ -351,16 +302,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.ExecCmd, "cmd").
 		Using("args").From("cxt:cliArgs").
 		Using("filename").From("cxt:yaml")
-
-	reg.Route("install", "Install dependencies.").
-		Includes("@startup").
-		Does(cmd.InGopath, "pathIsRight").
-		Includes("@ready").
-		Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
-		Does(cmd.LinkPackage, "alias").
-		Does(cmd.GetImports, "dependencies").Using("conf").From("cxt:cfg").
-		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
-		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
 	reg.Route("update", "Update dependencies.").
 		Includes("@startup").
@@ -428,6 +369,10 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.InitGlide, "init").
 		Using("filename").From("cxt:yaml").
 		Using("project").From("cxt:project").WithDefault("main")
+
+	reg.Route("env", "Print environment").
+		Includes("@startup").
+		Does(cmd.Status, "status")
 
 	reg.Route("status", "Status").
 		Includes("@startup").

@@ -8,16 +8,15 @@ import (
 	"os/exec"
 )
 
-// ExecCmd executes a system command with GOPATH set.
+// ExecCmd executes a system command  inside vendor
 func ExecCmd(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	args := p.Get("args", nil).(cli.Args)
-	fname := p.Get("filename", "glide.yaml").(string)
 
 	if len(args) == 0 {
 		return nil, fmt.Errorf("No command to execute")
 	}
 
-	gopath, err := GlideGopath(c, fname)
+	gopath, err := VendorPath(c)
 	if err != nil {
 		return false, err
 	}

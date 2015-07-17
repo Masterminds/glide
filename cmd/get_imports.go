@@ -122,7 +122,7 @@ func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	}
 
 	if len(cfg.Imports) == 0 {
-		Info("No dependencies found.\n")
+		Info("No references set.\n")
 		return false, nil
 	}
 
