@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -51,6 +52,24 @@ func VersionGuard(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 		Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1\n")
 	}
 	return out, nil
+}
+
+// CowardMode checks that the environment is setup before continuing on. If not
+// setup and error is returned.
+func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	gopath := os.Getenv("GOPATH")
+	if len(gopath) == 0 {
+		return false, fmt.Errorf("No GOPATH is set.\n")
+	}
+
+	_, err := os.Stat(path.Join(gopath, "src"))
+	if err != nil {
+		Error("Could not find %s/src.\n", gopath)
+		Info("As of Glide 0.5/Go 1.5, this is required.\n")
+		return false, err
+	}
+
+	return true, nil
 }
 
 // Info logs information

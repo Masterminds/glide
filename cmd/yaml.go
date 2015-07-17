@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/Masterminds/cookoo"
 	"github.com/kylelemons/go-gypsy/yaml"
+	"golang.org/x/tools/go/vcs"
 )
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
@@ -171,21 +173,6 @@ func AddDependencies(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 	return true, nil
 }
 
-func vcsString(vtype uint) string {
-	switch vtype {
-	case Git:
-		return "git"
-	case Hg:
-		return "hg"
-	case Bzr:
-		return "bzr"
-	case Svn:
-		return "svn"
-	default:
-		return ""
-	}
-}
-
 func valOrEmpty(key string, store map[string]yaml.Node) string {
 	val, ok := store[key]
 	if !ok {
@@ -232,7 +219,7 @@ func valOrList(key string, store map[string]yaml.Node) []string {
 	return subpackages
 }
 
-func getVcsType(store map[string]yaml.Node) uint {
+func getVcsType(store map[string]yaml.Node) string {
 	val, ok := store["vcs"]
 	if !ok {
 		return NoVCS
@@ -241,16 +228,16 @@ func getVcsType(store map[string]yaml.Node) uint {
 	name := val.(yaml.Scalar).String()
 
 	switch name {
-	case "git":
-		return Git
-	case "hg", "mercurial":
-		return Hg
-	case "bzr", "bazaar":
-		return Bzr
-	case "svn", "subversion":
-		return Svn
+	case "git", "hg", "bzr", "svn":
+		return name
+	case "mercurial":
+		return "hg"
+	case "bazaar":
+		return "bzr"
+	case "subversion":
+		return "svn"
 	default:
-		return NoVCS
+		return ""
 	}
 }
 
@@ -374,7 +361,7 @@ func (c *Config) ToYaml() yaml.Node {
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
 	Name, Reference, Repository string
-	VcsType                     uint
+	VcsType                     string
 	Subpackages, Arch, Os       []string
 }
 
@@ -397,6 +384,46 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 	return dep, nil
 }
 
+//VCSCmd returns a vcs.Cmd object initialized for the VCS.
+func (d *Dependency) VCSCmd() (*vcs.Cmd, error) {
+	if len(d.VcsType) > 0 && d.VcsType != "None" {
+		Info("Looking for VCS %s (%s)\n", d.VcsType, d.Name)
+		v := vcs.ByCmd(d.VcsType)
+		if v != nil {
+			return v, nil
+		}
+	}
+
+	if len(d.Repository) > 0 {
+		path := stripScheme(d.Repository)
+		root, err := vcs.RepoRootForImportPath(path, false)
+		if err == nil {
+			d.VcsType = root.VCS.Name
+			return root.VCS, nil
+		}
+	}
+
+	if len(d.Name) == 0 {
+		return nil, errors.New("No repo found.")
+	}
+
+	root, err := vcs.RepoRootForImportPath(d.Name, false)
+	if err != nil {
+		return nil, err
+	}
+	d.VcsType = root.VCS.Name
+	d.Repository = root.Repo
+	return root.VCS, nil
+}
+
+func stripScheme(u string) string {
+	parts := strings.Split(u, "://")
+	if len(parts) > 1 {
+		return parts[1]
+	}
+	return u
+}
+
 // ToYaml converts a *Dependency to a YAML Map node.
 func (d *Dependency) ToYaml() yaml.Node {
 	dep := make(map[string]yaml.Node, 5)
@@ -410,7 +437,7 @@ func (d *Dependency) ToYaml() yaml.Node {
 
 		dep["subpackages"] = yaml.List(subp)
 	}
-	vcs := vcsString(d.VcsType)
+	vcs := d.VcsType
 	if len(vcs) > 0 {
 		dep["vcs"] = yaml.Scalar(vcs)
 	}
