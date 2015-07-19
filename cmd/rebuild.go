@@ -27,7 +27,7 @@ func Rebuild(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	for _, dep := range cfg.Imports {
 		if err := buildDep(c, dep, gopath); err != nil {
-			Warn("Failed to build %s: %s\n", dep.Name, err)
+			Error("Failed to build %s: %s\n", dep.Name, err)
 		}
 	}
 
@@ -46,7 +46,7 @@ func buildDep(c cookoo.Context, dep *Dependency, gopath string) error {
 		} else {
 			paths, err := resolvePackages(gopath, dep.Name, pkg)
 			if err != nil {
-				Warn("Error resolving packages: %s", err)
+				Error("Error resolving packages: %s", err)
 			}
 			//buildPath(c, path.Join(dep.Name, pkg))
 			buildPaths(c, paths)
@@ -80,7 +80,7 @@ func buildPath(c cookoo.Context, path string) error {
 	Info("Running go build %s\n", path)
 	out, err := exec.Command("go", "install", path).CombinedOutput()
 	if err != nil {
-		Warn("Failed to run 'go install' for %s: %s", path, string(out))
+		Error("Failed to run 'go install' for %s: %s", path, string(out))
 	}
 	return err
 }

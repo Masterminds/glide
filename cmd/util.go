@@ -64,6 +64,7 @@ func Warn(msg string, args ...interface{}) {
 func Error(msg string, args ...interface{}) {
 	fmt.Fprint(os.Stderr, Color(Red, "[ERROR] "))
 	ErrMsg(msg, args...)
+	os.Exit(1)
 }
 
 // ErrMsg sends a message to Stderr
