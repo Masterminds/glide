@@ -1,4 +1,5 @@
 _vendor
+vendor/
 glide
 *.a
 *.sublime-project
