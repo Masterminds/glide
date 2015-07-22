@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"github.com/Masterminds/cookoo"
 	"os"
 	"path/filepath"
