@@ -2,17 +2,18 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Masterminds/cookoo"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// DeleteUnusedPackages removes packages from vendor/ that no longer used.
+// DeleteUnusedPackages removes packages from vendor/ that are no longer used.
 func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	// Conditional opt-out to keep the unused dependencies.
-	optOut := p.Get("optOut", false).(bool)
-	if optOut == true {
+	// Conditional opt-in to removed unused dependencies.
+	optIn := p.Get("optIn", false).(bool)
+	if optIn != true {
 		return nil, nil
 	}
 
@@ -46,9 +47,6 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 			return nil
 		}
 
-		// fmt.Println(path)
-		// fmt.Println(info.Name())
-
 		localPath := strings.TrimPrefix(path, searchPath)
 
 		keep := false
@@ -73,6 +71,14 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 			}
 		}
 
+		// If the parent directory has already been marked for delete this
+		// directory doesn't need to be marked.
+		for _, markedDirectory := range markForDelete {
+			if strings.HasPrefix(path, markedDirectory) {
+				return nil
+			}
+		}
+
 		// Remove the directory if we are not keeping it.
 		if keep == false {
 			// Mark for deletion
@@ -82,13 +88,14 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 		return nil
 	}
 
-	// Walk src directories (only 1 level deep)
-	searchPath = vpath
+	// Walk vendor directory
+	searchPath = vpath + "/"
 	err = filepath.Walk(searchPath, fn)
 	if err != nil {
 		return false, err
 	}
 
+	// Perform the actual delete.
 	for _, path := range markForDelete {
 		localPath := strings.TrimPrefix(path, searchPath)
 		Info("Removing unused package: %s\n", localPath)

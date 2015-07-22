@@ -223,12 +223,12 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	be updated as expected.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "preserve-packages",
-					Usage: "Set to keep unspecified vendor packages.",
+					Name:  "delete",
+					Usage: "Delete vendor packages not specified in config.",
 				},
 			},
 			Action: func(c *cli.Context) {
-				cxt.Put("deleteOptOut", c.Bool("preserve-packages"))
+				cxt.Put("deleteOptIn", c.Bool("delete"))
 				setupHandler(c, "update", cxt, router)
 			},
 		},
@@ -308,9 +308,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@ready").
 		Does(cmd.CowardMode, "_").
 		Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
-		//Does(cmd.DeleteUnusedPackages, "deleted").
-		//Using("conf").From("cxt:cfg").
-		//Using("optOut").From("cxt:deleteOptOut").
+		Does(cmd.DeleteUnusedPackages, "deleted").
+		Using("conf").From("cxt:cfg").
+		Using("optIn").From("cxt:deleteOptIn").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
