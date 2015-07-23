@@ -10,7 +10,6 @@ import:
     subpackages:
       - .
   - package: github.com/codegangsta/cli
-  - package: github.com/Masterminds/sprig
   - package: golang.org/x/tools
     repo:    https://go.googlesource.com/tools
     vcs:     git
