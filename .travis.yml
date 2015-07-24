@@ -13,9 +13,13 @@ sudo: false
 
 install: make bootstrap
 
-# The default script is go test -v ./... unless you have a Makefile, which
-# we do. In this case we actually want the script below.
-script: GO15VENDOREXPERIMENT=1 go test -v ./...
+# The default script is go test -v ./... which will test everything
+# in the vendor directory. We don't need to test all dependent packages.
+# Only testing this project.
+script: 
+  - GO15VENDOREXPERIMENT=1
+  - go test -v .
+  - go test -v ./cmd
 
 notifications:
   irc: "irc.freenode.net#masterminds"
