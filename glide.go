@@ -62,7 +62,7 @@ look something like this:
 		- package: github.com/kylelemons/go-gypsy
 		  subpackages: yaml
 
-NOTE: As of Glide 0.5, the commands 'in', 'into', 'gopath', and 'instal' no
+NOTE: As of Glide 0.5, the commands 'in', 'into', and 'gopath' no
 longer exist.
 `
 
@@ -216,7 +216,8 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:      "update",
 			ShortName: "up",
-			Usage:     "Update a project's dependencies",
+			Aliases:   []string{"install"},
+			Usage:     "Update or install a project's dependencies",
 			Description: `This uses the native VCS of each package to try to
 	pull the most applicable updates. Packages with fixed refs (Versions or
 	tags) will not be updated. Packages with no ref or with a branch ref will

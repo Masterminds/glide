@@ -4,7 +4,7 @@ import:
     subpackages:
       - yaml
   - package: github.com/Masterminds/cookoo
-    ref:     origin/master
+    ref:     master
     repo:    git@github.com:Masterminds/cookoo.git
     vcs:     git
     subpackages:

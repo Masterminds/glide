@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"runtime"
 	"strings"
@@ -177,35 +178,28 @@ func filterArchOs(dep *Dependency) bool {
 
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
-// VcsGet installs into the path at toPath.
-func VcsGet(dep *Dependency, toPath string) error {
-
-	if filterArchOs(dep) {
-		Info("Ignoring %s for OS/ARch %s/%s", dep.Name, runtime.GOOS, runtime.GOARCH)
-		return nil
-	}
+// VcsGet installs into the dest.
+func VcsGet(dep *Dependency, dest string) error {
 
 	cmd, err := dep.VCSCmd()
 	if err != nil {
 		Error("Could not resolve repository %s\n", dep.Name)
 	}
 
-	dest := path.Join(toPath, dep.Name)
-	if err := cmd.Create(dest, dep.Name); err != nil {
+	if dep.Repository == "" {
+		dep.Repository = "https://" + dep.Name
+	}
+
+	if err := cmd.Create(dest, dep.Repository); err != nil {
 		return err
 	}
 
-	if len(dep.Reference) > 0 {
-		err := cmd.TagSync(dest, dep.Reference)
-		if err != nil {
-			Error("Failed to set revision: %s", err)
-			return err
-		}
-	}
 	return nil
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
+// TODO: The command from go tools checks out a specific hash which causes
+// problems on future updates. Need to fix.
 func VcsUpdate(dep *Dependency, vend string) error {
 	Info("Fetching updates for %s.\n", dep.Name)
 
@@ -214,29 +208,36 @@ func VcsUpdate(dep *Dependency, vend string) error {
 		return nil
 	}
 
-	cmd, err := dep.VCSCmd()
-	if err != nil {
-		return err
-	}
-
 	dest := path.Join(vend, dep.Name)
-	if err := cmd.Download(dest); err != nil {
-		Warn("Download failed.\n")
-		return err
+	// If destination doesn't exist we need to perform an initial checkout.
+	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		if err = VcsGet(dep, dest); err != nil {
+			Warn("Unable to checkout %s\n", dep.Name)
+			fmt.Println(err)
+			return err
+		}
+	} else {
+		cmd, err := dep.VCSCmd()
+		if err != nil {
+			return err
+		}
+		// TODO: Handle the case of a VCS switching. The could be the config
+		// for a VCS or the type of VCS.
+		if err := cmd.Download(dest); err != nil {
+			Warn("Download failed.\n")
+			return err
+		}
 	}
 
-	/*
-		if len(dep.Reference) > 0 {
-			if err := cmd.TagSync(dest, dep.Reference); err != nil {
-				Warn("Failed to set reference to %s. But source was downloaded. You may try to manually fix.\n", dep.Reference, err)
-				return err
-			}
-		}
-	*/
 	return nil
 }
 
 func VcsVersion(dep *Dependency, vend string) error {
+	// If there is no refernece configured there is nothing to set.
+	if dep.Reference == "" {
+		return nil
+	}
+
 	Info("Setting version for %s.\n", dep.Name)
 
 	cwd := path.Join(vend, dep.Name)
@@ -245,13 +246,15 @@ func VcsVersion(dep *Dependency, vend string) error {
 		return err
 	}
 
+	// TagSync assumes the remote for Git is the origin. Doesn't
+	// work with non-origin remotes.
 	if err := cmd.TagSync(cwd, dep.Reference); err != nil {
 		Error("Failed to sync to %s: %s\n", dep.Reference, err)
 		return err
 	}
 
 	if cmd.Cmd == "git" {
-		Info("XXX: Implement history-since function.")
+		Info("XXX: Implement history-since function.\n")
 	}
 
 	return nil
