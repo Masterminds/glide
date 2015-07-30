@@ -313,7 +313,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Using("optIn").From("cxt:deleteOptIn").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
-		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg")
+		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
+		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg")
+
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
 	reg.Route("rebuild", "Rebuild dependencies").
