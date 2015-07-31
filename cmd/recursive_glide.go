@@ -16,16 +16,24 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	conf := p.Get("conf", &Config{}).(*Config)
 	vend, _ := VendorPath(c)
 
+	return recDepResolve(conf, vend)
+}
+
+func recDepResolve(conf *Config, vend string) (interface{}, error) {
+
+	Info("Inspecting %s.\n", vend)
+
 	if len(conf.Imports) == 0 {
 		Info("No imports.\n")
 	}
 
 	// Look in each package to see whether it has a glide.yaml, and no vendor/
 	for _, imp := range conf.Imports {
-		Info("Looking in %s for a glide.yaml file.\n", imp.Name)
 		base := path.Join(vend, imp.Name)
+		Info("Looking in %s for a glide.yaml file.\n", base)
 		if !needsGlideUp(base) {
 			Info("Package %s manages its own dependencies.\n", imp.Name)
+			continue
 		}
 		Info("Package %s needs `glide up`\n", imp.Name)
 		if err := dependencyGlideUp(base); err != nil {
@@ -65,8 +73,11 @@ func dependencyGlideUp(base string) error {
 		// run the update route in that directory?
 		if err := VcsGet(imp, wd); err != nil {
 			Warn("Skipped getting %s: %s\n", imp.Name, err)
+			continue
 		}
+		//recDepResolve(conf, path.Join(wd, "vendor"))
 	}
+	recDepResolve(conf, path.Join(base, "vendor"))
 	return nil
 }
 
