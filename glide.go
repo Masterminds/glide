@@ -293,6 +293,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("package").From("cxt:package").
 		Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
+		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").
 		Using("yaml.Node").From("cxt:merged").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
