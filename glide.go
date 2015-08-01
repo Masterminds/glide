@@ -133,13 +133,26 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		$ glide get github.com/Masterminds/cookoo/web
 
 	The above will install the package github.com/Masterminds/cookoo and add
-	the subpackage 'web'.`,
+	the subpackage 'web'.
+
+	If a fetched dependency has a glide.yaml file, 'get' will also install
+	all of the dependencies for that dependency. Those are installed in a scoped
+	vendir directory. So dependency vendor/foo/bar has its dependencies stored
+	in vendor/foo/bar/vendor. This behavior can be disabled using
+	'--no-recursive'`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "no-recursive",
+					Usage: "Disable updating dependencies' dependencies.",
+				},
+			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
 				}
 				cxt.Put("package", c.Args()[0])
+				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
 				setupHandler(c, "get", cxt, router)
 			},
 		},
@@ -221,15 +234,26 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Description: `This uses the native VCS of each package to try to
 	pull the most applicable updates. Packages with fixed refs (Versions or
 	tags) will not be updated. Packages with no ref or with a branch ref will
-	be updated as expected.`,
+	be updated as expected.
+
+	If a dependency has a glide.yaml file, update will read that file and
+	update those dependencies accordingly. Those dependencies are maintained in
+	a scoped vendor directory. 'vendor/foo/bar' will have its dependencies
+	stored in 'vendor/foo/bar/vendor'. This behavior can be disabled with
+	'--no-recursive'.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "delete",
 					Usage: "Delete vendor packages not specified in config.",
 				},
+				cli.BoolFlag{
+					Name:  "no-recursive",
+					Usage: "Disable updating dependencies' dependencies.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				cxt.Put("deleteOptIn", c.Bool("delete"))
+				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
 				setupHandler(c, "update", cxt, router)
 			},
 		},
@@ -294,6 +318,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
+		Using("enable").From("cxt:recursiveDependencies").
 		Does(cmd.WriteYaml, "out").
 		Using("yaml.Node").From("cxt:merged").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
@@ -315,7 +340,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("optIn").From("cxt:deleteOptIn").
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
-		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg")
+		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
+		Using("enable").From("cxt:recursiveDependencies")
 
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 

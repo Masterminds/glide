@@ -12,6 +12,9 @@ import (
 // Recurse looks in all known packages for a glide.yaml files and installs for
 // each one it finds.
 func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	if !p.Get("enable", true).(bool) {
+		return nil, nil
+	}
 	Info("Checking dependencies for updates.\n")
 	conf := p.Get("conf", &Config{}).(*Config)
 	vend, _ := VendorPath(c)
@@ -68,9 +71,6 @@ func dependencyGlideUp(base string) error {
 			continue
 		}
 
-		// How do we want to do this? Should we run the glide command,
-		// which would allow environmental control, or should we just
-		// run the update route in that directory?
 		if err := VcsGet(imp, wd); err != nil {
 			Warn("Skipped getting %s: %s\n", imp.Name, err)
 			continue
