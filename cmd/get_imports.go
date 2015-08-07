@@ -4,12 +4,20 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"regexp"
 	"runtime"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"golang.org/x/tools/go/vcs"
+	v "github.com/Masterminds/go-vcs"
 )
+
+func init() {
+	// Precompile the regular expressions used to check VCS locations.
+	for _, v := range vcsList {
+		v.regex = regexp.MustCompile(v.pattern)
+	}
+}
 
 const (
 	NoVCS = ""
@@ -30,38 +38,41 @@ const (
 func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	name := p.Get("package", "").(string)
 	cfg := p.Get("conf", nil).(*Config)
-	verbose := p.Get("verbose", false).(bool)
 
 	cwd, err := VendorPath(c)
 	if err != nil {
 		return nil, err
 	}
 
-	repo, err := vcs.RepoRootForImportPath(name, verbose)
-	if err != nil {
-		return nil, err
-	}
-
-	if cfg.HasDependency(repo.Root) {
-		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", repo.Root)
-	}
-
-	if len(repo.Root) == 0 {
+	root := getRepoRootFromPackage(name)
+	if len(root) == 0 {
 		return nil, fmt.Errorf("Package name is required.")
 	}
 
-	dep := &Dependency{
-		Name:       repo.Root,
-		VcsType:    repo.VCS.Cmd,
-		Repository: repo.Repo,
+	if cfg.HasDependency(root) {
+		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", root)
 	}
-	subpkg := strings.TrimPrefix(name, repo.Root)
+
+	dest := path.Join(cwd, root)
+	repoUrl := "https://" + root
+	repo, err := v.NewRepo(repoUrl, dest)
+	if err != nil {
+		return false, err
+	}
+
+	dep := &Dependency{
+		Name:    root,
+		VcsType: string(repo.Vcs()),
+
+		// Should this assume a remote https root at all times?
+		Repository: repoUrl,
+	}
+	subpkg := strings.TrimPrefix(name, root)
 	if len(subpkg) > 0 && subpkg != "/" {
 		dep.Subpackages = []string{subpkg}
 	}
 
-	dest := path.Join(cwd, repo.Root)
-	if err := repo.VCS.Create(dest, repo.Repo); err != nil {
+	if err := repo.Get(); err != nil {
 		return dep, err
 	}
 
@@ -181,25 +192,15 @@ func filterArchOs(dep *Dependency) bool {
 // VcsGet installs into the dest.
 func VcsGet(dep *Dependency, dest string) error {
 
-	cmd, err := dep.VCSCmd()
+	repo, err := dep.GetRepo(dest)
 	if err != nil {
-		Error("Could not resolve repository %s\n", dep.Name)
-	}
-
-	if dep.Repository == "" {
-		dep.Repository = "https://" + dep.Name
-	}
-
-	if err := cmd.Create(dest, dep.Repository); err != nil {
 		return err
 	}
 
-	return nil
+	return repo.Get()
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-// TODO: The command from go tools checks out a specific hash which causes
-// problems on future updates. Need to fix.
 func VcsUpdate(dep *Dependency, vend string) error {
 	Info("Fetching updates for %s.\n", dep.Name)
 
@@ -217,13 +218,13 @@ func VcsUpdate(dep *Dependency, vend string) error {
 			return err
 		}
 	} else {
-		cmd, err := dep.VCSCmd()
+		repo, err := dep.GetRepo(dest)
 		if err != nil {
 			return err
 		}
 		// TODO: Handle the case of a VCS switching. The could be the config
 		// for a VCS or the type of VCS.
-		if err := cmd.Download(dest); err != nil {
+		if err := repo.Update(); err != nil {
 			Warn("Download failed.\n")
 			return err
 		}
@@ -241,59 +242,93 @@ func VcsVersion(dep *Dependency, vend string) error {
 	Info("Setting version for %s.\n", dep.Name)
 
 	cwd := path.Join(vend, dep.Name)
-	cmd, err := dep.VCSCmd()
+	repo, err := dep.GetRepo(cwd)
 	if err != nil {
 		return err
 	}
 
-	// TagSync assumes the remote for Git is the origin. Doesn't
-	// work with non-origin remotes.
-	if err := cmd.TagSync(cwd, dep.Reference); err != nil {
-		Error("Failed to sync to %s: %s\n", dep.Reference, err)
+	if err := repo.UpdateVersion(dep.Reference); err != nil {
+		Error("Failed to set version to %s: %s\n", dep.Reference, err)
 		return err
-	}
-
-	if cmd.Cmd == "git" {
-		Info("XXX: Implement history-since function.\n")
 	}
 
 	return nil
 }
 
-func VcsLastCommit(dep *Dependency) (string, error) {
-
-	cmd, err := dep.VCSCmd()
+func VcsLastCommit(dep *Dependency, vend string) (string, error) {
+	cwd := path.Join(vend, dep.Name)
+	repo, err := dep.GetRepo(cwd)
 	if err != nil {
 		return "", err
 	}
 
-	switch cmd.Cmd {
-	case Git:
-		return git.LastCommit(dep)
-	case Bzr:
-		return bzr.LastCommit(dep)
-	case Hg:
-		return hg.LastCommit(dep)
-	case Svn:
-		return svn.LastCommit(dep)
-	default:
-		if len(dep.Reference) > 0 {
-			Error("Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
+	version, err := repo.Version()
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
+}
+
+// From a package name find the root repo. For example,
+// the package github.com/Masterminds/cookoo/io has a root repo
+// at github.com/Masterminds/cookoo
+func getRepoRootFromPackage(pkg string) string {
+	for _, v := range vcsList {
+		m := v.regex.FindStringSubmatch(pkg)
+		if m == nil {
+			continue
 		}
-		return "", nil
+
+		if m[1] != "" {
+			return m[1]
+		}
 	}
+
+	// Default to returning the package name passed in if no matches.
+	// Should this be an error?
+	return pkg
 }
 
-func VcsSetReference(dep *Dependency) error {
-	Warn("Cannot set reference. not implemented.\n")
-	return nil
+type vcsInfo struct {
+	host    string
+	pattern string
+	regex   *regexp.Regexp
 }
 
-// GuessVCS attempts to guess guess the VCS used by a package.
-func GuessVCS(dep *Dependency) (string, error) {
-	cmd, err := dep.VCSCmd()
-	if err != nil {
-		return "", err
-	}
-	return cmd.Cmd, nil
+var vcsList = []*vcsInfo{
+	{
+		host:    "github.com",
+		pattern: `^(?P<rootpkg>github\.com/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	{
+		host:    "bitbucket.org",
+		pattern: `^(?P<rootpkg>bitbucket\.org/([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+))(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	{
+		host:    "launchpad.net",
+		pattern: `^(?P<rootpkg>launchpad\.net/(([A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)?|~[A-Za-z0-9_.\-]+/(\+junk|[A-Za-z0-9_.\-]+)/[A-Za-z0-9_.\-]+))(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	{
+		host:    "git.launchpad.net",
+		pattern: `^(?P<rootpkg>git\.launchpad\.net/(([A-Za-z0-9_.\-]+)|~[A-Za-z0-9_.\-]+/(\+git|[A-Za-z0-9_.\-]+)/[A-Za-z0-9_.\-]+))$`,
+	},
+	{
+		host:    "go.googlesource.com",
+		pattern: `^(?P<rootpkg>go\.googlesource\.com/[A-Za-z0-9_.\-]+/?)$`,
+	},
+	// TODO: Once Google Code becomes fully deprecated this can be removed.
+	{
+		host:    "code.google.com",
+		pattern: `^(?P<rootpkg>code\.google\.com/[pr]/([a-z0-9\-]+)(\.([a-z0-9\-]+))?)(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	// Alternative Google setup. This is the previous structure but it still works... until Google Code goes away.
+	{
+		pattern: `^(?P<rootpkg>[a-z0-9_\-.]+)\.googlecode\.com/(git|hg|svn)(/.*)?$`,
+	},
+	// If none of the previous detect the type they will fall to this looking for the type in a generic sense
+	// by the extension to the path.
+	{
+		pattern: `^(?P<rootpkg>(?P<repo>([a-z0-9.\-]+\.)+[a-z0-9.\-]+(:[0-9]+)?/[A-Za-z0-9_.\-/]*?)\.(bzr|git|hg|svn))(/[A-Za-z0-9_.\-]+)*$`,
+	},
 }

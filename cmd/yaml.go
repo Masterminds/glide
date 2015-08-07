@@ -2,15 +2,14 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	v "github.com/Masterminds/go-vcs"
 	"github.com/kylelemons/go-gypsy/yaml"
-	"golang.org/x/tools/go/vcs"
 )
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
@@ -384,36 +383,35 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 	return dep, nil
 }
 
-//VCSCmd returns a vcs.Cmd object initialized for the VCS.
-func (d *Dependency) VCSCmd() (*vcs.Cmd, error) {
-	if len(d.VcsType) > 0 && d.VcsType != "None" {
-		Info("Looking for VCS %s (%s)\n", d.VcsType, d.Name)
-		v := vcs.ByCmd(d.VcsType)
-		if v != nil {
-			return v, nil
-		}
-	}
+func (d *Dependency) GetRepo(dest string) (v.Repo, error) {
 
+	// The remote location is either the configured repo or the package
+	// name as an https url.
+	var remote string
 	if len(d.Repository) > 0 {
-		path := stripScheme(d.Repository)
-		root, err := vcs.RepoRootForImportPath(path, false)
-		if err == nil {
-			d.VcsType = root.VCS.Cmd
-			return root.VCS, nil
+		remote = d.Repository
+	} else {
+		remote = "https://" + d.Name
+	}
+
+	// If the VCS type has a value we try that first.
+	if len(d.VcsType) > 0 && d.VcsType != "None" {
+		switch v.VcsType(d.VcsType) {
+		case v.GitType:
+			return v.NewGitRepo(remote, dest)
+		case v.SvnType:
+			return v.NewSvnRepo(remote, dest)
+		case v.HgType:
+			return v.NewHgRepo(remote, dest)
+		case v.BzrType:
+			return v.NewBzrRepo(remote, dest)
+		default:
+			return nil, fmt.Errorf("Unknown VCS type %s set for %s", d.VcsType, d.Name)
 		}
 	}
 
-	if len(d.Name) == 0 {
-		return nil, errors.New("No repo found.")
-	}
-
-	root, err := vcs.RepoRootForImportPath(d.Name, false)
-	if err != nil {
-		return nil, err
-	}
-	d.VcsType = root.VCS.Cmd
-	d.Repository = root.Repo
-	return root.VCS, nil
+	// When now type set we try to autodetect.
+	return v.NewRepo(remote, dest)
 }
 
 func stripScheme(u string) string {

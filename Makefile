@@ -17,8 +17,8 @@ clean:
 bootstrap:
 	mkdir ./vendor
 	git clone https://github.com/Masterminds/cookoo vendor/github.com/Masterminds/cookoo
+	git clone https://github.com/Masterminds/go-vcs vendor/github.com/Masterminds/go-vcs
 	git clone https://github.com/kylelemons/go-gypsy vendor/github.com/kylelemons/go-gypsy
 	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli
-	git clone https://go.googlesource.com/tools vendor/golang.org/x/tools
 
 .PHONY: build test install clean

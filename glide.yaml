@@ -9,9 +9,5 @@ import:
     vcs:     git
     subpackages:
       - .
+  - package: github.com/Masterminds/go-vcs
   - package: github.com/codegangsta/cli
-  - package: golang.org/x/tools
-    repo:    https://go.googlesource.com/tools
-    vcs:     git
-    subpackages:
-      - /go/vcs
