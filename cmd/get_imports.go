@@ -147,14 +147,6 @@ func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	return true, nil
 }
 
-var (
-	goGet VCS = new(GoGetVCS)
-	git   VCS = new(GitVCS)
-	svn   VCS = new(SvnVCS)
-	bzr   VCS = new(BzrVCS)
-	hg    VCS = new(HgVCS)
-)
-
 // filterArchOs indicates a dependency should be filtered out because it is
 // the wrong GOOS or GOARCH.
 func filterArchOs(dep *Dependency) bool {
