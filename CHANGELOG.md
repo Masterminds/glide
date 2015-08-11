@@ -1,3 +1,19 @@
+# Release 0.5.0 (xxxx-xx-xx)
+
+**Glide .5 is a major update breaking some backwards compatability with
+previous releases.**
+
+- Migrated to using the vendor/ directory and the go tools for vendor
+  package management. To leverage this you'll need to set the
+  environment variable GO15VENDOREXPERIMENT=1 and use Go 1.5.
+- `glide up` is now recursive and walks installed packages if there is
+  no vendor directory. Use the --no-recursive flag to skip this.
+- Removed GOPATH management. This was needed for vendor package
+  management that's not built into the go toolchain.
+- Switched to github.com/Masterminds/go-vcs for VCS integration.
+- When updating packages are now deleted if the --delete flag is set.
+  This feature is now opt-in.
+
 # Release 0.4.1 (2015-07-13)
 
 - Issue #48: When GOPATH not _vendor directory not deleting unused packages.
