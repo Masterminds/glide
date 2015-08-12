@@ -187,6 +187,20 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
+			Name:      "novendor",
+			ShortName: "nv",
+			Usage:     "List all non-vendor directories and go files in a directory.",
+			Description: `Given a directory, list all the relevant Go files that are not vendored.
+
+Example:
+
+			$ go test $(glide novendor)
+`,
+			Action: func(c *cli.Context) {
+				setupHandler(c, "nv", cxt, router)
+			},
+		},
+		{
 			Name:  "pin",
 			Usage: "Print a YAML file with all of the packages pinned to the current version",
 			Description: `Begins with the current glide.yaml and sets an absolute ref
@@ -403,6 +417,11 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("env", "Print environment").
 		Includes("@startup").
 		Does(cmd.Status, "status")
+
+	reg.Route("nv", "No Vendor").
+		Includes("@startup").
+		Does(cmd.NoVendor, "paths").
+		Does(cmd.PathString, "out").Using("paths").From("cxt:paths")
 
 	reg.Route("status", "Status").
 		Includes("@startup").
