@@ -97,7 +97,7 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 
 	for _, dep := range cfg.Imports {
 		if err := VcsGet(dep, cwd); err != nil {
-			Warn("Skipped getting %s: %s\n", dep.Name, err)
+			Warn("Skipped getting %s: %v\n", dep.Name, err)
 		}
 	}
 
@@ -177,6 +177,15 @@ func filterArchOs(dep *Dependency) bool {
 	}
 
 	return false
+}
+
+func VcsExists(dep *Dependency, dest string) bool {
+	repo, err := dep.GetRepo(dest)
+	if err != nil {
+		return false
+	}
+
+	return repo.CheckLocal()
 }
 
 // VcsGet figures out how to fetch a dependency, and then gets it.

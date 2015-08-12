@@ -71,10 +71,16 @@ func dependencyGlideUp(base string) error {
 			continue
 		}
 
-		if err := VcsGet(imp, wd); err != nil {
-			Warn("Skipped getting %s: %s\n", imp.Name, err)
+		if VcsExists(imp, wd) {
+			if err := VcsUpdate(imp, wd); err != nil {
+				// We can still go on just fine even if this fails.
+				Warn("Skipped update %s: %s\n", imp.Name, err)
+			}
+		} else if err := VcsGet(imp, wd); err != nil {
+			Warn("Skipped getting %s: %v\n", imp.Name, err)
 			continue
 		}
+
 		//recDepResolve(conf, path.Join(wd, "vendor"))
 	}
 	recDepResolve(conf, path.Join(base, "vendor"))
