@@ -19,10 +19,10 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	godeps, gpm := false, false
 	if g, ok := p.Has("importGodeps"); ok {
-		godeps = g.(int) == 1
+		godeps = g.(bool)
 	}
 	if g, ok := p.Has("importGPM"); ok {
-		gpm = g.(int) == 1
+		gpm = g.(bool)
 	}
 
 	Info("Checking dependencies for updates. Godeps: %v, GPM: %v\n", godeps, gpm)
@@ -45,17 +45,18 @@ func recDepResolve(conf *Config, vend string, godeps, gpm bool) (interface{}, er
 		base := path.Join(vend, imp.Name)
 		Info("Looking in %s for a glide.yaml file.\n", base)
 
-		if godeps {
-			importGodep(base, imp.Name)
-		}
-		if gpm {
-			importGPM(base, imp.Name)
-		}
 		if !needsGlideUp(base) {
-			Info("Package %s manages its own dependencies.\n", imp.Name)
-			continue
+			if godeps {
+				importGodep(base, imp.Name)
+			}
+			if gpm {
+				importGPM(base, imp.Name)
+			}
+			if !needsGlideUp(base) {
+				Info("Package %s manages its own dependencies.\n", imp.Name)
+				continue
+			}
 		}
-		Info("Package %s needs `glide up`\n", imp.Name)
 		if err := dependencyGlideUp(base, godeps, gpm); err != nil {
 			Warn("Failed to update dependency %s: %s", imp.Name, err)
 		}
@@ -78,7 +79,6 @@ func dependencyGlideUp(base string, godep, gpm bool) error {
 		return err
 	}
 	for _, imp := range conf.Imports {
-		Info("Importing %s to project %s\n", imp.Name, base)
 		// We don't use the global var to find vendor dir name because the
 		// user may mis-use that var to modify the local vendor dir, and
 		// we don't want that to break the embedded vendor dirs.
@@ -89,13 +89,17 @@ func dependencyGlideUp(base string, godep, gpm bool) error {
 		}
 
 		if VcsExists(imp, wd) {
+			Info("Updating project %s (%s)\n", imp.Name, wd)
 			if err := VcsUpdate(imp, wd); err != nil {
 				// We can still go on just fine even if this fails.
 				Warn("Skipped update %s: %s\n", imp.Name, err)
 			}
-		} else if err := VcsGet(imp, wd); err != nil {
-			Warn("Skipped getting %s: %v\n", imp.Name, err)
-			continue
+		} else {
+			Info("Importing %s to project %s\n", imp.Name, base)
+			if err := VcsGet(imp, wd); err != nil {
+				Warn("Skipped getting %s: %v\n", imp.Name, err)
+				continue
+			}
 		}
 
 		//recDepResolve(conf, path.Join(wd, "vendor"))
