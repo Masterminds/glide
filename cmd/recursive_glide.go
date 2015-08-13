@@ -17,7 +17,7 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 		return nil, nil
 	}
 
-	godeps, gpm := true, true
+	godeps, gpm := false, false
 	if g, ok := p.Has("importGodeps"); ok {
 		godeps = g.(int) == 1
 	}
@@ -149,6 +149,5 @@ func quickDirtyYAMLWrite(dir string, d []*Dependency, pkg string) error {
 	data := yaml.Render(node)
 	f := path.Join(dir, "glide.yaml")
 	Info("Writing new glide.yaml file in %s\n", dir)
-	Info(data)
 	return ioutil.WriteFile(f, []byte(data), 0755)
 }
