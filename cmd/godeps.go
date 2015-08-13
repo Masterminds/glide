@@ -47,11 +47,14 @@ func HasGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Int
 // Returns an []*Dependency
 func ParseGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
+	return parseGodepGodeps(dir)
+}
+func parseGodepGodeps(dir string) ([]*Dependency, error) {
 	path := filepath.Join(dir, "Godeps/Godeps.json")
 	if _, err := os.Stat(path); err != nil {
 		return []*Dependency{}, nil
 	}
-	// Info("Found Godeps.json file.\n")
+	Info("Found Godeps.json file.\n")
 
 	buf := []*Dependency{}
 

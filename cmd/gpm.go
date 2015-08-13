@@ -27,8 +27,14 @@ func HasGPMGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 // Returns an []*Dependency
 func GPMGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
+	return parseGPMGodeps(dir)
+}
+func parseGPMGodeps(dir string) ([]*Dependency, error) {
 	path := filepath.Join(dir, "Godeps")
-	if _, err := os.Stat(path); err != nil {
+	if i, err := os.Stat(path); err != nil {
+		return []*Dependency{}, nil
+	} else if i.IsDir() {
+		Info("Godeps is a directory. This is probably a Godep project.\n")
 		return []*Dependency{}, nil
 	}
 	Info("Found Godeps file.\n")

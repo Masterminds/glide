@@ -354,6 +354,15 @@ func (c *Config) ToYaml() yaml.Node {
 		devimps[i] = dimp.ToYaml()
 	}
 
+	// Fixed in 0.5.0. Prior to that, these were not being printed. Worried
+	// that the "fix" might introduce an unintended side effect.
+	if len(imps) > 0 {
+		cfg["import"] = yaml.List(imps)
+	}
+	if len(devimps) > 0 {
+		cfg["devimport"] = yaml.List(devimps)
+	}
+
 	return yaml.Map(cfg)
 }
 

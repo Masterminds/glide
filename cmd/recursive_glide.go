@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"io/ioutil"
 	"os"
 	"path"
 
@@ -15,14 +16,23 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	if !p.Get("enable", true).(bool) {
 		return nil, nil
 	}
-	Info("Checking dependencies for updates.\n")
+
+	godeps, gpm := true, true
+	if g, ok := p.Has("importGodeps"); ok {
+		godeps = g.(int) == 1
+	}
+	if g, ok := p.Has("importGPM"); ok {
+		gpm = g.(int) == 1
+	}
+
+	Info("Checking dependencies for updates. Godeps: %v, GPM: %v\n", godeps, gpm)
 	conf := p.Get("conf", &Config{}).(*Config)
 	vend, _ := VendorPath(c)
 
-	return recDepResolve(conf, vend)
+	return recDepResolve(conf, vend, godeps, gpm)
 }
 
-func recDepResolve(conf *Config, vend string) (interface{}, error) {
+func recDepResolve(conf *Config, vend string, godeps, gpm bool) (interface{}, error) {
 
 	Info("Inspecting %s.\n", vend)
 
@@ -34,12 +44,19 @@ func recDepResolve(conf *Config, vend string) (interface{}, error) {
 	for _, imp := range conf.Imports {
 		base := path.Join(vend, imp.Name)
 		Info("Looking in %s for a glide.yaml file.\n", base)
+
+		if godeps {
+			importGodep(base, imp.Name)
+		}
+		if gpm {
+			importGPM(base, imp.Name)
+		}
 		if !needsGlideUp(base) {
 			Info("Package %s manages its own dependencies.\n", imp.Name)
 			continue
 		}
 		Info("Package %s needs `glide up`\n", imp.Name)
-		if err := dependencyGlideUp(base); err != nil {
+		if err := dependencyGlideUp(base, godeps, gpm); err != nil {
 			Warn("Failed to update dependency %s: %s", imp.Name, err)
 		}
 	}
@@ -48,7 +65,7 @@ func recDepResolve(conf *Config, vend string) (interface{}, error) {
 	return nil, nil
 }
 
-func dependencyGlideUp(base string) error {
+func dependencyGlideUp(base string, godep, gpm bool) error {
 	//conf := new(Config)
 	fname := path.Join(base, "glide.yaml")
 	f, err := yaml.ReadFile(fname)
@@ -83,7 +100,7 @@ func dependencyGlideUp(base string) error {
 
 		//recDepResolve(conf, path.Join(wd, "vendor"))
 	}
-	recDepResolve(conf, path.Join(base, "vendor"))
+	recDepResolve(conf, path.Join(base, "vendor"), godep, gpm)
 	return nil
 }
 
@@ -103,4 +120,35 @@ func needsGlideUp(dir string) bool {
 	// Should probably see if vendor is there and non-empty.
 
 	return true
+}
+
+func importGodep(dir, pkg string) error {
+	Info("Looking in %s/Godeps/ for a Godeps.json file.\n", dir)
+	d, err := parseGodepGodeps(dir)
+	if err != nil {
+		Warn("Looking for Godeps: %s\n", err)
+		return err
+	}
+	return quickDirtyYAMLWrite(dir, d, pkg)
+}
+
+func importGPM(dir, pkg string) error {
+	d, err := parseGPMGodeps(dir)
+	if err != nil {
+		return err
+	}
+	return quickDirtyYAMLWrite(dir, d, pkg)
+}
+
+func quickDirtyYAMLWrite(dir string, d []*Dependency, pkg string) error {
+	if len(d) == 0 {
+		return nil
+	}
+	c := &Config{Name: pkg, Imports: d}
+	node := c.ToYaml()
+	data := yaml.Render(node)
+	f := path.Join(dir, "glide.yaml")
+	Info("Writing new glide.yaml file in %s\n", dir)
+	Info(data)
+	return ioutil.WriteFile(f, []byte(data), 0755)
 }

@@ -1,4 +1,4 @@
-# Glide: Managing Go Workspaces With Ease
+# Glide: The Lightweight Vendor Package Manager
 
 *Manage your vendor and vendored packages with ease.* Glide is a tool for
 managing the `vendor` directory within a Go package. This feature, first
@@ -94,7 +94,7 @@ $ glide up                                # Update to newest versions of the pac
 Check out the `glide.yaml` in this directory, or examples in the `docs/`
 directory.
 
-### glide create
+### glide create [optional package name]
 
 Initialize a new workspace. Among other things, this creates a stub
 `glide.yaml`
@@ -103,6 +103,9 @@ Initialize a new workspace. Among other things, this creates a stub
 $ glide create
 [INFO] Initialized. You can now edit 'glide.yaml'
 ```
+
+If an optional package name is specified, Glide will add it to
+glide.yaml as the name of your project.
 
 ### glide get [package name]
 
@@ -136,6 +139,10 @@ $ glide rebuild
 [INFO] Running go build github.com/Masterminds/cookoo/cli
 [INFO] Running go build github.com/Masterminds/cookoo
 ```
+
+This is useful when you are working with large 3rd party libraries. It
+will create the `.a` files, which can have a positive impact on your
+build times.
 
 ### glide help
 

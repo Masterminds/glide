@@ -240,7 +240,13 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	update those dependencies accordingly. Those dependencies are maintained in
 	a scoped vendor directory. 'vendor/foo/bar' will have its dependencies
 	stored in 'vendor/foo/bar/vendor'. This behavior can be disabled with
-	'--no-recursive'.`,
+	'--no-recursive'.
+
+	If the '--import' flag is specified, Glide will also import Godep and GPM
+	files as it finds them in dependencies. It will create a glide.yaml file
+	from the Godeps data, and then update. This has no effect if '--no-recursive'
+	is set.
+	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "delete",
@@ -250,10 +256,18 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					Name:  "no-recursive",
 					Usage: "Disable updating dependencies' dependencies.",
 				},
+				cli.BoolFlag{
+					Name:  "import",
+					Usage: "When updating dependencies, convert Godeps (GPM, Godep) to glide.yaml and pull dependencies",
+				},
 			},
 			Action: func(c *cli.Context) {
 				cxt.Put("deleteOptIn", c.Bool("delete"))
 				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
+				if c.Bool("import") {
+					cxt.Put("importGodeps", 1)
+					cxt.Put("importGPM", 1)
+				}
 				setupHandler(c, "update", cxt, router)
 			},
 		},
@@ -319,6 +333,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
 		Using("enable").From("cxt:recursiveDependencies").
+		Using("importGodeps").From("cxt:importGodeps").WithDefault(true).
+		Using("importGPM").From("cxt:importGPM").
 		Does(cmd.WriteYaml, "out").
 		Using("yaml.Node").From("cxt:merged").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
@@ -341,6 +357,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
+		Using("importGodeps").From("cxt:importGodeps").WithDefault(true).
+		Using("importGPM").From("cxt:importGPM").
 		Using("enable").From("cxt:recursiveDependencies")
 
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
