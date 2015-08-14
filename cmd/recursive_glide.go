@@ -83,6 +83,7 @@ func dependencyGlideUp(base string, godep, gpm bool) error {
 		// user may mis-use that var to modify the local vendor dir, and
 		// we don't want that to break the embedded vendor dirs.
 		wd := path.Join(base, "vendor", imp.Name)
+		vdir := path.Join(base, "vendor")
 		if err := ensureDir(wd); err != nil {
 			Warn("Skipped getting %s (vendor/ error): %s\n", imp.Name, err)
 			continue
@@ -90,9 +91,10 @@ func dependencyGlideUp(base string, godep, gpm bool) error {
 
 		if VcsExists(imp, wd) {
 			Info("Updating project %s (%s)\n", imp.Name, wd)
-			if err := VcsUpdate(imp, wd); err != nil {
+			if err := VcsUpdate(imp, vdir); err != nil {
 				// We can still go on just fine even if this fails.
 				Warn("Skipped update %s: %s\n", imp.Name, err)
+				continue
 			}
 		} else {
 			Info("Importing %s to project %s\n", imp.Name, base)
@@ -100,6 +102,12 @@ func dependencyGlideUp(base string, godep, gpm bool) error {
 				Warn("Skipped getting %s: %v\n", imp.Name, err)
 				continue
 			}
+		}
+
+		// If a revision has been set use it.
+		err = VcsVersion(imp, vdir)
+		if err != nil {
+			Warn("Problem setting version on %s: %s\n", imp.Name, err)
 		}
 
 		//recDepResolve(conf, path.Join(wd, "vendor"))

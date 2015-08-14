@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	//"log"
 	"os"
 	"path"
 	"regexp"
@@ -17,6 +18,10 @@ func init() {
 	for _, v := range vcsList {
 		v.regex = regexp.MustCompile(v.pattern)
 	}
+
+	// Uncomment the line below and the log import to see the output
+	// from the vcs commands executed for each project.
+	//v.Logger = log.New(os.Stdout, "go-vcs", log.LstdFlags)
 }
 
 const (
