@@ -405,14 +405,14 @@ func (d *Dependency) GetRepo(dest string) (v.Repo, error) {
 
 	// If the VCS type has a value we try that first.
 	if len(d.VcsType) > 0 && d.VcsType != "None" {
-		switch v.VcsType(d.VcsType) {
-		case v.GitType:
+		switch v.Type(d.VcsType) {
+		case v.Git:
 			return v.NewGitRepo(remote, dest)
-		case v.SvnType:
+		case v.Svn:
 			return v.NewSvnRepo(remote, dest)
-		case v.HgType:
+		case v.Hg:
 			return v.NewHgRepo(remote, dest)
-		case v.BzrType:
+		case v.Bzr:
 			return v.NewBzrRepo(remote, dest)
 		default:
 			return nil, fmt.Errorf("Unknown VCS type %s set for %s", d.VcsType, d.Name)
