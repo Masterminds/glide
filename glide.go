@@ -214,8 +214,8 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:      "novendor",
 			ShortName: "nv",
-			Usage:     "List all non-vendor directories and go files in a directory.",
-			Description: `Given a directory, list all the relevant Go files that are not vendored.
+			Usage:     "List all non-vendor paths in a directory.",
+			Description: `Given a directory, list all the relevant Go paths that are not vendored.
 
 Example:
 
