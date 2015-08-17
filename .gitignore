@@ -4,3 +4,4 @@ glide
 *.a
 *.sublime-project
 *.sublime-workspace
+dist/

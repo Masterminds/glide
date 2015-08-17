@@ -1,4 +1,5 @@
 VERSION := $(shell git describe --tags)
+DIST_DIRS := find * -type d -exec
 
 build:
 	go build -o glide -ldflags "-X main.version=${VERSION}" glide.go
@@ -21,4 +22,22 @@ bootstrap:
 	git clone https://github.com/kylelemons/go-gypsy vendor/github.com/kylelemons/go-gypsy
 	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli
 
-.PHONY: build test install clean
+bootstrap-dist:
+	go get -u github.com/mitchellh/gox
+
+build-all:
+	gox -verbose \
+	-ldflags "-X main.version=${VERSION}" \
+	-os="linux darwin " \
+	-arch="amd64" \
+	-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
+
+dist: build-all
+	cd dist && \
+	$(DIST_DIRS) cp ../LICENSE.txt {} \; && \
+	$(DIST_DIRS) cp ../README.md {} \; && \
+	$(DIST_DIRS) zip -r glide-{}.zip {} \; && \
+	cd ..
+
+
+.PHONY: build test install clean bootstrap bootstrap-dist build-all dist
