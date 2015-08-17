@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	v "github.com/Masterminds/go-vcs"
+	v "github.com/Masterminds/vcs"
 	"github.com/kylelemons/go-gypsy/yaml"
 )
 

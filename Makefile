@@ -18,7 +18,7 @@ clean:
 bootstrap:
 	mkdir ./vendor
 	git clone https://github.com/Masterminds/cookoo vendor/github.com/Masterminds/cookoo
-	git clone https://github.com/Masterminds/go-vcs vendor/github.com/Masterminds/go-vcs
+	git clone https://github.com/Masterminds/vcs vendor/github.com/Masterminds/vcs
 	git clone https://github.com/kylelemons/go-gypsy vendor/github.com/kylelemons/go-gypsy
 	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli
 

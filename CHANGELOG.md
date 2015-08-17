@@ -10,7 +10,7 @@ previous releases.**
   no vendor directory. Use the --no-recursive flag to skip this.
 - Removed GOPATH management. This was needed for vendor package
   management that's not built into the go toolchain.
-- Switched to github.com/Masterminds/go-vcs for VCS integration.
+- Switched to github.com/Masterminds/vcs for VCS integration.
 - When updating packages are now deleted if the --delete flag is set.
   This feature is now opt-in.
 

@@ -234,14 +234,14 @@ See the `docs/` folder for more examples.
 ## Supported Version Control Systems
 
 The Git, SVN, Mercurial (Hg), and Bzr source control systems are supported. This
-happens through the [vcs package](https://github.com/masterminds/go-vcs).
+happens through the [vcs package](https://github.com/masterminds/vcs).
 
 ## Troubleshooting
 
 **Q: bzr (or hg) is not working the way I expected. Why?**
 
 These are works in progress, and may need some additional tuning. Please
-take a look at the [vcs package](https://github.com/masterminds/go-vcs). If you
+take a look at the [vcs package](https://github.com/masterminds/vcs). If you
 see a better way to handle it please let us know.
 
 **Q: Should I check `vendor/` into version control?**

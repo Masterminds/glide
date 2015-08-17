@@ -9,5 +9,5 @@ import:
     vcs:     git
     subpackages:
       - .
-  - package: github.com/Masterminds/go-vcs
+  - package: github.com/Masterminds/vcs
   - package: github.com/codegangsta/cli
