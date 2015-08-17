@@ -204,6 +204,14 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
+			Name:        "name",
+			Usage:       "Print the name of this project.",
+			Description: `Read the glide.yaml file and print the name given on the 'package' line.`,
+			Action: func(c *cli.Context) {
+				setupHandler(c, "name", cxt, router)
+			},
+		},
+		{
 			Name:  "pin",
 			Usage: "Print a YAML file with all of the packages pinned to the current version",
 			Description: `Begins with the current glide.yaml and sets an absolute ref
@@ -438,6 +446,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("env", "Print environment").
 		Includes("@startup").
 		Does(cmd.Status, "status")
+
+	reg.Route("name", "Print environment").
+		Includes("@startup").
+		Includes("@ready").
+		Does(cmd.PrintName, "status").
+		Using("conf").From("cxt:cfg")
 
 	reg.Route("status", "Status").
 		Includes("@startup").
