@@ -39,6 +39,19 @@ func BeQuiet(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	return Quiet, nil
 }
 
+// ReadyToGlide fails if the environment is not sufficient for using glide.
+//
+// Most importantly, it fails if glide.yaml is not present in the current
+// working directory.
+func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	fname := p.Get("filename", "glide.yaml").(string)
+	if _, err := os.Stat(fname); err != nil {
+		cwd, _ := os.Getwd()
+		return false, fmt.Errorf("%s is missing from %s", fname, cwd)
+	}
+	return true, nil
+}
+
 // VersionGuard ensures that the Go version is correct.
 func VersionGuard(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cmd := exec.Command("go", "version")

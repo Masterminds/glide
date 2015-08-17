@@ -8,19 +8,6 @@ import (
 	"github.com/Masterminds/cookoo"
 )
 
-// ReadyToGlide fails if the environment is not sufficient for using glide.
-//
-// Most importantly, it fails if glide.yaml is not present in the current
-// working directory.
-func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	fname := p.Get("filename", "glide.yaml").(string)
-	if _, err := os.Stat(fname); err != nil {
-		cwd, _ := os.Getwd()
-		return false, fmt.Errorf("%s is missing from %s", fname, cwd)
-	}
-	return true, nil
-}
-
 // Return the path to the vendor directory.
 func VendorPath(c cookoo.Context) (string, error) {
 	vendor := c.Get("VendorDir", "vendor").(string)
