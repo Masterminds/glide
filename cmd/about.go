@@ -11,7 +11,8 @@ import (
 func About(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 
 	about := `
-Glide is a tool for managing Go package dependencies and Go workspaces.
+Glide: The Lightweight Vendor Package Manager. Manage your vendor and vendored
+packages with ease.
 
 Name:
     Aside from being catchy, "glide" is a contraction of "Go Elide". The idea is
