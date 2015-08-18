@@ -62,8 +62,8 @@ look something like this:
 		- package: github.com/kylelemons/go-gypsy
 		  subpackages: yaml
 
-NOTE: As of Glide 0.5, the commands 'in', 'into', and 'gopath' no
-longer exist.
+NOTE: As of Glide 0.5, the commands 'in', 'into', 'gopath', 'status', and 'env'
+no longer exist.
 `
 
 var VendorDir = "vendor"
@@ -194,16 +194,6 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			},
 		},
 		{
-			Name:      "env",
-			ShortName: "gopath",
-			Usage:     "Display environment variables for the present project",
-			Description: `Emits the environment for the current project. Useful for
-   things like manually setting GOPATH: GOPATH=$(glide gopath)`,
-			Action: func(c *cli.Context) {
-				setupHandler(c, "env", cxt, router)
-			},
-		},
-		{
 			Name:        "name",
 			Usage:       "Print the name of this project.",
 			Description: `Read the glide.yaml file and print the name given on the 'package' line.`,
@@ -255,14 +245,6 @@ Example:
 	this can improve performance on subsequent 'go run' and 'go build' calls.`,
 			Action: func(c *cli.Context) {
 				setupHandler(c, "rebuild", cxt, router)
-			},
-		},
-		{
-			Name:      "status",
-			ShortName: "s",
-			Usage:     "Display a status report",
-			Action: func(c *cli.Context) {
-				setupHandler(c, "status", cxt, router)
 			},
 		},
 		{
@@ -457,10 +439,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("filename").From("cxt:yaml").
 		Using("project").From("cxt:project").WithDefault("main")
 
-	reg.Route("env", "Print environment").
-		Includes("@startup").
-		Does(cmd.Status, "status")
-
 	reg.Route("name", "Print environment").
 		Includes("@startup").
 		Includes("@ready").
@@ -471,10 +449,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Does(cmd.NoVendor, "paths").
 		Does(cmd.PathString, "out").Using("paths").From("cxt:paths")
-
-	reg.Route("status", "Status").
-		Includes("@startup").
-		Does(cmd.Status, "status")
 
 	reg.Route("about", "Status").
 		Includes("@startup").
