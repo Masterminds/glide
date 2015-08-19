@@ -126,6 +126,11 @@ dependency packages doing the same thing if no `vendor` directory exists.
 $ glide up
 ```
 
+If the dependent vendor packages listed in your `glide.yaml` file use GPM or
+Godep you can use the `--import` flag to import them. If an import occurs a
+`vendor` directory will be created in each project with with dependencies being
+imported. A `glide.yaml` file will also be created for each project.
+
 ## glide novendor (aliased to nv)
 
 When you run commands like `go test ./...` it will iterate over all the
@@ -270,8 +275,13 @@ work and lots of extra space in your VCS.
 
 **Q: How do I import settings from GPM or Godep?**
 
-Glide can import from GPM's `Godeps` file format or from Godep's
-`Godeps/Godeps.json` file format.
+There are two ways to approach importing. The first is when you use `glide up`
+or `glide get` there is an `--import` flag. It will attempt to import from GPM
+and Godep automatically. If fetching is happening recursively this will be
+applied to recursive packages as well.
+
+Alternatively, Glide can import from GPM's `Godeps` file format or from Godep's
+`Godeps/Godeps.json` file format with the `import` command.
 
 For GPM, use `glide import gpm`.
 
