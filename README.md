@@ -126,6 +126,25 @@ dependency packages doing the same thing if no `vendor` directory exists.
 $ glide up
 ```
 
+## glide novendor (aliased to nv)
+
+When you run commands like `go test ./...` it will iterate over all the
+subdirectories including the `vendor` directory. When you are testing your
+application you may want to test your application files without running all the
+tests of your dependencies and their dependencies. This is where the novendor
+command comes in. It lists all of the directories except `vendor`.
+
+    $ go test $(glide novendor)
+
+This will run `go test` over all directories of your project except the
+`vendor` directory.
+
+## glide name
+
+When you're scripting with Glide there are occasions where you need to know
+the name of the package you're working on. `glide name` returns the name of the
+package listed in the `glide.yaml` file.
+
 ### glide rebuild
 
 Re-run `go install` on the packages in the `glide.yaml` file. This
@@ -152,13 +171,13 @@ Print the glide help.
 $ glide help
 ```
 
-### glide version
+### glide --version
 
 Print the version and exit.
 
 ```
-$ glide version
-0.0.2-3-g4ac84b4
+$ glide --version
+glide version 0.5.0
 ```
 
 ### glide.yaml
