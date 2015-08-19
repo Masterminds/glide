@@ -38,9 +38,7 @@ import:
 func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
 	pname := p.Get("project", "main").(string)
-	if gopath := os.Getenv("GOPATH"); gopath != "" {
-		Warn("If your GOPATH is automatically set by your shell, 'glide in' may not correctly set it.\n")
-	}
+	vdir := c.Get("VendorDir", "vendor").(string)
 
 	if _, err := os.Stat(fname); err == nil {
 		cwd, _ := os.Getwd()
@@ -50,14 +48,12 @@ func InitGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
 
-	//f.WriteString(yamlTpl)
 	fmt.Fprintf(f, yamlTpl, pname)
+	f.Close()
 
-	if newgopath, err := GlideGopath(fname); err == nil {
-		Info("Your new GOPATH is %s. Run 'glide gopath' to see it again.\n", newgopath)
-	}
+	os.MkdirAll(vdir, 0755)
+
 	Info("Initialized. You can now edit '%s'\n", fname)
 	return true, nil
 }

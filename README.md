@@ -1,20 +1,20 @@
-# Glide: Managing Go Workspaces With Ease
+# Glide: The Lightweight Vendor Package Manager
 
-*Never vendor again.* Glide is a tool for managing Go package dependencies and
-[Go workspaces](http://golang.org/doc/code.html#GOPATH). Subscribing to the
-view that each project should have its
-own GOPATH, Glide provides tools for versioning Go libraries and
-managing the environment in which your normal Go tools run.
+*Manage your vendor and vendored packages with ease.* Glide is a tool for
+managing the `vendor` directory within a Go package. This feature, first
+introduced in Go 1.5, allows each package to have a `vendor` directory
+containing dependent packages for the project. These vendor packages can be
+installed by a tool (e.g. glide), similar to `go get` or they can be vendored and
+distributed with the package.
 
 [![Build Status](https://travis-ci.org/Masterminds/glide.svg)](https://travis-ci.org/Masterminds/glide)
 
 ### Features
 
-* Manage project-specific `GOPATH`s
 * Ease dependency management
 * Support **versioning packages**
 * Support **aliasing packages** (e.g. for working with github forks)
-* Remove the need for "vendoring" or munging import statements
+* Remove the need for munging import statements
 * Work with all of the `go` tools
 * Support the VCS tools that Go supports:
     - git
@@ -22,16 +22,18 @@ managing the environment in which your normal Go tools run.
     - hg
     - svn
 * Support custom local and global plugins (see docs/plugins.md)
-* Support building packages by OS and architecture
 
 ## How It Works
 
-Glide is an opinionated tool for managing Go workspaces. Glide associates
-a GOPATH to a particular workspace with its own particular dependencies.
-And it assumes that each project has its main source code and also some
-number of dependent packages.
+The dependencies for a project are listed in a `glide.yaml` file. This can
+include a version, VCS, repository location (that can be different from the
+package name), etc. When `glide up` is run it downloads the packages (or updates)
+to the `vendor` directory. It then recursively walks through the downloaded
+packages looking for those with a `glide.yaml` file that don't already have
+a `vendor` directory and installing their dependencies to their `vendor`
+directories.
 
-Projects are structured like this:
+ A projects is structured like this:
 
 ```
 - myProject (Your project)
@@ -44,22 +46,13 @@ Projects are structured like this:
   |    |
   |    |-- foo.go
   |
-  |-- _vendor (This is $GOPATH)
-       |
-       |-- bin
-       |
-       |-- src
+  |-- vendor
+       |-- github.com
             |
-            |-- github.com
+            |-- Masterminds
                   |
-                  |-- Masterminds
-                       |
-                       |-- ... etc.
+                  |-- ... etc.
 ```
-
-Through some trickery, the GOPATH is set to `_vendor`, but the go tools
-will still find `main.go` and subpackages. Make sure, though, that you
-set the name of your package in `glide.yaml`.
 
 *Take a look at [the Glide source code](http://github.com/Masterminds/glide)
 to see this philosophy in action.*
@@ -89,93 +82,73 @@ manage itself, too.
 ## Usage
 
 ```
-$ glide create    # Start a new workspaces
-$ glide in        # Switch into the workspace
-$ open glide.yaml # and edit away!
-$ glide install   # Install packages and dependencies
+$ glide create                            # Start a new workspaces
+$ open glide.yaml                         # and edit away!
+$ glide get github.com/Masterminds/cookoo # Get a package and add to glide.yaml
+$ glide install                           # Install packages and dependencies
 # work, work, work
-$ go build        # Go tools work normally
-$ glide update    # Update to newest versions of the package
-$ exit            # Exit the glide session (started with glide in)
+$ go build                                # Go tools work normally
+$ glide up                                # Update to newest versions of the package
 ```
 
 Check out the `glide.yaml` in this directory, or examples in the `docs/`
 directory.
 
-### glide create
+### glide create [optional package name]
 
 Initialize a new workspace. Among other things, this creates a stub
 `glide.yaml`
 
 ```
 $ glide create
-[INFO] Your new GOPATH is /Users/mbutcher/Code/glide/docs/_vendor. Run 'glide gopath' to see it again.
 [INFO] Initialized. You can now edit 'glide.yaml'
 ```
 
-**If you set your GOPATH in your shell's profile or RC scripts, you may
-need to tweak those settings. See the Troubleshooting section below.**
+If an optional package name is specified, Glide will add it to
+glide.yaml as the name of your project.
 
-### glide in
+### glide get [package name]
 
-Configure an interactive shell for working in a project. This configures
-the GOPATH and so on.
-
-```
-$ glide in
->> You are now gliding into a new shell. To exit, type 'exit'
-$ echo $GOPATH
-/Users/mbutcher/Code/glide/_vendor
-$ exit
->> Exited glide shell
-$
-```
-
-For ease of use, there's a special variant of
-`glide in` called `glide into`:
+You can download package to your `vendor` directory and have it added to your
+`glide.yaml` file with `glide get`.
 
 ```
-glide into /foo/bar
+$ glide get github.com/Masterminds/cookoo
 ```
 
-The above will change directories into `/foo/bar`, make sure it's a Go
-workspace, and then launch a new Glide shell.
+### glide up (aliased to update and install)
 
-**If you set your GOPATH in your shell's profile or RC scripts, you may
-need to tweak those settings. See the Troubleshooting section below.**
-
-### glide install
-
-Download all of the libraries listed in the `glide.yaml` file and put
-them where they should go.
+Download or update all of the libraries listed in the `glide.yaml` file and put
+them in the `vendor` directory. It will also recursively walk through the
+dependency packages doing the same thing if no `vendor` directory exists.
 
 ```
-$ glide install
+$ glide up
 ```
 
-### glide update
+If the dependent vendor packages listed in your `glide.yaml` file use GPM or
+Godep you can use the `--import` flag to import them. If an import occurs a
+`vendor` directory will be created in each project with with dependencies being
+imported. A `glide.yaml` file will also be created for each project.
 
-Update all of the existing repositories. If a new new repository has
-been added to the YAML file, try to download that, too.
+## glide novendor (aliased to nv)
 
-This will look through all of the dependencies in the `glide.yaml`. If
-they are present in `_vendor`, it will check for new versions (using `go
-get -u` or the appropriate VCS). If the dependency is new, it will fetch
-and install for the first time.
+When you run commands like `go test ./...` it will iterate over all the
+subdirectories including the `vendor` directory. When you are testing your
+application you may want to test your application files without running all the
+tests of your dependencies and their dependencies. This is where the novendor
+command comes in. It lists all of the directories except `vendor`.
 
-```
-$ glide update
-[INFO] Updating github.com/kylelemons/go-gypsy/yaml with 'go get -u'
-[INFO] Updating github.com/Masterminds/cookoo with Git (From git@github.com:Masterminds/cookoo.git)
-Fetching origin
-[INFO] Updating github.com/aokoli/goutils with 'go get -u'
-[INFO] Updating github.com/crowdmob/goamz with Git (From git@github.com:technosophos/goamz.git)
-Fetching origin
-[INFO] Set version to github.com/Masterminds/cookoo to master
-[INFO] Looks like /Users/mbutcher/Code/glide/_vendor/src/github.com/aokoli/goutils is a Git repo.
-[INFO] Set version to github.com/aokoli/goutils to the latest
-[INFO] Set version to github.com/crowdmob/goamz to the latest
-```
+    $ go test $(glide novendor)
+
+This will run `go test` over all directories of your project except the
+`vendor` directory.
+
+## glide name
+
+When you're scripting with Glide there are occasions where you need to know
+the name of the package you're working on. `glide name` returns the name of the
+package listed in the `glide.yaml` file.
 
 ### glide rebuild
 
@@ -191,15 +164,9 @@ $ glide rebuild
 [INFO] Running go build github.com/Masterminds/cookoo
 ```
 
-### glide gopath
-
-Emit the GOPATH to this project. Useful for things like `GOPATH=$(glide
-gopath)`.
-
-```
-$ glide gopath
-/Users/mbutcher/Code/glide/_vendor
-```
+This is useful when you are working with large 3rd party libraries. It
+will create the `.a` files, which can have a positive impact on your
+build times.
 
 ### glide help
 
@@ -209,13 +176,13 @@ Print the glide help.
 $ glide help
 ```
 
-### glide version
+### glide --version
 
 Print the version and exit.
 
 ```
-$ glide version
-0.0.2-3-g4ac84b4
+$ glide --version
+glide version 0.5.0
 ```
 
 ### glide.yaml
@@ -228,7 +195,7 @@ The `glide.yaml` file does two critical things:
 A brief `glide.yaml` file looks like this:
 
 ```yaml
-package: github.com/technosophos/glide
+package: github.com/Masterminds/glide
 import:
   - package: github.com/kylelemons/go-gypsy
   - package: github.com/Masterminds/cookoo
@@ -239,19 +206,21 @@ import:
 
 The above tells `glide` that...
 
-1. This package is named `github.com/technosophos/glide`
+1. This package is named `github.com/Masterminds/glide`
 2. That this package depends on two libraries.
 
 
 The first library exemplifies a minimal package import. It merely gives
-the fully qualified import path. Glide will use `go get` to initially
-fetch it.
+the fully qualified import path.
 
-The second library forgoes `go get` and uses `git` directly. When Glide
-reads this definition, it will get the repo from the source in `repo`
-and then checkout the master branch, and put it in
-`github.com/Masterminds/cookoo` in the GOPATH. (Note that `package` and
-`repo` can be completely different)
+When Glide reads the definition for the second library, it will get the repo
+from the source in `repo`, checkout the master branch, and put it in
+`github.com/Masterminds/cookoo` in the `vendor` directory. (Note that `package`
+and `repo` can be completely different)
+
+**TIP:** The ref is VCS dependent and can be anything that can be checked out.
+For example, with Git this can be a branch, tag, or hash. This varies and depends
+on what's supported in the VCS.
 
 **TIP:** In general, you are advised to use the *base package name* for
 importing a package, not a subpackage name. For example, use
@@ -286,151 +255,33 @@ According to the above, the following packages will be built:
 
 See the `docs/` folder for more examples.
 
-### Displaying glide environment indicator in bash
-
-To display an indicator in a custom Bash prompt whenever you are
-"in" the glide environment, add the following check to your $PS1
-environment variable (likely in `.bashrc`):
-
-```bash
-$(if [ "$ALREADY_GLIDING" = "1" ]; then echo " (gliding)"; fi)
-```
-
-Example:
-
-```bash
-export PS1='\u@\h \w$(if [ "$ALREADY_GLIDING" = "1" ]; then echo " (gliding)"; fi) \n$ '
-```
-
-Result:
-
-```
-user@hostname ~/your/go/project
-$ glide in
->> You are now gliding into a new shell. To exit, type 'exit'
-user@hostname ~/your/go/project (gliding)
-$
-```
-
 ## Supported Version Control Systems
 
-Anything supported by `go get` works out of the box. By default, we use
-'go get' to fetch and install dependencies. However, if you use
-`repository` or `ref` statements in your `glide.yaml` file, the native
-client will be used directly.
-
-Support for these is a little harder, and requires some expertise in
-each system.
-
-### Fully supported:
-
-- git
-
-### Supported, but not tested well:
-
-- bzr: All operations supported, but maybe not ideally.
-- hg: All operations supported, but maybe not ideally.
-- svn: Checkout and update are supported. Checkout by branch or tag is
-  done by setting the `repository` URL appropriately. Checkout by `ref`
-  supports revision numbers and symbolic references.
-
-See [docs/vcs.md](docs/vcs.md) for more info.
+The Git, SVN, Mercurial (Hg), and Bzr source control systems are supported. This
+happens through the [vcs package](https://github.com/masterminds/vcs).
 
 ## Troubleshooting
-
-**Q: When I `glide in` a project, my $GOPATH goes to the default.
-Why?**
-
-If you're shell's startup (`.profile`, `.bashrc`, `.zshrc`) sets a
-default `$GOPATH`, this will override the `GOPATH` that glide sets. The
-simple work-around is to use this in your profile:
-
-```bash
-if [ "" = "${GOPATH}" ]; then
-  export GOPATH="/some/dir"
-fi
-```
-
-This will only set a GOPATH if one does not exist. Alternately, if you want to
-set the GOPATH when you're not using `glide in` or `glide into` try the following:
-
-```bash
-if [ "" = "${ALREADY_GLIDING}" ]; then
-  export GOPATH="/some/dir"
-fi
-```
 
 **Q: bzr (or hg) is not working the way I expected. Why?**
 
 These are works in progress, and may need some additional tuning. Please
-take a look at `cmd/bzr.go` and `cmd/hg.go` to see what we do. If you
-can make it better, please submit a patch.
+take a look at the [vcs package](https://github.com/masterminds/vcs). If you
+see a better way to handle it please let us know.
 
-**Q: When I 'glide in', I want to do something cooler than what you do.
-How?**
-
-You can use `incmd: some custom command` in your glide.yaml file.
-Example:
-
-```
-incmd: bash -l
-```
-
-With the above, running `glide in` will start a new Bash shell
-simulating a login environment.
-
-**Q: I don't want to use 'glide in'. How do I set my GOPATH?**
-
-You may explicitly set the GOPATH like this:
-
-```bash
-export GOPATH=$(glide gopath)
-```
-
-The command `glide gopath` will emit the correct path to set as GOPATH.
-
-**Q: Is using the Glide GOPATH required? Do I have to use `_vendor`?**
-
-No, it is not required, and you do not need to use `_vendor`. You may
-choose to use another GOPATH manager, like
-[GVP](http://github.com/pote/gvp), or you may simply manage GOPATH on
-your own.
-
-**Q: Should I check `_vendor` into version control?**
+**Q: Should I check `vendor/` into version control?**
 
 That's up to you. It's not necessary, but it may also cause you extra
 work and lots of extra space in your VCS.
 
-**Q: How can I get my `_vendor` path to work with Sublime Text and GoSublime?**
-
-GoSublime uses an application wide GOPATH. If you want a different GOPATH codebase
-set them up as different projects. Then, in the project settings (your `.sublime-project`
-file) add an entry to set the GOPATH. For example:
-
-```json
-{
-    "settings": {
-        "GoSublime": {
-            "env": {
-                "GOPATH": "$HOME/path/to/project/_vendor"
-            }
-        }
-    },
-    "folders":
-    [
-        {
-            "follow_symlinks": true,
-            "path": "."
-        }
-    ]
-}
-```
-Once you've done this feature like autocomplete will work.
-
 **Q: How do I import settings from GPM or Godep?**
 
-Glide can import from GPM's `Godeps` file format or from Godep's
-`Godeps/Godeps.json` file format.
+There are two ways to approach importing. The first is when you use `glide up`
+or `glide get` there is an `--import` flag. It will attempt to import from GPM
+and Godep automatically. If fetching is happening recursively this will be
+applied to recursive packages as well.
+
+Alternatively, Glide can import from GPM's `Godeps` file format or from Godep's
+`Godeps/Godeps.json` file format with the `import` command.
 
 For GPM, use `glide import gpm`.
 
@@ -448,7 +299,7 @@ $ glide import godep > new-glide.yaml
 
 **Q: Can Glide fetch a package based on OS or Arch?**
 
-A: Yes. Using the `os` and `arch` fields on a `package`, you can speficy
+A: Yes. Using the `os` and `arch` fields on a `package`, you can specify
 which OSes and architectures the package should be fetched for. For
 example, the following package will only be fetched for 64-bit
 Darwin/OSX systems:

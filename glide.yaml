@@ -1,20 +1,13 @@
 package: github.com/Masterminds/glide
 import:
-  # Minimal definition
-  # This will use "go get [-u]" to fetch and update the package, and it will
-  # attempt to keep the release at the tip of master.
   - package: github.com/kylelemons/go-gypsy
-    subpackages: yaml
-  # Full definition
-  # This will check out the given Git repo, set the reference to master,
-  # use "git" (not "go get") to manage it, and alias the package to the
-  # import path github.com/Masterminds/cookoo
+    subpackages:
+      - yaml
   - package: github.com/Masterminds/cookoo
-    vcs: git
-    ref: master
-    repo: git@github.com:Masterminds/cookoo.git
-    # Compile the cookoo/cli and the cookoo package.
+    ref:     master
+    repo:    git@github.com:Masterminds/cookoo.git
+    vcs:     git
     subpackages:
       - .
+  - package: github.com/Masterminds/vcs
   - package: github.com/codegangsta/cli
-#incmd: bash -l

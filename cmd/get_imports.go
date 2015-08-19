@@ -2,24 +2,41 @@ package cmd
 
 import (
 	"fmt"
+	//"log"
 	"os"
+	"path"
+	"regexp"
 	"runtime"
+	"strings"
 
 	"github.com/Masterminds/cookoo"
+	v "github.com/Masterminds/vcs"
 )
+
+func init() {
+	// Precompile the regular expressions used to check VCS locations.
+	for _, v := range vcsList {
+		v.regex = regexp.MustCompile(v.pattern)
+	}
+
+	// Uncomment the line below and the log import to see the output
+	// from the vcs commands executed for each project.
+	//v.Logger = log.New(os.Stdout, "go-vcs", log.LstdFlags)
+}
 
 const (
-	NoVCS uint = iota
-	Git
-	Bzr
-	Hg
-	Svn
+	NoVCS = ""
+	Git   = "git"
+	Bzr   = "bzr"
+	Hg    = "hg"
+	Svn   = "svn"
 )
 
-// Get fetches a single package using the default `go get`.
+// Get fetches a single package and puts it in vendor/.
 //
 // Params:
 //	- package (string): Name of the package to get.
+// 	- verbose (bool): default false
 //
 // Returns:
 // 	- *Dependency: A dependency describing this package.
@@ -27,22 +44,40 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	name := p.Get("package", "").(string)
 	cfg := p.Get("conf", nil).(*Config)
 
-	pkg, subpkg := NormalizeName(name)
-
-	if cfg.HasDependency(pkg) {
-		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", pkg)
+	cwd, err := VendorPath(c)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(pkg) == 0 {
+	root := getRepoRootFromPackage(name)
+	if len(root) == 0 {
 		return nil, fmt.Errorf("Package name is required.")
 	}
 
-	dep := &Dependency{Name: pkg}
-	if len(subpkg) > 0 {
+	if cfg.HasDependency(root) {
+		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", root)
+	}
+
+	dest := path.Join(cwd, root)
+	repoUrl := "https://" + root
+	repo, err := v.NewRepo(repoUrl, dest)
+	if err != nil {
+		return false, err
+	}
+
+	dep := &Dependency{
+		Name:    root,
+		VcsType: string(repo.Vcs()),
+
+		// Should this assume a remote https root at all times?
+		Repository: repoUrl,
+	}
+	subpkg := strings.TrimPrefix(name, root)
+	if len(subpkg) > 0 && subpkg != "/" {
 		dep.Subpackages = []string{subpkg}
 	}
 
-	if err := VcsGet(dep); err != nil {
+	if err := repo.Get(); err != nil {
 		return dep, err
 	}
 
@@ -54,6 +89,11 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 // GetImports iterates over the imported packages and gets them.
 func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
+	cwd, err := VendorPath(c)
+	if err != nil {
+		Error("Failed to prepare vendor directory: %s", err)
+		return false, err
+	}
 
 	if len(cfg.Imports) == 0 {
 		Info("No dependencies found. Nothing downloaded.\n")
@@ -61,8 +101,8 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	}
 
 	for _, dep := range cfg.Imports {
-		if err := VcsGet(dep); err != nil {
-			Warn("Skipped getting %s: %s\n", dep.Name, err)
+		if err := VcsGet(dep, cwd); err != nil {
+			Warn("Skipped getting %s: %v\n", dep.Name, err)
 		}
 	}
 
@@ -72,6 +112,11 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 // UpdateImports iterates over the imported packages and updates them.
 func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
+	force := p.Get("force", true).(bool)
+	cwd, err := VendorPath(c)
+	if err != nil {
+		return false, err
+	}
 
 	if len(cfg.Imports) == 0 {
 		Info("No dependencies found. Nothing updated.\n")
@@ -79,7 +124,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	}
 
 	for _, dep := range cfg.Imports {
-		if err := VcsUpdate(dep); err != nil {
+		if err := VcsUpdate(dep, cwd, force); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}
 	}
@@ -87,49 +132,26 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	return true, nil
 }
 
-// CowardMode checks that the environment is setup before continuing on. If not
-// setup and error is returned.
-func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	gopath := os.Getenv("GOPATH")
-	if len(gopath) == 0 {
-		return false, fmt.Errorf("No GOPATH is set.\n")
-	}
-
-	if _, err := os.Stat(gopath); err != nil {
-		return false, fmt.Errorf("Did you forget to 'glide install'? GOPATH=%s seems not to exist: %s\n", gopath, err)
-	}
-
-	ggpath := os.Getenv("GLIDE_GOPATH")
-	if len(ggpath) > 0 && ggpath != gopath {
-		Warn("Your GOPATH is set to %s, and we expected %s\n", gopath, ggpath)
-	}
-	return true, nil
-}
-
 func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
+	cwd, err := VendorPath(c)
+	if err != nil {
+		return false, err
+	}
 
 	if len(cfg.Imports) == 0 {
-		Info("No dependencies found.\n")
+		Info("No references set.\n")
 		return false, nil
 	}
 
 	for _, dep := range cfg.Imports {
-		if err := VcsVersion(dep); err != nil {
+		if err := VcsVersion(dep, cwd); err != nil {
 			Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
 		}
 	}
 
 	return true, nil
 }
-
-var (
-	goGet VCS = new(GoGetVCS)
-	git   VCS = new(GitVCS)
-	svn   VCS = new(SvnVCS)
-	bzr   VCS = new(BzrVCS)
-	hg    VCS = new(HgVCS)
-)
 
 // filterArchOs indicates a dependency should be filtered out because it is
 // the wrong GOOS or GOARCH.
@@ -163,184 +185,178 @@ func filterArchOs(dep *Dependency) bool {
 	return false
 }
 
+func VcsExists(dep *Dependency, dest string) bool {
+	repo, err := dep.GetRepo(dest)
+	if err != nil {
+		return false
+	}
+
+	return repo.CheckLocal()
+}
+
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
-// Usually it delegates to lower-level *Get functions.
-//
-// See https://code.google.com/p/go/source/browse/src/cmd/go/vcs.go
-func VcsGet(dep *Dependency) error {
+// VcsGet installs into the dest.
+func VcsGet(dep *Dependency, dest string) error {
 
-	if filterArchOs(dep) {
-		Info("Ignoring %s for OS/ARch %s/%s", dep.Name, runtime.GOOS, runtime.GOARCH)
-		return nil
+	repo, err := dep.GetRepo(dest)
+	if err != nil {
+		return err
 	}
 
-	// See note in VcsUpdate.
-	if dep.Repository == "" && dep.Reference == "" {
-		Info("Installing %s with 'go get'\n", dep.Name)
-		return goGet.Get(dep)
-	}
-
-	switch dep.VcsType {
-	case Git:
-		if dep.Repository == "" {
-			dep.Repository = "https://" + dep.Name
-		}
-		Info("Installing %s with Git (From %s)\n", dep.Name, dep.Repository)
-		return git.Get(dep)
-	case Bzr:
-		Info("Installing %s with Bzr (From %s)\n", dep.Name, dep.Repository)
-		return bzr.Get(dep)
-	case Hg:
-		if dep.Repository == "" {
-			dep.Repository = "https://" + dep.Name
-		}
-		Info("Installing %s with Hg (From %s)\n", dep.Name, dep.Repository)
-		return hg.Get(dep)
-	case Svn:
-		Info("Installing %s with Svn (From %s)\n", dep.Name, dep.Repository)
-		return svn.Get(dep)
-	default:
-		if dep.VcsType == NoVCS {
-			Info("Defaulting to 'go get %s'\n", dep.Name)
-			if len(dep.Reference) > 0 {
-				Warn("Ref is set to %s, but no VCS is set. This can cause inconsistencies.\n", dep.Reference)
-			}
-		} else {
-			Warn("No handler for %d. Falling back to 'go get %s'.\n", dep.VcsType, dep.Name)
-		}
-		return goGet.Get(dep)
-	}
+	return repo.Get()
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *Dependency) error {
+func VcsUpdate(dep *Dependency, vend string, force bool) error {
+	Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
 		Info("%s is not used for %s/%s.\n", dep.Name, runtime.GOOS, runtime.GOARCH)
 		return nil
 	}
 
-	// If there is no Ref set, if Repository is empty, and if the VCS not known
-	// we should just default to Go Get.
-	//
-	// Why do we care if Ref is blank? As of Go 1.3, go get builds a .a
-	// file for each library. But if we set a Ref, that will switch the source
-	// code, but not necessarily build a .a file. So we want to make sure not
-	// to default to 'go get' if we're then going to grab a specific version.
-	if dep.Reference == "" && dep.Repository == "" && dep.VcsType == NoVCS {
-		Info("Reference, repo, and VCS not set. Falling back to 'go get -u %s'.\n", dep.Name)
-		return goGet.Update(dep)
-	}
-
-	if dep.Repository == "" && (dep.VcsType == Git || dep.VcsType == Hg) {
-		dep.Repository = "https://" + dep.Name
-	}
-
-	if dep.VcsType == NoVCS {
-		guess, err := GuessVCS(dep)
-		if err != nil {
-			Warn("Tried to guess VCS type, but failed: %s", err)
-		} else {
-			dep.VcsType = guess
+	dest := path.Join(vend, dep.Name)
+	// If destination doesn't exist we need to perform an initial checkout.
+	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		if err = VcsGet(dep, dest); err != nil {
+			Warn("Unable to checkout %s\n", dep.Name)
+			return err
 		}
-	}
+	} else {
+		repo, err := dep.GetRepo(dest)
 
-	switch dep.VcsType {
-	case Git:
-		Info("Updating %s with Git (From %s)\n", dep.Name, dep.Repository)
-		return git.Update(dep)
-	case Bzr:
-		Info("Updating %s with Bzr (From %s)\n", dep.Name, dep.Repository)
-		return bzr.Update(dep)
-	case Hg:
-		Info("Updating %s with Hg (From %s)\n", dep.Name, dep.Repository)
-		return hg.Update(dep)
-	case Svn:
-		Info("Updating %s with Svn (From %s)\n", dep.Name, dep.Repository)
-		return svn.Update(dep)
-	default:
-		if dep.VcsType == NoVCS {
-			Info("No VCS set. Updating with 'go get -u %s'\n", dep.Name)
-			if len(dep.Reference) > 0 {
-				Warn("Ref is set to %s, but no VCS is set. This can cause inconsistencies.\n", dep.Reference)
+		// Tried to checkout a repo to a path that does not work. Either the
+		// type or endpoint has changed. Force is being passed in so the old
+		// location can be removed and replaced with the new one.
+		// Warning, any changes in the old location will be deleted.
+		// TODO: Put dirty checking in on the existing local checkout.
+		if (err == v.ErrWrongVCS || err == v.ErrWrongRemote) && force == true {
+			var newRemote string
+			if len(dep.Repository) > 0 {
+				newRemote = dep.Repository
+			} else {
+				newRemote = "https://" + dep.Name
 			}
+
+			Warn("Replacing %s with contents from %s\n", dep.Name, newRemote)
+			rerr := os.RemoveAll(dest)
+			if rerr != nil {
+				return rerr
+			}
+			if err = VcsGet(dep, dest); err != nil {
+				Warn("Unable to checkout %s\n", dep.Name)
+				return err
+			}
+		} else if err != nil {
+			return err
 		} else {
-			Warn("No handler for this repo type. Falling back to 'go get -u %s'.\n", dep.Name)
+			if err := repo.Update(); err != nil {
+				Warn("Download failed.\n")
+				return err
+			}
 		}
-		return goGet.Update(dep)
-	}
-}
-
-func VcsVersion(dep *Dependency) error {
-	if dep.VcsType == NoVCS {
-		dep.VcsType, _ = GuessVCS(dep)
 	}
 
-	switch dep.VcsType {
-	case Git:
-		return git.Version(dep)
-	case Bzr:
-		return bzr.Version(dep)
-	case Hg:
-		return hg.Version(dep)
-	case Svn:
-		return svn.Version(dep)
-	default:
-		if len(dep.Reference) > 0 {
-			Warn("Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
-			return goGet.Version(dep)
-		}
-		return nil
-	}
-}
-
-func VcsLastCommit(dep *Dependency) (string, error) {
-	if dep.VcsType == NoVCS {
-		dep.VcsType, _ = GuessVCS(dep)
-	}
-
-	switch dep.VcsType {
-	case Git:
-		return git.LastCommit(dep)
-	case Bzr:
-		return bzr.LastCommit(dep)
-	case Hg:
-		return hg.LastCommit(dep)
-	case Svn:
-		return svn.LastCommit(dep)
-	default:
-		if len(dep.Reference) > 0 {
-			Warn("Cannot update %s to specific version with VCS %d.\n", dep.Name, dep.VcsType)
-			return goGet.LastCommit(dep)
-		}
-		return "", nil
-	}
-}
-
-func VcsSetReference(dep *Dependency) error {
-	Warn("Cannot set reference. not implemented.\n")
 	return nil
 }
 
-// GuessVCS attempts to guess guess the VCS used by a package.
-func GuessVCS(dep *Dependency) (uint, error) {
-	dest := fmt.Sprintf("%s/src/%s", os.Getenv("GOPATH"), dep.Name)
-	//Debug("Looking in %s for hints about VCS type.\n", dest)
-
-	if _, err := os.Stat(dest + "/.git"); err == nil {
-		Info("Looks like %s is a Git repo.\n", dest)
-		return Git, nil
-	} else if _, err := os.Stat(dest + "/.bzr"); err == nil {
-		Info("Looks like %s is a Bzr repo.\n", dest)
-		return Bzr, nil
-	} else if _, err := os.Stat(dest + "/.hg"); err == nil {
-		Info("Looks like %s is a Mercurial repo.\n", dest)
-		return Hg, nil
-	} else if _, err := os.Stat(dest + "/.svn"); err == nil {
-		Info("Looks like %s is a Subversion repo.\n", dest)
-		return Svn, nil
-	} else {
-		return NoVCS, nil
+func VcsVersion(dep *Dependency, vend string) error {
+	// If there is no refernece configured there is nothing to set.
+	if dep.Reference == "" {
+		return nil
 	}
+
+	Info("Setting version for %s.\n", dep.Name)
+
+	cwd := path.Join(vend, dep.Name)
+	repo, err := dep.GetRepo(cwd)
+	if err != nil {
+		return err
+	}
+
+	if err := repo.UpdateVersion(dep.Reference); err != nil {
+		Error("Failed to set version to %s: %s\n", dep.Reference, err)
+		return err
+	}
+
+	return nil
+}
+
+func VcsLastCommit(dep *Dependency, vend string) (string, error) {
+	cwd := path.Join(vend, dep.Name)
+	repo, err := dep.GetRepo(cwd)
+	if err != nil {
+		return "", err
+	}
+
+	version, err := repo.Version()
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
+}
+
+// From a package name find the root repo. For example,
+// the package github.com/Masterminds/cookoo/io has a root repo
+// at github.com/Masterminds/cookoo
+func getRepoRootFromPackage(pkg string) string {
+	for _, v := range vcsList {
+		m := v.regex.FindStringSubmatch(pkg)
+		if m == nil {
+			continue
+		}
+
+		if m[1] != "" {
+			return m[1]
+		}
+	}
+
+	// Default to returning the package name passed in if no matches.
+	// Should this be an error?
+	return pkg
+}
+
+type vcsInfo struct {
+	host    string
+	pattern string
+	regex   *regexp.Regexp
+}
+
+var vcsList = []*vcsInfo{
+	{
+		host:    "github.com",
+		pattern: `^(?P<rootpkg>github\.com/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	{
+		host:    "bitbucket.org",
+		pattern: `^(?P<rootpkg>bitbucket\.org/([A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+))(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	{
+		host:    "launchpad.net",
+		pattern: `^(?P<rootpkg>launchpad\.net/(([A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)?|~[A-Za-z0-9_.\-]+/(\+junk|[A-Za-z0-9_.\-]+)/[A-Za-z0-9_.\-]+))(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	{
+		host:    "git.launchpad.net",
+		pattern: `^(?P<rootpkg>git\.launchpad\.net/(([A-Za-z0-9_.\-]+)|~[A-Za-z0-9_.\-]+/(\+git|[A-Za-z0-9_.\-]+)/[A-Za-z0-9_.\-]+))$`,
+	},
+	{
+		host:    "go.googlesource.com",
+		pattern: `^(?P<rootpkg>go\.googlesource\.com/[A-Za-z0-9_.\-]+/?)$`,
+	},
+	// TODO: Once Google Code becomes fully deprecated this can be removed.
+	{
+		host:    "code.google.com",
+		pattern: `^(?P<rootpkg>code\.google\.com/[pr]/([a-z0-9\-]+)(\.([a-z0-9\-]+))?)(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	// Alternative Google setup. This is the previous structure but it still works... until Google Code goes away.
+	{
+		pattern: `^(?P<rootpkg>[a-z0-9_\-.]+)\.googlecode\.com/(git|hg|svn)(/.*)?$`,
+	},
+	// If none of the previous detect the type they will fall to this looking for the type in a generic sense
+	// by the extension to the path.
+	{
+		pattern: `^(?P<rootpkg>(?P<repo>([a-z0-9.\-]+\.)+[a-z0-9.\-]+(:[0-9]+)?/[A-Za-z0-9_.\-/]*?)\.(bzr|git|hg|svn))(/[A-Za-z0-9_.\-]+)*$`,
+	},
 }

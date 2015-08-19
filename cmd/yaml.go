@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	v "github.com/Masterminds/vcs"
 	"github.com/kylelemons/go-gypsy/yaml"
 )
 
@@ -171,21 +172,6 @@ func AddDependencies(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 	return true, nil
 }
 
-func vcsString(vtype uint) string {
-	switch vtype {
-	case Git:
-		return "git"
-	case Hg:
-		return "hg"
-	case Bzr:
-		return "bzr"
-	case Svn:
-		return "svn"
-	default:
-		return ""
-	}
-}
-
 func valOrEmpty(key string, store map[string]yaml.Node) string {
 	val, ok := store[key]
 	if !ok {
@@ -232,7 +218,7 @@ func valOrList(key string, store map[string]yaml.Node) []string {
 	return subpackages
 }
 
-func getVcsType(store map[string]yaml.Node) uint {
+func getVcsType(store map[string]yaml.Node) string {
 	val, ok := store["vcs"]
 	if !ok {
 		return NoVCS
@@ -241,16 +227,16 @@ func getVcsType(store map[string]yaml.Node) uint {
 	name := val.(yaml.Scalar).String()
 
 	switch name {
-	case "git":
-		return Git
-	case "hg", "mercurial":
-		return Hg
-	case "bzr", "bazaar":
-		return Bzr
-	case "svn", "subversion":
-		return Svn
+	case "git", "hg", "bzr", "svn":
+		return name
+	case "mercurial":
+		return "hg"
+	case "bazaar":
+		return "bzr"
+	case "subversion":
+		return "svn"
 	default:
-		return NoVCS
+		return ""
 	}
 }
 
@@ -368,13 +354,22 @@ func (c *Config) ToYaml() yaml.Node {
 		devimps[i] = dimp.ToYaml()
 	}
 
+	// Fixed in 0.5.0. Prior to that, these were not being printed. Worried
+	// that the "fix" might introduce an unintended side effect.
+	if len(imps) > 0 {
+		cfg["import"] = yaml.List(imps)
+	}
+	if len(devimps) > 0 {
+		cfg["devimport"] = yaml.List(devimps)
+	}
+
 	return yaml.Map(cfg)
 }
 
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
 	Name, Reference, Repository string
-	VcsType                     uint
+	VcsType                     string
 	Subpackages, Arch, Os       []string
 }
 
@@ -397,6 +392,45 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 	return dep, nil
 }
 
+func (d *Dependency) GetRepo(dest string) (v.Repo, error) {
+
+	// The remote location is either the configured repo or the package
+	// name as an https url.
+	var remote string
+	if len(d.Repository) > 0 {
+		remote = d.Repository
+	} else {
+		remote = "https://" + d.Name
+	}
+
+	// If the VCS type has a value we try that first.
+	if len(d.VcsType) > 0 && d.VcsType != "None" {
+		switch v.Type(d.VcsType) {
+		case v.Git:
+			return v.NewGitRepo(remote, dest)
+		case v.Svn:
+			return v.NewSvnRepo(remote, dest)
+		case v.Hg:
+			return v.NewHgRepo(remote, dest)
+		case v.Bzr:
+			return v.NewBzrRepo(remote, dest)
+		default:
+			return nil, fmt.Errorf("Unknown VCS type %s set for %s", d.VcsType, d.Name)
+		}
+	}
+
+	// When now type set we try to autodetect.
+	return v.NewRepo(remote, dest)
+}
+
+func stripScheme(u string) string {
+	parts := strings.Split(u, "://")
+	if len(parts) > 1 {
+		return parts[1]
+	}
+	return u
+}
+
 // ToYaml converts a *Dependency to a YAML Map node.
 func (d *Dependency) ToYaml() yaml.Node {
 	dep := make(map[string]yaml.Node, 5)
@@ -410,7 +444,7 @@ func (d *Dependency) ToYaml() yaml.Node {
 
 		dep["subpackages"] = yaml.List(subp)
 	}
-	vcs := vcsString(d.VcsType)
+	vcs := d.VcsType
 	if len(vcs) > 0 {
 		dep["vcs"] = yaml.Scalar(vcs)
 	}

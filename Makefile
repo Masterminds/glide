@@ -1,7 +1,8 @@
 VERSION := $(shell git describe --tags)
+DIST_DIRS := find * -type d -exec
 
 build:
-	GOPATH=${PWD}/_vendor go build -o glide -ldflags "-X main.version ${VERSION}" glide.go
+	go build -o glide -ldflags "-X main.version=${VERSION}" glide.go
 
 install: build
 	install -d ${DESTDIR}/usr/local/bin/
@@ -15,11 +16,28 @@ clean:
 	rm -f ./glide
 
 bootstrap:
-	mkdir ./_vendor
-	GOPATH=${PWD}/_vendor go get github.com/Masterminds/cookoo
-	GOPATH=${PWD}/_vendor go get github.com/kylelemons/go-gypsy/yaml
-	GOPATH=${PWD}/_vendor go get github.com/codegangsta/cli
-	ln -s ${PWD} _vendor/src/github.com/Masterminds/glide
-	GOPATH=${PWD}/_vendor go build -o glide -ldflags "-X main.version ${VERSION}" glide.go
+	mkdir ./vendor
+	git clone https://github.com/Masterminds/cookoo vendor/github.com/Masterminds/cookoo
+	git clone https://github.com/Masterminds/vcs vendor/github.com/Masterminds/vcs
+	git clone https://github.com/kylelemons/go-gypsy vendor/github.com/kylelemons/go-gypsy
+	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli
 
-.PHONY: build test install clean
+bootstrap-dist:
+	go get -u github.com/mitchellh/gox
+
+build-all:
+	gox -verbose \
+	-ldflags "-X main.version=${VERSION}" \
+	-os="linux darwin windows " \
+	-arch="amd64 386" \
+	-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
+
+dist: build-all
+	cd dist && \
+	$(DIST_DIRS) cp ../LICENSE.txt {} \; && \
+	$(DIST_DIRS) cp ../README.md {} \; && \
+	$(DIST_DIRS) zip -r glide-{}.zip {} \; && \
+	cd ..
+
+
+.PHONY: build test install clean bootstrap bootstrap-dist build-all dist
