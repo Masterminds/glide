@@ -7,7 +7,7 @@ containing dependent packages for the project. These vendor packages can be
 installed by a tool (e.g. glide), similar to `go get` or they can be vendored and
 distributed with the package.
 
-[![Build Status](https://travis-ci.org/Masterminds/glide.svg)](https://travis-ci.org/Masterminds/glide)
+[![Build Status](https://travis-ci.org/Masterminds/glide.svg)](https://travis-ci.org/Masterminds/glide) [![Go Report Card](http://goreportcard.com/badge/Masterminds/glide)](http://goreportcard.com/report/Masterminds/glide)
 
 ### Features
 
