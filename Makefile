@@ -28,8 +28,8 @@ bootstrap-dist:
 build-all:
 	gox -verbose \
 	-ldflags "-X main.version=${VERSION}" \
-	-os="linux darwin " \
-	-arch="amd64" \
+	-os="linux darwin windows " \
+	-arch="amd64 386" \
 	-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
 
 dist: build-all
