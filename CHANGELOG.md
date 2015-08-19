@@ -1,4 +1,4 @@
-# Release 0.5.0 (xxxx-xx-xx)
+# Release 0.5.0 (2015-08-19)
 
 **Glide .5 is a major update breaking some backwards compatability with
 previous releases.**
