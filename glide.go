@@ -281,9 +281,14 @@ Example:
 					Name:  "import",
 					Usage: "When updating dependencies, convert Godeps (GPM, Godep) to glide.yaml and pull dependencies",
 				},
+				cli.BoolFlag{
+					Name:  "force",
+					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				cxt.Put("deleteOptIn", c.Bool("delete"))
+				cxt.Put("forceUpdate", c.Bool("force"))
 				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
@@ -356,6 +361,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("enable").From("cxt:recursiveDependencies").
 		Using("importGodeps").From("cxt:importGodeps").
 		Using("importGPM").From("cxt:importGPM").
+		Using("force").From("cxt:forceUpdate").WithDefault(false).
 		Does(cmd.WriteYaml, "out").
 		Using("yaml.Node").From("cxt:merged").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
@@ -375,12 +381,15 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.DeleteUnusedPackages, "deleted").
 		Using("conf").From("cxt:cfg").
 		Using("optIn").From("cxt:deleteOptIn").
-		Does(cmd.UpdateImports, "dependencies").Using("conf").From("cxt:cfg").
+		Does(cmd.UpdateImports, "dependencies").
+		Using("conf").From("cxt:cfg").
+		Using("force").From("cxt:forceUpdate").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
 		Using("importGodeps").From("cxt:importGodeps").
 		Using("importGPM").From("cxt:importGPM").
-		Using("enable").From("cxt:recursiveDependencies")
+		Using("enable").From("cxt:recursiveDependencies").
+		Using("force").From("cxt:forceUpdate")
 
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 

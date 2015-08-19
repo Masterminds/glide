@@ -112,6 +112,7 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 // UpdateImports iterates over the imported packages and updates them.
 func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
+	force := p.Get("force", true).(bool)
 	cwd, err := VendorPath(c)
 	if err != nil {
 		return false, err
@@ -123,7 +124,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	}
 
 	for _, dep := range cfg.Imports {
-		if err := VcsUpdate(dep, cwd); err != nil {
+		if err := VcsUpdate(dep, cwd, force); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}
 	}
@@ -207,7 +208,7 @@ func VcsGet(dep *Dependency, dest string) error {
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *Dependency, vend string) error {
+func VcsUpdate(dep *Dependency, vend string, force bool) error {
 	Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
@@ -220,19 +221,40 @@ func VcsUpdate(dep *Dependency, vend string) error {
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
 		if err = VcsGet(dep, dest); err != nil {
 			Warn("Unable to checkout %s\n", dep.Name)
-			fmt.Println(err)
 			return err
 		}
 	} else {
 		repo, err := dep.GetRepo(dest)
-		if err != nil {
+
+		// Tried to checkout a repo to a path that does not work. Either the
+		// type or endpoint has changed. Force is being passed in so the old
+		// location can be removed and replaced with the new one.
+		// Warning, any changes in the old location will be deleted.
+		// TODO: Put dirty checking in on the existing local checkout.
+		if (err == v.ErrWrongVCS || err == v.ErrWrongRemote) && force == true {
+			var newRemote string
+			if len(dep.Repository) > 0 {
+				newRemote = dep.Repository
+			} else {
+				newRemote = "https://" + dep.Name
+			}
+
+			Warn("Replacing %s with contents from %s\n", dep.Name, newRemote)
+			rerr := os.RemoveAll(dest)
+			if rerr != nil {
+				return rerr
+			}
+			if err = VcsGet(dep, dest); err != nil {
+				Warn("Unable to checkout %s\n", dep.Name)
+				return err
+			}
+		} else if err != nil {
 			return err
-		}
-		// TODO: Handle the case of a VCS switching. The could be the config
-		// for a VCS or the type of VCS.
-		if err := repo.Update(); err != nil {
-			Warn("Download failed.\n")
-			return err
+		} else {
+			if err := repo.Update(); err != nil {
+				Warn("Download failed.\n")
+				return err
+			}
 		}
 	}
 

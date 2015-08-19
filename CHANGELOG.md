@@ -13,6 +13,8 @@ previous releases.**
 - Switched to github.com/Masterminds/vcs for VCS integration.
 - When updating packages are now deleted if the --delete flag is set.
   This feature is now opt-in.
+- Fixed #32: Detects VCS type and endpoint changes along with a --force flag
+  to replace the checkout if desired.
 
 # Release 0.4.1 (2015-07-13)
 

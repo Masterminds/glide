@@ -16,6 +16,7 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	if !p.Get("enable", true).(bool) {
 		return nil, nil
 	}
+	force := p.Get("force", true).(bool)
 
 	godeps, gpm := false, false
 	if g, ok := p.Has("importGodeps"); ok {
@@ -29,10 +30,10 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	conf := p.Get("conf", &Config{}).(*Config)
 	vend, _ := VendorPath(c)
 
-	return recDepResolve(conf, vend, godeps, gpm)
+	return recDepResolve(conf, vend, godeps, gpm, force)
 }
 
-func recDepResolve(conf *Config, vend string, godeps, gpm bool) (interface{}, error) {
+func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interface{}, error) {
 
 	Info("Inspecting %s.\n", vend)
 
@@ -57,7 +58,7 @@ func recDepResolve(conf *Config, vend string, godeps, gpm bool) (interface{}, er
 				continue
 			}
 		}
-		if err := dependencyGlideUp(base, godeps, gpm); err != nil {
+		if err := dependencyGlideUp(base, godeps, gpm, force); err != nil {
 			Warn("Failed to update dependency %s: %s", imp.Name, err)
 		}
 	}
@@ -66,7 +67,7 @@ func recDepResolve(conf *Config, vend string, godeps, gpm bool) (interface{}, er
 	return nil, nil
 }
 
-func dependencyGlideUp(base string, godep, gpm bool) error {
+func dependencyGlideUp(base string, godep, gpm, force bool) error {
 	//conf := new(Config)
 	fname := path.Join(base, "glide.yaml")
 	f, err := yaml.ReadFile(fname)
@@ -91,7 +92,7 @@ func dependencyGlideUp(base string, godep, gpm bool) error {
 
 		if VcsExists(imp, wd) {
 			Info("Updating project %s (%s)\n", imp.Name, wd)
-			if err := VcsUpdate(imp, vdir); err != nil {
+			if err := VcsUpdate(imp, vdir, force); err != nil {
 				// We can still go on just fine even if this fails.
 				Warn("Skipped update %s: %s\n", imp.Name, err)
 				continue
@@ -112,7 +113,7 @@ func dependencyGlideUp(base string, godep, gpm bool) error {
 
 		//recDepResolve(conf, path.Join(wd, "vendor"))
 	}
-	recDepResolve(conf, path.Join(base, "vendor"), godep, gpm)
+	recDepResolve(conf, path.Join(base, "vendor"), godep, gpm, force)
 	return nil
 }
 
