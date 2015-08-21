@@ -65,7 +65,7 @@ On Mac OS X you can install the latest release via [Homebrew](https://github.com
 $ brew install glide
 ```
 
-[Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac and Linux.
+[Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac, Linux and Windows.
 
 To build from source you can:
 
