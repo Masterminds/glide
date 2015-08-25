@@ -350,9 +350,25 @@ var vcsList = []*vcsInfo{
 		host:    "code.google.com",
 		pattern: `^(?P<rootpkg>code\.google\.com/[pr]/([a-z0-9\-]+)(\.([a-z0-9\-]+))?)(/[A-Za-z0-9_.\-]+)*$`,
 	},
+	// Alternative Google setup for SVN. This is the previous structure but it still works... until Google Code goes away.
+	{
+		pattern: `^(?P<rootpkg>[a-z0-9_\-.]+\.googlecode\.com/svn(/.*)?)$`,
+	},
 	// Alternative Google setup. This is the previous structure but it still works... until Google Code goes away.
 	{
-		pattern: `^(?P<rootpkg>[a-z0-9_\-.]+)\.googlecode\.com/(git|hg|svn)(/.*)?$`,
+		pattern: `^(?P<rootpkg>[a-z0-9_\-.]+\.googlecode\.com/(git|hg))(/.*)?$`,
+	},
+	// Working with the golang.org/x/[pkg] syntax
+	{
+		pattern: `^(?P<rootpkg>golang\.org/x/[A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	// Working with the gopkg.in/[pkg].[vX] syntax
+	{
+		pattern: `^(?P<rootpkg>gopkg\.in/[A-Za-z0-9_.\-]+(\.v[0-9]+(\.[0-9]+)?(\.[0-9]+)?))(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	// Working with the gopkg.in/[org]/[pkg].[vX] syntax
+	{
+		pattern: `^(?P<rootpkg>gopkg\.in/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+(\.v[0-9]+(\.[0-9]+)?(\.[0-9]+)?))(/[A-Za-z0-9_.\-]+)*$`,
 	},
 	// If none of the previous detect the type they will fall to this looking for the type in a generic sense
 	// by the extension to the path.
