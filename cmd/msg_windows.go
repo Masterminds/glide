@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Info logs information
@@ -54,4 +55,10 @@ func Msg(msg string, args ...interface{}) {
 		return
 	}
 	fmt.Printf(msg, args...)
+
+	// Get rid of the annoying fact that messages need \n at the end, but do
+	// it in a backward compatible way.
+	if !strings.HasSuffix(msg, "\n") {
+		fmt.Println("")
+	}
 }
