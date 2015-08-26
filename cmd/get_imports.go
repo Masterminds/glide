@@ -283,6 +283,7 @@ func VcsVersion(dep *Dependency, vend string) error {
 	return nil
 }
 
+// VcsLastCommit gets the last commit ID from the given dependency.
 func VcsLastCommit(dep *Dependency, vend string) (string, error) {
 	cwd := path.Join(vend, dep.Name)
 	repo, err := dep.GetRepo(cwd)
