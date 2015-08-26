@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // These contanstants map to color codes for shell scripts making them
@@ -74,4 +75,10 @@ func Msg(msg string, args ...interface{}) {
 		return
 	}
 	fmt.Printf(msg, args...)
+
+	// Get rid of the annoying fact that messages need \n at the end, but do
+	// it in a backward compatible way.
+	if !strings.HasSuffix(msg, "\n") {
+		fmt.Println("")
+	}
 }
