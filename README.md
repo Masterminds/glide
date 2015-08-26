@@ -116,6 +116,17 @@ You can download package to your `vendor` directory and have it added to your
 $ glide get github.com/Masterminds/cookoo
 ```
 
+### glide guess and glide pin
+
+To help with the creating and managing your `glide.yaml` files there are two
+more helper commands. The `glide guess` command will look over your project,
+read the imports, attempt to intelligently guess at the ones you need to list,
+and create the text for a `glide.yaml` file.
+
+There are times you need to pin a dependency to a version, such as when you're
+preparing to deploy to production. For that case there is the `glide pin` command
+that will pin each dependency in the `glide.yaml` file to the current commit id.
+
 ### glide up (aliased to update and install)
 
 Download or update all of the libraries listed in the `glide.yaml` file and put

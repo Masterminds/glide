@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"github.com/Masterminds/cookoo"
 	"go/build"
 	"os"
-
-	"github.com/Masterminds/cookoo"
+	"strings"
 )
 
 var yamlGuessTpl = `
@@ -20,7 +20,7 @@ import:{{range $path, $notLocal := .}}
 func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	base := p.Get("dirname", ".").(string)
 	deps := make(map[string]bool)
-	err := findDeps(deps, base)
+	err := findDeps(deps, base, "")
 	deps = compactDeps(deps)
 	delete(deps, base)
 	if err != nil {
@@ -44,7 +44,11 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 // findDeps finds all of the dependenices.
 // https://golang.org/src/cmd/go/pkg.go#485
-func findDeps(soFar map[string]bool, name string) error {
+//
+// As of Go 1.5 the go command knows about the vendor directory but the go/build
+// package does not. It only knows about the GOPATH and GOROOT. In order to look
+// for packages in the vendor/ directory we need to fake it for now.
+func findDeps(soFar map[string]bool, name, vpath string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -59,11 +63,29 @@ func findDeps(soFar map[string]bool, name string) error {
 		return nil
 	}
 
-	soFar[pkg.ImportPath] = true
+	if vpath == "" {
+		vpath = pkg.ImportPath
+	}
+
+	// When the vendor/ directory is present make sure we strip it out before
+	// registering it as a guess.
+	realName := strings.TrimPrefix(pkg.ImportPath, vpath+"/vendor/")
+
+	// Before adding a name to the list make sure it's not the name of the
+	// top level package.
+	lookupName, _ := NormalizeName(realName)
+	if vpath != lookupName {
+		soFar[realName] = true
+	}
 	for _, imp := range pkg.Imports {
 		if !soFar[imp] {
-			if err := findDeps(soFar, imp); err != nil {
-				return err
+
+			// Try looking for a dependency as a vendor. If it's not there then
+			// fall back to a way where it will be found in the GOPATH or GOROOT.
+			if err := findDeps(soFar, vpath+"/vendor/"+imp, vpath); err != nil {
+				if err := findDeps(soFar, imp, vpath); err != nil {
+					return err
+				}
 			}
 		}
 	}
