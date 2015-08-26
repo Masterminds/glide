@@ -291,6 +291,10 @@ func VcsLastCommit(dep *Dependency, vend string) (string, error) {
 		return "", err
 	}
 
+	if repo.CheckLocal() == false {
+		return "", fmt.Errorf("%s is not a VCS repo\n", dep.Name)
+	}
+
 	version, err := repo.Version()
 	if err != nil {
 		return "", err
