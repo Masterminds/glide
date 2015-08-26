@@ -28,12 +28,15 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	}
 
 	config := new(Config)
+
+	// Get the name of the top level package
+	config.Name = guessPackageName(base)
 	config.Imports = make([]*Dependency, len(deps))
 	i := 0
-	for p, _ := range deps {
-		Info("Found reference to %s\n", p)
+	for pa, _ := range deps {
+		Info("Found reference to %s\n", pa)
 		d := &Dependency{
-			Name: p,
+			Name: pa,
 		}
 		config.Imports[i] = d
 		i++
@@ -105,4 +108,20 @@ func compactDeps(soFar map[string]bool) map[string]bool {
 	}
 
 	return basePackages
+}
+
+// Attempt to guess at the package name at the top level. When unable to detect
+// a name goes to default of "main".
+func guessPackageName(base string) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "main"
+	}
+
+	pkg, err := build.Import(base, cwd, 0)
+	if err != nil {
+		return "main"
+	}
+
+	return pkg.ImportPath
 }
