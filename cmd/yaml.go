@@ -419,7 +419,7 @@ func (d *Dependency) GetRepo(dest string) (v.Repo, error) {
 		}
 	}
 
-	// When now type set we try to autodetect.
+	// When no type set we try to autodetect.
 	return v.NewRepo(remote, dest)
 }
 
