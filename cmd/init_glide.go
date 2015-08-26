@@ -15,7 +15,7 @@ package: %s
 
 # Declare your project's dependencies.
 import:
-  # Use 'go get' to fetch a package:
+  # Fetch package similar to 'go get':
   #- package: github.com/Masterminds/cookoo
   # Get and manage a package with Git:
   #- package: github.com/Masterminds/cookoo

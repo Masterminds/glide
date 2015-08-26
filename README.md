@@ -36,7 +36,7 @@ directories.
  A projects is structured like this:
 
 ```
-- myProject (Your project)
+- $GOPATH/src/myProject (Your project)
   |
   |-- glide.yaml
   |
