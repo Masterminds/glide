@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"encoding/xml"
 	"fmt"
 	//"log"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -318,9 +322,119 @@ func getRepoRootFromPackage(pkg string) string {
 		}
 	}
 
-	// Default to returning the package name passed in if no matches.
-	// Should this be an error?
+	// There are cases where a package uses the special go get magic for
+	// redirects. If we've not discovered the location already try that.
+	pkg = getRepoRootFromGoGet(pkg)
+
 	return pkg
+}
+
+// Pages like https://golang.org/x/net provide an html document with
+// meta tags containing a location to work with. The go tool uses
+// a meta tag with the name go-import which is what we use here.
+// godoc.org also has one call go-source that we do not need to use.
+// The value of go-import is in the form "prefix vcs repo". The prefix
+// should match the vcsURL and the repo is a location that can be
+// checked out. Note, to get the html document you you need to add
+// ?go-get=1 to the url.
+func getRepoRootFromGoGet(pkg string) string {
+
+	vcsURL := "https://" + pkg
+	u, err := url.Parse(vcsURL)
+	if err != nil {
+		return pkg
+	}
+	if u.RawQuery == "" {
+		u.RawQuery = "go-get=1"
+	} else {
+		u.RawQuery = u.RawQuery + "+go-get=1"
+	}
+	checkURL := u.String()
+	resp, err := http.Get(checkURL)
+	if err != nil {
+		return pkg
+	}
+	defer resp.Body.Close()
+
+	nu, err := parseImportFromBody(u, resp.Body)
+	if err != nil {
+		return pkg
+	} else if nu == "" {
+		return pkg
+	}
+
+	return nu
+}
+
+func parseImportFromBody(ur *url.URL, r io.ReadCloser) (u string, err error) {
+	d := xml.NewDecoder(r)
+	d.CharsetReader = charsetReader
+	d.Strict = false
+	var t xml.Token
+	for {
+		t, err = d.Token()
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			return
+		}
+		if e, ok := t.(xml.StartElement); ok && strings.EqualFold(e.Name.Local, "body") {
+			return
+		}
+		if e, ok := t.(xml.EndElement); ok && strings.EqualFold(e.Name.Local, "head") {
+			return
+		}
+		e, ok := t.(xml.StartElement)
+		if !ok || !strings.EqualFold(e.Name.Local, "meta") {
+			continue
+		}
+		if attrValue(e.Attr, "name") != "go-import" {
+			continue
+		}
+		if f := strings.Fields(attrValue(e.Attr, "content")); len(f) == 3 {
+
+			// If this the second time a go-import statement has been detected
+			// return an error. There should only be one import statement per
+			// html file. We don't simply return the first found in order to
+			// detect pages including more than one.
+			if u != "" {
+				u = ""
+				err = v.ErrCannotDetectVCS
+				return
+			}
+
+			// If the prefix supplied by the remote system isn't a prefix to the
+			// url we're fetching return an error. This will work for exact
+			// matches and prefixes. For example, golang.org/x/net as a prefix
+			// will match for golang.org/x/net and golang.org/x/net/context.
+			vcsURL := ur.Host + ur.Path
+			if !strings.HasPrefix(vcsURL, f[0]) {
+				err = v.ErrCannotDetectVCS
+				return
+			}
+
+			u = f[0]
+		}
+	}
+}
+
+func charsetReader(charset string, input io.Reader) (io.Reader, error) {
+	switch strings.ToLower(charset) {
+	case "ascii":
+		return input, nil
+	default:
+		return nil, fmt.Errorf("can't decode XML document using charset %q", charset)
+	}
+}
+
+func attrValue(attrs []xml.Attr, name string) string {
+	for _, a := range attrs {
+		if strings.EqualFold(a.Name.Local, name) {
+			return a.Value
+		}
+	}
+	return ""
 }
 
 type vcsInfo struct {
@@ -362,18 +476,6 @@ var vcsList = []*vcsInfo{
 	// Alternative Google setup. This is the previous structure but it still works... until Google Code goes away.
 	{
 		pattern: `^(?P<rootpkg>[a-z0-9_\-.]+\.googlecode\.com/(git|hg))(/.*)?$`,
-	},
-	// Working with the golang.org/x/[pkg] syntax
-	{
-		pattern: `^(?P<rootpkg>golang\.org/x/[A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)*$`,
-	},
-	// Working with the gopkg.in/[pkg].[vX] syntax
-	{
-		pattern: `^(?P<rootpkg>gopkg\.in/[A-Za-z0-9_.\-]+(\.v[0-9]+(\.[0-9]+)?(\.[0-9]+)?))(/[A-Za-z0-9_.\-]+)*$`,
-	},
-	// Working with the gopkg.in/[org]/[pkg].[vX] syntax
-	{
-		pattern: `^(?P<rootpkg>gopkg\.in/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+(\.v[0-9]+(\.[0-9]+)?(\.[0-9]+)?))(/[A-Za-z0-9_.\-]+)*$`,
 	},
 	// If none of the previous detect the type they will fall to this looking for the type in a generic sense
 	// by the extension to the path.

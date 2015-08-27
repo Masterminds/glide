@@ -4,6 +4,7 @@
 - Fixes #56: Unable to use glide get on golang.org/x/[name]/[subpackage]
 - Fixes #61: The wrong version of a dependency can be pinned when packages are
   vendored (no VCS repo associated with them).
+- Fixed #67: Unable to work go-get redirects.
 
 # Release 0.5.0 (2015-08-19)
 
