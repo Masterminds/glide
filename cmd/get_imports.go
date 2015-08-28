@@ -63,8 +63,8 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	}
 
 	dest := path.Join(cwd, root)
-	repoUrl := "https://" + root
-	repo, err := v.NewRepo(repoUrl, dest)
+	repoURL := "https://" + root
+	repo, err := v.NewRepo(repoURL, dest)
 	if err != nil {
 		return false, err
 	}
@@ -74,7 +74,7 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 		VcsType: string(repo.Vcs()),
 
 		// Should this assume a remote https root at all times?
-		Repository: repoUrl,
+		Repository: repoURL,
 	}
 	subpkg := strings.TrimPrefix(name, root)
 	if len(subpkg) > 0 && subpkg != "/" {
@@ -136,6 +136,8 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	return true, nil
 }
 
+// SetReference is a command to set the VCS reference (commit id, tag, etc) for
+// a project.
 func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
 	cwd, err := VendorPath(c)
@@ -189,6 +191,7 @@ func filterArchOs(dep *Dependency) bool {
 	return false
 }
 
+// VcsExists checks if the directory has a local VCS checkout.
 func VcsExists(dep *Dependency, dest string) bool {
 	repo, err := dep.GetRepo(dest)
 	if err != nil {
@@ -265,6 +268,7 @@ func VcsUpdate(dep *Dependency, vend string, force bool) error {
 	return nil
 }
 
+// VcsVersion set the VCS version for a checkout.
 func VcsVersion(dep *Dependency, vend string) error {
 	// If there is no refernece configured there is nothing to set.
 	if dep.Reference == "" {
