@@ -267,6 +267,11 @@ Example:
 	files as it finds them in dependencies. It will create a glide.yaml file
 	from the Godeps data, and then update. This has no effect if '--no-recursive'
 	is set.
+
+	if the '--update-vendored' flag (aliased to '-u') is present vendored
+	dependecies, stored in your projects VCS repository, will be updated. This
+	works by removing the old package, checking out an the repo and setting the
+	version, and removing the VCS directory.
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
@@ -285,6 +290,10 @@ Example:
 					Name:  "force",
 					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
 				},
+				cli.BoolFlag{
+					Name:  "update-vendored, u",
+					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				cxt.Put("deleteOptIn", c.Bool("delete"))
@@ -294,6 +303,7 @@ Example:
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
 				}
+				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
 				setupHandler(c, "update", cxt, router)
 			},
 		},
@@ -381,6 +391,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.DeleteUnusedPackages, "deleted").
 		Using("conf").From("cxt:cfg").
 		Using("optIn").From("cxt:deleteOptIn").
+		Does(cmd.VendoredSetup, "cfg").
+		Using("conf").From("cxt:cfg").
+		Using("update").From("cxt:updateVendoredDeps").
 		Does(cmd.UpdateImports, "dependencies").
 		Using("conf").From("cxt:cfg").
 		Using("force").From("cxt:forceUpdate").
@@ -389,7 +402,10 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("importGodeps").From("cxt:importGodeps").
 		Using("importGPM").From("cxt:importGPM").
 		Using("enable").From("cxt:recursiveDependencies").
-		Using("force").From("cxt:forceUpdate")
+		Using("force").From("cxt:forceUpdate").
+		Does(cmd.VendoredCleanUp, "_").
+		Using("conf").From("cxt:cfg").
+		Using("update").From("cxt:updateVendoredDeps")
 
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 

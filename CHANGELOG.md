@@ -1,10 +1,12 @@
 # Release 0.5.1 (xxxx-xx-xx)
 
-- Fixes #58: Guess command not working.
-- Fixes #56: Unable to use glide get on golang.org/x/[name]/[subpackage]
-- Fixes #61: The wrong version of a dependency can be pinned when packages are
+- Fixed #58: Guess command not working.
+- Fixed #56: Unable to use glide get on golang.org/x/[name]/[subpackage]
+- Fixed #61: The wrong version of a dependency can be pinned when packages are
   vendored (no VCS repo associated with them).
 - Fixed #67: Unable to work go-get redirects.
+- Fixed #66: 'glide up' now has an --update-vendored (-u) flad to update
+  vendored directories.
 
 # Release 0.5.0 (2015-08-19)
 

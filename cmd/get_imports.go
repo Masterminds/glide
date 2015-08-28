@@ -241,7 +241,7 @@ func VcsUpdate(dep *Dependency, vend string, force bool) error {
 		}
 		_, err = v.DetectVcsFromFS(dest)
 		if empty == false && err == v.ErrCannotDetectVCS {
-			Warn("%s appears to be a vendored package. Unable to update.\n", dep.Name)
+			Warn("%s appears to be a vendored package. Unable to update. Consider the '--update-vendored' flag.\n", dep.Name)
 		} else {
 
 			repo, err := dep.GetRepo(dest)
@@ -299,7 +299,7 @@ func VcsVersion(dep *Dependency, vend string) error {
 	}
 	_, err = v.DetectVcsFromFS(cwd)
 	if empty == false && err == v.ErrCannotDetectVCS {
-		Warn("%s appears to be a vendored package. Unable to set new version.\n", dep.Name)
+		Warn("%s appears to be a vendored package. Unable to set new version. Consider the '--update-vendored' flag.\n", dep.Name)
 	} else {
 
 		Info("Setting version for %s.\n", dep.Name)

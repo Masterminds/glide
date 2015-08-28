@@ -371,6 +371,7 @@ type Dependency struct {
 	Name, Reference, Repository string
 	VcsType                     string
 	Subpackages, Arch, Os       []string
+	UpdateAsVendored            bool
 }
 
 // DependencyFromYaml creates a dependency from a yaml.Node.
