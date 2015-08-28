@@ -231,36 +231,50 @@ func VcsUpdate(dep *Dependency, vend string, force bool) error {
 			return err
 		}
 	} else {
-		repo, err := dep.GetRepo(dest)
+		// At this point we have a directory for the package.
 
-		// Tried to checkout a repo to a path that does not work. Either the
-		// type or endpoint has changed. Force is being passed in so the old
-		// location can be removed and replaced with the new one.
-		// Warning, any changes in the old location will be deleted.
-		// TODO: Put dirty checking in on the existing local checkout.
-		if (err == v.ErrWrongVCS || err == v.ErrWrongRemote) && force == true {
-			var newRemote string
-			if len(dep.Repository) > 0 {
-				newRemote = dep.Repository
-			} else {
-				newRemote = "https://" + dep.Name
-			}
-
-			Warn("Replacing %s with contents from %s\n", dep.Name, newRemote)
-			rerr := os.RemoveAll(dest)
-			if rerr != nil {
-				return rerr
-			}
-			if err = VcsGet(dep, dest); err != nil {
-				Warn("Unable to checkout %s\n", dep.Name)
-				return err
-			}
-		} else if err != nil {
+		// When the directory is not empty and has no VCS directory it's
+		// a vendored files situation.
+		empty, err := isDirectoryEmpty(dest)
+		if err != nil {
 			return err
+		}
+		_, err = v.DetectVcsFromFS(dest)
+		if empty == false && err == v.ErrCannotDetectVCS {
+			Warn("%s appears to be a vendored package. Unable to update.\n", dep.Name)
 		} else {
-			if err := repo.Update(); err != nil {
-				Warn("Download failed.\n")
+
+			repo, err := dep.GetRepo(dest)
+
+			// Tried to checkout a repo to a path that does not work. Either the
+			// type or endpoint has changed. Force is being passed in so the old
+			// location can be removed and replaced with the new one.
+			// Warning, any changes in the old location will be deleted.
+			// TODO: Put dirty checking in on the existing local checkout.
+			if (err == v.ErrWrongVCS || err == v.ErrWrongRemote) && force == true {
+				var newRemote string
+				if len(dep.Repository) > 0 {
+					newRemote = dep.Repository
+				} else {
+					newRemote = "https://" + dep.Name
+				}
+
+				Warn("Replacing %s with contents from %s\n", dep.Name, newRemote)
+				rerr := os.RemoveAll(dest)
+				if rerr != nil {
+					return rerr
+				}
+				if err = VcsGet(dep, dest); err != nil {
+					Warn("Unable to checkout %s\n", dep.Name)
+					return err
+				}
+			} else if err != nil {
 				return err
+			} else {
+				if err := repo.Update(); err != nil {
+					Warn("Download failed.\n")
+					return err
+				}
 			}
 		}
 	}
@@ -275,17 +289,30 @@ func VcsVersion(dep *Dependency, vend string) error {
 		return nil
 	}
 
-	Info("Setting version for %s.\n", dep.Name)
-
 	cwd := path.Join(vend, dep.Name)
-	repo, err := dep.GetRepo(cwd)
+
+	// When the directory is not empty and has no VCS directory it's
+	// a vendored files situation.
+	empty, err := isDirectoryEmpty(cwd)
 	if err != nil {
 		return err
 	}
+	_, err = v.DetectVcsFromFS(cwd)
+	if empty == false && err == v.ErrCannotDetectVCS {
+		Warn("%s appears to be a vendored package. Unable to set new version.\n", dep.Name)
+	} else {
 
-	if err := repo.UpdateVersion(dep.Reference); err != nil {
-		Error("Failed to set version to %s: %s\n", dep.Reference, err)
-		return err
+		Info("Setting version for %s.\n", dep.Name)
+
+		repo, err := dep.GetRepo(cwd)
+		if err != nil {
+			return err
+		}
+
+		if err := repo.UpdateVersion(dep.Reference); err != nil {
+			Error("Failed to set version to %s: %s\n", dep.Reference, err)
+			return err
+		}
 	}
 
 	return nil

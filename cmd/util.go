@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -76,4 +77,21 @@ func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	}
 
 	return true, nil
+}
+
+// Check if a directory is empty or not.
+func isDirectoryEmpty(dir string) (bool, error) {
+	f, err := os.Open(dir)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+
+	if err == io.EOF {
+		return true, nil
+	}
+
+	return false, err
 }
