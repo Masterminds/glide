@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -111,7 +112,7 @@ func Gopath() string {
 }
 func Gopaths() []string {
 	p := os.Getenv("GOPATH")
-	ps := strings.Split(p, ":")
+	ps := filepath.SplitList(p)
 
 	// XXX: Is this right? What is an empty path supposed to mean?
 	if ps[0] == "" {
