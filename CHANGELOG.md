@@ -5,8 +5,9 @@
 - Fixed #61: The wrong version of a dependency can be pinned when packages are
   vendored (no VCS repo associated with them).
 - Fixed #67: Unable to work go-get redirects.
-- Fixed #66: 'glide up' now has an --update-vendored (-u) flad to update
+- Fixed #66: 'glide up' now has an --update-vendored (-u) flag to update
   vendored directories.
+- Fixed #68: Handling the base where the GOPATH has multiple separated directories.
 
 # Release 0.5.0 (2015-08-19)
 
