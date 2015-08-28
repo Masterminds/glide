@@ -70,11 +70,7 @@ func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	}
 
 	dep := &Dependency{
-		Name:    root,
-		VcsType: string(repo.Vcs()),
-
-		// Should this assume a remote https root at all times?
-		Repository: repoURL,
+		Name: root,
 	}
 	subpkg := strings.TrimPrefix(name, root)
 	if len(subpkg) > 0 && subpkg != "/" {
