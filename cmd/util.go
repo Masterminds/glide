@@ -64,12 +64,15 @@ directory or move the _vendor/src/ directory to vendor/.` + "\n")
 // CowardMode checks that the environment is setup before continuing on. If not
 // setup and error is returned.
 func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	gopath := os.Getenv("GOPATH")
+	gopath := Gopaths()
 	if len(gopath) == 0 {
 		return false, fmt.Errorf("No GOPATH is set.\n")
 	}
+	if len(gopath[0]) == 0 {
+		return false, fmt.Errorf("GOPATH cannot be empty.\n")
+	}
 
-	_, err := os.Stat(path.Join(gopath, "src"))
+	_, err := os.Stat(path.Join(gopath[0], "src"))
 	if err != nil {
 		Error("Could not find %s/src.\n", gopath)
 		Info("As of Glide 0.5/Go 1.5, this is required.\n")
@@ -94,4 +97,25 @@ func isDirectoryEmpty(dir string) (bool, error) {
 	}
 
 	return false, err
+}
+
+// Get GOPATH from environment and return the most relevant path.
+//
+// A GOPATH can contain a colon-separated list of paths. This retrieves the
+// GOPATH and returns only the FIRST ("most relevant") path.
+//
+// This should be used carefully. If, for example, you are looking for a package,
+// you may be better off using Gopaths.
+func Gopath() string {
+	return Gopaths()[0]
+}
+func Gopaths() []string {
+	p := os.Getenv("GOPATH")
+	ps := strings.Split(p, ":")
+
+	// XXX: Is this right? What is an empty path supposed to mean?
+	if ps[0] == "" {
+		ps[0] = "."
+	}
+	return ps
 }

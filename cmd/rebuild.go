@@ -16,7 +16,7 @@ import (
 //
 func Rebuild(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
-	gopath := os.Getenv("GOPATH")
+	gopaths := Gopaths()
 
 	Info("Building dependencies.\n")
 
@@ -26,12 +26,33 @@ func Rebuild(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	}
 
 	for _, dep := range cfg.Imports {
+		gopath := findGopathFor(dep, gopaths)
 		if err := buildDep(c, dep, gopath); err != nil {
 			Warn("Failed to build %s: %s\n", dep.Name, err)
 		}
 	}
 
 	return true, nil
+}
+
+// findPathFor returns a GOPATH for a particular dependency.
+//
+// This does not ensure that the returned GOPATH will result in finding the
+// package. It only ensures that IF this package exists, the most relevant
+// path for looking is the returned path.
+func findGopathFor(dep *Dependency, gopaths []string) string {
+	if len(gopaths) == 0 {
+		return "."
+	}
+	if len(gopaths) == 1 {
+		return gopaths[0]
+	}
+	for _, p := range gopaths {
+		if _, err := os.Stat(path.Join(p, dep.Name)); err == nil {
+			return p
+		}
+	}
+	return gopaths[0]
 }
 
 func buildDep(c cookoo.Context, dep *Dependency, gopath string) error {
@@ -48,7 +69,6 @@ func buildDep(c cookoo.Context, dep *Dependency, gopath string) error {
 			if err != nil {
 				Warn("Error resolving packages: %s", err)
 			}
-			//buildPath(c, path.Join(dep.Name, pkg))
 			buildPaths(c, paths)
 		}
 	}
