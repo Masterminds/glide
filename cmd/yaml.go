@@ -180,6 +180,7 @@ func valOrEmpty(key string, store map[string]yaml.Node) string {
 	return strings.TrimSpace(val.(yaml.Scalar).String())
 }
 
+// boolOrDefault returns a bool, with the dft returned if there is an error or the value is not true/false
 func boolOrDefault(key string, store map[string]yaml.Node, dft bool) bool {
 	val, ok := store[key]
 	if !ok {
@@ -191,7 +192,7 @@ func boolOrDefault(key string, store map[string]yaml.Node, dft bool) bool {
 	case "false":
 		return false
 	default:
-		return false
+		return dft
 	}
 }
 
@@ -275,8 +276,8 @@ func NormalizeName(name string) (string, string) {
 type Config struct {
 	Parent     *Config
 	Name       string
-	Imports    []*Dependency
-	DevImports []*Dependency
+	Imports    Dependencies
+	DevImports Dependencies
 	// InCommand is the default shell command run to start a 'glide in'
 	// session.
 	InCommand string
@@ -295,6 +296,24 @@ func (c *Config) HasDependency(name string) bool {
 		}
 	}
 	return false
+}
+
+// HasRecursiveDependency returns true if this config or one of it's parents has this dependency
+func (c *Config) HasRecursiveDependency(name string) bool {
+	if c.HasDependency(name) == true {
+		return true
+	} else if c.Parent != nil {
+		return c.Parent.HasRecursiveDependency(name)
+	}
+	return false
+}
+
+// GetRoot follows the Parent down to the top node
+func (c *Config) GetRoot() *Config {
+	if c.Parent != nil {
+		return c.Parent.GetRoot()
+	}
+	return c
 }
 
 // FromYaml creates a *Config from a  YAML node.
@@ -318,7 +337,7 @@ func FromYaml(top yaml.Node) (*Config, error) {
 		conf.InCommand = incmd.(yaml.Scalar).String()
 	}
 
-	conf.Imports = make([]*Dependency, 0, 1)
+	conf.Imports = make(Dependencies, 0, 1)
 	if imp, ok := vals["import"]; ok {
 		imports, ok := imp.(yaml.List)
 
@@ -335,7 +354,7 @@ func FromYaml(top yaml.Node) (*Config, error) {
 
 	// Same for (experimental) devimport.
 	// These are currently unused. Not sure what we'll do with it yet.
-	conf.DevImports = []*Dependency{}
+	conf.DevImports = make(Dependencies, 0, 0)
 	if imp, ok := vals["devimport"]; ok {
 		imports, ok := imp.(yaml.List)
 		if ok {
@@ -389,6 +408,7 @@ type Dependency struct {
 	Subpackages, Arch, Os       []string
 	UpdateAsVendored            bool
 	Flatten                     bool
+	Flattened                   bool
 }
 
 // DependencyFromYaml creates a dependency from a yaml.Node.
@@ -490,4 +510,18 @@ func (d *Dependency) ToYaml() yaml.Node {
 	}
 
 	return yaml.Map(dep)
+}
+
+// Dependencies is a collection of Dependency
+type Dependencies []*Dependency
+
+// Get a dependency by name
+func (d Dependencies) Get(name string) *Dependency {
+	for _, dep := range d {
+		Info("Get Dep %s vs %s\n", name, dep.Name)
+		if dep.Name == name {
+			return dep
+		}
+	}
+	return nil
 }

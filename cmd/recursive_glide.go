@@ -40,13 +40,14 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interfac
 	if len(conf.Imports) == 0 {
 		Info("No imports.\n")
 	}
-	Info("Config: %+v\n", conf.Imports[0].Name)
 
 	// Look in each package to see whether it has a glide.yaml, and no vendor/
 	for _, imp := range conf.Imports {
+		if imp.Flattened == true {
+			continue
+		}
 		base := path.Join(vend, imp.Name)
 		Info("Looking in %s for a glide.yaml file.\n", base)
-		Info("\tFlatten: %b", imp.Flatten)
 		if !needsGlideUp(base) {
 			if godeps {
 				importGodep(base, imp.Name)
@@ -59,7 +60,8 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interfac
 				continue
 			}
 		}
-		if err := dependencyGlideUp(base, godeps, gpm, force, imp.Flatten); err != nil {
+
+		if err := dependencyGlideUp(conf, base, godeps, gpm, force); err != nil {
 			Warn("Failed to update dependency %s: %s", imp.Name, err)
 		}
 	}
@@ -68,7 +70,8 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interfac
 	return nil, nil
 }
 
-func dependencyGlideUp(base string, godep, gpm, force bool, flatten bool) error {
+func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force bool) error {
+	Info("Doing a glide in %s\n", base)
 	//conf := new(Config)
 	fname := path.Join(base, "glide.yaml")
 	f, err := yaml.ReadFile(fname)
@@ -77,20 +80,30 @@ func dependencyGlideUp(base string, godep, gpm, force bool, flatten bool) error 
 	}
 
 	conf, err := FromYaml(f.Root)
+	conf.Parent = parentConf
 	if err != nil {
 		return err
 	}
 	for _, imp := range conf.Imports {
+
+		// if our root glide.yaml says to flatten this, we skip it
+		if dep := conf.GetRoot().Imports.Get(imp.Name); dep != nil && dep.Flatten == true {
+			Info("Skipping importing %s due to flatten being set in root glide.yaml\n", imp.Name)
+			imp.Flattened = true
+			continue
+		}
+
 		// We don't use the global var to find vendor dir name because the
 		// user may mis-use that var to modify the local vendor dir, and
 		// we don't want that to break the embedded vendor dirs.
+		Info("Found something to import: %s\n", imp.Name)
 		wd := path.Join(base, "vendor", imp.Name)
 		vdir := path.Join(base, "vendor")
 		if err := ensureDir(wd); err != nil {
 			Warn("Skipped getting %s (vendor/ error): %s\n", imp.Name, err)
 			continue
 		}
-
+		Info("\n\nBefore Vcs Exists\n\n")
 		if VcsExists(imp, wd) {
 			Info("Updating project %s (%s)\n", imp.Name, wd)
 			if err := VcsUpdate(imp, vdir, force); err != nil {

@@ -11,6 +11,7 @@ package: fake/testing
 import:
   - package: github.com/kylelemons/go-gypsy
     subpackages: yaml
+    flatten: true
   - package: github.com/technosophos/structable
   # Intentionally left spaces at end of next line.
   - package: github.com/Masterminds/convert
@@ -30,17 +31,28 @@ devimport:
   - package: github.com/kylelemons/go-gypsy
 `
 
+var childYamlFile = `
+package: fake/testing/more
+import:
+  - package: github.com/kylelemons/go-gypsy
+    subpackages: yaml
+`
+
 func TestFromYaml(t *testing.T) {
 	reg, router, cxt := cookoo.Cookoo()
 
 	reg.Route("t", "Testing").
-		Does(ParseYamlString, "cfg").Using("yaml").WithDefault(yamlFile)
+		Does(ParseYamlString, "cfg").Using("yaml").WithDefault(yamlFile).
+		Does(ParseYamlString, "childCfg").Using("yaml").WithDefault(childYamlFile)
 
 	if err := router.HandleRequest("t", cxt, false); err != nil {
 		t.Errorf("Failed to parse YAML: %s", err)
 	}
 
 	cfg := cxt.Get("cfg", nil).(*Config)
+	cfgChild := cxt.Get("childCfg", nil).(*Config)
+	cfgChild.Parent = cfg
+
 	if cfg.Name != "fake/testing" {
 		t.Errorf("Expected name to be 'fake/teting', not '%s'", cfg.Name)
 	}
@@ -50,7 +62,19 @@ func TestFromYaml(t *testing.T) {
 	}
 
 	if cfg.Parent != nil {
-		t.Errorf("Expected root glide Parent to be nil")
+		t.Error("Expected root glide Parent to be nil")
+	}
+
+	if cfg.Imports.Get("github.com/Masterminds/convert") == nil {
+		t.Error("Expected Imports.Get to return Dependency")
+	}
+
+	if cfg.Imports.Get("github.com/doesnot/exist") != nil {
+		t.Error("Execpted Imports.Get to return nil")
+	}
+
+	if cfgChild.HasRecursiveDependency("github.com/Masterminds/convert") == false {
+		t.Errorf("Expected to find a recursive dependency")
 	}
 
 	imp := cfg.Imports[2]
