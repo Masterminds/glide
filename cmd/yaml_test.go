@@ -24,6 +24,7 @@ import:
     arch:
       - i386
       - arm
+    flatten: true
 
 devimport:
   - package: github.com/kylelemons/go-gypsy
@@ -46,6 +47,10 @@ func TestFromYaml(t *testing.T) {
 
 	if len(cfg.Imports) != 3 {
 		t.Errorf("Expected 3 imports, got %d", len(cfg.Imports))
+	}
+
+	if cfg.Parent != nil {
+		t.Errorf("Expected root glide Parent to be nil")
 	}
 
 	imp := cfg.Imports[2]
@@ -80,6 +85,10 @@ func TestFromYaml(t *testing.T) {
 	}
 	if imp.Reference != "a9949121a2e2192ca92fa6dddfeaaa4a4412d955" {
 		t.Errorf("Got wrong reference.")
+	}
+
+	if imp.Flatten != true {
+		t.Errorf("Expected Flatten: true")
 	}
 
 	if len(cfg.DevImports) != 1 {

@@ -180,6 +180,21 @@ func valOrEmpty(key string, store map[string]yaml.Node) string {
 	return strings.TrimSpace(val.(yaml.Scalar).String())
 }
 
+func boolOrDefault(key string, store map[string]yaml.Node, dft bool) bool {
+	val, ok := store[key]
+	if !ok {
+		return dft
+	}
+	switch val.(yaml.Scalar).String() {
+	case "true":
+		return true
+	case "false":
+		return false
+	default:
+		return false
+	}
+}
+
 // valOrList gets a single value or a list of values.
 //
 // Supports syntaxes like:
@@ -258,6 +273,7 @@ func NormalizeName(name string) (string, string) {
 
 // Config is the top-level configuration object.
 type Config struct {
+	Parent     *Config
 	Name       string
 	Imports    []*Dependency
 	DevImports []*Dependency
@@ -372,6 +388,7 @@ type Dependency struct {
 	VcsType                     string
 	Subpackages, Arch, Os       []string
 	UpdateAsVendored            bool
+	Flatten                     bool
 }
 
 // DependencyFromYaml creates a dependency from a yaml.Node.
@@ -388,6 +405,7 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 		Subpackages: valOrList("subpackages", pkg),
 		Arch:        valOrList("arch", pkg),
 		Os:          valOrList("os", pkg),
+		Flatten:     boolOrDefault("flatten", pkg, false),
 	}
 
 	return dep, nil

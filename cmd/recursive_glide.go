@@ -40,12 +40,13 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interfac
 	if len(conf.Imports) == 0 {
 		Info("No imports.\n")
 	}
+	Info("Config: %+v\n", conf.Imports[0].Name)
 
 	// Look in each package to see whether it has a glide.yaml, and no vendor/
 	for _, imp := range conf.Imports {
 		base := path.Join(vend, imp.Name)
 		Info("Looking in %s for a glide.yaml file.\n", base)
-
+		Info("\tFlatten: %b", imp.Flatten)
 		if !needsGlideUp(base) {
 			if godeps {
 				importGodep(base, imp.Name)
@@ -58,7 +59,7 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interfac
 				continue
 			}
 		}
-		if err := dependencyGlideUp(base, godeps, gpm, force); err != nil {
+		if err := dependencyGlideUp(base, godeps, gpm, force, imp.Flatten); err != nil {
 			Warn("Failed to update dependency %s: %s", imp.Name, err)
 		}
 	}
@@ -67,7 +68,7 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interfac
 	return nil, nil
 }
 
-func dependencyGlideUp(base string, godep, gpm, force bool) error {
+func dependencyGlideUp(base string, godep, gpm, force bool, flatten bool) error {
 	//conf := new(Config)
 	fname := path.Join(base, "glide.yaml")
 	f, err := yaml.ReadFile(fname)
