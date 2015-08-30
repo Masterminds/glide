@@ -193,7 +193,7 @@ func VcsExists(dep *Dependency, dest string) bool {
 	if err != nil {
 		return false
 	}
-	Info("Repo not found %s, checking local\n", dep.Name)
+
 	return repo.CheckLocal()
 }
 
@@ -239,7 +239,6 @@ func VcsUpdate(dep *Dependency, vend string, force bool) error {
 		if empty == false && err == v.ErrCannotDetectVCS {
 			Warn("%s appears to be a vendored package. Unable to update. Consider the '--update-vendored' flag.\n", dep.Name)
 		} else {
-			Info("About to GetRepo %s\n", dest)
 			repo, err := dep.GetRepo(dest)
 
 			// Tried to checkout a repo to a path that does not work. Either the

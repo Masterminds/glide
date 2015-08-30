@@ -96,14 +96,13 @@ func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force bool) 
 		// We don't use the global var to find vendor dir name because the
 		// user may mis-use that var to modify the local vendor dir, and
 		// we don't want that to break the embedded vendor dirs.
-		Info("Found something to import: %s\n", imp.Name)
 		wd := path.Join(base, "vendor", imp.Name)
 		vdir := path.Join(base, "vendor")
 		if err := ensureDir(wd); err != nil {
 			Warn("Skipped getting %s (vendor/ error): %s\n", imp.Name, err)
 			continue
 		}
-		Info("\n\nBefore Vcs Exists\n\n")
+
 		if VcsExists(imp, wd) {
 			Info("Updating project %s (%s)\n", imp.Name, wd)
 			if err := VcsUpdate(imp, vdir, force); err != nil {
