@@ -1,4 +1,4 @@
-# Release 0.5.1 (xxxx-xx-xx)
+# Release 0.5.1 (2015-08-31)
 
 - Fixed #58: Guess command not working.
 - Fixed #56: Unable to use glide get on golang.org/x/[name]/[subpackage]
