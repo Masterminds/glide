@@ -32,7 +32,7 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	Info("Checking dependencies for updates. Godeps: %v, GPM: %v\n", godeps, gpm)
 	if deleteFlatten == true {
-		Info("Deleting flattened dependencies enabled")
+		Info("Deleting flattened dependencies enabled\n")
 	}
 	conf := p.Get("conf", &Config{}).(*Config)
 	vend, _ := VendorPath(c)
