@@ -281,6 +281,7 @@ type Config struct {
 	// InCommand is the default shell command run to start a 'glide in'
 	// session.
 	InCommand string
+	Flatten   bool
 }
 
 // HasDependency returns true if the given name is listed as an import or dev import.
@@ -336,6 +337,9 @@ func FromYaml(top yaml.Node) (*Config, error) {
 	if incmd, ok := vals["incmd"]; ok {
 		conf.InCommand = incmd.(yaml.Scalar).String()
 	}
+
+	// Package level Flatten
+	conf.Flatten = boolOrDefault("flatten", vals, false)
 
 	conf.Imports = make(Dependencies, 0, 1)
 	if imp, ok := vals["import"]; ok {
@@ -518,7 +522,6 @@ type Dependencies []*Dependency
 // Get a dependency by name
 func (d Dependencies) Get(name string) *Dependency {
 	for _, dep := range d {
-		Info("Get Dep %s vs %s\n", name, dep.Name)
 		if dep.Name == name {
 			return dep
 		}

@@ -100,7 +100,7 @@ func isDirectoryEmpty(dir string) (bool, error) {
 	return false, err
 }
 
-// Get GOPATH from environment and return the most relevant path.
+// GoPath Get GOPATH from environment and return the most relevant path.
 //
 // A GOPATH can contain a colon-separated list of paths. This retrieves the
 // GOPATH and returns only the FIRST ("most relevant") path.
@@ -119,4 +119,15 @@ func Gopaths() []string {
 		ps[0] = "."
 	}
 	return ps
+}
+
+func fileExist(name string) (bool, error) {
+	_, err := os.Stat(name)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
 }

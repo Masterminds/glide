@@ -61,11 +61,13 @@ look something like this:
 		  subpackages: **
 		- package: github.com/kylelemons/go-gypsy
 		  subpackages: yaml
+			flatten: true
 
 NOTE: As of Glide 0.5, the commands 'in', 'into', 'gopath', 'status', and 'env'
 no longer exist.
 `
 
+// VendorDir default vendor directory name
 var VendorDir = "vendor"
 
 func main() {
@@ -268,10 +270,13 @@ Example:
 	from the Godeps data, and then update. This has no effect if '--no-recursive'
 	is set.
 
-	if the '--update-vendored' flag (aliased to '-u') is present vendored
+	If the '--update-vendored' flag (aliased to '-u') is present vendored
 	dependecies, stored in your projects VCS repository, will be updated. This
 	works by removing the old package, checking out an the repo and setting the
 	version, and removing the VCS directory.
+
+	If the '--delete-flatten' flag is present, Glide will remove any depenedencies
+	markred flatten within dependencies.
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
@@ -294,11 +299,16 @@ Example:
 					Name:  "update-vendored, u",
 					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
 				},
+				cli.BoolFlag{
+					Name:  "delete-flatten",
+					Usage: "Delete flattened vendor packages.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				cxt.Put("deleteOptIn", c.Bool("delete"))
 				cxt.Put("forceUpdate", c.Bool("force"))
 				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
+				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
@@ -399,6 +409,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("force").From("cxt:forceUpdate").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
+		Using("deleteFlatten").From("cxt:deleteFlatten").
 		Using("importGodeps").From("cxt:importGodeps").
 		Using("importGPM").From("cxt:importGPM").
 		Using("enable").From("cxt:recursiveDependencies").

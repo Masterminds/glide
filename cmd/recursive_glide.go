@@ -1,12 +1,12 @@
 package cmd
 
 import (
+	"github.com/Masterminds/cookoo"
+	"github.com/kylelemons/go-gypsy/yaml"
 	"io/ioutil"
 	"os"
 	"path"
-
-	"github.com/Masterminds/cookoo"
-	"github.com/kylelemons/go-gypsy/yaml"
+	"strings"
 )
 
 // Recurse does glide installs on dependent packages.
@@ -18,7 +18,7 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	}
 	force := p.Get("force", true).(bool)
 
-	godeps, gpm := false, false
+	godeps, gpm, deleteFlatten := false, false, false
 	if g, ok := p.Has("importGodeps"); ok {
 		godeps = g.(bool)
 	}
@@ -26,14 +26,21 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 		gpm = g.(bool)
 	}
 
+	if g, ok := p.Has("deleteFlatten"); ok {
+		deleteFlatten = g.(bool)
+	}
+
 	Info("Checking dependencies for updates. Godeps: %v, GPM: %v\n", godeps, gpm)
+	if deleteFlatten == true {
+		Info("Deleting flattened dependencies enabled")
+	}
 	conf := p.Get("conf", &Config{}).(*Config)
 	vend, _ := VendorPath(c)
 
-	return recDepResolve(conf, vend, godeps, gpm, force)
+	return recDepResolve(conf, vend, godeps, gpm, force, deleteFlatten)
 }
 
-func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interface{}, error) {
+func recDepResolve(conf *Config, vend string, godeps, gpm, force, deleteFlatten bool) (interface{}, error) {
 
 	Info("Inspecting %s.\n", vend)
 
@@ -61,7 +68,7 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interfac
 			}
 		}
 
-		if err := dependencyGlideUp(conf, base, godeps, gpm, force); err != nil {
+		if err := dependencyGlideUp(conf, base, godeps, gpm, force, deleteFlatten); err != nil {
 			Warn("Failed to update dependency %s: %s", imp.Name, err)
 		}
 	}
@@ -70,7 +77,7 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force bool) (interfac
 	return nil, nil
 }
 
-func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force bool) error {
+func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force, deleteFlatten bool) error {
 	Info("Doing a glide in %s\n", base)
 	//conf := new(Config)
 	fname := path.Join(base, "glide.yaml")
@@ -85,19 +92,38 @@ func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force bool) 
 		return err
 	}
 	for _, imp := range conf.Imports {
-
+		vdir := path.Join(base, "vendor")
+		wd := path.Join(vdir, imp.Name)
 		// if our root glide.yaml says to flatten this, we skip it
-		if dep := conf.GetRoot().Imports.Get(imp.Name); dep != nil && dep.Flatten == true {
-			Info("Skipping importing %s due to flatten being set in root glide.yaml\n", imp.Name)
-			imp.Flattened = true
-			continue
+		if dep := conf.GetRoot().Imports.Get(imp.Name); dep != nil {
+			if dep.Flatten == true {
+				Info("Skipping importing %s due to flatten being set in root import glide.yaml\n", imp.Name)
+				imp.Flattened = true
+
+			} else if conf.GetRoot().Flatten == true {
+				Info("Skipping importing %s due to flatten being set in root config glide.yaml\n", imp.Name)
+				imp.Flattened = true
+			}
+
+			if imp.Flattened == true && deleteFlatten == true {
+				if exists, _ := fileExist(wd); exists == true || true {
+					remove := wd + string(os.PathSeparator)
+					Warn("Removing flattened sub vendored package: %s\n", strings.TrimPrefix(remove, base))
+					rerr := os.RemoveAll(remove)
+					if rerr != nil {
+						return rerr
+					}
+				}
+			}
+			if imp.Flattened == true {
+				continue
+			}
 		}
 
 		// We don't use the global var to find vendor dir name because the
 		// user may mis-use that var to modify the local vendor dir, and
 		// we don't want that to break the embedded vendor dirs.
-		wd := path.Join(base, "vendor", imp.Name)
-		vdir := path.Join(base, "vendor")
+
 		if err := ensureDir(wd); err != nil {
 			Warn("Skipped getting %s (vendor/ error): %s\n", imp.Name, err)
 			continue
@@ -126,7 +152,7 @@ func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force bool) 
 
 		//recDepResolve(conf, path.Join(wd, "vendor"))
 	}
-	recDepResolve(conf, path.Join(base, "vendor"), godep, gpm, force)
+	recDepResolve(conf, path.Join(base, "vendor"), godep, gpm, force, deleteFlatten)
 	return nil
 }
 
