@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -36,11 +35,10 @@ func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 
 // VersionGuard ensures that the Go version is correct.
 func VersionGuard(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cmd := exec.Command("go", "version")
+	// 6l was removed in 1.5, when vendoring was introduced.
+	cmd := exec.Command("go", "tool", "6l")
 	var out string
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return nil, err
-	} else if !strings.Contains(string(out), "go1.5") {
+	if _, err := cmd.CombinedOutput(); err == nil {
 		Warn("You must install the Go 1.5 or greater toolchain to work with Glide.\n")
 	}
 	if os.Getenv("GO15VENDOREXPERIMENT") != "1" {
