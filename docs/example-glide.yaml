@@ -5,6 +5,11 @@ package: github.com/Masterminds/glide
 # will just spawn a new shell.
 incmd: bash -l
 
+# Any listed import will only be imported once. Effectively preventing vendored
+# packages from importing the same pkg via a glide.yaml file.
+# Defaults to false
+flatten: true
+
 # External dependencies.
 import:
   # Minimal definition
@@ -86,3 +91,8 @@ import:
       - darwin
     arch:
       - amd64
+
+  # If you would like to only include the package once and prevent vendored
+  # packages from including the same package.
+  - package: github.com/awesome/only_once
+    flatten: true
