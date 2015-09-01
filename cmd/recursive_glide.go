@@ -105,6 +105,10 @@ func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force, delet
 				imp.Flattened = true
 			}
 
+			if imp.Reference != dep.Reference {
+				Warn("Main vendored package %s ref (%s) is diferent from sub vendored package ref (%s)\n", imp.Name, imp.Reference, dep.Reference)
+			}
+
 			if imp.Flattened == true && deleteFlatten == true {
 				if exists, _ := fileExist(wd); exists == true || true {
 					remove := wd + string(os.PathSeparator)
