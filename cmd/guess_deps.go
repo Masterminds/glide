@@ -33,7 +33,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	config.Name = guessPackageName(base)
 	config.Imports = make([]*Dependency, len(deps))
 	i := 0
-	for pa, _ := range deps {
+	for pa := range deps {
 		Info("Found reference to %s\n", pa)
 		d := &Dependency{
 			Name: pa,
@@ -102,7 +102,7 @@ func findDeps(soFar map[string]bool, name, vpath string) error {
 // package needs to be referenced.
 func compactDeps(soFar map[string]bool) map[string]bool {
 	basePackages := make(map[string]bool, len(soFar))
-	for k, _ := range soFar {
+	for k := range soFar {
 		base, _ := NormalizeName(k)
 		basePackages[base] = true
 	}
