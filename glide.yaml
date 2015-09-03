@@ -12,4 +12,3 @@ import:
       - .
   - package: github.com/Masterminds/vcs
   - package: github.com/codegangsta/cli
-  - package: github.com/interlock/glide_test
