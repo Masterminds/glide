@@ -96,17 +96,18 @@ func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force, delet
 		wd := path.Join(vdir, imp.Name)
 		// if our root glide.yaml says to flatten this, we skip it
 		if dep := conf.GetRoot().Imports.Get(imp.Name); dep != nil {
-			if dep.Flatten == true {
+			flatten := conf.GetRoot().Flatten
+			if flatten == true && dep.Flatten == false ||
+				flatten == false && dep.Flatten == true {
+				flatten = dep.Flatten
+			}
+			if flatten == true {
 				Info("Skipping importing %s due to flatten being set in root import glide.yaml\n", imp.Name)
-				imp.Flattened = true
-
-			} else if conf.GetRoot().Flatten == true {
-				Info("Skipping importing %s due to flatten being set in root config glide.yaml\n", imp.Name)
 				imp.Flattened = true
 			}
 
-			if imp.Reference != dep.Reference {
-				Warn("Main vendored package %s ref (%s) is diferent from sub vendored package ref (%s)\n", imp.Name, imp.Reference, dep.Reference)
+			if flatten == true && imp.Reference != dep.Reference {
+				Warn("Flattened package %s ref (%s) is diferent from sub vendored package ref (%s)\n", imp.Name, imp.Reference, dep.Reference)
 			}
 
 			if imp.Flattened == true && deleteFlatten == true {
