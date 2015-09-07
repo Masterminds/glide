@@ -308,6 +308,19 @@ Example:
 			},
 		},
 		{
+			Name:  "tree",
+			Usage: "Tree prints the dependencies of this project as a tree.",
+			Description: `This scans a project's source files and builds a tree
+	representation of the import graph.
+
+	It ignores testdata/ and directories that begin with _. Packages in
+	vendor/ are only included if they are referenced by the main project or
+	one of its dependencies.`,
+			Action: func(c *cli.Context) {
+				setupHandler(c, "tree", cxt, router)
+			},
+		},
+		{
 			Name:  "guess",
 			Usage: "Guess dependencies for existing source.",
 			Description: `This looks through existing source and dependencies,
@@ -468,6 +481,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.PrintName, "status").
+		Using("conf").From("cxt:cfg")
+
+	reg.Route("tree", "Print a dependency graph.").
+		Includes("@startup").
+		Includes("@ready").
+		Does(cmd.Tree, "tree").
 		Using("conf").From("cxt:cfg")
 
 	reg.Route("nv", "No Vendor").
