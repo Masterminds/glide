@@ -321,6 +321,13 @@ Example:
 			},
 		},
 		{
+			Name:  "list",
+			Usage: "List prints all dependencies that Glide could discover.",
+			Action: func(c *cli.Context) {
+				setupHandler(c, "list", cxt, router)
+			},
+		},
+		{
 			Name:  "guess",
 			Usage: "Guess dependencies for existing source.",
 			Description: `This looks through existing source and dependencies,
@@ -487,6 +494,11 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.Tree, "tree").
+		Using("conf").From("cxt:cfg")
+	reg.Route("list", "Print a dependency graph.").
+		Includes("@startup").
+		Includes("@ready").
+		Does(cmd.ListDeps, "list").
 		Using("conf").From("cxt:cfg")
 
 	reg.Route("nv", "No Vendor").
