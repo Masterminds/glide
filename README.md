@@ -325,6 +325,10 @@ Darwin/OSX systems:
 
 The package will not be fetched for other architectures or OSes.
 
+**Q: How do I prevent vendored packages from importing the same package**
+
+You can use the `flatten: true` config option on the entire project or just one specific dependency.
+
 ## LICENSE
 
 This package is made available under an MIT-style license. See

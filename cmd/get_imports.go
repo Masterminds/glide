@@ -239,7 +239,6 @@ func VcsUpdate(dep *Dependency, vend string, force bool) error {
 		if empty == false && err == v.ErrCannotDetectVCS {
 			Warn("%s appears to be a vendored package. Unable to update. Consider the '--update-vendored' flag.\n", dep.Name)
 		} else {
-
 			repo, err := dep.GetRepo(dest)
 
 			// Tried to checkout a repo to a path that does not work. Either the

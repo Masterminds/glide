@@ -3,6 +3,7 @@ import:
   - package: github.com/kylelemons/go-gypsy
     subpackages:
       - yaml
+    flatten: true
   - package: github.com/Masterminds/cookoo
     ref:     master
     repo:    git@github.com:Masterminds/cookoo.git
