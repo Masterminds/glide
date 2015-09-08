@@ -6,6 +6,7 @@ import (
 	"go/build"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -29,30 +30,66 @@ func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	}
 
 	fmt.Println(myName)
-
-	// Start with *.go
-	// Do a breadth-first search of subdirectories, excluding _*, .*, testdata,
-	// and vendor.
-	/*
-		deps := walkDeps(basedir, myName)
-		for _, name := range deps {
-			found := findPkg(name, basedir)
-			msg := found.Path
-			if found.PType == ptypeUnknown {
-				msg = "glide get " + found.Name
-			}
-			if !showcore && found.PType == ptypeGoroot {
-				continue
-			}
-			fmt.Printf("\t%s\t(%s)\n", found.Name, msg)
-		}
-	*/
 	displayTree(basedir, myName, 1, showcore)
-
-	// Now look up all of the external dependencies.
-
-	// Make it pretty.
 	return nil, nil
+}
+
+// ListDeps lists all of the dependencies of the current project.
+//
+// Params:
+//
+// Returns:
+//
+func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	basedir := p.Get("dir", ".").(string)
+	myName := guessPackageName(basedir)
+
+	var err error
+	basedir, err = filepath.Abs(basedir)
+	if err != nil {
+		return nil, err
+	}
+
+	direct := map[string]bool{}
+	d := walkDeps(basedir, myName)
+	for _, i := range d {
+		listDeps(direct, i, basedir)
+	}
+
+	sortable := make([]string, len(direct))
+	i := 0
+	for k, _ := range direct {
+		sortable[i] = k
+		i++
+	}
+
+	sort.Strings(sortable)
+
+	for _, k := range sortable {
+		dec := "no"
+		if direct[k] {
+			dec = "yes"
+		}
+		fmt.Printf("%s (Present: %s)\n", k, dec)
+	}
+
+	return nil, nil
+}
+
+func listDeps(info map[string]bool, name, path string) {
+	found := findPkg(name, path)
+	switch found.PType {
+	case ptypeUnknown:
+		info[name] = false
+		break
+	case ptypeGoroot:
+		break
+	default:
+		info[name] = true
+		for _, i := range walkDeps(found.Path, found.Name) {
+			listDeps(info, i, found.Path)
+		}
+	}
 }
 
 func displayTree(basedir, myName string, level int, core bool) {
