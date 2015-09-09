@@ -179,6 +179,49 @@ This is useful when you are working with large 3rd party libraries. It
 will create the `.a` files, which can have a positive impact on your
 build times.
 
+### glide tree
+
+Glide includes a few commands that inspect code and give you details
+about what is imported. `glide tree` is one such command. Running it
+gives data like this:
+
+```
+$ glide tree
+github.com/Masterminds/glide
+	github.com/Masterminds/cookoo   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo)
+		github.com/Masterminds/cookoo/io   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo/io)
+	github.com/Masterminds/glide/cmd   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/cmd)
+		github.com/Masterminds/cookoo   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo)
+			github.com/Masterminds/cookoo/io   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo/io)
+		github.com/Masterminds/vcs   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+		github.com/codegangsta/cli   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/codegangsta/cli)
+		github.com/kylelemons/go-gypsy/yaml   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/kylelemons/go-gypsy/yaml)
+	github.com/codegangsta/cli   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/codegangsta/cli)
+```
+
+This shows a tree of imports, excluding core libraries. Because
+vendoring makes it possible for the same package to live in multiple
+places, `glide tree` also prints the location of the package being
+imported.
+
+### glide list
+
+Glide's `list` command shows an alphabetized list of all the packages
+that a project imports.
+
+```
+$ glide list
+github.com/Masterminds/cookoo (Present: yes)
+github.com/Masterminds/cookoo/io (Present: yes)
+github.com/Masterminds/glide/cmd (Present: yes)
+github.com/Masterminds/vcs (Present: yes)
+github.com/codegangsta/cli (Present: yes)
+github.com/kylelemons/go-gypsy/yaml (Present: yes)
+```
+
+If it finds a reference to a package that has not been installed,
+`Present` is set to `no`.
+
 ### glide help
 
 Print the glide help.
