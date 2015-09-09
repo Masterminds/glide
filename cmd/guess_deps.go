@@ -7,12 +7,6 @@ import (
 	"strings"
 )
 
-var yamlGuessTpl = `
-# Detected project's dependencies.
-import:{{range $path, $notLocal := .}}
-  - package: {{$path}}{{end}}
-`
-
 // GuessDeps tries to get the dependencies for the current directory.
 //
 // Params
