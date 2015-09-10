@@ -98,7 +98,7 @@ func isDirectoryEmpty(dir string) (bool, error) {
 	return false, err
 }
 
-// GoPath Get GOPATH from environment and return the most relevant path.
+// Gopath gets GOPATH from environment and return the most relevant path.
 //
 // A GOPATH can contain a colon-separated list of paths. This retrieves the
 // GOPATH and returns only the FIRST ("most relevant") path.
@@ -108,6 +108,9 @@ func isDirectoryEmpty(dir string) (bool, error) {
 func Gopath() string {
 	return Gopaths()[0]
 }
+
+// Gopaths retrieves the Gopath as a list when there is more than one path
+// listed in the Gopath.
 func Gopaths() []string {
 	p := os.Getenv("GOPATH")
 	ps := filepath.SplitList(p)

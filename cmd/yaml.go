@@ -435,6 +435,8 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 	return dep, nil
 }
 
+// GetRepo retrieves a Masterminds/vcs repo object configured for the root
+// of the package being retrieved.
 func (d *Dependency) GetRepo(dest string) (v.Repo, error) {
 
 	// The remote location is either the configured repo or the package

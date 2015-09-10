@@ -32,6 +32,7 @@ type GodepDependency struct {
 	Rev        string // VCS-specific commit ID.
 }
 
+// HasGodepGodeps is a command to detect if a package contains a Godeps.json file.
 func HasGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
 	path := filepath.Join(dir, "Godeps/Godeps.json")
@@ -39,7 +40,7 @@ func HasGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Int
 	return err == nil, nil
 }
 
-// Parse the Godep Godeps.json file.
+// ParseGodepGodeps parses the Godep Godeps.json file.
 //
 // Params:
 // - dir (string): the project's directory
