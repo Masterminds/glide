@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/gb"
 )
 
@@ -43,7 +44,7 @@ func parseGbManifest(dir string) ([]*Dependency, error) {
 	man := gb.Manifest{}
 
 	dec := json.NewDecoder(file)
-	if err := json.Decode(&man); err != nil {
+	if err := dec.Decode(&man); err != nil {
 		return buf, err
 	}
 
@@ -68,7 +69,7 @@ func parseGbManifest(dir string) ([]*Dependency, error) {
 				Repository: d.Repository,
 			}
 			if len(sub) > 0 {
-				d.Subpackages = []string{sub}
+				dep.Subpackages = []string{sub}
 			}
 			buf = append(buf, dep)
 		}
