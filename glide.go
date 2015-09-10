@@ -144,7 +144,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	'--no-recursive'
 
 	If '--import' is set, this will also read the dependency projects, looking
-	for Godep and GPM files. When it finds them, it will build a comparable
+	for gb, Godep and GPM files. When it finds them, it will build a comparable
 	glide.yaml file, and then fetch all of the necessary dependencies. The
 	dependencies are then vendored in the appropriate project. Subsequent calls
 	to 'glide up' will use the glide.yaml to maintain those dependencies.
@@ -171,6 +171,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
+					cxt.Put("importGb", true)
 				}
 				setupHandler(c, "get", cxt, router)
 			},
@@ -191,6 +192,13 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					Usage: "Import GPM's Godeps and Godeps-Git files and display the would-be yaml file",
 					Action: func(c *cli.Context) {
 						setupHandler(c, "import gpm", cxt, router)
+					},
+				},
+				{
+					Name:  "gb",
+					Usage: "Import gb's manifest file and display the would-be yaml file",
+					Action: func(c *cli.Context) {
+						setupHandler(c, "import gb", cxt, router)
 					},
 				},
 			},
@@ -312,6 +320,7 @@ Example:
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
+					cxt.Put("importGb", true)
 				}
 				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
 				setupHandler(c, "update", cxt, router)
@@ -409,6 +418,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("enable").From("cxt:recursiveDependencies").
 		Using("importGodeps").From("cxt:importGodeps").
 		Using("importGPM").From("cxt:importGPM").
+		Using("importGb").From("cxt:importGb").
 		Using("force").From("cxt:forceUpdate").WithDefault(false).
 		Does(cmd.WriteYaml, "out").
 		Using("yaml.Node").From("cxt:merged").
@@ -440,6 +450,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("deleteFlatten").From("cxt:deleteFlatten").
 		Using("importGodeps").From("cxt:importGodeps").
 		Using("importGPM").From("cxt:importGPM").
+		Using("importGb").From("cxt:importGb").
 		Using("enable").From("cxt:recursiveDependencies").
 		Using("force").From("cxt:forceUpdate").
 		Does(cmd.VendoredCleanUp, "_").
@@ -486,6 +497,16 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("dependencies").From("cxt:godeps").
 		Using("conf").From("cxt:cfg").
 		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
+		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
+		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+
+	reg.Route("import gb", "Read a vendor/manifest file").
+		Includes("@startup").
+		Includes("@ready").
+		Does(cmd.GbManifest, "manifest").
+		Does(cmd.AddDependencies, "addGodeps").
+		Using("dependencies").From("cxt:manifest").
+		Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
 

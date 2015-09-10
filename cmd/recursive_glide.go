@@ -18,29 +18,32 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	}
 	force := p.Get("force", true).(bool)
 
-	godeps, gpm, deleteFlatten := false, false, false
+	godeps, gpm, gb, deleteFlatten := false, false, false, false
 	if g, ok := p.Has("importGodeps"); ok {
 		godeps = g.(bool)
 	}
 	if g, ok := p.Has("importGPM"); ok {
 		gpm = g.(bool)
 	}
+	if g, ok := p.Has("importGb"); ok {
+		gb = g.(bool)
+	}
 
 	if g, ok := p.Has("deleteFlatten"); ok {
 		deleteFlatten = g.(bool)
 	}
 
-	Info("Checking dependencies for updates. Godeps: %v, GPM: %v\n", godeps, gpm)
+	Info("Checking dependencies for updates. Godeps: %v, GPM: %v, gb: %v\n", godeps, gpm, gb)
 	if deleteFlatten == true {
 		Info("Deleting flattened dependencies enabled\n")
 	}
 	conf := p.Get("conf", &Config{}).(*Config)
 	vend, _ := VendorPath(c)
 
-	return recDepResolve(conf, vend, godeps, gpm, force, deleteFlatten)
+	return recDepResolve(conf, vend, godeps, gpm, gb, force, deleteFlatten)
 }
 
-func recDepResolve(conf *Config, vend string, godeps, gpm, force, deleteFlatten bool) (interface{}, error) {
+func recDepResolve(conf *Config, vend string, godeps, gpm, gb, force, deleteFlatten bool) (interface{}, error) {
 
 	Info("Inspecting %s.\n", vend)
 
@@ -62,24 +65,25 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, force, deleteFlatten 
 			if gpm {
 				importGPM(base, imp.Name)
 			}
+			if gb {
+				importGb(base, imp.Name)
+			}
 			if !needsGlideUp(base) {
 				Info("Package %s manages its own dependencies.\n", imp.Name)
 				continue
 			}
 		}
 
-		if err := dependencyGlideUp(conf, base, godeps, gpm, force, deleteFlatten); err != nil {
+		if err := dependencyGlideUp(conf, base, godeps, gpm, gb, force, deleteFlatten); err != nil {
 			Warn("Failed to update dependency %s: %s", imp.Name, err)
 		}
 	}
 
-	// Run `glide up`
 	return nil, nil
 }
 
-func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force, deleteFlatten bool) error {
+func dependencyGlideUp(parentConf *Config, base string, godep, gpm, gb, force, deleteFlatten bool) error {
 	Info("Doing a glide in %s\n", base)
-	//conf := new(Config)
 	fname := path.Join(base, "glide.yaml")
 	f, err := yaml.ReadFile(fname)
 	if err != nil {
@@ -157,7 +161,7 @@ func dependencyGlideUp(parentConf *Config, base string, godep, gpm, force, delet
 
 		//recDepResolve(conf, path.Join(wd, "vendor"))
 	}
-	recDepResolve(conf, path.Join(base, "vendor"), godep, gpm, force, deleteFlatten)
+	recDepResolve(conf, path.Join(base, "vendor"), godep, gpm, gb, force, deleteFlatten)
 	return nil
 }
 
@@ -191,6 +195,15 @@ func importGodep(dir, pkg string) error {
 
 func importGPM(dir, pkg string) error {
 	d, err := parseGPMGodeps(dir)
+	if err != nil {
+		return err
+	}
+	return quickDirtyYAMLWrite(dir, d, pkg)
+}
+
+func importGb(dir, pkg string) error {
+	Info("Looking in %s/vendor/ for a manifest file.\n", dir)
+	d, err := parseGbManifest(dir)
 	if err != nil {
 		return err
 	}
