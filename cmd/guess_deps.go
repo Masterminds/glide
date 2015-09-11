@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/Masterminds/cookoo"
-	"go/build"
 	"os"
 	"strings"
 )
@@ -12,9 +11,13 @@ import (
 // Params
 // 	- dirname (string): Directory to use as the base. Default: "."
 func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	buildContext, err := GetBuildContext()
+	if err != nil {
+		return nil, err
+	}
 	base := p.Get("dirname", ".").(string)
 	deps := make(map[string]bool)
-	err := findDeps(deps, base, "")
+	err = findDeps(buildContext, deps, base, "")
 	deps = compactDeps(deps)
 	delete(deps, base)
 	if err != nil {
@@ -24,7 +27,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	config := new(Config)
 
 	// Get the name of the top level package
-	config.Name = guessPackageName(base)
+	config.Name = guessPackageName(buildContext, base)
 	config.Imports = make([]*Dependency, len(deps))
 	i := 0
 	for pa := range deps {
@@ -45,13 +48,13 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 // As of Go 1.5 the go command knows about the vendor directory but the go/build
 // package does not. It only knows about the GOPATH and GOROOT. In order to look
 // for packages in the vendor/ directory we need to fake it for now.
-func findDeps(soFar map[string]bool, name, vpath string) error {
+func findDeps(b *BuildCtxt, soFar map[string]bool, name, vpath string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	pkg, err := build.Import(name, cwd, 0)
+	pkg, err := b.Import(name, cwd, 0)
 	if err != nil {
 		return err
 	}
@@ -79,8 +82,8 @@ func findDeps(soFar map[string]bool, name, vpath string) error {
 
 			// Try looking for a dependency as a vendor. If it's not there then
 			// fall back to a way where it will be found in the GOPATH or GOROOT.
-			if err := findDeps(soFar, vpath+"/vendor/"+imp, vpath); err != nil {
-				if err := findDeps(soFar, imp, vpath); err != nil {
+			if err := findDeps(b, soFar, vpath+"/vendor/"+imp, vpath); err != nil {
+				if err := findDeps(b, soFar, imp, vpath); err != nil {
 					return err
 				}
 			}
@@ -106,13 +109,13 @@ func compactDeps(soFar map[string]bool) map[string]bool {
 
 // Attempt to guess at the package name at the top level. When unable to detect
 // a name goes to default of "main".
-func guessPackageName(base string) string {
+func guessPackageName(b *BuildCtxt, base string) string {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "main"
 	}
 
-	pkg, err := build.Import(base, cwd, 0)
+	pkg, err := b.Import(base, cwd, 0)
 	if err != nil {
 		return "main"
 	}
