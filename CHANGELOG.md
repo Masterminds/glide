@@ -1,3 +1,12 @@
+# Release 0.6.0 (xxxx-xx-xx)
+
+- #53: Add support for gb-vendor manifest files.
+- Added `glide tree` command to inspect the code and see the imported packages.
+- Added `glide list` to see an alphabetized list of imported projects.
+- Fixed #74: Glide guess using the wrong GOROOT locations in some environments.
+- Fixed #76: Glide tree doesn't exclude core libraries with the GOROOT is
+  incorrect.
+
 # Release 0.5.1 (2015-08-31)
 
 - Fixed #58: Guess command not working.
