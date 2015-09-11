@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"go/build"
 	"os"
 	"path/filepath"
 	"sort"
@@ -16,9 +15,13 @@ var ErrPkgNotFound = errors.New("package not found")
 
 // Tree prints a tree representing dependencies.
 func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	buildContext, err := GetBuildContext()
+	if err != nil {
+		return nil, err
+	}
 	showcore := p.Get("showcore", false).(bool)
 	basedir := p.Get("dir", ".").(string)
-	myName := guessPackageName(basedir)
+	myName := guessPackageName(buildContext, basedir)
 
 	if basedir == "." {
 		var err error
@@ -30,7 +33,7 @@ func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	}
 
 	fmt.Println(myName)
-	displayTree(basedir, myName, 1, showcore)
+	displayTree(buildContext, basedir, myName, 1, showcore)
 	return nil, nil
 }
 
@@ -41,19 +44,22 @@ func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 // Returns:
 //
 func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	buildContext, err := GetBuildContext()
+	if err != nil {
+		return nil, err
+	}
 	basedir := p.Get("dir", ".").(string)
-	myName := guessPackageName(basedir)
+	myName := guessPackageName(buildContext, basedir)
 
-	var err error
 	basedir, err = filepath.Abs(basedir)
 	if err != nil {
 		return nil, err
 	}
 
 	direct := map[string]bool{}
-	d := walkDeps(basedir, myName)
+	d := walkDeps(buildContext, basedir, myName)
 	for _, i := range d {
-		listDeps(direct, i, basedir)
+		listDeps(buildContext, direct, i, basedir)
 	}
 
 	sortable := make([]string, len(direct))
@@ -76,8 +82,8 @@ func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 	return nil, nil
 }
 
-func listDeps(info map[string]bool, name, path string) {
-	found := findPkg(name, path)
+func listDeps(b *BuildCtxt, info map[string]bool, name, path string) {
+	found := findPkg(b, name, path)
 	switch found.PType {
 	case ptypeUnknown:
 		info[name] = false
@@ -86,16 +92,16 @@ func listDeps(info map[string]bool, name, path string) {
 		break
 	default:
 		info[name] = true
-		for _, i := range walkDeps(found.Path, found.Name) {
-			listDeps(info, i, found.Path)
+		for _, i := range walkDeps(b, found.Path, found.Name) {
+			listDeps(b, info, i, found.Path)
 		}
 	}
 }
 
-func displayTree(basedir, myName string, level int, core bool) {
-	deps := walkDeps(basedir, myName)
+func displayTree(b *BuildCtxt, basedir, myName string, level int, core bool) {
+	deps := walkDeps(b, basedir, myName)
 	for _, name := range deps {
-		found := findPkg(name, basedir)
+		found := findPkg(b, name, basedir)
 		if found.PType == ptypeUnknown {
 			msg := "glide get " + found.Name
 			fmt.Printf("\t%s\t(%s)\n", found.Name, msg)
@@ -106,7 +112,7 @@ func displayTree(basedir, myName string, level int, core bool) {
 		}
 		fmt.Print(strings.Repeat("\t", level))
 		fmt.Printf("%s   (%s)\n", found.Name, found.Path)
-		displayTree(found.Path, found.Name, level+1, core)
+		displayTree(b, found.Path, found.Name, level+1, core)
 	}
 }
 
@@ -125,7 +131,7 @@ type pinfo struct {
 	PType      ptype
 }
 
-func findPkg(name, cwd string) *pinfo {
+func findPkg(b *BuildCtxt, name, cwd string) *pinfo {
 	var fi os.FileInfo
 	var err error
 	var p string
@@ -144,7 +150,7 @@ func findPkg(name, cwd string) *pinfo {
 		}
 	}
 	// Check $GOPATH
-	for _, r := range strings.Split(os.Getenv("GOPATH"), ":") {
+	for _, r := range strings.Split(b.GOPATH, ":") {
 		p = filepath.Join(r, "src", name)
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 			info.Path = p
@@ -154,7 +160,7 @@ func findPkg(name, cwd string) *pinfo {
 	}
 
 	// Check $GOROOT
-	for _, r := range strings.Split(os.Getenv("GOROOT"), ":") {
+	for _, r := range strings.Split(b.GOROOT, ":") {
 		p = filepath.Join(r, "src", name)
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 			info.Path = p
@@ -169,7 +175,7 @@ func isLink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
 }
 
-func walkDeps(base, myName string) []string {
+func walkDeps(b *BuildCtxt, base, myName string) []string {
 	externalDeps := []string{}
 	filepath.Walk(base, func(path string, fi os.FileInfo, err error) error {
 		if excludeSubtree(path, fi) {
@@ -178,7 +184,8 @@ func walkDeps(base, myName string) []string {
 			}
 			return nil
 		}
-		pkg, err := build.ImportDir(path, 0)
+
+		pkg, err := b.ImportDir(path, 0)
 		if err != nil {
 			return err
 		}

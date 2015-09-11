@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"go/build"
 	"io"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -120,6 +122,27 @@ func Gopaths() []string {
 		ps[0] = "."
 	}
 	return ps
+}
+
+// Convenience wrapper for not having to import go/build anywhere else
+type BuildCtxt struct {
+	build.Context
+}
+
+// GetBuildContext returns a build context from go/build. When the $GOROOT
+// variable is not set in the users environment it sets the context's root
+// path to the path returned by 'go env GOROOT'.
+func GetBuildContext() (*BuildCtxt, error) {
+	buildContext := &BuildCtxt{build.Default}
+	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
+		out, err := exec.Command("go", "env", "GOROOT").Output()
+		if goRoot = strings.TrimSpace(string(out)); len(goRoot) == 0 || err != nil {
+			return nil, fmt.Errorf("Please set the $GOROOT environment " +
+				"variable to use this command\n")
+		}
+		buildContext.GOROOT = goRoot
+	}
+	return buildContext, nil
 }
 
 func fileExist(name string) (bool, error) {
