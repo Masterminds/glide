@@ -64,7 +64,7 @@ func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 
 	sortable := make([]string, len(direct))
 	i := 0
-	for k, _ := range direct {
+	for k := range direct {
 		sortable[i] = k
 		i++
 	}
