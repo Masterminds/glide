@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,8 +9,6 @@ import (
 
 	"github.com/Masterminds/cookoo"
 )
-
-var ErrPkgNotFound = errors.New("package not found")
 
 // Tree prints a tree representing dependencies.
 func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
