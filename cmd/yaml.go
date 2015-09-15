@@ -237,7 +237,7 @@ func valOrList(key string, store map[string]yaml.Node) []string {
 func getVcsType(store map[string]yaml.Node) string {
 	val, ok := store["vcs"]
 	if !ok {
-		return NoVCS
+		return string(v.NoVCS)
 	}
 
 	name := val.(yaml.Scalar).String()

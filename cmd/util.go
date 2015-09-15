@@ -124,7 +124,8 @@ func Gopaths() []string {
 	return ps
 }
 
-// Convenience wrapper for not having to import go/build anywhere else
+// BuildCtxt is a convenience wrapper for not having to import go/build
+// anywhere else
 type BuildCtxt struct {
 	build.Context
 }

@@ -28,14 +28,6 @@ func init() {
 	//v.Logger = log.New(os.Stdout, "go-vcs", log.LstdFlags)
 }
 
-const (
-	NoVCS = ""
-	Git   = "git"
-	Bzr   = "bzr"
-	Hg    = "hg"
-	Svn   = "svn"
-)
-
 // Get fetches a single package and puts it in vendor/.
 //
 // Params:
