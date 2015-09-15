@@ -108,6 +108,10 @@ func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 		rootMap["incmd"] = yaml.Scalar(cfg.InCommand)
 	}
 
+	if cfg.Flatten == true {
+		rootMap["flatten"] = yaml.Scalar("true")
+	}
+
 	if overwrite {
 		// Imports
 		imports := make([]yaml.Node, len(cfg.Imports))
@@ -377,11 +381,14 @@ func FromYaml(top yaml.Node) (*Config, error) {
 
 // ToYaml returns a yaml.Map containing the data from Config.
 func (c *Config) ToYaml() yaml.Node {
-	cfg := make(map[string]yaml.Node, 4)
+	cfg := make(map[string]yaml.Node, 5)
 
 	cfg["package"] = yaml.Scalar(c.Name)
 	if len(c.InCommand) > 0 {
 		cfg["incmd"] = yaml.Scalar(c.InCommand)
+	}
+	if c.Flatten == true {
+		cfg["flatten"] = yaml.Scalar("true")
 	}
 
 	imps := make([]yaml.Node, len(c.Imports))
@@ -478,7 +485,7 @@ func stripScheme(u string) string {
 
 // ToYaml converts a *Dependency to a YAML Map node.
 func (d *Dependency) ToYaml() yaml.Node {
-	dep := make(map[string]yaml.Node, 5)
+	dep := make(map[string]yaml.Node, 8)
 	dep["package"] = yaml.Scalar(d.Name)
 
 	if len(d.Subpackages) > 0 {
@@ -513,6 +520,12 @@ func (d *Dependency) ToYaml() yaml.Node {
 			oses[i] = yaml.Scalar(a)
 		}
 		dep["os"] = yaml.List(oses)
+	}
+
+	// Note, the yaml package we use sorts strings of scalars so flatten
+	// will always be the top item.
+	if d.Flatten == true {
+		dep["flatten"] = yaml.Scalar("true")
 	}
 
 	return yaml.Map(dep)
