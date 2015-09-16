@@ -121,6 +121,7 @@ const (
 	ptypeVendor
 	ptypeGopath
 	ptypeGoroot
+	ptypeCgo
 )
 
 type pinfo struct {
@@ -165,6 +166,12 @@ func findPkg(b *BuildCtxt, name, cwd string) *pinfo {
 			return info
 		}
 	}
+
+	// Finally, if this is "C", we're dealing with cgo
+	if name == "C" {
+		info.PType = ptypeCgo
+	}
+
 	return info
 }
 

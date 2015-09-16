@@ -59,7 +59,7 @@ func findDeps(b *BuildCtxt, soFar map[string]bool, name, vpath string) error {
 		return err
 	}
 
-	if pkg.Goroot {
+	if pkg.Goroot || name == "C" {
 		return nil
 	}
 
