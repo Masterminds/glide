@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -16,7 +17,10 @@ import (
 //
 func Rebuild(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
-	gopaths := Gopaths()
+	vpath, err := VendorPath(c)
+	if err != nil {
+		return nil, err
+	}
 
 	Info("Building dependencies.\n")
 
@@ -26,8 +30,7 @@ func Rebuild(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	}
 
 	for _, dep := range cfg.Imports {
-		gopath := findGopathFor(dep, gopaths)
-		if err := buildDep(c, dep, gopath); err != nil {
+		if err := buildDep(c, dep, vpath); err != nil {
 			Warn("Failed to build %s: %s\n", dep.Name, err)
 		}
 	}
@@ -35,27 +38,7 @@ func Rebuild(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	return true, nil
 }
 
-// findPathFor returns a GOPATH for a particular dependency.
-//
-// This does not ensure that the returned GOPATH will result in finding the
-// package. It only ensures that IF this package exists, the most relevant
-// path for looking is the returned path.
-func findGopathFor(dep *Dependency, gopaths []string) string {
-	if len(gopaths) == 0 {
-		return "."
-	}
-	if len(gopaths) == 1 {
-		return gopaths[0]
-	}
-	for _, p := range gopaths {
-		if _, err := os.Stat(path.Join(p, dep.Name)); err == nil {
-			return p
-		}
-	}
-	return gopaths[0]
-}
-
-func buildDep(c cookoo.Context, dep *Dependency, gopath string) error {
+func buildDep(c cookoo.Context, dep *Dependency, vpath string) error {
 	if len(dep.Subpackages) == 0 {
 		buildPath(c, dep.Name)
 	}
@@ -65,7 +48,7 @@ func buildDep(c cookoo.Context, dep *Dependency, gopath string) error {
 			//Info("Building all packages in %s\n", dep.Name)
 			buildPath(c, path.Join(dep.Name, "..."))
 		} else {
-			paths, err := resolvePackages(gopath, dep.Name, pkg)
+			paths, err := resolvePackages(vpath, dep.Name, pkg)
 			if err != nil {
 				Warn("Error resolving packages: %s", err)
 			}
@@ -76,14 +59,21 @@ func buildDep(c cookoo.Context, dep *Dependency, gopath string) error {
 	return nil
 }
 
-func resolvePackages(gopath, pkg, subpkg string) ([]string, error) {
+func resolvePackages(vpath, pkg, subpkg string) ([]string, error) {
 	sdir, _ := os.Getwd()
-	if err := os.Chdir(path.Join(gopath, "src")); err != nil {
+	if err := os.Chdir(filepath.Join(vpath, pkg, subpkg)); err != nil {
 		return []string{}, err
 	}
 	defer os.Chdir(sdir)
-
-	return filepath.Glob(path.Join(pkg, subpkg))
+	p, err := filepath.Glob(path.Join(vpath, pkg, subpkg))
+	if err != nil {
+		return []string{}, err
+	}
+	for k, v := range p {
+		nv := strings.TrimPrefix(v, vpath)
+		p[k] = strings.TrimPrefix(nv, string(filepath.Separator))
+	}
+	return p, nil
 }
 
 func buildPaths(c cookoo.Context, paths []string) error {
@@ -98,7 +88,9 @@ func buildPaths(c cookoo.Context, paths []string) error {
 
 func buildPath(c cookoo.Context, path string) error {
 	Info("Running go build %s\n", path)
-	out, err := exec.Command("go", "install", path).CombinedOutput()
+	// . in a filepath.Join is removed so it needs to be prepended separately.
+	p := "." + string(filepath.Separator) + filepath.Join("vendor", path)
+	out, err := exec.Command("go", "install", p).CombinedOutput()
 	if err != nil {
 		Warn("Failed to run 'go install' for %s: %s", path, string(out))
 	}

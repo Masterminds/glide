@@ -8,6 +8,7 @@
   (thanks janeczku).
 - Fixed #76: Glide tree doesn't exclude core libraries with the GOROOT is
   incorrect (thanks janeczku).
+- Fixed #81: rebuild command did not look in vendor/ directory
 
 # Release 0.5.1 (2015-08-31)
 
