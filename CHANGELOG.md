@@ -1,4 +1,4 @@
-# Release 0.6.0 (xxxx-xx-xx)
+# Release 0.6.0 (2015-09-16)
 
 - #53: Add support for gb-vendor manifest files.
 - Added `glide tree` command to inspect the code and see the imported packages.
@@ -9,6 +9,7 @@
 - Fixed #76: Glide tree doesn't exclude core libraries with the GOROOT is
   incorrect (thanks janeczku).
 - Fixed #81: rebuild command did not look in vendor/ directory
+- Fixed #77: update failed when a commit id was set for the ref
 
 # Release 0.5.1 (2015-08-31)
 
