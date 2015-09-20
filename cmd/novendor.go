@@ -19,8 +19,9 @@ import (
 // and returns all of the go files and directories that are not vendor.
 func NoVendor(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	path := p.Get("path", ".").(string)
+	gonly := p.Get("onlyGo", true).(bool)
 
-	return noVend(path)
+	return noVend(path, gonly)
 }
 
 // Take a list of paths and print a single string with space-separated paths.
@@ -33,7 +34,10 @@ func PathString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 
 // noVend takes a directory and returns a list of Go-like files or directories,
 // provided the directory is not a vendor directory.
-func noVend(path string) ([]string, error) {
+//
+// If onlyGo is true, this will filter out all directories that do not contain
+// ".go" files.
+func noVend(path string, onlyGo bool) ([]string, error) {
 
 	info, err := os.Stat(path)
 	if err != nil {
@@ -72,11 +76,43 @@ func noVend(path string) ([]string, error) {
 		}
 	}
 
+	// Filter out directories that do not contain Go code
+	if onlyGo {
+		res = hasGoSource(res)
+	}
+
 	if cur {
 		res = append(res, ".")
 	}
 
 	return res, nil
+}
+
+func hasGoSource(dirs []string) []string {
+	buf := []string{}
+	for _, d := range dirs {
+		d := filepath.Dir(d)
+		found := false
+		walker := func(p string, fi os.FileInfo, err error) error {
+			// Dumb optimization
+			if found {
+				return nil
+			}
+
+			// If the file ends with .go, report a match.
+			if strings.ToLower(filepath.Ext(p)) == ".go" {
+				found = true
+			}
+
+			return nil
+		}
+		filepath.Walk(d, walker)
+
+		if found {
+			buf = append(buf, d)
+		}
+	}
+	return buf
 }
 
 func isVend(fi os.FileInfo) bool {
