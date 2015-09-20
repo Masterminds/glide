@@ -109,7 +109,7 @@ func hasGoSource(dirs []string) []string {
 		filepath.Walk(d, walker)
 
 		if found {
-			buf = append(buf, d)
+			buf = append(buf, "./"+d+"/...")
 		}
 	}
 	return buf
