@@ -54,12 +54,17 @@ func findDeps(b *BuildCtxt, soFar map[string]bool, name, vpath string) error {
 		return err
 	}
 
+	// Skip cgo pseudo-package.
+	if name == "C" {
+		return nil
+	}
+
 	pkg, err := b.Import(name, cwd, 0)
 	if err != nil {
 		return err
 	}
 
-	if pkg.Goroot || name == "C" {
+	if pkg.Goroot {
 		return nil
 	}
 

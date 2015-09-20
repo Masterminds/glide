@@ -85,7 +85,7 @@ func listDeps(b *BuildCtxt, info map[string]bool, name, path string) {
 	case ptypeUnknown:
 		info[name] = false
 		break
-	case ptypeGoroot:
+	case ptypeGoroot, ptypeCgo:
 		break
 	default:
 		info[name] = true
@@ -104,7 +104,7 @@ func displayTree(b *BuildCtxt, basedir, myName string, level int, core bool) {
 			fmt.Printf("\t%s\t(%s)\n", found.Name, msg)
 			continue
 		}
-		if !core && found.PType == ptypeGoroot {
+		if !core && found.PType == ptypeGoroot || found.PType == ptypeCgo {
 			continue
 		}
 		fmt.Print(strings.Repeat("\t", level))
