@@ -1,3 +1,8 @@
+# Release 0.6.1 (2015-09-21)
+
+- Fixed #82: C was not recognized as an internal package.
+- Fixed #84: novendor (nv) command returned directories with no Go code.
+
 # Release 0.6.0 (2015-09-16)
 
 - #53: Add support for gb-vendor manifest files.
