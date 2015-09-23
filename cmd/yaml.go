@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -360,6 +361,12 @@ func FromYaml(top yaml.Node) (*Config, error) {
 		}
 	}
 
+	i, err := conf.Imports.DeDupe()
+	if err != nil {
+		return conf, err
+	}
+	conf.Imports = i
+
 	// Same for (experimental) devimport.
 	// These are currently unused. Not sure what we'll do with it yet.
 	conf.DevImports = make(Dependencies, 0, 0)
@@ -374,6 +381,11 @@ func FromYaml(top yaml.Node) (*Config, error) {
 				conf.DevImports = append(conf.DevImports, dep)
 			}
 		}
+	}
+
+	conf.DevImports, err = conf.DevImports.DeDupe()
+	if err != nil {
+		return conf, err
 	}
 
 	return conf, nil
@@ -437,6 +449,20 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 		Arch:        valOrList("arch", pkg),
 		Os:          valOrList("os", pkg),
 		Flatten:     boolOrDefault("flatten", pkg, false),
+	}
+
+	if dep.Name != "" {
+		orig := dep.Name
+		dep.Name = getRepoRootFromPackage(orig)
+
+		// The package name listed was actually a sub-package. Modify the
+		// config to reflect reality.
+		if orig != dep.Name {
+			subpkg := strings.TrimPrefix(orig, dep.Name)
+			if len(subpkg) > 0 && subpkg != "/" {
+				dep.Subpackages = append(dep.Subpackages, strings.TrimPrefix(subpkg, "/"))
+			}
+		}
 	}
 
 	return dep, nil
@@ -542,4 +568,53 @@ func (d Dependencies) Get(name string) *Dependency {
 		}
 	}
 	return nil
+}
+
+// DeDupe cleans up duplicates on a list of dependencies.
+func (d Dependencies) DeDupe() (Dependencies, error) {
+	checked := map[string]*Dependency{}
+	for _, dep := range d {
+		// The first time we encounter a dependency add it to the list
+		if val, ok := checked[dep.Name]; !ok {
+			checked[dep.Name] = dep
+		} else {
+			// In here we've encountered a dependency for the second time.
+			// Make sure the details are the same or return an error.
+			if dep.Reference != val.Reference || dep.Repository != val.Repository || dep.VcsType != val.VcsType {
+				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
+			}
+			if !reflect.DeepEqual(dep.Os, val.Os) || !reflect.DeepEqual(dep.Arch, val.Arch) {
+				return d, fmt.Errorf("Import %s repeated with different OS or Architecture filtering", dep.Name)
+			}
+			if dep.Flatten != val.Flatten {
+				Warn("Import %s repeated in glide.yaml with differing flatten values. Flattening.", dep.Name)
+				checked[dep.Name].Flatten = true
+			}
+			checked[dep.Name].Os = stringArrayDeDupe(checked[dep.Name].Os, dep.Os...)
+			checked[dep.Name].Arch = stringArrayDeDupe(checked[dep.Name].Arch, dep.Arch...)
+			checked[dep.Name].Subpackages = stringArrayDeDupe(checked[dep.Name].Subpackages, dep.Subpackages...)
+		}
+	}
+
+	imports := make(Dependencies, 0, 1)
+	for _, dep := range checked {
+		imports = append(imports, dep)
+	}
+
+	return imports, nil
+}
+
+func stringArrayDeDupe(s []string, items ...string) []string {
+	for _, item := range items {
+		exists := false
+		for _, v := range s {
+			if v == item {
+				exists = true
+			}
+		}
+		if !exists {
+			s = append(s, item)
+		}
+	}
+	return s
 }
