@@ -1,3 +1,9 @@
+# Release X.X.X (XXXX-XX-XX)
+
+- Fixed #86 and #71: Imported package names including a sub-package were checked
+  out to the wrong location. They are not checked out to the right place and
+  multiple instances of the top level repo are merged with error checking.
+
 # Release 0.6.1 (2015-09-21)
 
 - Fixed #82: C was not recognized as an internal package.
