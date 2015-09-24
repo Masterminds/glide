@@ -580,7 +580,10 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 		} else {
 			// In here we've encountered a dependency for the second time.
 			// Make sure the details are the same or return an error.
-			if dep.Reference != val.Reference || dep.Repository != val.Repository || dep.VcsType != val.VcsType {
+			if dep.Reference != val.Reference {
+				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Reference, val.Reference)
+			}
+			if dep.Repository != val.Repository || dep.VcsType != val.VcsType {
 				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
 			}
 			if !reflect.DeepEqual(dep.Os, val.Os) || !reflect.DeepEqual(dep.Arch, val.Arch) {
@@ -590,8 +593,6 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 				Warn("Import %s repeated in glide.yaml with differing flatten values. Flattening.", dep.Name)
 				checked[dep.Name].Flatten = true
 			}
-			checked[dep.Name].Os = stringArrayDeDupe(checked[dep.Name].Os, dep.Os...)
-			checked[dep.Name].Arch = stringArrayDeDupe(checked[dep.Name].Arch, dep.Arch...)
 			checked[dep.Name].Subpackages = stringArrayDeDupe(checked[dep.Name].Subpackages, dep.Subpackages...)
 		}
 	}
