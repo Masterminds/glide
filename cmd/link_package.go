@@ -21,7 +21,7 @@ func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 	here := "../.." + strings.Repeat("/..", depth)
 
 	gopath := Gopath()
-	if len(gopath) == 0 {
+	if gopath == "" {
 		return nil, fmt.Errorf("$GOPATH appears to be unset")
 	}
 	if len(pname) == 0 {
