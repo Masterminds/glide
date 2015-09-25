@@ -65,15 +65,12 @@ directory or move the _vendor/src/ directory to vendor/.` + "\n")
 // CowardMode checks that the environment is setup before continuing on. If not
 // setup and error is returned.
 func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	gopath := Gopaths()
-	if len(gopath) == 0 {
+	gopath := Gopath()
+	if gopath == "" {
 		return false, fmt.Errorf("No GOPATH is set.\n")
 	}
-	if len(gopath[0]) == 0 {
-		return false, fmt.Errorf("GOPATH cannot be empty.\n")
-	}
 
-	_, err := os.Stat(path.Join(gopath[0], "src"))
+	_, err := os.Stat(path.Join(gopath, "src"))
 	if err != nil {
 		Error("Could not find %s/src.\n", gopath)
 		Info("As of Glide 0.5/Go 1.5, this is required.\n")
@@ -108,20 +105,19 @@ func isDirectoryEmpty(dir string) (bool, error) {
 // This should be used carefully. If, for example, you are looking for a package,
 // you may be better off using Gopaths.
 func Gopath() string {
-	return Gopaths()[0]
+	gopaths := Gopaths()
+	if len(gopaths) == 0 {
+		return ""
+	}
+	return gopaths[0]
 }
 
 // Gopaths retrieves the Gopath as a list when there is more than one path
 // listed in the Gopath.
 func Gopaths() []string {
 	p := os.Getenv("GOPATH")
-	ps := filepath.SplitList(p)
-
-	// XXX: Is this right? What is an empty path supposed to mean?
-	if ps[0] == "" {
-		ps[0] = "."
-	}
-	return ps
+	p = strings.Trim(p, string(filepath.ListSeparator))
+	return filepath.SplitList(p)
 }
 
 // BuildCtxt is a convenience wrapper for not having to import go/build
