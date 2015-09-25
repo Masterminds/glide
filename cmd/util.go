@@ -115,11 +115,10 @@ func Gopath() string {
 // listed in the Gopath.
 func Gopaths() []string {
 	p := os.Getenv("GOPATH")
+	p = strings.Trim(p, string(filepath.ListSeparator))
 	ps := filepath.SplitList(p)
-
-	// XXX: Is this right? What is an empty path supposed to mean?
-	if ps[0] == "" {
-		ps[0] = "."
+	if len(ps) == 0 {
+		return []string{"."}
 	}
 	return ps
 }
