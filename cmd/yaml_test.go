@@ -12,7 +12,6 @@ import:
   - package: github.com/kylelemons/go-gypsy
     subpackages: yaml
     flatten: true
-  - package: github.com/technosophos/structable
   # Intentionally left spaces at end of next line.
   - package: github.com/Masterminds/convert
     repo: git@github.com:Masterminds/convert.git
@@ -26,6 +25,7 @@ import:
       - i386
       - arm
     flatten: true
+  - package: github.com/Masterminds/structable
 
 devimport:
   - package: github.com/kylelemons/go-gypsy
@@ -77,7 +77,7 @@ func TestFromYaml(t *testing.T) {
 		t.Errorf("Expected to find a recursive dependency")
 	}
 
-	imp := cfg.Imports[2]
+	imp := cfg.Imports[1]
 	if imp.Name != "github.com/Masterminds/convert" {
 		t.Errorf("Expected the convert package, got %s", imp.Name)
 	}
