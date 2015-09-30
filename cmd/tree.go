@@ -69,15 +69,8 @@ func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 	sort.Strings(sortable)
 
 	for _, k := range sortable {
-		dec := "yes"
-		if d, ok := direct[k]; ok && d.PType == ptypeUnknown {
-			dec = "no"
-		}
-		vendored := "no"
-		if d, ok := direct[k]; ok && d.PType == ptypeVendor {
-			vendored = "yes"
-		}
-		fmt.Printf("%s (Present: %s, Vendored: %s)\n", k, dec, vendored)
+		t := direct[k].PType
+		fmt.Printf("%s (Location: %s)\n", k, ptypeString(t))
 	}
 
 	return nil, nil
@@ -127,6 +120,23 @@ const (
 	ptypeGoroot
 	ptypeCgo
 )
+
+func ptypeString(t ptype) string {
+	switch t {
+	case ptypeLocal:
+		return "local"
+	case ptypeVendor:
+		return "vendored"
+	case ptypeGopath:
+		return "gopath"
+	case ptypeGoroot:
+		return "core"
+	case ptypeCgo:
+		return "cgo"
+	default:
+		return "missing"
+	}
+}
 
 type pinfo struct {
 	Name, Path string
