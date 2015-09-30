@@ -58,6 +58,19 @@ func getAllVcsRefs(repo vcs.Repo) ([]string, error) {
 	return refs, nil
 }
 
+func isBranch(branch string, repo vcs.Repo) (bool, error) {
+	branches, err := repo.Branches()
+	if err != nil {
+		return false, err
+	}
+	for _, b := range branches {
+		if b == branch {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // From the refs find all of the ones fitting the SemVer pattern.
 // func findSemVerRefs(refs []string) ([]string, error) {
 //

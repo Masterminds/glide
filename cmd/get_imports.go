@@ -258,6 +258,29 @@ func VcsUpdate(dep *Dependency, vend string, force bool) error {
 			} else if err != nil {
 				return err
 			} else {
+				// Check if the current version is a tag or commit id. If it is
+				// and that version is already checked out we can skip updating
+				// which is faster than going out to the Internet to perform
+				// an update.
+				if dep.Reference != "" {
+					version, err := repo.Version()
+					if err != nil {
+						return err
+					}
+					ib, err := isBranch(dep.Reference, repo)
+					if err != nil {
+						return err
+					}
+
+					// If the current version equals the ref and it's not a
+					// branch it's a tag or commit id so we can skip
+					// performing an update.
+					if version == dep.Reference && !ib {
+						Info("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
+						return nil
+					}
+				}
+
 				if err := repo.Update(); err != nil {
 					Warn("Download failed.\n")
 					return err
