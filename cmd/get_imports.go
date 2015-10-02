@@ -311,15 +311,19 @@ func VcsVersion(dep *Dependency, vend string) error {
 	if empty == false && err == v.ErrCannotDetectVCS {
 		Warn("%s appears to be a vendored package. Unable to set new version. Consider the '--update-vendored' flag.\n", dep.Name)
 	} else {
-
-		Info("Setting version for %s.\n", dep.Name)
-
 		repo, err := dep.GetRepo(cwd)
 		if err != nil {
 			return err
 		}
 
-		if err := repo.UpdateVersion(dep.Reference); err != nil {
+		ver := dep.Reference
+		if repo.IsReference(ver) {
+			Info("Setting version for %s.\n", dep.Name)
+		}
+
+		// TODO: Detect the version from semver
+
+		if err := repo.UpdateVersion(ver); err != nil {
 			Error("Failed to set version to %s: %s\n", dep.Reference, err)
 			return err
 		}
