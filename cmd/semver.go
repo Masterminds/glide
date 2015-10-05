@@ -35,27 +35,33 @@ func filterVersion(v string) (string, error) {
 	return matches[1], nil
 }
 
+// Filter a list of versions to only included semantic versions. The response
+// is a mapping of the original version to the semantic version.
+func getSemVers(refs []string) map[string]string {
+	sv := map[string]string{}
+	for _, r := range refs {
+		nv, err := filterVersion(r)
+		if err == nil {
+			sv[r] = nv
+		}
+	}
+
+	return sv
+}
+
 // Get all the references for a repo. This includes the tags and branches.
 func getAllVcsRefs(repo vcs.Repo) ([]string, error) {
-	refs := []string{}
-
 	tags, err := repo.Tags()
 	if err != nil {
 		return []string{}, err
-	}
-	for _, ref := range tags {
-		refs = append(refs, ref)
 	}
 
 	branches, err := repo.Branches()
 	if err != nil {
 		return []string{}, err
 	}
-	for _, ref := range branches {
-		refs = append(refs, ref)
-	}
 
-	return refs, nil
+	return append(branches, tags...), nil
 }
 
 func isBranch(branch string, repo vcs.Repo) (bool, error) {
@@ -70,8 +76,3 @@ func isBranch(branch string, repo vcs.Repo) (bool, error) {
 	}
 	return false, nil
 }
-
-// From the refs find all of the ones fitting the SemVer pattern.
-// func findSemVerRefs(refs []string) ([]string, error) {
-//
-// }

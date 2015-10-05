@@ -44,3 +44,54 @@ func TestFilterVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestGetSemVers(t *testing.T) {
+	versions := []string{
+		"1.2.3",
+		"1.0",
+		"1",
+		"1.2.beta",
+		"foo",
+		"1.2-5",
+		"1.2-beta.5",
+		"\n1.2",
+		"1.2.0-x.Y.0+metadata",
+		"1.2.0-x.Y.0+metadata-width-hypen",
+		"1.2.3-rc1-with-hypen",
+		"1.2.3.4",
+		"v1.2.3",
+		"foo1.2.3",
+		"v1.0",
+		"v1",
+		"v1.2.beta",
+		"v1.2-5",
+		"v1.2-beta.5",
+	}
+
+	pass := map[string]string{
+		"1.2.3":                            "1.2.3",
+		"1.0":                              "1.0",
+		"1":                                "1",
+		"1.2-5":                            "1.2-5",
+		"1.2-beta.5":                       "1.2-beta.5",
+		"1.2.0-x.Y.0+metadata":             "1.2.0-x.Y.0+metadata",
+		"1.2.0-x.Y.0+metadata-width-hypen": "1.2.0-x.Y.0+metadata-width-hypen",
+		"1.2.3-rc1-with-hypen":             "1.2.3-rc1-with-hypen",
+		"v1.2.3":                           "1.2.3",
+		"v1.0":                             "1.0",
+		"v1":                               "1",
+		"v1.2-5":                           "1.2-5",
+		"v1.2-beta.5":                      "1.2-beta.5",
+	}
+
+	sv := getSemVers(versions)
+	for k, v := range sv {
+		temp, ok := pass[k]
+		if !ok {
+			t.Errorf("GetSemVers found %s in error", k)
+		}
+		if v != temp {
+			t.Errorf("GetSemVers found %s but expected %s", v, temp)
+		}
+	}
+}
