@@ -21,6 +21,7 @@ bootstrap:
 	git clone https://github.com/Masterminds/vcs vendor/github.com/Masterminds/vcs
 	git clone https://github.com/kylelemons/go-gypsy vendor/github.com/kylelemons/go-gypsy
 	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli
+	git clone https://github.com/hashicorp/go-version vendor/github.com/hashicorp/go-version
 
 bootstrap-dist:
 	go get -u github.com/mitchellh/gox
