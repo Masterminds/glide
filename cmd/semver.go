@@ -3,8 +3,10 @@ package cmd
 import (
 	"errors"
 	"regexp"
+	"sort"
 
 	"github.com/Masterminds/vcs"
+	"github.com/hashicorp/go-version"
 )
 
 // The SemVer handling by github.com/hashicorp/go-version provides the ability
@@ -75,4 +77,17 @@ func isBranch(branch string, repo vcs.Repo) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func getSortedSemVerList(v []string) []*version.Version {
+	versions := make([]*version.Version, len(v))
+	for i, raw := range v {
+		v, err := version.NewVersion(raw)
+		if err == nil {
+			versions[i] = v
+		}
+	}
+
+	sort.Sort(sort.Reverse(version.Collection(versions)))
+	return versions
 }

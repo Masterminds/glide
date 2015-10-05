@@ -1,8 +1,6 @@
 package cmd
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestFilterVersion(t *testing.T) {
 	cases := []struct {
@@ -92,6 +90,33 @@ func TestGetSemVers(t *testing.T) {
 		}
 		if v != temp {
 			t.Errorf("GetSemVers found %s but expected %s", v, temp)
+		}
+	}
+}
+
+func TestGetSortedSemVerList(t *testing.T) {
+	versions := []string{
+		"1.2.3",
+		"2.1",
+		"2",
+		"1.2-beta.5",
+		"1.0",
+		"2.0.3",
+	}
+
+	pass := []string{
+		"2.1.0",
+		"2.0.3",
+		"2.0.0",
+		"1.2.3",
+		"1.2.0-beta.5",
+		"1.0.0",
+	}
+
+	sorted := getSortedSemVerList(versions)
+	for k, v := range sorted {
+		if pass[k] != v.String() {
+			t.Errorf("Sorting expected %s but got %s", pass[k], v)
 		}
 	}
 }
