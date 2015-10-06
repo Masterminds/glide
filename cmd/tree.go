@@ -53,7 +53,7 @@ func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 		return nil, err
 	}
 
-	direct := map[string]bool{}
+	direct := map[string]*pinfo{}
 	d := walkDeps(buildContext, basedir, myName)
 	for _, i := range d {
 		listDeps(buildContext, direct, i, basedir)
@@ -69,26 +69,23 @@ func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 	sort.Strings(sortable)
 
 	for _, k := range sortable {
-		dec := "no"
-		if direct[k] {
-			dec = "yes"
-		}
-		fmt.Printf("%s (Present: %s)\n", k, dec)
+		t := direct[k].PType
+		fmt.Printf("%s (Location: %s)\n", k, ptypeString(t))
 	}
 
 	return nil, nil
 }
 
-func listDeps(b *BuildCtxt, info map[string]bool, name, path string) {
+func listDeps(b *BuildCtxt, info map[string]*pinfo, name, path string) {
 	found := findPkg(b, name, path)
 	switch found.PType {
 	case ptypeUnknown:
-		info[name] = false
+		info[name] = found
 		break
 	case ptypeGoroot, ptypeCgo:
 		break
 	default:
-		info[name] = true
+		info[name] = found
 		for _, i := range walkDeps(b, found.Path, found.Name) {
 			listDeps(b, info, i, found.Path)
 		}
@@ -124,9 +121,27 @@ const (
 	ptypeCgo
 )
 
+func ptypeString(t ptype) string {
+	switch t {
+	case ptypeLocal:
+		return "local"
+	case ptypeVendor:
+		return "vendored"
+	case ptypeGopath:
+		return "gopath"
+	case ptypeGoroot:
+		return "core"
+	case ptypeCgo:
+		return "cgo"
+	default:
+		return "missing"
+	}
+}
+
 type pinfo struct {
 	Name, Path string
 	PType      ptype
+	Vendored   bool
 }
 
 func findPkg(b *BuildCtxt, name, cwd string) *pinfo {
@@ -144,6 +159,7 @@ func findPkg(b *BuildCtxt, name, cwd string) *pinfo {
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 			info.Path = p
 			info.PType = ptypeVendor
+			info.Vendored = true
 			return info
 		}
 	}
