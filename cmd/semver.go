@@ -44,7 +44,7 @@ func getSemVers(refs []string) map[string]string {
 	for _, r := range refs {
 		nv, err := filterVersion(r)
 		if err == nil {
-			sv[r] = nv
+			sv[nv] = r
 		}
 	}
 

@@ -15,6 +15,7 @@ import (
 
 	"github.com/Masterminds/cookoo"
 	v "github.com/Masterminds/vcs"
+	"github.com/hashicorp/go-version"
 )
 
 func init() {
@@ -318,11 +319,46 @@ func VcsVersion(dep *Dependency, vend string) error {
 
 		ver := dep.Reference
 		if repo.IsReference(ver) {
-			Info("Setting version for %s.\n", dep.Name)
+			Info("Setting version for %s to %s.\n", dep.Name, ver)
+		} else {
+
+			// Create the constraing first to make sure it's valid before
+			// working on the repo.
+			constraint, err := version.NewConstraint(ver)
+
+			// Make sure the constriant is valid. At this point it's not a valid
+			// reference so if it's not a valid constrint we can exit early.
+			if err != nil {
+				Warn("The reference '%s' is not valid\n", ver)
+				return err
+			}
+
+			// Get the tags and branches (in that order)
+			refs, err := getAllVcsRefs(repo)
+			if err != nil {
+				return err
+			}
+
+			// Filter the references to just the semantic versions.
+			semverMap := getSemVers(refs)
+
+			// Sort semver list
+			var sv []string
+			for k := range semverMap {
+				sv = append(sv, k)
+			}
+			sorted := getSortedSemVerList(sv)
+			for _, v := range sorted {
+				if constraint.Check(v) {
+
+					// If the constrint passes get the original reference
+					ver = semverMap[v.String()]
+					break
+				}
+			}
+
+			Info("Detected semantic version. Setting version for %s to %s.\n", dep.Name, ver)
 		}
-
-		// TODO: Detect the version from semver
-
 		if err := repo.UpdateVersion(ver); err != nil {
 			Error("Failed to set version to %s: %s\n", dep.Reference, err)
 			return err

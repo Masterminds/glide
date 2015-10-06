@@ -84,12 +84,12 @@ func TestGetSemVers(t *testing.T) {
 
 	sv := getSemVers(versions)
 	for k, v := range sv {
-		temp, ok := pass[k]
+		temp, ok := pass[v]
 		if !ok {
 			t.Errorf("GetSemVers found %s in error", k)
 		}
-		if v != temp {
-			t.Errorf("GetSemVers found %s but expected %s", v, temp)
+		if k != temp {
+			t.Errorf("GetSemVers found %s but expected %s", k, temp)
 		}
 	}
 }
