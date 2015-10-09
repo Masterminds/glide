@@ -181,7 +181,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Usage: "Import files from other dependency management systems.",
 			Subcommands: []cli.Command{
 				{
-					Name:  "godeps",
+					Name:  "godep",
 					Usage: "Import Godep's Godeps.json files and display the would-be yaml file",
 					Action: func(c *cli.Context) {
 						setupHandler(c, "import godep", cxt, router)
