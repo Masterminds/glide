@@ -139,7 +139,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 
 	If a fetched dependency has a glide.yaml file, 'get' will also install
 	all of the dependencies for that dependency. Those are installed in a scoped
-	vendir directory. So dependency vendor/foo/bar has its dependencies stored
+	vendor directory. So dependency vendor/foo/bar has its dependencies stored
 	in vendor/foo/bar/vendor. This behavior can be disabled using
 	'--no-recursive'
 
@@ -279,12 +279,12 @@ Example:
 	is set.
 
 	If the '--update-vendored' flag (aliased to '-u') is present vendored
-	dependecies, stored in your projects VCS repository, will be updated. This
+	dependencies, stored in your projects VCS repository, will be updated. This
 	works by removing the old package, checking out an the repo and setting the
 	version, and removing the VCS directory.
 
-	If the '--delete-flatten' flag is present, Glide will remove any depenedencies
-	markred flatten within dependencies.
+	If the '--delete-flatten' flag is present, Glide will remove any dependencies
+	marked flatten within dependencies.
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
@@ -347,7 +347,7 @@ Example:
 			It does not use the glide.yaml. Instead, it inspects the code to determine what packages are
 			imported.
 
-			Directories taht begin with . or _ are ignored, as are testdata directories. Packages in
+			Directories that begin with . or _ are ignored, as are testdata directories. Packages in
 			vendor are only included if they are used by the project.
 			`,
 			Action: func(c *cli.Context) {
