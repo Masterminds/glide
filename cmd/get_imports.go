@@ -95,6 +95,8 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 //
 // Returns:
 // 	- *Dependency: A dependency describing this package.
+//
+// DEPRECATED: This will be removed in the future. Use `GetAll` instead.
 func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	name := p.Get("package", "").(string)
 	cfg := p.Get("conf", nil).(*Config)
@@ -161,9 +163,19 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 }
 
 // UpdateImports iterates over the imported packages and updates them.
+//
+// Params:
+//
+// 	- force (bool): force packages to update (default false)
+//	- conf (*Config): The configuration
+// 	- packages([]string): The packages to update. Default is all.
 func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
 	force := p.Get("force", true).(bool)
+	plist := p.Get("packages", []string{}).([]string)
+	pkgs := list2map(plist)
+	restrict := len(pkgs) > 0
+
 	cwd, err := VendorPath(c)
 	if err != nil {
 		return false, err
@@ -175,6 +187,10 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	}
 
 	for _, dep := range cfg.Imports {
+		if restrict && !pkgs[dep.Name] {
+			Debug("===> Skipping %q", dep.Name)
+			continue
+		}
 		if err := VcsUpdate(dep, cwd, force); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}

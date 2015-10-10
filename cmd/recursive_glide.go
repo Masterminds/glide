@@ -10,13 +10,28 @@ import (
 )
 
 // Recurse does glide installs on dependent packages.
+//
 // Recurse looks in all known packages for a glide.yaml files and installs for
 // each one it finds.
+//
+// The packages scanned can be restricted (at the top level) by providing
+// a list of packages to scan in the `packages` param.
+//
+// Params:
+// 	- enable (bool)
+// 	- importGodeps (bool)
+// 	- importGPM (bool)
+// 	- importGb (bool)
+// 	- deleteFlatten (bool)
+// 	- force (bool)
+// 	- packages ([]string): Packages to recurse through. If empty, does all of them.
 func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	if !p.Get("enable", true).(bool) {
 		return nil, nil
 	}
 	force := p.Get("force", true).(bool)
+	plist := p.Get("packages", []string{}).([]string)
+	pkgs := list2map(plist)
 
 	godeps, gpm, gb, deleteFlatten := false, false, false, false
 	if g, ok := p.Has("importGodeps"); ok {
@@ -40,10 +55,10 @@ func Recurse(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	conf := p.Get("conf", &Config{}).(*Config)
 	vend, _ := VendorPath(c)
 
-	return recDepResolve(conf, vend, godeps, gpm, gb, force, deleteFlatten)
+	return recDepResolve(conf, pkgs, vend, godeps, gpm, gb, force, deleteFlatten)
 }
 
-func recDepResolve(conf *Config, vend string, godeps, gpm, gb, force, deleteFlatten bool) (interface{}, error) {
+func recDepResolve(conf *Config, filter map[string]bool, vend string, godeps, gpm, gb, force, deleteFlatten bool) (interface{}, error) {
 
 	Info("Inspecting %s.\n", vend)
 
@@ -51,8 +66,14 @@ func recDepResolve(conf *Config, vend string, godeps, gpm, gb, force, deleteFlat
 		Info("No imports.\n")
 	}
 
+	restrict := len(filter) > 0
+
 	// Look in each package to see whether it has a glide.yaml, and no vendor/
 	for _, imp := range conf.Imports {
+		if restrict && !filter[imp.Name] {
+			Debug("===> Skipping %q", imp.Name)
+			continue
+		}
 		if imp.Flattened == true {
 			continue
 		}
@@ -161,7 +182,9 @@ func dependencyGlideUp(parentConf *Config, base string, godep, gpm, gb, force, d
 
 		//recDepResolve(conf, path.Join(wd, "vendor"))
 	}
-	recDepResolve(conf, path.Join(base, "vendor"), godep, gpm, gb, force, deleteFlatten)
+	// We only filter at the top level.
+	e := map[string]bool{}
+	recDepResolve(conf, e, path.Join(base, "vendor"), godep, gpm, gb, force, deleteFlatten)
 	return nil
 }
 
