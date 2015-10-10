@@ -65,6 +65,12 @@ func ErrMsg(msg string, args ...interface{}) {
 		return
 	}
 	fmt.Fprintf(os.Stderr, msg, args...)
+
+	// Get rid of the annoying fact that messages need \n at the end, but do
+	// it in a backward compatible way.
+	if !strings.HasSuffix(msg, "\n") {
+		fmt.Fprintln(os.Stderr)
+	}
 }
 
 // Msg prints a message with optional arguments, that can be printed, of
@@ -79,6 +85,6 @@ func Msg(msg string, args ...interface{}) {
 	// Get rid of the annoying fact that messages need \n at the end, but do
 	// it in a backward compatible way.
 	if !strings.HasSuffix(msg, "\n") {
-		fmt.Println("")
+		fmt.Println()
 	}
 }

@@ -166,7 +166,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
 				}
-				cxt.Put("package", c.Args()[0])
+				cxt.Put("packages", []string(c.Args()))
 				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
@@ -409,9 +409,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("get", "Install a pkg in vendor, and store the results in the glide.yaml").
 		Includes("@startup").
 		Includes("@ready").
-		Does(cmd.Get, "goget").
+		Does(cmd.GetAll, "goget").
 		Using("filename").From("cxt:yaml").
-		Using("package").From("cxt:package").
+		Using("packages").From("cxt:packages").
 		Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").

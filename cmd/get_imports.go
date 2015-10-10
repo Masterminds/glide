@@ -28,6 +28,65 @@ func init() {
 	//v.Logger = log.New(os.Stdout, "go-vcs", log.LstdFlags)
 }
 
+// GetAll gets zero or more repos.
+//
+// Params:
+//	- packages ([]string): Package names to get.
+// 	- verbose (bool): default false
+//
+// Returns:
+// 	- []*Dependency: A list of constructed dependencies.
+func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	names := p.Get("packages", []string{}).([]string)
+	cfg := p.Get("conf", nil).(*Config)
+
+	Info("Preparing to install %d package.", len(names))
+
+	deps := []*Dependency{}
+	for _, name := range names {
+		cwd, err := VendorPath(c)
+		if err != nil {
+			return nil, err
+		}
+
+		root := getRepoRootFromPackage(name)
+		if len(root) == 0 {
+			return nil, fmt.Errorf("Package name is required for %q.", name)
+		}
+
+		if cfg.HasDependency(root) {
+			Warn("Package %q is already in glide.yaml. Skipping", root)
+			continue
+		}
+
+		dest := path.Join(cwd, root)
+		repoURL := "https://" + root
+		repo, err := v.NewRepo(repoURL, dest)
+		if err != nil {
+			Error("Could not construct repo for %q: %s", name, err)
+			return false, err
+		}
+
+		dep := &Dependency{
+			Name: root,
+		}
+		subpkg := strings.TrimPrefix(name, root)
+		if len(subpkg) > 0 && subpkg != "/" {
+			dep.Subpackages = []string{subpkg}
+		}
+
+		if err := repo.Get(); err != nil {
+			return dep, err
+		}
+
+		cfg.Imports = append(cfg.Imports, dep)
+
+		deps = append(deps, dep)
+
+	}
+	return deps, nil
+}
+
 // Get fetches a single package and puts it in vendor/.
 //
 // Params:
