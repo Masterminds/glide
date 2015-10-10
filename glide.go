@@ -128,13 +128,13 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		},
 		{
 			Name:  "get",
-			Usage: "Run 'go get' and update the glide.yaml file with the new package.",
-			Description: `Gets the package using 'go get' and then adds that file
-	to the glide.yaml file.
+			Usage: "Install one or more package into `vendor/` and add depdency to glide.yaml.",
+			Description: `Gets one or more package (like 'go get') and then adds that file
+	to the glide.yaml file. Multiple package names can be specified on one line.
 
 		$ glide get github.com/Masterminds/cookoo/web
 
-	The above will install the package github.com/Masterminds/cookoo and add
+	The above will install the project github.com/Masterminds/cookoo and add
 	the subpackage 'web'.
 
 	If a fetched dependency has a glide.yaml file, 'get' will also install
