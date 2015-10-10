@@ -87,58 +87,6 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	return deps, nil
 }
 
-// Get fetches a single package and puts it in vendor/.
-//
-// Params:
-//	- package (string): Name of the package to get.
-// 	- verbose (bool): default false
-//
-// Returns:
-// 	- *Dependency: A dependency describing this package.
-//
-// DEPRECATED: This will be removed in the future. Use `GetAll` instead.
-func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	name := p.Get("package", "").(string)
-	cfg := p.Get("conf", nil).(*Config)
-
-	cwd, err := VendorPath(c)
-	if err != nil {
-		return nil, err
-	}
-
-	root := getRepoRootFromPackage(name)
-	if len(root) == 0 {
-		return nil, fmt.Errorf("Package name is required.")
-	}
-
-	if cfg.HasDependency(root) {
-		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", root)
-	}
-
-	dest := path.Join(cwd, root)
-	repoURL := "https://" + root
-	repo, err := v.NewRepo(repoURL, dest)
-	if err != nil {
-		return false, err
-	}
-
-	dep := &Dependency{
-		Name: root,
-	}
-	subpkg := strings.TrimPrefix(name, root)
-	if len(subpkg) > 0 && subpkg != "/" {
-		dep.Subpackages = []string{subpkg}
-	}
-
-	if err := repo.Get(); err != nil {
-		return dep, err
-	}
-
-	cfg.Imports = append(cfg.Imports, dep)
-
-	return dep, nil
-}
-
 // GetImports iterates over the imported packages and gets them.
 func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
