@@ -160,6 +160,10 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					Name:  "import",
 					Usage: "When fetching dependencies, convert Godeps (GPM, Godep) to glide.yaml and pull dependencies",
 				},
+				cli.BoolFlag{
+					Name:  "insecure",
+					Usage: "Use http:// rather than https:// to retrieve pacakges.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
@@ -168,6 +172,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				}
 				cxt.Put("packages", []string(c.Args()))
 				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
+				cxt.Put("insecure", c.Bool("insecure"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
@@ -415,6 +420,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("filename").From("cxt:yaml").
 		Using("packages").From("cxt:packages").
 		Using("conf").From("cxt:cfg").
+		Using("insecure").From("cxt:insecure").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
 		Using("enable").From("cxt:recursiveDependencies").

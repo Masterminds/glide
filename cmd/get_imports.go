@@ -39,6 +39,7 @@ func init() {
 func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	names := p.Get("packages", []string{}).([]string)
 	cfg := p.Get("conf", nil).(*Config)
+	insecure := p.Get("insecure", false).(bool)
 
 	Info("Preparing to install %d package.", len(names))
 
@@ -60,7 +61,13 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 		}
 
 		dest := path.Join(cwd, root)
-		repoURL := "https://" + root
+
+		var repoURL string
+		if insecure {
+			repoURL = "http://" + root
+		} else {
+			repoURL = "https://" + root
+		}
 		repo, err := v.NewRepo(repoURL, dest)
 		if err != nil {
 			Error("Could not construct repo for %q: %s", name, err)
@@ -70,6 +77,13 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 		dep := &Dependency{
 			Name: root,
 		}
+
+		// When retriving from an insecure location set the repo to the
+		// insecure location.
+		if insecure {
+			dep.Repository = "http://" + root
+		}
+
 		subpkg := strings.TrimPrefix(name, root)
 		if len(subpkg) > 0 && subpkg != "/" {
 			dep.Subpackages = []string{subpkg}
