@@ -211,9 +211,55 @@ func mergeGPM(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
 }
 
 // mergeGuess guesses dependencies and merges.
+//
+// This always returns true because it always handles the job of searching
+// for dependencies. So generally it should be the last merge strategy
+// that you try.
 func mergeGuess(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
 	Info("%s manages its own dependencies.", pkg)
-	return []string{}, false
+	buildContext, err := GetBuildContext()
+	if err != nil {
+		Warn("Could not scan package %q: %s", pkg, err)
+		return []string{}, false
+	}
+
+	res := []string{}
+
+	if _, err := os.Stat(dir); err != nil {
+		Warn("Directory is missing: %s", dir)
+		return res, true
+	}
+
+	d := walkDeps(buildContext, dir, pkg)
+	for _, name := range d {
+		name, _ := NormalizeName(name)
+		if _, ok := deps[name]; ok {
+			Debug("====> Seen %s already. Skipping", name)
+			continue
+		}
+
+		found := findPkg(buildContext, name, dir)
+		switch found.PType {
+		case ptypeUnknown:
+			Debug("✨☆ Undownloaded dependency: %s", name)
+			nd := &Dependency{Name: name}
+			deps[name] = nd
+			res = append(res, name)
+		case ptypeGoroot, ptypeCgo:
+			break
+		default:
+			// We're looking for dependencies that might exist in $GOPATH
+			// but not be on vendor. We add any that are on $GOPATH.
+			if _, ok := deps[name]; !ok {
+				Debug("✨☆ GOPATH dependency: %s", name)
+				nd := &Dependency{Name: name}
+				deps[name] = nd
+				res = append(res, name)
+			}
+		}
+	}
+
+	return res, true
 }
 
 // mergeDeps merges any dependency array into deps.

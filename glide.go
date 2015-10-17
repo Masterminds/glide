@@ -277,18 +277,14 @@ Example:
 	stored in 'vendor/foo/bar/vendor'. This behavior can be disabled with
 	'--no-recursive'.
 
-	If the '--import' flag is specified, Glide will also import Godep and GPM
-	files as it finds them in dependencies. It will create a glide.yaml file
-	from the Godeps data, and then update. This has no effect if '--no-recursive'
-	is set.
+	Glide will also import Godep, GB, and GPM files as it finds them in dependencies.
+	It will create a glide.yaml file from the Godeps data, and then update. This
+	has no effect if '--no-recursive' is set.
 
 	If the '--update-vendored' flag (aliased to '-u') is present vendored
 	dependencies, stored in your projects VCS repository, will be updated. This
 	works by removing the old package, checking out an the repo and setting the
 	version, and removing the VCS directory.
-
-	If the '--delete-flatten' flag is present, Glide will remove any dependencies
-	marked flatten within dependencies.
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
@@ -300,20 +296,12 @@ Example:
 					Usage: "Disable updating dependencies' dependencies.",
 				},
 				cli.BoolFlag{
-					Name:  "import",
-					Usage: "When updating dependencies, convert Godeps (GPM, Godep) to glide.yaml and pull dependencies",
-				},
-				cli.BoolFlag{
 					Name:  "force",
 					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
 				},
 				cli.BoolFlag{
 					Name:  "update-vendored, u",
 					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
-				},
-				cli.BoolFlag{
-					Name:  "delete-flatten",
-					Usage: "Delete flattened vendor packages.",
 				},
 			},
 			Action: func(c *cli.Context) {
