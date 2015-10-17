@@ -90,6 +90,10 @@ func main() {
 			Name:  "quiet, q",
 			Usage: "Quiet (no info or debug messages)",
 		},
+		cli.BoolFlag{
+			Name:  "debug",
+			Usage: "Print Debug messages (verbose)",
+		},
 	}
 	app.CommandNotFound = func(c *cli.Context, command string) {
 		cxt.Put("os.Args", os.Args)
@@ -389,6 +393,7 @@ Example:
 
 func setupHandler(c *cli.Context, route string, cxt cookoo.Context, router *cookoo.Router) {
 	cxt.Put("q", c.GlobalBool("quiet"))
+	cxt.Put("debug", c.GlobalBool("debug"))
 	cxt.Put("yaml", c.GlobalString("yaml"))
 	cxt.Put("cliArgs", c.Args())
 	if err := router.HandleRequest(route, cxt, false); err != nil {
@@ -402,6 +407,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		// TODO: Add setup for debug in addition to quiet.
 		Does(cmd.BeQuiet, "quiet").
 		Using("quiet").From("cxt:q").
+		Using("debug").From("cxt:debug").
 		Does(cmd.VersionGuard, "v")
 
 	reg.Route("@ready", "Prepare for glide commands.").

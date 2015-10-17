@@ -15,10 +15,12 @@ import (
 
 // Quiet, when set to true, can suppress Info and Debug messages.
 var Quiet = false
+var IsDebugging = false
 
 // BeQuiet supresses Info and Debug messages.
 func BeQuiet(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	Quiet = p.Get("quiet", false).(bool)
+	IsDebugging = p.Get("debug", false).(bool)
 	return Quiet, nil
 }
 

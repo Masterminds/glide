@@ -39,7 +39,7 @@ func Info(msg string, args ...interface{}) {
 
 // Debug logs debug information
 func Debug(msg string, args ...interface{}) {
-	if Quiet {
+	if Quiet || !IsDebugging {
 		return
 	}
 	fmt.Print("[DEBUG] ")

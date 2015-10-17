@@ -432,7 +432,6 @@ type Dependency struct {
 	UpdateAsVendored            bool
 	Flatten                     bool
 	Flattened                   bool
-	dirty                       bool
 }
 
 // DependencyFromYaml creates a dependency from a yaml.Node.
