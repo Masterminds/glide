@@ -30,6 +30,9 @@ func init() {
 
 // GetAll gets zero or more repos.
 //
+// This takes a package name, normalizes it, finds the repo, and installs it.
+// It's the workhorse behind `glide get`.
+//
 // Params:
 //	- packages ([]string): Package names to get.
 // 	- verbose (bool): default false

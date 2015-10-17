@@ -416,13 +416,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("packages").From("cxt:packages").
 		Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
-		Using("enable").From("cxt:recursiveDependencies").
-		Using("importGodeps").From("cxt:importGodeps").
-		Using("importGPM").From("cxt:importGPM").
-		Using("importGb").From("cxt:importGb").
-		Using("force").From("cxt:forceUpdate").WithDefault(false).
+		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
+		Using("force").From("cxt:forceUpdate").
 		Does(cmd.WriteYaml, "out").
 		Using("yaml.Node").From("cxt:merged").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
@@ -450,14 +446,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("force").From("cxt:forceUpdate").
 		Using("packages").From("cxt:packages").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
-		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
-		Using("deleteFlatten").From("cxt:deleteFlatten").
-		Using("importGodeps").From("cxt:importGodeps").
-		Using("importGPM").From("cxt:importGPM").
-		Using("importGb").From("cxt:importGb").
-		Using("enable").From("cxt:recursiveDependencies").
-		Using("force").From("cxt:forceUpdate").
+		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
+		Using("force").From("cxt:forceUpdate").
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:cfg").
 		Using("update").From("cxt:updateVendoredDeps")
