@@ -233,6 +233,7 @@ func mergeGuess(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
 	d := walkDeps(buildContext, dir, pkg)
 	for _, name := range d {
 		name, _ := NormalizeName(name)
+		repo := getRepoRootFromPackage(name)
 		if _, ok := deps[name]; ok {
 			Debug("====> Seen %s already. Skipping", name)
 			continue
@@ -242,7 +243,10 @@ func mergeGuess(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
 		switch found.PType {
 		case ptypeUnknown:
 			Debug("✨☆ Undownloaded dependency: %s", name)
-			nd := &Dependency{Name: name}
+			nd := &Dependency{
+				Name:       name,
+				Repository: "https://" + repo,
+			}
 			deps[name] = nd
 			res = append(res, name)
 		case ptypeGoroot, ptypeCgo:
