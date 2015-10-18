@@ -22,8 +22,12 @@ import (
 // Returns:
 //
 func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	packages := p.Get("packages", []string{}).([]string)
 	conf := p.Get("conf", &Config{}).(*Config)
+	skip := p.Get("skip", false).(bool)
+	if skip {
+		return conf, nil
+	}
+	packages := p.Get("packages", []string{}).([]string)
 	force := p.Get("force", true).(bool)
 	vend, _ := VendorPath(c)
 
@@ -43,10 +47,22 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	f := &flattening{conf, vend, vend, deps, packages}
 
-	a, err := recFlatten(f, force)
+	err := recFlatten(f, force)
 	flattenSetRefs(f)
 	Info("Project relies on %d dependencies.", len(deps))
-	return a, err
+	exportFlattenedDeps(conf, deps)
+
+	return conf, err
+}
+
+func exportFlattenedDeps(conf *Config, in map[string]*Dependency) {
+	out := make([]*Dependency, len(in))
+	i := 0
+	for _, v := range in {
+		out[i] = v
+		i++
+	}
+	conf.Imports = out
 }
 
 type flattening struct {
@@ -62,10 +78,10 @@ type flattening struct {
 }
 
 // Hack: Cache record of updates so we don't have to keep doing git pulls.
-var flattenUpdateCache = map[string]bool{}
+var updateCache = map[string]bool{}
 
 // refFlatten recursively flattens the vendor tree.
-func recFlatten(f *flattening, force bool) (interface{}, error) {
+func recFlatten(f *flattening, force bool) error {
 	Debug("---> Inspecting %s for changes (%d packages).\n", f.curr, len(f.scan))
 	for _, imp := range f.scan {
 		Debug("----> Scanning %s", imp)
@@ -96,8 +112,7 @@ func recFlatten(f *flattening, force bool) (interface{}, error) {
 		}
 	}
 
-	// Stopped: Need to recurse down the next level.
-	return nil, nil
+	return nil
 }
 
 // flattenGlideUp does a glide update in the middle of a flatten operation.
@@ -110,7 +125,7 @@ func flattenGlideUp(f *flattening, base string, force bool) error {
 	for _, imp := range f.deps {
 		wd := path.Join(f.top, imp.Name)
 		if VcsExists(imp, wd) {
-			if flattenUpdateCache[imp.Name] {
+			if updateCache[imp.Name] {
 				Debug("----> Already updated %s", imp.Name)
 				continue
 			}
@@ -120,7 +135,7 @@ func flattenGlideUp(f *flattening, base string, force bool) error {
 				Warn("Skipped update %s: %s\n", imp.Name, err)
 				continue
 			}
-			flattenUpdateCache[imp.Name] = true
+			updateCache[imp.Name] = true
 		} else {
 			Debug("Importing %s to project %s\n", imp.Name, wd)
 			if err := VcsGet(imp, wd); err != nil {
@@ -216,7 +231,7 @@ func mergeGPM(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
 // for dependencies. So generally it should be the last merge strategy
 // that you try.
 func mergeGuess(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
-	Info("%s manages its own dependencies.", pkg)
+	Info("Scanning %s for dependencies.", pkg)
 	buildContext, err := GetBuildContext()
 	if err != nil {
 		Warn("Could not scan package %q: %s", pkg, err)

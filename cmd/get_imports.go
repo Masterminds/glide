@@ -142,6 +142,12 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 			Debug("===> Skipping %q", dep.Name)
 			continue
 		}
+
+		// Hack: The updateCache global keeps us from re-updating the same
+		// dependencies when we're recursing. We cache here to prevent
+		// flattening from causing unnecessary updates.
+		updateCache[dep.Name] = true
+
 		if err := VcsUpdate(dep, cwd, force); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}
