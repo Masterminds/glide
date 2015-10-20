@@ -90,6 +90,10 @@ func main() {
 			Name:  "quiet, q",
 			Usage: "Quiet (no info or debug messages)",
 		},
+		cli.BoolFlag{
+			Name:  "debug",
+			Usage: "Print Debug messages (verbose)",
+		},
 	}
 	app.CommandNotFound = func(c *cli.Context, command string) {
 		cxt.Put("os.Args", os.Args)
@@ -171,8 +175,9 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					os.Exit(1)
 				}
 				cxt.Put("packages", []string(c.Args()))
-				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
+				cxt.Put("skipFlatten", !c.Bool("no-recursive"))
 				cxt.Put("insecure", c.Bool("insecure"))
+				// FIXME: Are these used anywhere?
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
@@ -188,21 +193,42 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				{
 					Name:  "godep",
 					Usage: "Import Godep's Godeps.json files and display the would-be yaml file",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "file, f",
+							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+						},
+					},
 					Action: func(c *cli.Context) {
+						cxt.Put("toPath", c.String("file"))
 						setupHandler(c, "import godep", cxt, router)
 					},
 				},
 				{
 					Name:  "gpm",
 					Usage: "Import GPM's Godeps and Godeps-Git files and display the would-be yaml file",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "file, f",
+							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+						},
+					},
 					Action: func(c *cli.Context) {
+						cxt.Put("toPath", c.String("file"))
 						setupHandler(c, "import gpm", cxt, router)
 					},
 				},
 				{
 					Name:  "gb",
 					Usage: "Import gb's manifest file and display the would-be yaml file",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "file, f",
+							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+						},
+					},
 					Action: func(c *cli.Context) {
+						cxt.Put("toPath", c.String("file"))
 						setupHandler(c, "import gb", cxt, router)
 					},
 				},
@@ -278,18 +304,18 @@ Example:
 	stored in 'vendor/foo/bar/vendor'. This behavior can be disabled with
 	'--no-recursive'.
 
-	If the '--import' flag is specified, Glide will also import Godep and GPM
-	files as it finds them in dependencies. It will create a glide.yaml file
-	from the Godeps data, and then update. This has no effect if '--no-recursive'
-	is set.
+	Glide will also import Godep, GB, and GPM files as it finds them in dependencies.
+	It will create a glide.yaml file from the Godeps data, and then update. This
+	has no effect if '--no-recursive' is set.
 
 	If the '--update-vendored' flag (aliased to '-u') is present vendored
 	dependencies, stored in your projects VCS repository, will be updated. This
 	works by removing the old package, checking out an the repo and setting the
 	version, and removing the VCS directory.
 
-	If the '--delete-flatten' flag is present, Glide will remove any dependencies
-	marked flatten within dependencies.
+	By default, packages that are discovered are considered transient, and are
+	not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
+	to save the discovered dependencies to a YAML file.
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
@@ -297,12 +323,8 @@ Example:
 					Usage: "Delete vendor packages not specified in config.",
 				},
 				cli.BoolFlag{
-					Name:  "no-recursive",
-					Usage: "Disable updating dependencies' dependencies.",
-				},
-				cli.BoolFlag{
-					Name:  "import",
-					Usage: "When updating dependencies, convert Godeps (GPM, Godep) to glide.yaml and pull dependencies",
+					Name:  "no-recursive, quick",
+					Usage: "Disable updating dependencies' dependencies. Only update things in glide.yaml.",
 				},
 				cli.BoolFlag{
 					Name:  "force",
@@ -312,16 +334,18 @@ Example:
 					Name:  "update-vendored, u",
 					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
 				},
-				cli.BoolFlag{
-					Name:  "delete-flatten",
-					Usage: "Delete flattened vendor packages.",
+				cli.StringFlag{
+					Name:  "file, f",
+					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 				},
 			},
 			Action: func(c *cli.Context) {
 				cxt.Put("deleteOptIn", c.Bool("delete"))
 				cxt.Put("forceUpdate", c.Bool("force"))
-				cxt.Put("recursiveDependencies", !c.Bool("no-recursive"))
+				cxt.Put("skipFlatten", c.Bool("no-recursive"))
 				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
+				cxt.Put("toPath", c.String("file"))
+				cxt.Put("toStdout", false)
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
@@ -394,6 +418,7 @@ Example:
 
 func setupHandler(c *cli.Context, route string, cxt cookoo.Context, router *cookoo.Router) {
 	cxt.Put("q", c.GlobalBool("quiet"))
+	cxt.Put("debug", c.GlobalBool("debug"))
 	cxt.Put("yaml", c.GlobalString("yaml"))
 	cxt.Put("cliArgs", c.Args())
 	if err := router.HandleRequest(route, cxt, false); err != nil {
@@ -407,6 +432,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		// TODO: Add setup for debug in addition to quiet.
 		Does(cmd.BeQuiet, "quiet").
 		Using("quiet").From("cxt:q").
+		Using("debug").From("cxt:debug").
 		Does(cmd.VersionGuard, "v")
 
 	reg.Route("@ready", "Prepare for glide commands.").
@@ -422,13 +448,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Using("insecure").From("cxt:insecure").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
-		Using("enable").From("cxt:recursiveDependencies").
-		Using("importGodeps").From("cxt:importGodeps").
-		Using("importGPM").From("cxt:importGPM").
-		Using("importGb").From("cxt:importGb").
-		Using("force").From("cxt:forceUpdate").WithDefault(false).
+		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
+		Using("force").From("cxt:forceUpdate").
 		Does(cmd.WriteYaml, "out").
 		Using("yaml.Node").From("cxt:merged").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
@@ -456,17 +478,18 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("force").From("cxt:forceUpdate").
 		Using("packages").From("cxt:packages").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
-		Does(cmd.Recurse, "recurse").Using("conf").From("cxt:cfg").
-		Using("deleteFlatten").From("cxt:deleteFlatten").
-		Using("importGodeps").From("cxt:importGodeps").
-		Using("importGPM").From("cxt:importGPM").
-		Using("importGb").From("cxt:importGb").
-		Using("enable").From("cxt:recursiveDependencies").
-		Using("force").From("cxt:forceUpdate").
+		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
+		Using("force").From("cxt:forceUpdate").
+		Using("skip").From("cxt:skipFlatten").
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:cfg").
-		Using("update").From("cxt:updateVendoredDeps")
+		Using("update").From("cxt:updateVendoredDeps").
+		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
+		Does(cmd.WriteYaml, "out").
+		Using("yaml.Node").From("cxt:merged").
+		Using("filename").From("cxt:toPath").
+		Using("toStdout").From("cxt:toStdout")
 
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
@@ -498,7 +521,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged").
+		Using("filename").From("cxt:toPath")
 
 	reg.Route("import godep", "Read a Godeps.json file").
 		Includes("@startup").
@@ -509,7 +533,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged").
+		Using("filename").From("cxt:toPath")
 
 	reg.Route("import gb", "Read a vendor/manifest file").
 		Includes("@startup").
@@ -519,7 +544,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("dependencies").From("cxt:manifest").
 		Using("conf").From("cxt:cfg").
 		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged")
+		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged").
+		Using("filename").From("cxt:toPath")
 
 	reg.Route("guess", "Guess dependencies").
 		Includes("@ready").

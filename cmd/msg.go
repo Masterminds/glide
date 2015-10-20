@@ -33,16 +33,16 @@ func Info(msg string, args ...interface{}) {
 	if Quiet {
 		return
 	}
-	fmt.Print(Color(Green, "[INFO] "))
+	fmt.Fprint(os.Stderr, Color(Green, "[INFO] "))
 	Msg(msg, args...)
 }
 
 // Debug logs debug information
 func Debug(msg string, args ...interface{}) {
-	if Quiet {
+	if Quiet || !IsDebugging {
 		return
 	}
-	fmt.Print("[DEBUG] ")
+	fmt.Fprint(os.Stderr, "[DEBUG] ")
 	Msg(msg, args...)
 }
 
@@ -77,14 +77,14 @@ func ErrMsg(msg string, args ...interface{}) {
 // varying types.
 func Msg(msg string, args ...interface{}) {
 	if len(args) == 0 {
-		fmt.Print(msg)
+		fmt.Fprint(os.Stderr, msg)
 		return
 	}
-	fmt.Printf(msg, args...)
+	fmt.Fprintf(os.Stderr, msg, args...)
 
 	// Get rid of the annoying fact that messages need \n at the end, but do
 	// it in a backward compatible way.
 	if !strings.HasSuffix(msg, "\n") {
-		fmt.Println()
+		fmt.Fprintln(os.Stderr)
 	}
 }

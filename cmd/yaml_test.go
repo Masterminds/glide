@@ -77,9 +77,15 @@ func TestFromYaml(t *testing.T) {
 		t.Errorf("Expected to find a recursive dependency")
 	}
 
-	imp := cfg.Imports[1]
-	if imp.Name != "github.com/Masterminds/convert" {
-		t.Errorf("Expected the convert package, got %s", imp.Name)
+	var imp *Dependency
+	for _, d := range cfg.Imports {
+		if d.Name == "github.com/Masterminds/convert" {
+			imp = d
+		}
+	}
+
+	if imp == nil {
+		t.Errorf("Expected the convert package, got nothing")
 	}
 
 	if len(imp.Subpackages) != 3 {
