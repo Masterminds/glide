@@ -29,54 +29,80 @@ func init() {
 	//v.Logger = log.New(os.Stdout, "go-vcs", log.LstdFlags)
 }
 
-// Get fetches a single package and puts it in vendor/.
+// GetAll gets zero or more repos.
+//
+// This takes a package name, normalizes it, finds the repo, and installs it.
+// It's the workhorse behind `glide get`.
 //
 // Params:
-//	- package (string): Name of the package to get.
+//	- packages ([]string): Package names to get.
 // 	- verbose (bool): default false
 //
 // Returns:
-// 	- *Dependency: A dependency describing this package.
-func Get(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	name := p.Get("package", "").(string)
+// 	- []*Dependency: A list of constructed dependencies.
+func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	names := p.Get("packages", []string{}).([]string)
 	cfg := p.Get("conf", nil).(*Config)
+	insecure := p.Get("insecure", false).(bool)
 
-	cwd, err := VendorPath(c)
-	if err != nil {
-		return nil, err
+	Info("Preparing to install %d package.", len(names))
+
+	deps := []*Dependency{}
+	for _, name := range names {
+		cwd, err := VendorPath(c)
+		if err != nil {
+			return nil, err
+		}
+
+		root := getRepoRootFromPackage(name)
+		if len(root) == 0 {
+			return nil, fmt.Errorf("Package name is required for %q.", name)
+		}
+
+		if cfg.HasDependency(root) {
+			Warn("Package %q is already in glide.yaml. Skipping", root)
+			continue
+		}
+
+		dest := path.Join(cwd, root)
+
+		var repoURL string
+		if insecure {
+			repoURL = "http://" + root
+		} else {
+			repoURL = "https://" + root
+		}
+		repo, err := v.NewRepo(repoURL, dest)
+		if err != nil {
+			Error("Could not construct repo for %q: %s", name, err)
+			return false, err
+		}
+
+		dep := &Dependency{
+			Name: root,
+		}
+
+		// When retriving from an insecure location set the repo to the
+		// insecure location.
+		if insecure {
+			dep.Repository = "http://" + root
+		}
+
+		subpkg := strings.TrimPrefix(name, root)
+		if len(subpkg) > 0 && subpkg != "/" {
+			dep.Subpackages = []string{subpkg}
+		}
+
+		if err := repo.Get(); err != nil {
+			return dep, err
+		}
+
+		cfg.Imports = append(cfg.Imports, dep)
+
+		deps = append(deps, dep)
+
 	}
-
-	root := getRepoRootFromPackage(name)
-	if len(root) == 0 {
-		return nil, fmt.Errorf("Package name is required.")
-	}
-
-	if cfg.HasDependency(root) {
-		return nil, fmt.Errorf("Package '%s' is already in glide.yaml", root)
-	}
-
-	dest := path.Join(cwd, root)
-	repoURL := "https://" + root
-	repo, err := v.NewRepo(repoURL, dest)
-	if err != nil {
-		return false, err
-	}
-
-	dep := &Dependency{
-		Name: root,
-	}
-	subpkg := strings.TrimPrefix(name, root)
-	if len(subpkg) > 0 && subpkg != "/" {
-		dep.Subpackages = []string{subpkg}
-	}
-
-	if err := repo.Get(); err != nil {
-		return dep, err
-	}
-
-	cfg.Imports = append(cfg.Imports, dep)
-
-	return dep, nil
+	return deps, nil
 }
 
 // GetImports iterates over the imported packages and gets them.
@@ -103,9 +129,19 @@ func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 }
 
 // UpdateImports iterates over the imported packages and updates them.
+//
+// Params:
+//
+// 	- force (bool): force packages to update (default false)
+//	- conf (*Config): The configuration
+// 	- packages([]string): The packages to update. Default is all.
 func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	cfg := p.Get("conf", nil).(*Config)
 	force := p.Get("force", true).(bool)
+	plist := p.Get("packages", []string{}).([]string)
+	pkgs := list2map(plist)
+	restrict := len(pkgs) > 0
+
 	cwd, err := VendorPath(c)
 	if err != nil {
 		return false, err
@@ -117,6 +153,16 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	}
 
 	for _, dep := range cfg.Imports {
+		if restrict && !pkgs[dep.Name] {
+			Debug("===> Skipping %q", dep.Name)
+			continue
+		}
+
+		// Hack: The updateCache global keeps us from re-updating the same
+		// dependencies when we're recursing. We cache here to prevent
+		// flattening from causing unnecessary updates.
+		updateCache[dep.Name] = true
+
 		if err := VcsUpdate(dep, cwd, force); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}

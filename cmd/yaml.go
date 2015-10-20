@@ -63,6 +63,7 @@ func ParseYamlString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 // 	- filename (string): If set, the file will be opened and the content will be written to it.
 func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	top := p.Get("yaml.Node", yaml.Scalar("nothing to print")).(yaml.Node)
+	toStdout := p.Get("toStdout", true).(bool)
 	var out io.Writer
 	if nn, ok := p.Has("filename"); ok && len(nn.(string)) > 0 {
 		file, err := os.Create(nn.(string))
@@ -70,11 +71,12 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		}
 		defer file.Close()
 		out = io.Writer(file)
-	} else {
+		fmt.Fprint(out, yaml.Render(top))
+	} else if toStdout {
 		out = p.Get("out", os.Stdout).(io.Writer)
+		fmt.Fprint(out, yaml.Render(top))
 	}
-
-	fmt.Fprint(out, yaml.Render(top))
+	// Otherwise we supress output.
 
 	return true, nil
 }
