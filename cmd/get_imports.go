@@ -506,7 +506,9 @@ func parseImportFromBody(ur *url.URL, r io.ReadCloser) (u string, err error) {
 		t, err = d.Token()
 		if err != nil {
 			if err == io.EOF {
-				err = nil
+				// If we hit the end of the markup and don't have anything
+				// we return an error.
+				err = v.ErrCannotDetectVCS
 			}
 			return
 		}
@@ -525,27 +527,19 @@ func parseImportFromBody(ur *url.URL, r io.ReadCloser) (u string, err error) {
 		}
 		if f := strings.Fields(attrValue(e.Attr, "content")); len(f) == 3 {
 
-			// If this the second time a go-import statement has been detected
-			// return an error. There should only be one import statement per
-			// html file. We don't simply return the first found in order to
-			// detect pages including more than one.
-			if u != "" {
-				u = ""
-				err = v.ErrCannotDetectVCS
-				return
-			}
-
 			// If the prefix supplied by the remote system isn't a prefix to the
-			// url we're fetching return an error. This will work for exact
-			// matches and prefixes. For example, golang.org/x/net as a prefix
-			// will match for golang.org/x/net and golang.org/x/net/context.
+			// url we're fetching return continue looking for more go-imports.
+			// This will work for exact matches and prefixes. For example,
+			// golang.org/x/net as a prefix will match for golang.org/x/net and
+			// golang.org/x/net/context.
 			vcsURL := ur.Host + ur.Path
 			if !strings.HasPrefix(vcsURL, f[0]) {
-				err = v.ErrCannotDetectVCS
+				continue
+			} else {
+				u = f[0]
 				return
 			}
 
-			u = f[0]
 		}
 	}
 }
