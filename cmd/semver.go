@@ -1,50 +1,18 @@
 package cmd
 
 import (
-	"errors"
-	"regexp"
-	"sort"
-
+	"github.com/Masterminds/semver"
 	"github.com/Masterminds/vcs"
-	"github.com/hashicorp/go-version"
 )
-
-// The SemVer handling by github.com/hashicorp/go-version provides the ability
-// to work with versions
-
-// The compiled regular expression used to test the validity of a version.
-var versionRegexp *regexp.Regexp
-
-const versionRegexpRaw string = `v?(([0-9]+(\.[0-9]+){0,2})` +
-	`(-([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?` +
-	`(\+([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?)` +
-	`?`
-
-func init() {
-	versionRegexp = regexp.MustCompile("^" + versionRegexpRaw + "$")
-}
-
-// Filter the leading v from the version. Returns an error if there
-// was an issue including if the version was not SemVer
-// returns:
-// - the semantic verions (stripping any leading v if present)
-// - error if there was one
-func filterVersion(v string) (string, error) {
-	matches := versionRegexp.FindStringSubmatch(v)
-	if matches == nil || matches[1] == "" {
-		return "", errors.New("No SemVer found.")
-	}
-	return matches[1], nil
-}
 
 // Filter a list of versions to only included semantic versions. The response
 // is a mapping of the original version to the semantic version.
-func getSemVers(refs []string) map[string]string {
-	sv := map[string]string{}
+func getSemVers(refs []string) []*semver.Version {
+	sv := []*semver.Version{}
 	for _, r := range refs {
-		nv, err := filterVersion(r)
+		v, err := semver.NewVersion(r)
 		if err == nil {
-			sv[nv] = r
+			sv = append(sv, v)
 		}
 	}
 
@@ -77,17 +45,4 @@ func isBranch(branch string, repo vcs.Repo) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-func getSortedSemVerList(v []string) []*version.Version {
-	versions := make([]*version.Version, len(v))
-	for i, raw := range v {
-		v, err := version.NewVersion(raw)
-		if err == nil {
-			versions[i] = v
-		}
-	}
-
-	sort.Sort(sort.Reverse(version.Collection(versions)))
-	return versions
 }

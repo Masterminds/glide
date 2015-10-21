@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/xml"
 	"fmt"
+	"sort"
 	//"log"
 	"io"
 	"net/http"
@@ -14,8 +15,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/semver"
 	v "github.com/Masterminds/vcs"
-	"github.com/hashicorp/go-version"
 )
 
 func init() {
@@ -370,7 +371,7 @@ func VcsVersion(dep *Dependency, vend string) error {
 
 			// Create the constraing first to make sure it's valid before
 			// working on the repo.
-			constraint, err := version.NewConstraint(ver)
+			constraint, err := semver.NewConstraint(ver)
 
 			// Make sure the constriant is valid. At this point it's not a valid
 			// reference so if it's not a valid constrint we can exit early.
@@ -385,25 +386,25 @@ func VcsVersion(dep *Dependency, vend string) error {
 				return err
 			}
 
-			// Filter the references to just the semantic versions.
-			semverMap := getSemVers(refs)
+			// Convert and filter the list to semver.Version instances
+			semvers := getSemVers(refs)
 
 			// Sort semver list
-			var sv []string
-			for k := range semverMap {
-				sv = append(sv, k)
-			}
-			sorted := getSortedSemVerList(sv)
-			for _, v := range sorted {
+			sort.Sort(sort.Reverse(semver.Collection(semvers)))
+			found := false
+			for _, v := range semvers {
 				if constraint.Check(v) {
-
+					found = true
 					// If the constrint passes get the original reference
-					ver = semverMap[v.String()]
+					ver = v.Original()
 					break
 				}
 			}
-
-			Info("Detected semantic version. Setting version for %s to %s.\n", dep.Name, ver)
+			if found {
+				Info("Detected semantic version. Setting version for %s to %s.\n", dep.Name, ver)
+			} else {
+				Warn("Unable to find semantic version for constraint %s %s\n", dep.Name, ver)
+			}
 		}
 		if err := repo.UpdateVersion(ver); err != nil {
 			Error("Failed to set version to %s: %s\n", dep.Reference, err)

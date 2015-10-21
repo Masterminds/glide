@@ -3,8 +3,10 @@ package cmd
 import (
 	"os"
 	"path"
+	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/semver"
 	"github.com/kylelemons/go-gypsy/yaml"
 )
 
@@ -16,7 +18,7 @@ import (
 // Params:
 //	- packages ([]string): The packages to read. If this is empty, it reads all
 //		packages.
-//	- force (bool): force git updates.
+//	- force (bool): force vcs updates.
 //	- conf (*Config): The configuration.
 //
 // Returns:
@@ -87,15 +89,15 @@ func recFlatten(f *flattening, force bool) error {
 		Debug("----> Scanning %s", imp)
 		base := path.Join(f.top, imp)
 		mod := []string{}
-		if m, ok := mergeGlide(base, imp, f.deps); ok {
+		if m, ok := mergeGlide(base, imp, f.deps, f.top); ok {
 			mod = m
-		} else if m, ok = mergeGodep(base, imp, f.deps); ok {
+		} else if m, ok = mergeGodep(base, imp, f.deps, f.top); ok {
 			mod = m
-		} else if m, ok = mergeGPM(base, imp, f.deps); ok {
+		} else if m, ok = mergeGPM(base, imp, f.deps, f.top); ok {
 			mod = m
-		} else if m, ok = mergeGb(base, imp, f.deps); ok {
+		} else if m, ok = mergeGb(base, imp, f.deps, f.top); ok {
 			mod = m
-		} else if m, ok = mergeGuess(base, imp, f.deps); ok {
+		} else if m, ok = mergeGuess(base, imp, f.deps, f.top); ok {
 			mod = m
 		}
 
@@ -164,7 +166,7 @@ func flattenSetRefs(f *flattening) {
 	}
 }
 
-func mergeGlide(dir, name string, deps map[string]*Dependency) ([]string, bool) {
+func mergeGlide(dir, name string, deps map[string]*Dependency, vend string) ([]string, bool) {
 	gp := path.Join(dir, "glide.yaml")
 	if _, err := os.Stat(gp); err != nil {
 		return []string{}, false
@@ -183,14 +185,14 @@ func mergeGlide(dir, name string, deps map[string]*Dependency) ([]string, bool) 
 
 	Info("Found glide.yaml in %s", gp)
 
-	return mergeDeps(deps, conf.Imports), true
+	return mergeDeps(deps, conf.Imports, vend), true
 }
 
 // listGodep appends Godeps entries to the deps.
 //
 // It returns true if any dependencies were found (even if not added because
 // they are duplicates).
-func mergeGodep(dir, name string, deps map[string]*Dependency) ([]string, bool) {
+func mergeGodep(dir, name string, deps map[string]*Dependency, vend string) ([]string, bool) {
 	Debug("Looking in %s/Godeps/ for a Godeps.json file.\n", dir)
 	d, err := parseGodepGodeps(dir)
 	if err != nil {
@@ -201,28 +203,28 @@ func mergeGodep(dir, name string, deps map[string]*Dependency) ([]string, bool) 
 	}
 
 	Info("Found Godeps.json file for %q", name)
-	return mergeDeps(deps, d), true
+	return mergeDeps(deps, d, vend), true
 }
 
 // listGb merges GB dependencies into the deps.
-func mergeGb(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
+func mergeGb(dir, pkg string, deps map[string]*Dependency, vend string) ([]string, bool) {
 	Debug("Looking in %s/vendor/ for a manifest file.\n", dir)
 	d, err := parseGbManifest(dir)
 	if err != nil || len(d) == 0 {
 		return []string{}, false
 	}
 	Info("Found gb manifest file for %q", pkg)
-	return mergeDeps(deps, d), true
+	return mergeDeps(deps, d, vend), true
 }
 
 // mergeGPM merges GPM Godeps files into deps.
-func mergeGPM(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
+func mergeGPM(dir, pkg string, deps map[string]*Dependency, vend string) ([]string, bool) {
 	d, err := parseGPMGodeps(dir)
 	if err != nil || len(d) == 0 {
 		return []string{}, false
 	}
 	Info("Found GPM file for %q", pkg)
-	return mergeDeps(deps, d), true
+	return mergeDeps(deps, d, vend), true
 }
 
 // mergeGuess guesses dependencies and merges.
@@ -230,7 +232,7 @@ func mergeGPM(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
 // This always returns true because it always handles the job of searching
 // for dependencies. So generally it should be the last merge strategy
 // that you try.
-func mergeGuess(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
+func mergeGuess(dir, pkg string, deps map[string]*Dependency, vend string) ([]string, bool) {
 	/*
 			Info("Scanning %s for dependencies.", pkg)
 			buildContext, err := GetBuildContext()
@@ -286,7 +288,7 @@ func mergeGuess(dir, pkg string, deps map[string]*Dependency) ([]string, bool) {
 }
 
 // mergeDeps merges any dependency array into deps.
-func mergeDeps(orig map[string]*Dependency, add []*Dependency) []string {
+func mergeDeps(orig map[string]*Dependency, add []*Dependency, vend string) []string {
 	mod := []string{}
 	for _, dd := range add {
 		// Add it unless it's already there.
@@ -300,11 +302,115 @@ func mergeDeps(orig map[string]*Dependency, add []*Dependency) []string {
 			existing.Reference = dd.Reference
 			mod = append(mod, dd.Name)
 		} else if dd.Reference != "" && existing.Reference != "" && dd.Reference != existing.Reference {
-			// We can detect version conflicts, but we can't really do
-			// anything to correct, since we don't know the intentions of the
-			// authors.
-			Warn("Conflict: %s ref is %s, but also asked for %s", existing.Name, existing.Reference, dd.Reference)
-			Info("Keeping %s %s", existing.Name, existing.Reference)
+			// Check if one is a version and the other is a constraint. If the
+			// version is in the constraint use that.
+			dest := path.Join(vend, dd.Name)
+			repo, err := existing.GetRepo(dest)
+			if err != nil {
+				Warn("Unable to access repo for %s\n", existing.Name)
+				Info("Keeping %s %s", existing.Name, existing.Reference)
+				continue
+			}
+
+			eIsRef := repo.IsReference(existing.Reference)
+			ddIsRef := repo.IsReference(dd.Reference)
+
+			// Both are references and different ones.
+			if eIsRef && ddIsRef {
+				Warn("Conflict: %s ref is %s, but also asked for %s\n", existing.Name, existing.Reference, dd.Reference)
+				Info("Keeping %s %s", existing.Name, existing.Reference)
+			} else if eIsRef {
+				// Test ddIsRef is a constraint and if eIsRef is a semver
+				// within that
+				con, err := semver.NewConstraint(dd.Reference)
+				if err != nil {
+					Warn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", dd.Name, dd.Reference)
+					Info("Keeping %s %s", existing.Name, existing.Reference)
+					continue
+				}
+
+				ver, err := semver.NewVersion(existing.Reference)
+				if err != nil {
+					// The existing version is not a semantic version.
+					Warn("Conflict: %s version is %s, but also asked for %s\n", existing.Name, existing.Reference, dd.Reference)
+					Info("Keeping %s %s", existing.Name, existing.Reference)
+					continue
+				}
+
+				if con.Check(ver) {
+					Info("Keeping %s %s because it fits constraint '%s'", existing.Name, existing.Reference, dd.Reference)
+				} else {
+					Warn("Conflict: %s version is %s but does not meet constraint '%s'\n", existing.Name, existing.Reference, dd.Reference)
+					Info("Keeping %s %s", existing.Name, existing.Reference)
+				}
+
+			} else if ddIsRef {
+				// Test eIsRef is a constraint and if ddIsRef is a semver
+				// within that
+				con, err := semver.NewConstraint(existing.Reference)
+				if err != nil {
+					Warn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", existing.Name, existing.Reference)
+					Info("Keeping %s %s", existing.Name, existing.Reference)
+					continue
+				}
+
+				ver, err := semver.NewVersion(dd.Reference)
+				if err != nil {
+					// The dd version is not a semantic version.
+					Warn("Conflict: %s version is %s, but also asked for %s\n", existing.Name, existing.Reference, dd.Reference)
+					Info("Keeping %s %s", existing.Name, existing.Reference)
+					continue
+				}
+
+				if con.Check(ver) {
+					// Use the specific version if noted instead of the existing
+					// constraint.
+					existing.Reference = dd.Reference
+					mod = append(mod, dd.Name)
+					Info("Using %s %s because it fits constraint '%s'", existing.Name, dd.Reference, existing.Reference)
+				} else {
+					Warn("Conflict: %s semantic version constraint is %s but '%s' does not meet the constraint\n", existing.Name, existing.Reference, dd.Reference)
+					Info("Keeping %s %s", existing.Name, existing.Reference)
+				}
+			} else {
+				// Neither is a vcs reference and both could be semantic version
+				// constraints that are different.
+
+				_, err := semver.NewConstraint(dd.Reference)
+				if err != nil {
+					// dd.Reference is not a reference or a valid constraint.
+					Warn("Version %s %s is not a reference or valid semantic version constraint\n", dd.Name, dd.Reference)
+					Info("Keeping %s %s", existing.Name, existing.Reference)
+					continue
+				}
+
+				_, err = semver.NewConstraint(existing.Reference)
+				if err != nil {
+					// existing.Reference is not a reference or a valid constraint.
+					// We really should never end up here.
+					Warn("Version %s %s is not a reference or valid semantic version constraint\n", existing.Name, existing.Reference)
+
+					existing.Reference = dd.Reference
+					mod = append(mod, dd.Name)
+					Info("Using %s %s because it is a valid version", existing.Name, existing.Reference)
+					continue
+				}
+
+				// Both versions are constraints. Try to merge them.
+				// If either comparison has an || skip merging. That's complicated.
+				ddor := strings.Index(dd.Reference, "||")
+				eor := strings.Index(existing.Reference, "||")
+				if ddor == -1 && eor == -1 {
+					// Add the comparisons together.
+					newRef := existing.Reference + ", " + dd.Reference
+					existing.Reference = newRef
+					mod = append(mod, dd.Name)
+					Info("Combining %s semantic version constraints %s and %s", existing.Name, existing.Reference, dd.Reference)
+				} else {
+					Warn("Conflict: %s version is %s, but also asked for %s\n", existing.Name, existing.Reference, dd.Reference)
+					Info("Keeping %s %s", existing.Name, existing.Reference)
+				}
+			}
 		}
 	}
 	return mod
