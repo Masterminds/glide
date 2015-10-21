@@ -365,7 +365,10 @@ func VcsVersion(dep *Dependency, vend string) error {
 		}
 
 		ver := dep.Reference
-		if repo.IsReference(ver) {
+		// Referenes in Git can begin with a ^ which is similar to semver.
+		// If there is a ^ prefix we assume it's a semver constraint rather than
+		// part of the git/VCS commit id.
+		if repo.IsReference(ver) && !strings.HasPrefix(ver, "^") {
 			Info("Setting version for %s to %s.\n", dep.Name, ver)
 		} else {
 
