@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/xml"
 	"fmt"
+	"sort"
 	//"log"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/semver"
 	v "github.com/Masterminds/vcs"
 )
 
@@ -304,6 +306,29 @@ func VcsUpdate(dep *Dependency, vend string, force bool) error {
 			} else if err != nil {
 				return err
 			} else {
+				// Check if the current version is a tag or commit id. If it is
+				// and that version is already checked out we can skip updating
+				// which is faster than going out to the Internet to perform
+				// an update.
+				if dep.Reference != "" {
+					version, err := repo.Version()
+					if err != nil {
+						return err
+					}
+					ib, err := isBranch(dep.Reference, repo)
+					if err != nil {
+						return err
+					}
+
+					// If the current version equals the ref and it's not a
+					// branch it's a tag or commit id so we can skip
+					// performing an update.
+					if version == dep.Reference && !ib {
+						Info("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
+						return nil
+					}
+				}
+
 				if err := repo.Update(); err != nil {
 					Warn("Download failed.\n")
 					return err
@@ -334,15 +359,57 @@ func VcsVersion(dep *Dependency, vend string) error {
 	if empty == false && err == v.ErrCannotDetectVCS {
 		Warn("%s appears to be a vendored package. Unable to set new version. Consider the '--update-vendored' flag.\n", dep.Name)
 	} else {
-
-		Info("Setting version for %s.\n", dep.Name)
-
 		repo, err := dep.GetRepo(cwd)
 		if err != nil {
 			return err
 		}
 
-		if err := repo.UpdateVersion(dep.Reference); err != nil {
+		ver := dep.Reference
+		// Referenes in Git can begin with a ^ which is similar to semver.
+		// If there is a ^ prefix we assume it's a semver constraint rather than
+		// part of the git/VCS commit id.
+		if repo.IsReference(ver) && !strings.HasPrefix(ver, "^") {
+			Info("Setting version for %s to %s.\n", dep.Name, ver)
+		} else {
+
+			// Create the constraing first to make sure it's valid before
+			// working on the repo.
+			constraint, err := semver.NewConstraint(ver)
+
+			// Make sure the constriant is valid. At this point it's not a valid
+			// reference so if it's not a valid constrint we can exit early.
+			if err != nil {
+				Warn("The reference '%s' is not valid\n", ver)
+				return err
+			}
+
+			// Get the tags and branches (in that order)
+			refs, err := getAllVcsRefs(repo)
+			if err != nil {
+				return err
+			}
+
+			// Convert and filter the list to semver.Version instances
+			semvers := getSemVers(refs)
+
+			// Sort semver list
+			sort.Sort(sort.Reverse(semver.Collection(semvers)))
+			found := false
+			for _, v := range semvers {
+				if constraint.Check(v) {
+					found = true
+					// If the constrint passes get the original reference
+					ver = v.Original()
+					break
+				}
+			}
+			if found {
+				Info("Detected semantic version. Setting version for %s to %s.\n", dep.Name, ver)
+			} else {
+				Warn("Unable to find semantic version for constraint %s %s\n", dep.Name, ver)
+			}
+		}
+		if err := repo.UpdateVersion(ver); err != nil {
 			Error("Failed to set version to %s: %s\n", dep.Reference, err)
 			return err
 		}
@@ -439,7 +506,9 @@ func parseImportFromBody(ur *url.URL, r io.ReadCloser) (u string, err error) {
 		t, err = d.Token()
 		if err != nil {
 			if err == io.EOF {
-				err = nil
+				// If we hit the end of the markup and don't have anything
+				// we return an error.
+				err = v.ErrCannotDetectVCS
 			}
 			return
 		}
@@ -458,27 +527,19 @@ func parseImportFromBody(ur *url.URL, r io.ReadCloser) (u string, err error) {
 		}
 		if f := strings.Fields(attrValue(e.Attr, "content")); len(f) == 3 {
 
-			// If this the second time a go-import statement has been detected
-			// return an error. There should only be one import statement per
-			// html file. We don't simply return the first found in order to
-			// detect pages including more than one.
-			if u != "" {
-				u = ""
-				err = v.ErrCannotDetectVCS
-				return
-			}
-
 			// If the prefix supplied by the remote system isn't a prefix to the
-			// url we're fetching return an error. This will work for exact
-			// matches and prefixes. For example, golang.org/x/net as a prefix
-			// will match for golang.org/x/net and golang.org/x/net/context.
+			// url we're fetching return continue looking for more go-imports.
+			// This will work for exact matches and prefixes. For example,
+			// golang.org/x/net as a prefix will match for golang.org/x/net and
+			// golang.org/x/net/context.
 			vcsURL := ur.Host + ur.Path
 			if !strings.HasPrefix(vcsURL, f[0]) {
-				err = v.ErrCannotDetectVCS
+				continue
+			} else {
+				u = f[0]
 				return
 			}
 
-			u = f[0]
 		}
 	}
 }

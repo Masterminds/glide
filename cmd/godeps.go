@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -78,7 +79,8 @@ func parseGodepGodeps(dir string) ([]*Dependency, error) {
 
 	for _, d := range godeps.Deps {
 		// Info("Adding package %s\n", d.ImportPath)
-		pkg, sub := NormalizeName(d.ImportPath)
+		pkg := getRepoRootFromPackage(d.ImportPath)
+		sub := strings.TrimPrefix(d.ImportPath, pkg)
 		if _, ok := seen[pkg]; ok {
 			if len(sub) == 0 {
 				continue
