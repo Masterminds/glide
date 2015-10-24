@@ -1,5 +1,18 @@
 # Release X.X.X (XXXX-XX-XX)
 
+- #52 and #114: Add semantic version support.
+- #108: Flatten the dependency tree by default.
+- Fixed #107: Allow `glide get` to retrieve insecure packages with `--insecure`
+  flag.
+- #105: Import commands accept a filename with the `-f` flag.
+- Fixed #97: Fixed misspellings (thanks jonboulle).
+- #96: Allow multiple packages in `glide get`.
+- #92: Added support to `glide update` to only update a specific package.
+- #91: `glide list` now displays if a pkg is in vendor, GOPATH, or missing.
+- Issue #89: More robust GOPATH handling (thanks gcmt).
+- Fixed #65: Hg commands were not checking out the codebase on the first update.
+- Fixed #95: Added more detail for errors previously reporting "Oops! exit
+  status 128".
 - Fixed #86 and #71: Imported package names including a sub-package were checked
   out to the wrong location. They are not checked out to the right place and
   multiple instances of the top level repo are merged with error checking.
