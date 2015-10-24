@@ -12,7 +12,10 @@ distributed with the package.
 ### Features
 
 * Ease dependency management
-* Support **versioning packages**
+* Support **versioning packages** including [Semantic Versioning
+  2.0.0](http://semver.org/) support. Any constraint the [`github.com/
+  Masterminds/semver`](https://github.com/Masterminds/semver) package can parse
+  can be used.
 * Support **aliasing packages** (e.g. for working with github forks)
 * Remove the need for munging import statements
 * Work with all of the `go` tools
@@ -272,9 +275,11 @@ from the source in `repo`, checkout the master branch, and put it in
 `github.com/Masterminds/cookoo` in the `vendor` directory. (Note that `package`
 and `repo` can be completely different)
 
-**TIP:** The ref is VCS dependent and can be anything that can be checked out.
-For example, with Git this can be a branch, tag, or hash. This varies and depends
-on what's supported in the VCS.
+**TIP:** The ref is either VCS dependent and can be anything that can be checked
+out or a semantic version constraint that can be parsed by the [`github.com/
+Masterminds/semver`](https://github.com/Masterminds/semver) package.
+For example, with Git this can be a branch, tag, or hash. This varies and
+depends on what's supported in the VCS.
 
 **TIP:** In general, you are advised to use the *base package name* for
 importing a package, not a subpackage name. For example, use
