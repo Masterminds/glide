@@ -5,12 +5,13 @@ import:
       - yaml
     flatten: true
   - package: github.com/Masterminds/cookoo
-    version:     master
+    version: master
     repo:    git@github.com:Masterminds/cookoo.git
     vcs:     git
     subpackages:
       - .
   - package: github.com/Masterminds/vcs
-    version:     ^1.0.0
+    version: ^1.0.0
   - package: github.com/codegangsta/cli
   - package: github.com/Masterminds/semver
+    version: ^1.0.0
