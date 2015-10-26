@@ -20,20 +20,21 @@ import:
   - package: github.com/kylelemons/go-gypsy
 
   # Full definition
-  # This will check out the given Git repo, set the reference to master,
+  # This will check out the given Git repo, set the version to master,
   # use "git" (not "go get") to manage it, and alias the package to the
   # import path github.com/Masterminds/cookoo
   - package: github.com/Masterminds/cookoo
     vcs: git
-    ref: master
+    version: master
     repo: git@github.com:Masterminds/cookoo.git
 
-  # Here's an example with a commit hash for a ref. Since repo is not specified,
-  # this will use git to to try to clone 'http://github.com/aokoli/goutils'
-  # and then set the revision to the given hash.
+  # Here's an example with a commit hash for a version. Since repo is not
+  # specified, this will use git to to try to clone
+  # 'http://github.com/aokoli/goutils' and then set the revision to the given
+  # hash.
   - package: github.com/aokoli/goutils
     vcs: git
-    ref: 9c37978a95bd5c709a15883b6242714ea6709e64
+    version: 9c37978a95bd5c709a15883b6242714ea6709e64
 
   # MASKING: This takes my fork of goamz (technosophos/goamz) and clones it
   # as if it were the crowdmob/goamz package. This is incredibly useful for
@@ -64,16 +65,16 @@ import:
   - package: bzr.example.com/foo/bar/trunk
     vcs: bzr
     repo: bzr://bzr.example.com/foo/bar/trunk
-    # Only tags can be used as refs. If you'd like to change that... please
-    # submit a patch. We don't know much about bzr
-    ref: 1.0.0
+    # The version can be a branch, tag, commit id, or a semantic version
+    # constraint parsable by https://github.com/Masterminds/semver
+    version: 1.0.0
 
   - package: hg.example.com/foo/bar
     vcs: hg
     repo: http://hg.example.com/foo/bar
-    ref: ae081cd1d6cc
+    version: ae081cd1d6cc
 
-  # For SVN, the only valid ref is a commit number. Tags and branches go in
+  # For SVN, the only valid version is a commit number. Tags and branches go in
   # the repo URL.
   - package: svn.example.com/foo/bar/trunk
     vcs: svn

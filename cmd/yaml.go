@@ -428,12 +428,12 @@ func (c *Config) ToYaml() yaml.Node {
 
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
-	Name, Reference, Repository string
-	VcsType                     string
-	Subpackages, Arch, Os       []string
-	UpdateAsVendored            bool
-	Flatten                     bool
-	Flattened                   bool
+	Name, Reference, Pin, Repository string
+	VcsType                          string
+	Subpackages, Arch, Os            []string
+	UpdateAsVendored                 bool
+	Flatten                          bool
+	Flattened                        bool
 }
 
 // DependencyFromYaml creates a dependency from a yaml.Node.
@@ -444,13 +444,20 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 	}
 	dep := &Dependency{
 		Name:        valOrEmpty("package", pkg),
-		Reference:   valOrEmpty("ref", pkg),
+		Reference:   valOrEmpty("version", pkg),
+		Pin:         valOrEmpty("pin", pkg),
 		VcsType:     getVcsType(pkg),
 		Repository:  valOrEmpty("repo", pkg),
 		Subpackages: valOrList("subpackages", pkg),
 		Arch:        valOrList("arch", pkg),
 		Os:          valOrList("os", pkg),
 		Flatten:     boolOrDefault("flatten", pkg, false),
+	}
+
+	// Continue to support the legacy ref property for the version. To remove
+	// support remove the following block.
+	if dep.Reference == "" {
+		dep.Reference = valOrEmpty("ref", pkg)
 	}
 
 	if dep.Name != "" {
@@ -529,7 +536,10 @@ func (d *Dependency) ToYaml() yaml.Node {
 		dep["vcs"] = yaml.Scalar(vcs)
 	}
 	if len(d.Reference) > 0 {
-		dep["ref"] = yaml.Scalar(d.Reference)
+		dep["version"] = yaml.Scalar(d.Reference)
+	}
+	if len(d.Pin) > 0 {
+		dep["pin"] = yaml.Scalar(d.Pin)
 	}
 	if len(d.Repository) > 0 {
 		dep["repo"] = yaml.Scalar(d.Repository)
