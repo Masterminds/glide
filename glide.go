@@ -132,7 +132,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		},
 		{
 			Name:  "get",
-			Usage: "Install one or more package into `vendor/` and add depdency to glide.yaml.",
+			Usage: "Install one or more package into `vendor/` and add dependency to glide.yaml.",
 			Description: `Gets one or more package (like 'go get') and then adds that file
 	to the glide.yaml file. Multiple package names can be specified on one line.
 
