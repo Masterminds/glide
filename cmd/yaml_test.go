@@ -11,7 +11,6 @@ package: fake/testing
 import:
   - package: github.com/kylelemons/go-gypsy
     subpackages: yaml
-    flatten: true
   # Intentionally left spaces at end of next line.
   - package: github.com/Masterminds/convert
     repo: git@github.com:Masterminds/convert.git
@@ -24,7 +23,6 @@ import:
     arch:
       - i386
       - arm
-    flatten: true
   - package: github.com/Masterminds/structable
 
 devimport:
@@ -115,10 +113,6 @@ func TestFromYaml(t *testing.T) {
 	}
 	if imp.Reference != "a9949121a2e2192ca92fa6dddfeaaa4a4412d955" {
 		t.Errorf("Got wrong reference.")
-	}
-
-	if imp.Flatten != true {
-		t.Errorf("Expected Flatten: true")
 	}
 
 	if len(cfg.DevImports) != 1 {

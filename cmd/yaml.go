@@ -107,13 +107,6 @@ func MergeToYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interr
 	if len(cfg.Name) > 0 {
 		rootMap["package"] = yaml.Scalar(cfg.Name)
 	}
-	if cfg.InCommand != "" {
-		rootMap["incmd"] = yaml.Scalar(cfg.InCommand)
-	}
-
-	if cfg.Flatten == true {
-		rootMap["flatten"] = yaml.Scalar("true")
-	}
 
 	if overwrite {
 		// Imports
@@ -285,10 +278,6 @@ type Config struct {
 	Name       string
 	Imports    Dependencies
 	DevImports Dependencies
-	// InCommand is the default shell command run to start a 'glide in'
-	// session.
-	InCommand string
-	Flatten   bool
 }
 
 // HasDependency returns true if the given name is listed as an import or dev import.
@@ -340,14 +329,6 @@ func FromYaml(top yaml.Node) (*Config, error) {
 		conf.Name = "main"
 	}
 
-	// Allow the user to override the behavior of `glide in`.
-	if incmd, ok := vals["incmd"]; ok {
-		conf.InCommand = incmd.(yaml.Scalar).String()
-	}
-
-	// Package level Flatten
-	conf.Flatten = boolOrDefault("flatten", vals, false)
-
 	conf.Imports = make(Dependencies, 0, 1)
 	if imp, ok := vals["import"]; ok {
 		imports, ok := imp.(yaml.List)
@@ -398,12 +379,6 @@ func (c *Config) ToYaml() yaml.Node {
 	cfg := make(map[string]yaml.Node, 5)
 
 	cfg["package"] = yaml.Scalar(c.Name)
-	if len(c.InCommand) > 0 {
-		cfg["incmd"] = yaml.Scalar(c.InCommand)
-	}
-	if c.Flatten == true {
-		cfg["flatten"] = yaml.Scalar("true")
-	}
 
 	imps := make([]yaml.Node, len(c.Imports))
 	for i, imp := range c.Imports {
@@ -432,8 +407,6 @@ type Dependency struct {
 	VcsType                          string
 	Subpackages, Arch, Os            []string
 	UpdateAsVendored                 bool
-	Flatten                          bool
-	Flattened                        bool
 }
 
 // DependencyFromYaml creates a dependency from a yaml.Node.
@@ -451,7 +424,6 @@ func DependencyFromYaml(node yaml.Node) (*Dependency, error) {
 		Subpackages: valOrList("subpackages", pkg),
 		Arch:        valOrList("arch", pkg),
 		Os:          valOrList("os", pkg),
-		Flatten:     boolOrDefault("flatten", pkg, false),
 	}
 
 	// Continue to support the legacy ref property for the version. To remove
@@ -560,12 +532,6 @@ func (d *Dependency) ToYaml() yaml.Node {
 		dep["os"] = yaml.List(oses)
 	}
 
-	// Note, the yaml package we use sorts strings of scalars so flatten
-	// will always be the top item.
-	if d.Flatten == true {
-		dep["flatten"] = yaml.Scalar("true")
-	}
-
 	return yaml.Map(dep)
 }
 
@@ -600,10 +566,6 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 			}
 			if !reflect.DeepEqual(dep.Os, val.Os) || !reflect.DeepEqual(dep.Arch, val.Arch) {
 				return d, fmt.Errorf("Import %s repeated with different OS or Architecture filtering", dep.Name)
-			}
-			if dep.Flatten != val.Flatten {
-				Warn("Import %s repeated in glide.yaml with differing flatten values. Flattening.", dep.Name)
-				checked[dep.Name].Flatten = true
 			}
 			checked[dep.Name].Subpackages = stringArrayDeDupe(checked[dep.Name].Subpackages, dep.Subpackages...)
 		}
