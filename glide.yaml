@@ -11,7 +11,7 @@ import:
     subpackages:
       - .
   - package: github.com/Masterminds/vcs
-    version: ^1.1.4
+    version: master
   - package: github.com/codegangsta/cli
   - package: github.com/Masterminds/semver
     version: ^1.0.0
