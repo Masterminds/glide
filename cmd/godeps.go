@@ -83,6 +83,7 @@ func parseGodepGodeps(dir string) ([]*yaml.Dependency, error) {
 		// Info("Adding package %s\n", d.ImportPath)
 		pkg := util.GetRootFromPackage(d.ImportPath)
 		sub := strings.TrimPrefix(d.ImportPath, pkg)
+		sub = strings.TrimPrefix(sub, "/")
 		if _, ok := seen[pkg]; ok {
 			if len(sub) == 0 {
 				continue
