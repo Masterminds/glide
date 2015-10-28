@@ -99,29 +99,6 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	return deps, nil
 }
 
-// GetImports iterates over the imported packages and gets them.
-func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil).(*yaml.Config)
-	cwd, err := VendorPath(c)
-	if err != nil {
-		Error("Failed to prepare vendor directory: %s", err)
-		return false, err
-	}
-
-	if len(cfg.Imports) == 0 {
-		Info("No dependencies found. Nothing downloaded.\n")
-		return false, nil
-	}
-
-	for _, dep := range cfg.Imports {
-		if err := VcsGet(dep, cwd); err != nil {
-			Warn("Skipped getting %s: %v\n", dep.Name, err)
-		}
-	}
-
-	return true, nil
-}
-
 // UpdateImports iterates over the imported packages and updates them.
 //
 // Params:

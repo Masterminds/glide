@@ -1,26 +1,6 @@
 package cmd
 
-import (
-	"testing"
-
-	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
-)
-
-func TestGetImportsEmptyConfig(t *testing.T) {
-	_, _, c := cookoo.Cookoo()
-	SilenceLogs(c)
-	cfg := new(yaml.Config)
-	p := cookoo.NewParamsWithValues(map[string]interface{}{"conf": cfg})
-	res, it := GetImports(c, p)
-	if it != nil {
-		t.Errorf("Interrupt value non-nil")
-	}
-	bres, ok := res.(bool)
-	if !ok || bres {
-		t.Errorf("Result was non-bool or true: ok=%t bres=%t", ok, bres)
-	}
-}
+import "github.com/Masterminds/cookoo"
 
 func SilenceLogs(c cookoo.Context) {
 	p := cookoo.NewParamsWithValues(map[string]interface{}{"quiet": true})
