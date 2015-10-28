@@ -1,5 +1,7 @@
 # Release X.X.X (XXXX-XX-XX)
 
+- Moved yaml parsing and writing to gopkg.in/yaml.v2 and separated
+  config handling into separate package.
 - #52 and #114: Add semantic version support.
 - #108: Flatten the dependency tree by default.
 - Fixed #107: Allow `glide get` to retrieve insecure packages with `--insecure`
