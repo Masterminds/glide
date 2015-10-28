@@ -19,7 +19,7 @@ bootstrap:
 	mkdir ./vendor
 	git clone https://github.com/Masterminds/cookoo vendor/github.com/Masterminds/cookoo
 	git clone https://github.com/Masterminds/vcs vendor/github.com/Masterminds/vcs
-	git clone https://github.com/kylelemons/go-gypsy vendor/github.com/kylelemons/go-gypsy
+	git clone https://gopkg.in/yaml.v2 vendor/gopkg.in/yaml.v2
 	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli
 	git clone https://github.com/Masterminds/semver vendor/github.com/Masterminds/semver
 
