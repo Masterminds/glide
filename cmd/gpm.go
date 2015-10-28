@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/yaml"
 )
 
 // This file contains commands for working with GPM/GVP.
@@ -24,22 +25,22 @@ func HasGPMGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 // Params
 // 	- dir (string): Directory root.
 //
-// Returns an []*Dependency
+// Returns an []*yaml.Dependency
 func GPMGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
 	return parseGPMGodeps(dir)
 }
-func parseGPMGodeps(dir string) ([]*Dependency, error) {
+func parseGPMGodeps(dir string) ([]*yaml.Dependency, error) {
 	path := filepath.Join(dir, "Godeps")
 	if i, err := os.Stat(path); err != nil {
-		return []*Dependency{}, nil
+		return []*yaml.Dependency{}, nil
 	} else if i.IsDir() {
 		Info("Godeps is a directory. This is probably a Godep project.\n")
-		return []*Dependency{}, nil
+		return []*yaml.Dependency{}, nil
 	}
 	Info("Found Godeps file.\n")
 
-	buf := []*Dependency{}
+	buf := []*yaml.Dependency{}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -49,7 +50,7 @@ func parseGPMGodeps(dir string) ([]*Dependency, error) {
 	for scanner.Scan() {
 		parts, ok := parseGodepsLine(scanner.Text())
 		if ok {
-			dep := &Dependency{Name: parts[0]}
+			dep := &yaml.Dependency{Name: parts[0]}
 			if len(parts) > 1 {
 				dep.Reference = parts[1]
 			}
@@ -69,11 +70,11 @@ func GPMGodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	dir := cookoo.GetString("dir", "", p)
 	path := filepath.Join(dir, "Godeps-Git")
 	if _, err := os.Stat(path); err != nil {
-		return []*Dependency{}, nil
+		return []*yaml.Dependency{}, nil
 	}
 	Info("Found Godeps-Git file.\n")
 
-	buf := []*Dependency{}
+	buf := []*yaml.Dependency{}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -83,7 +84,7 @@ func GPMGodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	for scanner.Scan() {
 		parts, ok := parseGodepsLine(scanner.Text())
 		if ok {
-			dep := &Dependency{Name: parts[1], Repository: parts[0]}
+			dep := &yaml.Dependency{Name: parts[1], Repository: parts[0]}
 			if len(parts) > 2 {
 				dep.Reference = parts[2]
 			}

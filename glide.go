@@ -447,12 +447,11 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("packages").From("cxt:packages").
 		Using("conf").From("cxt:cfg").
 		Using("insecure").From("cxt:insecure").
-		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
 		Does(cmd.WriteYaml, "out").
-		Using("yaml.Node").From("cxt:merged").
+		Using("conf").From("cxt:cfg").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
 
 	reg.Route("exec", "Execute command with GOPATH set.").
@@ -485,9 +484,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:cfg").
 		Using("update").From("cxt:updateVendoredDeps").
-		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").
-		Using("yaml.Node").From("cxt:merged").
+		Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath").
 		Using("toStdout").From("cxt:toStdout")
 
@@ -503,9 +501,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
-		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").
-		Using("yaml.Node").From("cxt:merged").
+		Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath")
 
 	reg.Route("import gpm", "Read a Godeps file").
@@ -520,8 +517,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("dependencies").From("cxt:godepsGit").
 		Using("conf").From("cxt:cfg").
 		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
-		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged").
+		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath")
 
 	reg.Route("import godep", "Read a Godeps.json file").
@@ -532,8 +528,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("dependencies").From("cxt:godeps").
 		Using("conf").From("cxt:cfg").
 		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
-		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged").
+		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath")
 
 	reg.Route("import gb", "Read a vendor/manifest file").
@@ -543,16 +538,14 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.AddDependencies, "addGodeps").
 		Using("dependencies").From("cxt:manifest").
 		Using("conf").From("cxt:cfg").
-		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("yaml.Node").From("cxt:merged").
+		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath")
 
 	reg.Route("guess", "Guess dependencies").
 		Includes("@ready").
 		Does(cmd.GuessDeps, "cfg").
-		Does(cmd.MergeToYaml, "merged").Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").
-		Using("yaml.Node").From("cxt:merged").
+		Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath")
 
 	reg.Route("create", "Initialize Glide").

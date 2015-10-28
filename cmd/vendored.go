@@ -1,10 +1,12 @@
 package cmd
 
 import (
-	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/vcs"
 	"os"
 	"path"
+
+	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/vcs"
 )
 
 // VendoredSetup is a command that does the setup for vendored directories.
@@ -13,7 +15,7 @@ import (
 // VendoredCleanUp should be a suffix to UpdateImports.
 func VendoredSetup(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	update := p.Get("update", true).(bool)
-	cfg := p.Get("conf", nil).(*Config)
+	cfg := p.Get("conf", nil).(*yaml.Config)
 	if update != true {
 		return cfg, nil
 	}
@@ -60,7 +62,7 @@ func VendoredCleanUp(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 	if update != true {
 		return false, nil
 	}
-	cfg := p.Get("conf", nil).(*Config)
+	cfg := p.Get("conf", nil).(*yaml.Config)
 
 	vend, err := VendorPath(c)
 	if err != nil {

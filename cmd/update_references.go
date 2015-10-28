@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/yaml"
 )
 
 // UpdateReferences updates the revision numbers on all of the imports.
@@ -10,10 +11,10 @@ import (
 // be updated.
 //
 // Params:
-// 	- conf (*Config): Configuration
+// 	- conf (*yaml.Config): Configuration
 // 	- packages ([]string): A list of packages to update. Default is all packages.
 func UpdateReferences(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", &Config{}).(*Config)
+	cfg := p.Get("conf", &yaml.Config{}).(*yaml.Config)
 	plist := p.Get("packages", []string{}).([]string)
 
 	pkgs := list2map(plist)

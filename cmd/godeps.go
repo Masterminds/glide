@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/util"
+	"github.com/Masterminds/glide/yaml"
 )
 
 // This file contains commands for working with Godep.
@@ -46,19 +48,19 @@ func HasGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Int
 // Params:
 // - dir (string): the project's directory
 //
-// Returns an []*Dependency
+// Returns an []*yaml.Dependency
 func ParseGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
 	return parseGodepGodeps(dir)
 }
-func parseGodepGodeps(dir string) ([]*Dependency, error) {
+func parseGodepGodeps(dir string) ([]*yaml.Dependency, error) {
 	path := filepath.Join(dir, "Godeps/Godeps.json")
 	if _, err := os.Stat(path); err != nil {
-		return []*Dependency{}, nil
+		return []*yaml.Dependency{}, nil
 	}
 	Info("Found Godeps.json file.\n")
 
-	buf := []*Dependency{}
+	buf := []*yaml.Dependency{}
 
 	godeps := new(Godeps)
 
@@ -79,7 +81,7 @@ func parseGodepGodeps(dir string) ([]*Dependency, error) {
 
 	for _, d := range godeps.Deps {
 		// Info("Adding package %s\n", d.ImportPath)
-		pkg := getRepoRootFromPackage(d.ImportPath)
+		pkg := util.GetRootFromPackage(d.ImportPath)
 		sub := strings.TrimPrefix(d.ImportPath, pkg)
 		if _, ok := seen[pkg]; ok {
 			if len(sub) == 0 {
@@ -93,7 +95,7 @@ func parseGodepGodeps(dir string) ([]*Dependency, error) {
 			}
 		} else {
 			seen[pkg] = true
-			dep := &Dependency{Name: pkg, Reference: d.Rev}
+			dep := &yaml.Dependency{Name: pkg, Reference: d.Rev}
 			if len(sub) > 0 {
 				dep.Subpackages = []string{sub}
 			}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/gb"
+	"github.com/Masterminds/glide/yaml"
 )
 
 func HasGbManifest(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
@@ -27,14 +28,14 @@ func GbManifest(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 	return parseGbManifest(dir)
 }
 
-func parseGbManifest(dir string) ([]*Dependency, error) {
+func parseGbManifest(dir string) ([]*yaml.Dependency, error) {
 	path := filepath.Join(dir, "vendor/manifest")
 	if fi, err := os.Stat(path); err != nil || fi.IsDir() {
-		return []*Dependency{}, nil
+		return []*yaml.Dependency{}, nil
 	}
 
 	Info("Found GB manifest file.\n")
-	buf := []*Dependency{}
+	buf := []*yaml.Dependency{}
 	file, err := os.Open(path)
 	if err != nil {
 		return buf, err
@@ -63,7 +64,7 @@ func parseGbManifest(dir string) ([]*Dependency, error) {
 			}
 		} else {
 			seen[pkg] = true
-			dep := &Dependency{
+			dep := &yaml.Dependency{
 				Name:       pkg,
 				Reference:  d.Revision,
 				Repository: d.Repository,

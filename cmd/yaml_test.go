@@ -4,13 +4,15 @@ import (
 	"testing"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/yaml"
 )
 
 var yamlFile = `
 package: fake/testing
 import:
   - package: github.com/kylelemons/go-gypsy
-    subpackages: yaml
+    subpackages:
+      - yaml
   # Intentionally left spaces at end of next line.
   - package: github.com/Masterminds/convert
     repo: git@github.com:Masterminds/convert.git
@@ -19,7 +21,8 @@ import:
       - color
       - nautical
       - radial
-    os: linux
+    os:
+      - linux
     arch:
       - i386
       - arm
@@ -33,7 +36,8 @@ var childYamlFile = `
 package: fake/testing/more
 import:
   - package: github.com/kylelemons/go-gypsy
-    subpackages: yaml
+    subpackages:
+      - yaml
 `
 
 func TestFromYaml(t *testing.T) {
@@ -47,8 +51,8 @@ func TestFromYaml(t *testing.T) {
 		t.Errorf("Failed to parse YAML: %s", err)
 	}
 
-	cfg := cxt.Get("cfg", nil).(*Config)
-	cfgChild := cxt.Get("childCfg", nil).(*Config)
+	cfg := cxt.Get("cfg", nil).(*yaml.Config)
+	cfgChild := cxt.Get("childCfg", nil).(*yaml.Config)
 	cfgChild.Parent = cfg
 
 	if cfg.Name != "fake/testing" {
@@ -75,7 +79,7 @@ func TestFromYaml(t *testing.T) {
 		t.Errorf("Expected to find a recursive dependency")
 	}
 
-	var imp *Dependency
+	var imp *yaml.Dependency
 	for _, d := range cfg.Imports {
 		if d.Name == "github.com/Masterminds/convert" {
 			imp = d
@@ -109,7 +113,7 @@ func TestFromYaml(t *testing.T) {
 	}
 
 	if imp.Repository != "git@github.com:Masterminds/convert.git" {
-		t.Errorf("Got wrong repo")
+		t.Errorf("Got wrong repo %s on %s", imp.Repository, imp.Name)
 	}
 	if imp.Reference != "a9949121a2e2192ca92fa6dddfeaaa4a4412d955" {
 		t.Errorf("Got wrong reference.")

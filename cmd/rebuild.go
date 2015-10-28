@@ -8,15 +8,16 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/yaml"
 )
 
 // Rebuild runs 'go build' in a directory.
 //
 // Params:
-// 	- conf: the *Config.
+// 	- conf: the *yaml.Config.
 //
 func Rebuild(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil).(*Config)
+	cfg := p.Get("conf", nil).(*yaml.Config)
 	vpath, err := VendorPath(c)
 	if err != nil {
 		return nil, err
@@ -38,7 +39,7 @@ func Rebuild(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	return true, nil
 }
 
-func buildDep(c cookoo.Context, dep *Dependency, vpath string) error {
+func buildDep(c cookoo.Context, dep *yaml.Dependency, vpath string) error {
 	if len(dep.Subpackages) == 0 {
 		buildPath(c, dep.Name)
 	}
