@@ -72,7 +72,7 @@ type Config struct {
 	Parent     *Config
 	Name       string       `yaml:"package"`
 	Imports    Dependencies `yaml:"import"`
-	DevImports Dependencies `yaml:"devimport"`
+	DevImports Dependencies `yaml:"devimport,omitempty"`
 }
 
 // HasDependency returns true if the given name is listed as an import or dev import.
