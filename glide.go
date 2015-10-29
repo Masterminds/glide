@@ -37,6 +37,8 @@
 package main
 
 import (
+	"path/filepath"
+
 	"github.com/Masterminds/glide/cmd"
 
 	"github.com/Masterminds/cookoo"
@@ -44,6 +46,7 @@ import (
 
 	"fmt"
 	"os"
+	"os/user"
 )
 
 var version = "dev"
@@ -93,6 +96,12 @@ func main() {
 		cli.BoolFlag{
 			Name:  "debug",
 			Usage: "Print Debug messages (verbose)",
+		},
+		cli.StringFlag{
+			Name:   "home",
+			Value:  defaultGlideDir(),
+			Usage:  "The location of Glide files",
+			EnvVar: "GLIDE_HOME",
 		},
 	}
 	app.CommandNotFound = func(c *cli.Context, command string) {
@@ -420,6 +429,7 @@ func setupHandler(c *cli.Context, route string, cxt cookoo.Context, router *cook
 	cxt.Put("q", c.GlobalBool("quiet"))
 	cxt.Put("debug", c.GlobalBool("debug"))
 	cxt.Put("yaml", c.GlobalString("yaml"))
+	cxt.Put("home", c.GlobalString("home"))
 	cxt.Put("cliArgs", c.Args())
 	if err := router.HandleRequest(route, cxt, false); err != nil {
 		fmt.Printf("Oops! %s\n", err)
@@ -437,7 +447,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 
 	reg.Route("@ready", "Prepare for glide commands.").
 		Does(cmd.ReadyToGlide, "ready").Using("filename").From("cxt:yaml").
-		Does(cmd.ParseYaml, "cfg").Using("filename").From("cxt:yaml")
+		Does(cmd.ParseYaml, "cfg").Using("filename").From("cxt:yaml").
+		Does(cmd.EnsureCacheDir, "_").Using("home").From("cxt:home")
 
 	reg.Route("get", "Install a pkg in vendor, and store the results in the glide.yaml").
 		Includes("@startup").
@@ -450,6 +461,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
+		Using("home").From("cxt:home").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
@@ -476,11 +488,13 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Using("force").From("cxt:forceUpdate").
 		Using("packages").From("cxt:packages").
+		Using("home").From("cxt:home").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
 		Using("skip").From("cxt:skipFlatten").
+		Using("home").From("cxt:home").
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:cfg").
 		Using("update").From("cxt:updateVendoredDeps").
@@ -580,4 +594,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@ready").
 		Does(cmd.DropToShell, "plugin").
 		Using("command").From("cxt:command")
+}
+
+func defaultGlideDir() string {
+	c, err := user.Current()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(c.HomeDir, ".glide")
 }

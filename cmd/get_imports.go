@@ -110,6 +110,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	cfg := p.Get("conf", nil).(*yaml.Config)
 	force := p.Get("force", true).(bool)
 	plist := p.Get("packages", []string{}).([]string)
+	home := p.Get("home", "").(string)
 	pkgs := list2map(plist)
 	restrict := len(pkgs) > 0
 
@@ -134,7 +135,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 		// flattening from causing unnecessary updates.
 		updateCache[dep.Name] = true
 
-		if err := VcsUpdate(dep, cwd, force); err != nil {
+		if err := VcsUpdate(dep, cwd, home, force); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}
 	}
@@ -210,7 +211,7 @@ func VcsExists(dep *yaml.Dependency, dest string) bool {
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
 // VcsGet installs into the dest.
-func VcsGet(dep *yaml.Dependency, dest string) error {
+func VcsGet(dep *yaml.Dependency, dest, home string) error {
 
 	repo, err := dep.GetRepo(dest)
 	if err != nil {
@@ -221,7 +222,7 @@ func VcsGet(dep *yaml.Dependency, dest string) error {
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *yaml.Dependency, vend string, force bool) error {
+func VcsUpdate(dep *yaml.Dependency, vend, home string, force bool) error {
 	Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
@@ -232,7 +233,7 @@ func VcsUpdate(dep *yaml.Dependency, vend string, force bool) error {
 	dest := path.Join(vend, dep.Name)
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		if err = VcsGet(dep, dest); err != nil {
+		if err = VcsGet(dep, dest, home); err != nil {
 			Warn("Unable to checkout %s\n", dep.Name)
 			return err
 		}
@@ -269,7 +270,7 @@ func VcsUpdate(dep *yaml.Dependency, vend string, force bool) error {
 				if rerr != nil {
 					return rerr
 				}
-				if err = VcsGet(dep, dest); err != nil {
+				if err = VcsGet(dep, dest, home); err != nil {
 					Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
