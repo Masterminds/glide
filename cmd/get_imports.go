@@ -1,7 +1,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	//"log"
@@ -81,7 +86,6 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 			dep.Subpackages = []string{subpkg}
 		}
 		if err := VcsGet(dep, dest, home); err != nil {
-			//if err := repo.Get(); err != nil {
 			return dep, err
 		}
 
@@ -245,7 +249,17 @@ func VcsGet(dep *yaml.Dependency, dest, home string) error {
 				return err
 			}
 
-			// TODO(mattfarina) need to set to the default branch
+			// If there is no reference set on the dep we try to checkout
+			// the default branch.
+			if dep.Reference == "" {
+				db := defaultBranch(repo, home)
+				if db != "" {
+					err = repo.UpdateVersion(db)
+					if err != nil {
+						Debug("Attempting to set the version on %s to %s failed. Error %s", dep.Name, db, err)
+					}
+				}
+			}
 			return nil
 		}
 	}
@@ -262,6 +276,23 @@ func VcsGet(dep *yaml.Dependency, dest, home string) error {
 				return err
 			}
 			repo.Get()
+
+			branch := findCurrentBranch(repo)
+			if branch != "" {
+				// we know the default branch so we can store it in the cache
+				var loc string
+				if dep.Repository != "" {
+					loc = dep.Repository
+				} else {
+					loc = "https://" + dep.Name
+				}
+				key, err := cacheCreateKey(loc)
+				if err == nil {
+					Debug("Saving default branch for %s", repo.Remote())
+					c := cacheRepoInfo{DefaultBranch: branch}
+					saveCacheRepoData(key, c, home)
+				}
+			}
 
 			Debug("Copying %s from GOPATH at %s to %s", dep.Name, d, dest)
 			err = copyDir(d, dest)
@@ -283,7 +314,7 @@ func VcsGet(dep *yaml.Dependency, dest, home string) error {
 	key, err := cacheCreateKey(loc)
 	if err == nil {
 		Debug("Retrieving %s to the cache before copying to vendor", dep.Name)
-		d := filepath.Join(home, "src", key)
+		d := filepath.Join(home, "cache", "src", key)
 
 		repo, err := dep.GetRepo(d)
 		if err != nil {
@@ -296,6 +327,26 @@ func VcsGet(dep *yaml.Dependency, dest, home string) error {
 			if err != nil {
 				return err
 			}
+			branch := findCurrentBranch(repo)
+			if branch != "" {
+				// we know the default branch so we can store it in the cache
+				var loc string
+				if dep.Repository != "" {
+					loc = dep.Repository
+				} else {
+					loc = "https://" + dep.Name
+				}
+				key, err := cacheCreateKey(loc)
+				if err == nil {
+					Debug("Saving default branch for %s", repo.Remote())
+					c := cacheRepoInfo{DefaultBranch: branch}
+					err = saveCacheRepoData(key, c, home)
+					if err != nil {
+						Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
+					}
+				}
+			}
+
 		} else {
 			Debug("Updating %s in the cache", dep.Name)
 			err = repo.Update()
@@ -510,4 +561,159 @@ func VcsLastCommit(dep *yaml.Dependency, vend string) (string, error) {
 	}
 
 	return version, nil
+}
+
+// Some repos will have multiple branches in them (e.g. Git) while others
+// (e.g. Svn) will not.
+// TODO(mattfarina): Add API calls to github, bitbucket, etc.
+func defaultBranch(repo v.Repo, home string) string {
+
+	// Svn and Bzr use different locations (paths or entire locations)
+	// for branches so we won't have a default branch.
+	if repo.Vcs() == v.Svn || repo.Vcs() == v.Bzr {
+		return ""
+	}
+
+	// Check the cache for a value.
+	key, kerr := cacheCreateKey(repo.Remote())
+	var d cacheRepoInfo
+	if kerr == nil {
+		d, err := cacheRepoData(key, home)
+		if err == nil {
+			if d.DefaultBranch != "" {
+				return d.DefaultBranch
+			}
+		}
+	}
+
+	// If we don't have it in the store try some APIs
+	r := repo.Remote()
+	u, err := url.Parse(r)
+	if err != nil {
+		return ""
+	}
+	if u.Scheme == "" {
+		// Where there is no scheme we try urls like git@github.com:foo/bar
+		r = strings.Replace(r, ":", "/", -1)
+		r = "ssh://" + r
+		u, err = url.Parse(r)
+		if err != nil {
+			return ""
+		}
+		u.Scheme = ""
+	}
+	if u.Host == "github.com" {
+		parts := strings.Split(u.Path, "/")
+		if len(parts) != 2 {
+			return ""
+		}
+		api := fmt.Sprintf("https://api.github.com/repos/%s/%s", parts[0], parts[1])
+		resp, err := http.Get(api)
+		if err != nil {
+			return ""
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+			return ""
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		var data interface{}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return ""
+		}
+		gh := data.(map[string]interface{})
+		db := gh["default_branch"].(string)
+		if kerr == nil {
+			d.DefaultBranch = db
+			saveCacheRepoData(key, d, home)
+		}
+		return db
+	}
+
+	if u.Host == "bitbucket.org" {
+		parts := strings.Split(u.Path, "/")
+		if len(parts) != 2 {
+			return ""
+		}
+		api := fmt.Sprintf("https://bitbucket.org/api/1.0/repositories/%s/%s/main-branch/", parts[0], parts[1])
+		resp, err := http.Get(api)
+		if err != nil {
+			return ""
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+			return ""
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		var data interface{}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return ""
+		}
+		bb := data.(map[string]interface{})
+		db := bb["name"].(string)
+		if kerr == nil {
+			d.DefaultBranch = db
+			saveCacheRepoData(key, d, home)
+		}
+		return db
+	}
+
+	return ""
+}
+
+// From a local repo find out the current branch name if there is one.
+func findCurrentBranch(repo v.Repo) string {
+	Debug("Attempting to find current branch for %s", repo.Remote())
+	// Svn and Bzr don't have default branches.
+	if repo.Vcs() == v.Svn || repo.Vcs() == v.Bzr {
+		return ""
+	}
+
+	if repo.Vcs() == v.Git {
+		c := exec.Command("git", "symbolic-ref", "--short", "HEAD")
+		c.Dir = repo.LocalPath()
+		c.Env = envForDir(c.Dir)
+		out, err := c.CombinedOutput()
+		if err != nil {
+			Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
+			return ""
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	if repo.Vcs() == v.Hg {
+		c := exec.Command("hg", "branch")
+		c.Dir = repo.LocalPath()
+		c.Env = envForDir(c.Dir)
+		out, err := c.CombinedOutput()
+		if err != nil {
+			Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
+			return ""
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	return ""
+}
+
+func envForDir(dir string) []string {
+	env := os.Environ()
+	return mergeEnvLists([]string{"PWD=" + dir}, env)
+}
+
+func mergeEnvLists(in, out []string) []string {
+NextVar:
+	for _, inkv := range in {
+		k := strings.SplitAfterN(inkv, "=", 2)[0]
+		for i, outkv := range out {
+			if strings.HasPrefix(outkv, k) {
+				out[i] = inkv
+				continue NextVar
+			}
+		}
+		out = append(out, inkv)
+	}
+	return out
 }

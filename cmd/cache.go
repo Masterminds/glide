@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/cookoo"
 )
@@ -17,8 +20,11 @@ func EnsureCacheDir(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Int
 	if home == "" {
 		return nil, errors.New("No home directory set to create")
 	}
-
-	return os.MkdirAll(filepath.Join(home, "cache"), os.ModeDir|os.ModePerm), nil
+	err := os.MkdirAll(filepath.Join(home, "cache", "info"), os.ModeDir|os.ModePerm)
+	if err != nil {
+		Warn("Error creating Glide directory %s", home)
+	}
+	return false, nil
 }
 
 // Pass in a repo location and get a cache key from it.
@@ -55,4 +61,41 @@ func cacheCreateKey(repo string) (string, error) {
 	key = strings.Replace(key, ":", "-", -1)
 
 	return key, nil
+}
+
+type cacheRepoInfo struct {
+	DefaultBranch string `json:"default-branch"`
+	LastUpdate    string `json:"last-update"`
+}
+
+func saveCacheRepoData(key string, data cacheRepoInfo, location string) error {
+	data.LastUpdate = time.Now().String()
+	d, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	p := filepath.Join(location, "cache", "info", key+".json")
+	f, err := os.Create(p)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(d)
+	return err
+}
+
+func cacheRepoData(key, location string) (*cacheRepoInfo, error) {
+	c := &cacheRepoInfo{}
+	p := filepath.Join(location, "cache", "info", key+".json")
+	f, err := ioutil.ReadFile(p)
+	if err != nil {
+		return &cacheRepoInfo{}, err
+	}
+	err = json.Unmarshal(f, c)
+	if err != nil {
+		return &cacheRepoInfo{}, err
+	}
+	return c, nil
 }
