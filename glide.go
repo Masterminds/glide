@@ -177,6 +177,10 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					Name:  "insecure",
 					Usage: "Use http:// rather than https:// to retrieve pacakges.",
 				},
+				cli.BoolFlag{
+					Name:  "cache",
+					Usage: "Setting will only and use files from the cache (excluding the GOPATH)",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
@@ -186,6 +190,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				cxt.Put("packages", []string(c.Args()))
 				cxt.Put("skipFlatten", !c.Bool("no-recursive"))
 				cxt.Put("insecure", c.Bool("insecure"))
+				cxt.Put("forceCache", c.Bool("cache"))
 				// FIXME: Are these used anywhere?
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
@@ -347,6 +352,10 @@ Example:
 					Name:  "file, f",
 					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 				},
+				cli.BoolFlag{
+					Name:  "cache",
+					Usage: "Setting will only and use files from the cache (excluding the GOPATH)",
+				},
 			},
 			Action: func(c *cli.Context) {
 				cxt.Put("deleteOptIn", c.Bool("delete"))
@@ -355,6 +364,7 @@ Example:
 				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
 				cxt.Put("toPath", c.String("file"))
 				cxt.Put("toStdout", false)
+				cxt.Put("forceCache", c.Bool("cache"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
@@ -459,10 +469,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Using("insecure").From("cxt:insecure").
 		Using("home").From("cxt:home").
+		Using("cache").From("cxt:forceCache").
 		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
 		Using("home").From("cxt:home").
+		Using("cache").From("cxt:forceCache").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
@@ -490,12 +502,14 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("force").From("cxt:forceUpdate").
 		Using("packages").From("cxt:packages").
 		Using("home").From("cxt:home").
+		Using("cache").From("cxt:forceCache").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
 		Using("skip").From("cxt:skipFlatten").
 		Using("home").From("cxt:home").
+		Using("cache").From("cxt:forceCache").
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:cfg").
 		Using("update").From("cxt:updateVendoredDeps").

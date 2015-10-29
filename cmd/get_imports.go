@@ -45,6 +45,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	cfg := p.Get("conf", nil).(*yaml.Config)
 	insecure := p.Get("insecure", false).(bool)
 	home := p.Get("home", "").(string)
+	cache := p.Get("cache", false).(bool)
 	Info("Preparing to install %d package.", len(names))
 
 	deps := []*yaml.Dependency{}
@@ -85,7 +86,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 		if len(subpkg) > 0 && subpkg != "/" {
 			dep.Subpackages = []string{subpkg}
 		}
-		if err := VcsGet(dep, dest, home); err != nil {
+		if err := VcsGet(dep, dest, home, cache); err != nil {
 			return dep, err
 		}
 
@@ -109,6 +110,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	force := p.Get("force", true).(bool)
 	plist := p.Get("packages", []string{}).([]string)
 	home := p.Get("home", "").(string)
+	cache := p.Get("cache", false).(bool)
 	pkgs := list2map(plist)
 	restrict := len(pkgs) > 0
 
@@ -133,7 +135,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 		// flattening from causing unnecessary updates.
 		updateCache[dep.Name] = true
 
-		if err := VcsUpdate(dep, cwd, home, force); err != nil {
+		if err := VcsUpdate(dep, cwd, home, force, cache); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}
 	}
@@ -209,98 +211,100 @@ func VcsExists(dep *yaml.Dependency, dest string) bool {
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
 // VcsGet installs into the dest.
-func VcsGet(dep *yaml.Dependency, dest, home string) error {
+func VcsGet(dep *yaml.Dependency, dest, home string, cache bool) error {
 
-	// Check if the $GOPATH has a viable version to use and if so copy to vendor
-	gps := Gopaths()
-	for _, p := range gps {
-		d := filepath.Join(p, "src", dep.Name)
-		if _, err := os.Stat(d); err == nil {
-			empty, err := isDirectoryEmpty(d)
-			if empty || err != nil {
-				continue
-			}
+	if !cache {
+		// Check if the $GOPATH has a viable version to use and if so copy to vendor
+		gps := Gopaths()
+		for _, p := range gps {
+			d := filepath.Join(p, "src", dep.Name)
+			if _, err := os.Stat(d); err == nil {
+				empty, err := isDirectoryEmpty(d)
+				if empty || err != nil {
+					continue
+				}
 
-			repo, err := dep.GetRepo(d)
-			if err != nil {
-				continue
-			}
+				repo, err := dep.GetRepo(d)
+				if err != nil {
+					continue
+				}
 
-			// Dirty repos have uncomitted changes.
-			if repo.IsDirty() {
-				continue
-			}
+				// Dirty repos have uncomitted changes.
+				if repo.IsDirty() {
+					continue
+				}
 
-			// Having found a repo we copy it to vendor and update it.
-			Debug("Found %s in GOPATH at %s. Copying to %s", dep.Name, d, dest)
-			err = copyDir(d, dest)
-			if err != nil {
-				return err
-			}
+				// Having found a repo we copy it to vendor and update it.
+				Debug("Found %s in GOPATH at %s. Copying to %s", dep.Name, d, dest)
+				err = copyDir(d, dest)
+				if err != nil {
+					return err
+				}
 
-			// Update the repo in the vendor directory
-			Debug("Updating %s, now in the vendor path at %s", dep.Name, dest)
-			repo, err = dep.GetRepo(dest)
-			if err != nil {
-				return err
-			}
-			err = repo.Update()
-			if err != nil {
-				return err
-			}
+				// Update the repo in the vendor directory
+				Debug("Updating %s, now in the vendor path at %s", dep.Name, dest)
+				repo, err = dep.GetRepo(dest)
+				if err != nil {
+					return err
+				}
+				err = repo.Update()
+				if err != nil {
+					return err
+				}
 
-			// If there is no reference set on the dep we try to checkout
-			// the default branch.
-			if dep.Reference == "" {
-				db := defaultBranch(repo, home)
-				if db != "" {
-					err = repo.UpdateVersion(db)
-					if err != nil {
-						Debug("Attempting to set the version on %s to %s failed. Error %s", dep.Name, db, err)
+				// If there is no reference set on the dep we try to checkout
+				// the default branch.
+				if dep.Reference == "" {
+					db := defaultBranch(repo, home)
+					if db != "" {
+						err = repo.UpdateVersion(db)
+						if err != nil {
+							Debug("Attempting to set the version on %s to %s failed. Error %s", dep.Name, db, err)
+						}
 					}
 				}
+				return nil
 			}
-			return nil
 		}
-	}
 
-	// Since we didn't find an existing copy in the GOPATHs try to clone there.
-	gp := Gopath()
-	if gp != "" {
-		d := filepath.Join(gp, "src", dep.Name)
-		if _, err := os.Stat(d); os.IsNotExist(err) {
-			// Empty directory so we checkout out the code here.
-			Debug("Retrieving %s to %s before copying to vendor", dep.Name, d)
-			repo, err := dep.GetRepo(d)
-			if err != nil {
-				return err
-			}
-			repo.Get()
-
-			branch := findCurrentBranch(repo)
-			if branch != "" {
-				// we know the default branch so we can store it in the cache
-				var loc string
-				if dep.Repository != "" {
-					loc = dep.Repository
-				} else {
-					loc = "https://" + dep.Name
+		// Since we didn't find an existing copy in the GOPATHs try to clone there.
+		gp := Gopath()
+		if gp != "" {
+			d := filepath.Join(gp, "src", dep.Name)
+			if _, err := os.Stat(d); os.IsNotExist(err) {
+				// Empty directory so we checkout out the code here.
+				Debug("Retrieving %s to %s before copying to vendor", dep.Name, d)
+				repo, err := dep.GetRepo(d)
+				if err != nil {
+					return err
 				}
-				key, err := cacheCreateKey(loc)
-				if err == nil {
-					Debug("Saving default branch for %s", repo.Remote())
-					c := cacheRepoInfo{DefaultBranch: branch}
-					saveCacheRepoData(key, c, home)
+				repo.Get()
+
+				branch := findCurrentBranch(repo)
+				if branch != "" {
+					// we know the default branch so we can store it in the cache
+					var loc string
+					if dep.Repository != "" {
+						loc = dep.Repository
+					} else {
+						loc = "https://" + dep.Name
+					}
+					key, err := cacheCreateKey(loc)
+					if err == nil {
+						Debug("Saving default branch for %s", repo.Remote())
+						c := cacheRepoInfo{DefaultBranch: branch}
+						saveCacheRepoData(key, c, home)
+					}
 				}
-			}
 
-			Debug("Copying %s from GOPATH at %s to %s", dep.Name, d, dest)
-			err = copyDir(d, dest)
-			if err != nil {
-				return err
-			}
+				Debug("Copying %s from GOPATH at %s to %s", dep.Name, d, dest)
+				err = copyDir(d, dest)
+				if err != nil {
+					return err
+				}
 
-			return nil
+				return nil
+			}
 		}
 	}
 
@@ -313,7 +317,6 @@ func VcsGet(dep *yaml.Dependency, dest, home string) error {
 	}
 	key, err := cacheCreateKey(loc)
 	if err == nil {
-		Debug("Retrieving %s to the cache before copying to vendor", dep.Name)
 		d := filepath.Join(home, "cache", "src", key)
 
 		repo, err := dep.GetRepo(d)
@@ -376,7 +379,7 @@ func VcsGet(dep *yaml.Dependency, dest, home string) error {
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *yaml.Dependency, vend, home string, force bool) error {
+func VcsUpdate(dep *yaml.Dependency, vend, home string, force, cache bool) error {
 	Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
@@ -387,7 +390,7 @@ func VcsUpdate(dep *yaml.Dependency, vend, home string, force bool) error {
 	dest := path.Join(vend, dep.Name)
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		if err = VcsGet(dep, dest, home); err != nil {
+		if err = VcsGet(dep, dest, home, cache); err != nil {
 			Warn("Unable to checkout %s\n", dep.Name)
 			return err
 		}
@@ -424,7 +427,7 @@ func VcsUpdate(dep *yaml.Dependency, vend, home string, force bool) error {
 				if rerr != nil {
 					return rerr
 				}
-				if err = VcsGet(dep, dest, home); err != nil {
+				if err = VcsGet(dep, dest, home, cache); err != nil {
 					Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
