@@ -216,7 +216,7 @@ func VcsGet(dep *yaml.Dependency, dest, home string) error {
 	for _, p := range gps {
 		d := filepath.Join(p, "src", dep.Name)
 		if _, err := os.Stat(d); err == nil {
-			empty, err := isDirectoryEmpty(dest)
+			empty, err := isDirectoryEmpty(d)
 			if empty || err != nil {
 				continue
 			}
