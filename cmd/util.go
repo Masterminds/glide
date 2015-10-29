@@ -198,6 +198,10 @@ func copyDir(source string, dest string) error {
 }
 
 func copyFile(source string, dest string) error {
+	ln, err := os.Readlink(source)
+	if err == nil {
+		return os.Symlink(ln, dest)
+	}
 	s, err := os.Open(source)
 	if err != nil {
 		return err
