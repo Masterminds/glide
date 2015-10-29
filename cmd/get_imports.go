@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	//"log"
 
@@ -38,7 +39,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	names := p.Get("packages", []string{}).([]string)
 	cfg := p.Get("conf", nil).(*yaml.Config)
 	insecure := p.Get("insecure", false).(bool)
-
+	home := p.Get("home", "").(string)
 	Info("Preparing to install %d package.", len(names))
 
 	deps := []*yaml.Dependency{}
@@ -60,13 +61,6 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 
 		dest := path.Join(cwd, root)
 
-		var repoURL string
-		if insecure {
-			repoURL = "http://" + root
-		} else {
-			repoURL = "https://" + root
-		}
-		repo, err := v.NewRepo(repoURL, dest)
 		if err != nil {
 			Error("Could not construct repo for %q: %s", name, err)
 			return false, err
@@ -86,8 +80,8 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 		if len(subpkg) > 0 && subpkg != "/" {
 			dep.Subpackages = []string{subpkg}
 		}
-
-		if err := repo.Get(); err != nil {
+		if err := VcsGet(dep, dest, home); err != nil {
+			//if err := repo.Get(); err != nil {
 			return dep, err
 		}
 
@@ -213,6 +207,115 @@ func VcsExists(dep *yaml.Dependency, dest string) bool {
 // VcsGet installs into the dest.
 func VcsGet(dep *yaml.Dependency, dest, home string) error {
 
+	// Check if the $GOPATH has a viable version to use and if so copy to vendor
+	gps := Gopaths()
+	for _, p := range gps {
+		d := filepath.Join(p, "src", dep.Name)
+		if _, err := os.Stat(d); err == nil {
+			empty, err := isDirectoryEmpty(dest)
+			if empty || err != nil {
+				continue
+			}
+
+			repo, err := dep.GetRepo(d)
+			if err != nil {
+				continue
+			}
+
+			// Dirty repos have uncomitted changes.
+			if repo.IsDirty() {
+				continue
+			}
+
+			// Having found a repo we copy it to vendor and update it.
+			Debug("Found %s in GOPATH at %s. Copying to %s", dep.Name, d, dest)
+			err = copyDir(d, dest)
+			if err != nil {
+				return err
+			}
+
+			// Update the repo in the vendor directory
+			Debug("Updating %s, now in the vendor path at %s", dep.Name, dest)
+			repo, err = dep.GetRepo(dest)
+			if err != nil {
+				return err
+			}
+			err = repo.Update()
+			if err != nil {
+				return err
+			}
+
+			// TODO(mattfarina) need to set to the default branch
+			return nil
+		}
+	}
+
+	// Since we didn't find an existing copy in the GOPATHs try to clone there.
+	gp := Gopath()
+	if gp != "" {
+		d := filepath.Join(gp, "src", dep.Name)
+		if _, err := os.Stat(d); os.IsNotExist(err) {
+			// Empty directory so we checkout out the code here.
+			Debug("Retrieving %s to %s before copying to vendor", dep.Name, d)
+			repo, err := dep.GetRepo(d)
+			if err != nil {
+				return err
+			}
+			repo.Get()
+
+			Debug("Copying %s from GOPATH at %s to %s", dep.Name, d, dest)
+			err = copyDir(d, dest)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	// Check if the cache has a viable version and try to use that.
+	var loc string
+	if dep.Repository != "" {
+		loc = dep.Repository
+	} else {
+		loc = "https://" + dep.Name
+	}
+	key, err := cacheCreateKey(loc)
+	if err == nil {
+		Debug("Retrieving %s to the cache before copying to vendor", dep.Name)
+		d := filepath.Join(home, "src", key)
+
+		repo, err := dep.GetRepo(d)
+		if err != nil {
+			return err
+		}
+		// If the directory does not exist this is a first cache.
+		if _, err = os.Stat(d); os.IsNotExist(err) {
+			Debug("Adding %s to the cache for the first time", dep.Name)
+			err = repo.Get()
+			if err != nil {
+				return err
+			}
+		} else {
+			Debug("Updating %s in the cache", dep.Name)
+			err = repo.Update()
+			if err != nil {
+				return err
+			}
+		}
+
+		Debug("Copying %s from the cache to %s", dep.Name, dest)
+		err = copyDir(d, dest)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	} else {
+		Warn("Cache key generation error: %s", err)
+	}
+
+	// If unable to cache pull directly into the vendor/ directory.
 	repo, err := dep.GetRepo(dest)
 	if err != nil {
 		return err
