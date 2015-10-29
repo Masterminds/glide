@@ -25,6 +25,9 @@ const (
 // The following will print the string "Foo" in yellow:
 //     fmt.Print(Color(Yellow, "Foo"))
 func Color(code, msg string) string {
+	if NoColor {
+		return msg
+	}
 	return fmt.Sprintf("\033[%sm%s\033[m", code, msg)
 }
 
