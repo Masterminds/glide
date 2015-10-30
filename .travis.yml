@@ -17,8 +17,7 @@ install: make bootstrap
 # in the vendor directory. We don't need to test all dependent packages.
 # Only testing this project.
 script:
-  - GO15VENDOREXPERIMENT=1 go test -v .
-  - GO15VENDOREXPERIMENT=1 go test -v ./cmd
+  - GO15VENDOREXPERIMENT=1 go test -v . ./cmd ./gb ./util ./yaml
 
 notifications:
   irc: "irc.freenode.net#masterminds"
