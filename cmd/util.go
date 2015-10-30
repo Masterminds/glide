@@ -154,3 +154,78 @@ func fileExist(name string) (bool, error) {
 	}
 	return true, err
 }
+
+// We copy the directory here rather than jumping out to a shell so we can
+// support multiple operating systems.
+func copyDir(source string, dest string) error {
+
+	// get properties of source dir
+	si, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(dest, si.Mode())
+	if err != nil {
+		return err
+	}
+
+	d, _ := os.Open(source)
+
+	objects, err := d.Readdir(-1)
+
+	for _, obj := range objects {
+
+		sp := filepath.Join(source, "/", obj.Name())
+
+		dp := filepath.Join(dest, "/", obj.Name())
+
+		if obj.IsDir() {
+			err = copyDir(sp, dp)
+			if err != nil {
+				return err
+			}
+		} else {
+			// perform copy
+			err = copyFile(sp, dp)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	return nil
+}
+
+func copyFile(source string, dest string) error {
+	ln, err := os.Readlink(source)
+	if err == nil {
+		return os.Symlink(ln, dest)
+	}
+	s, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+
+	defer s.Close()
+
+	d, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+
+	defer d.Close()
+
+	_, err = io.Copy(d, s)
+	if err != nil {
+		return err
+	}
+
+	si, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(dest, si.Mode())
+
+	return err
+}

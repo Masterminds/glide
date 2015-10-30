@@ -25,6 +25,7 @@ distributed with the package.
     - hg
     - svn
 * Support custom local and global plugins (see docs/plugins.md)
+* Repository caching including reuse of packages in the `$GOPATH`
 
 ## How It Works
 

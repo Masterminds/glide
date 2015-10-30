@@ -1,7 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	//"log"
 
@@ -38,7 +44,8 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	names := p.Get("packages", []string{}).([]string)
 	cfg := p.Get("conf", nil).(*yaml.Config)
 	insecure := p.Get("insecure", false).(bool)
-
+	home := p.Get("home", "").(string)
+	cache := p.Get("cache", false).(bool)
 	Info("Preparing to install %d package.", len(names))
 
 	deps := []*yaml.Dependency{}
@@ -60,13 +67,6 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 
 		dest := path.Join(cwd, root)
 
-		var repoURL string
-		if insecure {
-			repoURL = "http://" + root
-		} else {
-			repoURL = "https://" + root
-		}
-		repo, err := v.NewRepo(repoURL, dest)
 		if err != nil {
 			Error("Could not construct repo for %q: %s", name, err)
 			return false, err
@@ -86,8 +86,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 		if len(subpkg) > 0 && subpkg != "/" {
 			dep.Subpackages = []string{subpkg}
 		}
-
-		if err := repo.Get(); err != nil {
+		if err := VcsGet(dep, dest, home, cache); err != nil {
 			return dep, err
 		}
 
@@ -97,29 +96,6 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 
 	}
 	return deps, nil
-}
-
-// GetImports iterates over the imported packages and gets them.
-func GetImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil).(*yaml.Config)
-	cwd, err := VendorPath(c)
-	if err != nil {
-		Error("Failed to prepare vendor directory: %s", err)
-		return false, err
-	}
-
-	if len(cfg.Imports) == 0 {
-		Info("No dependencies found. Nothing downloaded.\n")
-		return false, nil
-	}
-
-	for _, dep := range cfg.Imports {
-		if err := VcsGet(dep, cwd); err != nil {
-			Warn("Skipped getting %s: %v\n", dep.Name, err)
-		}
-	}
-
-	return true, nil
 }
 
 // UpdateImports iterates over the imported packages and updates them.
@@ -133,6 +109,8 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	cfg := p.Get("conf", nil).(*yaml.Config)
 	force := p.Get("force", true).(bool)
 	plist := p.Get("packages", []string{}).([]string)
+	home := p.Get("home", "").(string)
+	cache := p.Get("cache", false).(bool)
 	pkgs := list2map(plist)
 	restrict := len(pkgs) > 0
 
@@ -157,7 +135,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 		// flattening from causing unnecessary updates.
 		updateCache[dep.Name] = true
 
-		if err := VcsUpdate(dep, cwd, force); err != nil {
+		if err := VcsUpdate(dep, cwd, home, force, cache); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}
 	}
@@ -233,8 +211,165 @@ func VcsExists(dep *yaml.Dependency, dest string) bool {
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
 // VcsGet installs into the dest.
-func VcsGet(dep *yaml.Dependency, dest string) error {
+func VcsGet(dep *yaml.Dependency, dest, home string, cache bool) error {
 
+	if !cache {
+		// Check if the $GOPATH has a viable version to use and if so copy to vendor
+		gps := Gopaths()
+		for _, p := range gps {
+			d := filepath.Join(p, "src", dep.Name)
+			if _, err := os.Stat(d); err == nil {
+				empty, err := isDirectoryEmpty(d)
+				if empty || err != nil {
+					continue
+				}
+
+				repo, err := dep.GetRepo(d)
+				if err != nil {
+					continue
+				}
+
+				// Dirty repos have uncomitted changes.
+				if repo.IsDirty() {
+					continue
+				}
+
+				// Having found a repo we copy it to vendor and update it.
+				Debug("Found %s in GOPATH at %s. Copying to %s", dep.Name, d, dest)
+				err = copyDir(d, dest)
+				if err != nil {
+					return err
+				}
+
+				// Update the repo in the vendor directory
+				Debug("Updating %s, now in the vendor path at %s", dep.Name, dest)
+				repo, err = dep.GetRepo(dest)
+				if err != nil {
+					return err
+				}
+				err = repo.Update()
+				if err != nil {
+					return err
+				}
+
+				// If there is no reference set on the dep we try to checkout
+				// the default branch.
+				if dep.Reference == "" {
+					db := defaultBranch(repo, home)
+					if db != "" {
+						err = repo.UpdateVersion(db)
+						if err != nil {
+							Debug("Attempting to set the version on %s to %s failed. Error %s", dep.Name, db, err)
+						}
+					}
+				}
+				return nil
+			}
+		}
+
+		// Since we didn't find an existing copy in the GOPATHs try to clone there.
+		gp := Gopath()
+		if gp != "" {
+			d := filepath.Join(gp, "src", dep.Name)
+			if _, err := os.Stat(d); os.IsNotExist(err) {
+				// Empty directory so we checkout out the code here.
+				Debug("Retrieving %s to %s before copying to vendor", dep.Name, d)
+				repo, err := dep.GetRepo(d)
+				if err != nil {
+					return err
+				}
+				repo.Get()
+
+				branch := findCurrentBranch(repo)
+				if branch != "" {
+					// we know the default branch so we can store it in the cache
+					var loc string
+					if dep.Repository != "" {
+						loc = dep.Repository
+					} else {
+						loc = "https://" + dep.Name
+					}
+					key, err := cacheCreateKey(loc)
+					if err == nil {
+						Debug("Saving default branch for %s", repo.Remote())
+						c := cacheRepoInfo{DefaultBranch: branch}
+						saveCacheRepoData(key, c, home)
+					}
+				}
+
+				Debug("Copying %s from GOPATH at %s to %s", dep.Name, d, dest)
+				err = copyDir(d, dest)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			}
+		}
+	}
+
+	// Check if the cache has a viable version and try to use that.
+	var loc string
+	if dep.Repository != "" {
+		loc = dep.Repository
+	} else {
+		loc = "https://" + dep.Name
+	}
+	key, err := cacheCreateKey(loc)
+	if err == nil {
+		d := filepath.Join(home, "cache", "src", key)
+
+		repo, err := dep.GetRepo(d)
+		if err != nil {
+			return err
+		}
+		// If the directory does not exist this is a first cache.
+		if _, err = os.Stat(d); os.IsNotExist(err) {
+			Debug("Adding %s to the cache for the first time", dep.Name)
+			err = repo.Get()
+			if err != nil {
+				return err
+			}
+			branch := findCurrentBranch(repo)
+			if branch != "" {
+				// we know the default branch so we can store it in the cache
+				var loc string
+				if dep.Repository != "" {
+					loc = dep.Repository
+				} else {
+					loc = "https://" + dep.Name
+				}
+				key, err := cacheCreateKey(loc)
+				if err == nil {
+					Debug("Saving default branch for %s", repo.Remote())
+					c := cacheRepoInfo{DefaultBranch: branch}
+					err = saveCacheRepoData(key, c, home)
+					if err != nil {
+						Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
+					}
+				}
+			}
+
+		} else {
+			Debug("Updating %s in the cache", dep.Name)
+			err = repo.Update()
+			if err != nil {
+				return err
+			}
+		}
+
+		Debug("Copying %s from the cache to %s", dep.Name, dest)
+		err = copyDir(d, dest)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	} else {
+		Warn("Cache key generation error: %s", err)
+	}
+
+	// If unable to cache pull directly into the vendor/ directory.
 	repo, err := dep.GetRepo(dest)
 	if err != nil {
 		return err
@@ -244,7 +379,7 @@ func VcsGet(dep *yaml.Dependency, dest string) error {
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *yaml.Dependency, vend string, force bool) error {
+func VcsUpdate(dep *yaml.Dependency, vend, home string, force, cache bool) error {
 	Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
@@ -255,7 +390,7 @@ func VcsUpdate(dep *yaml.Dependency, vend string, force bool) error {
 	dest := path.Join(vend, dep.Name)
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		if err = VcsGet(dep, dest); err != nil {
+		if err = VcsGet(dep, dest, home, cache); err != nil {
 			Warn("Unable to checkout %s\n", dep.Name)
 			return err
 		}
@@ -292,7 +427,7 @@ func VcsUpdate(dep *yaml.Dependency, vend string, force bool) error {
 				if rerr != nil {
 					return rerr
 				}
-				if err = VcsGet(dep, dest); err != nil {
+				if err = VcsGet(dep, dest, home, cache); err != nil {
 					Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
@@ -429,4 +564,159 @@ func VcsLastCommit(dep *yaml.Dependency, vend string) (string, error) {
 	}
 
 	return version, nil
+}
+
+// Some repos will have multiple branches in them (e.g. Git) while others
+// (e.g. Svn) will not.
+// TODO(mattfarina): Add API calls to github, bitbucket, etc.
+func defaultBranch(repo v.Repo, home string) string {
+
+	// Svn and Bzr use different locations (paths or entire locations)
+	// for branches so we won't have a default branch.
+	if repo.Vcs() == v.Svn || repo.Vcs() == v.Bzr {
+		return ""
+	}
+
+	// Check the cache for a value.
+	key, kerr := cacheCreateKey(repo.Remote())
+	var d cacheRepoInfo
+	if kerr == nil {
+		d, err := cacheRepoData(key, home)
+		if err == nil {
+			if d.DefaultBranch != "" {
+				return d.DefaultBranch
+			}
+		}
+	}
+
+	// If we don't have it in the store try some APIs
+	r := repo.Remote()
+	u, err := url.Parse(r)
+	if err != nil {
+		return ""
+	}
+	if u.Scheme == "" {
+		// Where there is no scheme we try urls like git@github.com:foo/bar
+		r = strings.Replace(r, ":", "/", -1)
+		r = "ssh://" + r
+		u, err = url.Parse(r)
+		if err != nil {
+			return ""
+		}
+		u.Scheme = ""
+	}
+	if u.Host == "github.com" {
+		parts := strings.Split(u.Path, "/")
+		if len(parts) != 2 {
+			return ""
+		}
+		api := fmt.Sprintf("https://api.github.com/repos/%s/%s", parts[0], parts[1])
+		resp, err := http.Get(api)
+		if err != nil {
+			return ""
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+			return ""
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		var data interface{}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return ""
+		}
+		gh := data.(map[string]interface{})
+		db := gh["default_branch"].(string)
+		if kerr == nil {
+			d.DefaultBranch = db
+			saveCacheRepoData(key, d, home)
+		}
+		return db
+	}
+
+	if u.Host == "bitbucket.org" {
+		parts := strings.Split(u.Path, "/")
+		if len(parts) != 2 {
+			return ""
+		}
+		api := fmt.Sprintf("https://bitbucket.org/api/1.0/repositories/%s/%s/main-branch/", parts[0], parts[1])
+		resp, err := http.Get(api)
+		if err != nil {
+			return ""
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+			return ""
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		var data interface{}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			return ""
+		}
+		bb := data.(map[string]interface{})
+		db := bb["name"].(string)
+		if kerr == nil {
+			d.DefaultBranch = db
+			saveCacheRepoData(key, d, home)
+		}
+		return db
+	}
+
+	return ""
+}
+
+// From a local repo find out the current branch name if there is one.
+func findCurrentBranch(repo v.Repo) string {
+	Debug("Attempting to find current branch for %s", repo.Remote())
+	// Svn and Bzr don't have default branches.
+	if repo.Vcs() == v.Svn || repo.Vcs() == v.Bzr {
+		return ""
+	}
+
+	if repo.Vcs() == v.Git {
+		c := exec.Command("git", "symbolic-ref", "--short", "HEAD")
+		c.Dir = repo.LocalPath()
+		c.Env = envForDir(c.Dir)
+		out, err := c.CombinedOutput()
+		if err != nil {
+			Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
+			return ""
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	if repo.Vcs() == v.Hg {
+		c := exec.Command("hg", "branch")
+		c.Dir = repo.LocalPath()
+		c.Env = envForDir(c.Dir)
+		out, err := c.CombinedOutput()
+		if err != nil {
+			Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
+			return ""
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	return ""
+}
+
+func envForDir(dir string) []string {
+	env := os.Environ()
+	return mergeEnvLists([]string{"PWD=" + dir}, env)
+}
+
+func mergeEnvLists(in, out []string) []string {
+NextVar:
+	for _, inkv := range in {
+		k := strings.SplitAfterN(inkv, "=", 2)[0]
+		for i, outkv := range out {
+			if strings.HasPrefix(outkv, k) {
+				out[i] = inkv
+				continue NextVar
+			}
+		}
+		out = append(out, inkv)
+	}
+	return out
 }
