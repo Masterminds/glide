@@ -1,9 +1,6 @@
 package: github.com/Masterminds/glide
 import:
-  - package: github.com/kylelemons/go-gypsy
-    subpackages:
-      - yaml
-    flatten: true
+  - package: gopkg.in/yaml.v2
   - package: github.com/Masterminds/cookoo
     version: master
     repo:    git@github.com:Masterminds/cookoo.git

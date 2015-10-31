@@ -179,7 +179,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				},
 				cli.BoolFlag{
 					Name:  "cache",
-					Usage: "Setting will only and use files from the cache (excluding the GOPATH)",
+					Usage: "When downloading dependencies attempt to cache them.",
+				},
+				cli.BoolFlag{
+					Name:  "cache-gopath",
+					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+				},
+				cli.BoolFlag{
+					Name:  "skip-gopath",
+					Usage: "Skip attempting to copy a dependency from the GOPATH.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -190,7 +198,9 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				cxt.Put("packages", []string(c.Args()))
 				cxt.Put("skipFlatten", !c.Bool("no-recursive"))
 				cxt.Put("insecure", c.Bool("insecure"))
-				cxt.Put("forceCache", c.Bool("cache"))
+				cxt.Put("useCache", c.Bool("cache"))
+				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
+				cxt.Put("skipGopath", c.Bool("skip-gopath"))
 				// FIXME: Are these used anywhere?
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
@@ -354,7 +364,15 @@ Example:
 				},
 				cli.BoolFlag{
 					Name:  "cache",
-					Usage: "Setting will only and use files from the cache (excluding the GOPATH)",
+					Usage: "When downloading dependencies attempt to cache them.",
+				},
+				cli.BoolFlag{
+					Name:  "cache-gopath",
+					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+				},
+				cli.BoolFlag{
+					Name:  "skip-gopath",
+					Usage: "Skip attempting to copy a dependency from the GOPATH.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -364,7 +382,9 @@ Example:
 				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
 				cxt.Put("toPath", c.String("file"))
 				cxt.Put("toStdout", false)
-				cxt.Put("forceCache", c.Bool("cache"))
+				cxt.Put("useCache", c.Bool("cache"))
+				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
+				cxt.Put("skipGopath", c.Bool("skip-gopath"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
@@ -469,12 +489,16 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Using("insecure").From("cxt:insecure").
 		Using("home").From("cxt:home").
-		Using("cache").From("cxt:forceCache").
+		Using("cache").From("cxt:useCache").
+		Using("cacheGopath").From("cxt:cacheGopath").
+		Using("skipGopath").From("cxt:skipGopath").
 		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
 		Using("home").From("cxt:home").
-		Using("cache").From("cxt:forceCache").
+		Using("cache").From("cxt:useCache").
+		Using("cacheGopath").From("cxt:cacheGopath").
+		Using("skipGopath").From("cxt:skipGopath").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
@@ -502,14 +526,18 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("force").From("cxt:forceUpdate").
 		Using("packages").From("cxt:packages").
 		Using("home").From("cxt:home").
-		Using("cache").From("cxt:forceCache").
+		Using("cache").From("cxt:useCache").
+		Using("cacheGopath").From("cxt:cacheGopath").
+		Using("skipGopath").From("cxt:skipGopath").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
 		Using("skip").From("cxt:skipFlatten").
 		Using("home").From("cxt:home").
-		Using("cache").From("cxt:forceCache").
+		Using("cache").From("cxt:useCache").
+		Using("cacheGopath").From("cxt:cacheGopath").
+		Using("skipGopath").From("cxt:skipGopath").
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:cfg").
 		Using("update").From("cxt:updateVendoredDeps").

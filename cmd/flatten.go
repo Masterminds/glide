@@ -29,6 +29,8 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	skip := p.Get("skip", false).(bool)
 	home := p.Get("home", "").(string)
 	cache := p.Get("cache", false).(bool)
+	cacheGopath := p.Get("cacheGopath", false).(bool)
+	skipGopath := p.Get("skipGopath", false).(bool)
 
 	if skip {
 		return conf, nil
@@ -53,7 +55,7 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	f := &flattening{conf, vend, vend, deps, packages}
 
-	err := recFlatten(f, force, home, cache)
+	err := recFlatten(f, force, home, cache, cacheGopath, skipGopath)
 	flattenSetRefs(f)
 	Info("Project relies on %d dependencies.", len(deps))
 	exportFlattenedDeps(conf, deps)
@@ -87,7 +89,7 @@ type flattening struct {
 var updateCache = map[string]bool{}
 
 // refFlatten recursively flattens the vendor tree.
-func recFlatten(f *flattening, force bool, home string, cache bool) error {
+func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, skipGopath bool) error {
 	Debug("---> Inspecting %s for changes (%d packages).\n", f.curr, len(f.scan))
 	for _, imp := range f.scan {
 		Debug("----> Scanning %s", imp)
@@ -107,14 +109,14 @@ func recFlatten(f *flattening, force bool, home string, cache bool) error {
 
 		if len(mod) > 0 {
 			Debug("----> Updating all dependencies for %q (%d)", imp, len(mod))
-			flattenGlideUp(f, base, home, force, cache)
+			flattenGlideUp(f, base, home, force, cache, cacheGopath, skipGopath)
 			f2 := &flattening{
 				conf: f.conf,
 				top:  f.top,
 				curr: base,
 				deps: f.deps,
 				scan: mod}
-			recFlatten(f2, force, home, cache)
+			recFlatten(f2, force, home, cache, cacheGopath, skipGopath)
 		}
 	}
 
@@ -126,7 +128,7 @@ func recFlatten(f *flattening, force bool, home string, cache bool) error {
 // While this is expensive, it is also necessary to make sure we have the
 // correct version of all dependencies. We might be able to simplify by
 // marking packages dirty when they are added.
-func flattenGlideUp(f *flattening, base, home string, force, cache bool) error {
+func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath, skipGopath bool) error {
 	//vdir := path.Join(base, "vendor")
 	for _, imp := range f.deps {
 		wd := path.Join(f.top, imp.Name)
@@ -136,7 +138,7 @@ func flattenGlideUp(f *flattening, base, home string, force, cache bool) error {
 				continue
 			}
 			Debug("Updating project %s (%s)\n", imp.Name, wd)
-			if err := VcsUpdate(imp, f.top, home, force, cache); err != nil {
+			if err := VcsUpdate(imp, f.top, home, force, cache, cacheGopath, skipGopath); err != nil {
 				// We can still go on just fine even if this fails.
 				Warn("Skipped update %s: %s\n", imp.Name, err)
 				continue
@@ -144,7 +146,7 @@ func flattenGlideUp(f *flattening, base, home string, force, cache bool) error {
 			updateCache[imp.Name] = true
 		} else {
 			Debug("Importing %s to project %s\n", imp.Name, wd)
-			if err := VcsGet(imp, wd, home, cache); err != nil {
+			if err := VcsGet(imp, wd, home, cache, cacheGopath, skipGopath); err != nil {
 				Warn("Skipped getting %s: %v\n", imp.Name, err)
 				continue
 			}
