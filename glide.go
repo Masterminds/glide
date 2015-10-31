@@ -103,6 +103,10 @@ func main() {
 			Usage:  "The location of Glide files",
 			EnvVar: "GLIDE_HOME",
 		},
+		cli.BoolFlag{
+			Name:  "no-color",
+			Usage: "Turn off colored output for log messages",
+		},
 	}
 	app.CommandNotFound = func(c *cli.Context, command string) {
 		cxt.Put("os.Args", os.Args)
@@ -458,6 +462,7 @@ Example:
 func setupHandler(c *cli.Context, route string, cxt cookoo.Context, router *cookoo.Router) {
 	cxt.Put("q", c.GlobalBool("quiet"))
 	cxt.Put("debug", c.GlobalBool("debug"))
+	cxt.Put("no-color", c.GlobalBool("no-color"))
 	cxt.Put("yaml", c.GlobalString("yaml"))
 	cxt.Put("home", c.GlobalString("home"))
 	cxt.Put("cliArgs", c.Args())
@@ -473,6 +478,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.BeQuiet, "quiet").
 		Using("quiet").From("cxt:q").
 		Using("debug").From("cxt:debug").
+		Does(cmd.CheckColor, "no-color").
+		Using("no-color").From("cxt:no-color").
 		Does(cmd.VersionGuard, "v")
 
 	reg.Route("@ready", "Prepare for glide commands.").

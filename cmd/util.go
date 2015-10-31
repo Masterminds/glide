@@ -16,12 +16,20 @@ import (
 // Quiet, when set to true, can suppress Info and Debug messages.
 var Quiet = false
 var IsDebugging = false
+var NoColor = false
 
 // BeQuiet supresses Info and Debug messages.
 func BeQuiet(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	Quiet = p.Get("quiet", false).(bool)
 	IsDebugging = p.Get("debug", false).(bool)
 	return Quiet, nil
+}
+
+// CheckColor turns off the colored output (and uses plain text output) for
+// logging depending on the value of the "no-color" flag.
+func CheckColor(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	NoColor = p.Get("no-color", false).(bool)
+	return NoColor, nil
 }
 
 // ReadyToGlide fails if the environment is not sufficient for using glide.
