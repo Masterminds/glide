@@ -14,6 +14,7 @@ test:
 clean:
 	rm -f ./glide.test
 	rm -f ./glide
+	rm -rf ./dist
 
 bootstrap:
 	mkdir ./vendor
@@ -37,7 +38,7 @@ dist: build-all
 	cd dist && \
 	$(DIST_DIRS) cp ../LICENSE.txt {} \; && \
 	$(DIST_DIRS) cp ../README.md {} \; && \
-	$(DIST_DIRS) zip -r glide-{}.zip {} \; && \
+	$(DIST_DIRS) tar -zcf glide-${VERSION}-{}.tar.gz {} \; && \
 	cd ..
 
 
