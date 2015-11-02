@@ -1,4 +1,4 @@
-# Glide: The Lightweight Vendor Package Manager
+# Glide: Vendor Package Management for Golang
 
 *Manage your vendor and vendored packages with ease.* Glide is a tool for
 managing the `vendor` directory within a Go package. This feature, first
@@ -13,9 +13,8 @@ distributed with the package.
 
 * Ease dependency management
 * Support **versioning packages** including [Semantic Versioning
-  2.0.0](http://semver.org/) support. Any constraint the [`github.com/
-  Masterminds/semver`](https://github.com/Masterminds/semver) package can parse
-  can be used.
+  2.0.0](http://semver.org/) support. Any constraint the [`github.com/Masterminds/semver`](https://github.com/Masterminds/semver)
+  package can parse can be used.
 * Support **aliasing packages** (e.g. for working with github forks)
 * Remove the need for munging import statements
 * Work with all of the `go` tools
@@ -26,6 +25,8 @@ distributed with the package.
     - svn
 * Support custom local and global plugins (see docs/plugins.md)
 * Repository caching including reuse of packages in the `$GOPATH`
+* Flatten dependencies resolving version differences and avoiding the inclusion
+  of a package multiple times.
 
 ## How It Works
 
@@ -33,11 +34,11 @@ The dependencies for a project are listed in a `glide.yaml` file. This can
 include a version, VCS, repository location (that can be different from the
 package name), etc. When `glide up` is run it downloads the packages (or updates)
 to the `vendor` directory. It then recursively walks through the downloaded
-packages looking for those with a `glide.yaml` file that don't already have
-a `vendor` directory and installing their dependencies to their `vendor`
-directories.
+packages looking for those with a `glide.yaml` file (or Godep, gb, or GPM config
+file) that don't already have a `vendor` directory and installing their
+dependencies to their `vendor` directories.
 
- A projects is structured like this:
+A projects is structured like this:
 
 ```
 - $GOPATH/src/myProject (Your project)
@@ -141,17 +142,15 @@ dependency packages doing the same thing if no `vendor` directory exists.
 $ glide up
 ```
 
-If the dependent vendor packages listed in your `glide.yaml` file use GPM or
-Godep you can use the `--import` flag to import them. If an import occurs a
-`vendor` directory will be created in each project with with dependencies being
-imported. A `glide.yaml` file will also be created for each project.
+This will recurse over the packages looking for other projects managed by Glide,
+Godep, gb, and GPM. When one is found those packages will be installed as needed.
 
 ## glide novendor (aliased to nv)
 
 When you run commands like `go test ./...` it will iterate over all the
 subdirectories including the `vendor` directory. When you are testing your
 application you may want to test your application files without running all the
-tests of your dependencies and their dependencies. This is where the novendor
+tests of your dependencies and their dependencies. This is where the `novendor`
 command comes in. It lists all of the directories except `vendor`.
 
     $ go test $(glide novendor)
@@ -192,15 +191,36 @@ gives data like this:
 ```
 $ glide tree
 github.com/Masterminds/glide
-	github.com/Masterminds/cookoo   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo)
-		github.com/Masterminds/cookoo/io   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo/io)
-	github.com/Masterminds/glide/cmd   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/cmd)
-		github.com/Masterminds/cookoo   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo)
-			github.com/Masterminds/cookoo/io   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo/io)
-		github.com/Masterminds/vcs   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
-		github.com/codegangsta/cli   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/codegangsta/cli)
-		github.com/kylelemons/go-gypsy/yaml   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/kylelemons/go-gypsy/yaml)
-	github.com/codegangsta/cli   (/Users/mbutcher/Code/Go/src/github.com/Masterminds/glide/vendor/github.com/codegangsta/cli)
+	github.com/Masterminds/cookoo   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo)
+		github.com/Masterminds/cookoo/io   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo/io)
+	github.com/Masterminds/glide/cmd   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/cmd)
+		github.com/Masterminds/cookoo   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo)
+			github.com/Masterminds/cookoo/io   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo/io)
+		github.com/Masterminds/glide/gb   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/gb)
+		github.com/Masterminds/glide/util   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/util)
+			github.com/Masterminds/vcs   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+		github.com/Masterminds/glide/yaml   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/yaml)
+			github.com/Masterminds/glide/util   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/util)
+				github.com/Masterminds/vcs   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+			github.com/Masterminds/vcs   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+			gopkg.in/yaml.v2   (/Users/mfarina/Code/go/src/gopkg.in/yaml.v2)
+		github.com/Masterminds/semver   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/semver)
+		github.com/Masterminds/vcs   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+		github.com/codegangsta/cli   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/codegangsta/cli)
+	github.com/codegangsta/cli   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/codegangsta/cli)
+	github.com/Masterminds/cookoo   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo)
+		github.com/Masterminds/cookoo/io   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/cookoo/io)
+	github.com/Masterminds/glide/gb   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/gb)
+	github.com/Masterminds/glide/util   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/util)
+		github.com/Masterminds/vcs   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+	github.com/Masterminds/glide/yaml   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/yaml)
+		github.com/Masterminds/glide/util   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/util)
+			github.com/Masterminds/vcs   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+		github.com/Masterminds/vcs   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+		gopkg.in/yaml.v2   (/Users/mfarina/Code/go/src/gopkg.in/yaml.v2)
+	github.com/Masterminds/semver   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/semver)
+	github.com/Masterminds/vcs   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/Masterminds/vcs)
+	github.com/codegangsta/cli   (/Users/mfarina/Code/go/src/github.com/Masterminds/glide/vendor/github.com/codegangsta/cli)
 ```
 
 This shows a tree of imports, excluding core libraries. Because
@@ -215,16 +235,20 @@ that a project imports.
 
 ```
 $ glide list
-github.com/Masterminds/cookoo (Present: yes)
-github.com/Masterminds/cookoo/io (Present: yes)
-github.com/Masterminds/glide/cmd (Present: yes)
-github.com/Masterminds/vcs (Present: yes)
-github.com/codegangsta/cli (Present: yes)
-github.com/kylelemons/go-gypsy/yaml (Present: yes)
+github.com/Masterminds/cookoo (Location: vendored)
+github.com/Masterminds/cookoo/io (Location: vendored)
+github.com/Masterminds/glide/cmd (Location: gopath)
+github.com/Masterminds/glide/gb (Location: gopath)
+github.com/Masterminds/glide/util (Location: gopath)
+github.com/Masterminds/glide/yaml (Location: gopath)
+github.com/Masterminds/semver (Location: vendored)
+github.com/Masterminds/vcs (Location: vendored)
+github.com/codegangsta/cli (Location: vendored)
+gopkg.in/yaml.v2 (Location: vendored)
 ```
 
-If it finds a reference to a package that has not been installed,
-`Present` is set to `no`.
+The possible locations for `list` are `vendored`, `gopath`, and `missing` (if
+the package is not installed anywhere accessible).
 
 ### glide help
 
@@ -240,7 +264,7 @@ Print the version and exit.
 
 ```
 $ glide --version
-glide version 0.5.0
+glide version 0.7.0
 ```
 
 ### glide.yaml
@@ -255,10 +279,10 @@ A brief `glide.yaml` file looks like this:
 ```yaml
 package: github.com/Masterminds/glide
 import:
-  - package: github.com/kylelemons/go-gypsy
+  - package: github.com/Masterminds/semver
   - package: github.com/Masterminds/cookoo
     vcs: git
-    version: master
+    version: ^1.2.0
     repo: git@github.com:Masterminds/cookoo.git
 ```
 
@@ -272,9 +296,9 @@ The first library exemplifies a minimal package import. It merely gives
 the fully qualified import path.
 
 When Glide reads the definition for the second library, it will get the repo
-from the source in `repo`, checkout the master branch, and put it in
-`github.com/Masterminds/cookoo` in the `vendor` directory. (Note that `package`
-and `repo` can be completely different)
+from the source in `repo`, checkout the latest version between 1.2.0 and 2.0.0,
+and put it in `github.com/Masterminds/cookoo` in the `vendor` directory. (Note
+that `package` and `repo` can be completely different)
 
 **TIP:** The version is either VCS dependent and can be anything that can be checked
 out or a semantic version constraint that can be parsed by the [`github.com/
@@ -322,30 +346,28 @@ happens through the [vcs package](https://github.com/masterminds/vcs).
 
 ## Troubleshooting
 
-**Q: bzr (or hg) is not working the way I expected. Why?**
+#### Q: bzr (or hg) is not working the way I expected. Why?
 
 These are works in progress, and may need some additional tuning. Please
 take a look at the [vcs package](https://github.com/masterminds/vcs). If you
 see a better way to handle it please let us know.
 
-**Q: Should I check `vendor/` into version control?**
+#### Q: Should I check `vendor/` into version control?
 
 That's up to you. It's not necessary, but it may also cause you extra
-work and lots of extra space in your VCS.
+work and lots of extra space in your VCS. There may also be unforeseen errors
+([see an example](https://github.com/mattfarina/golang-broken-vendor)).
 
-**Q: How do I import settings from GPM or Godep?**
+#### Q: How do I import settings from GPM, Godep, or gb?
 
-There are two ways to approach importing. The first is when you use `glide up`
-or `glide get` there is an `--import` flag. It will attempt to import from GPM
-and Godep automatically. If fetching is happening recursively this will be
-applied to recursive packages as well.
+There are two parts to importing.
 
-Alternatively, Glide can import from GPM's `Godeps` file format or from Godep's
-`Godeps/Godeps.json` file format with the `import` command.
-
-For GPM, use `glide import gpm`.
-
-For Godep, use `glide import godep`.
+1. If a package you import has configuration for GPM, Godep, or gb Glide will
+   recursively install the dependencies automatically.
+2. If you would like to import configuration from GPM, Godep, or gb to Glide see
+   the `glide import` command. For example, you can run `glide import godep` for
+   Glide to detect the projects Godep configuration and generate a `glide.yaml`
+   file for you.
 
 Each of these will merge your existing `glide.yaml` file with the
 dependencies it finds for those managers, and then emit the file as
@@ -357,7 +379,7 @@ You can write it to file like this:
 $ glide import godep > new-glide.yaml
 ```
 
-**Q: Can Glide fetch a package based on OS or Arch?**
+#### Q: Can Glide fetch a package based on OS or Arch?
 
 A: Yes. Using the `os` and `arch` fields on a `package`, you can specify
 which OSes and architectures the package should be fetched for. For
@@ -373,10 +395,6 @@ Darwin/OSX systems:
 ```
 
 The package will not be fetched for other architectures or OSes.
-
-**Q: How do I prevent vendored packages from importing the same package**
-
-You can use the `flatten: true` config option on the entire project or just one specific dependency.
 
 ## LICENSE
 
