@@ -1,8 +1,15 @@
-# Release X.X.X (XXXX-XX-XX)
+# Release 0.7.0 (2015-11-02)
 
+- Fixed #110: Distribution as .tag.gz instead of .zip.
+- Issue #126: Added --no-color option to remove color for systems that do not
+  work well with color codes (thanks albrow).
+- Added caching functionality (some opt-in).
+- Added global debug flag.
 - Moved yaml parsing and writing to gopkg.in/yaml.v2 and separated
   config handling into separate package.
-- #52 and #114: Add semantic version support.
+- Better godep import handling.
+- Fixed #98: Godep command name fix (thanks jonboulle).
+- #52 and #114: Add semantic version (SemVer) support.
 - #108: Flatten the dependency tree by default.
 - Fixed #107: Allow `glide get` to retrieve insecure packages with `--insecure`
   flag.
