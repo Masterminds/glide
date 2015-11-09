@@ -65,9 +65,9 @@ func Error(msg string, args ...interface{}) {
 func ErrMsg(msg string, args ...interface{}) {
 	if len(args) == 0 {
 		fmt.Fprint(os.Stderr, msg)
-		return
+	} else {
+		fmt.Fprintf(os.Stderr, msg, args...)
 	}
-	fmt.Fprintf(os.Stderr, msg, args...)
 
 	// Get rid of the annoying fact that messages need \n at the end, but do
 	// it in a backward compatible way.
@@ -81,9 +81,9 @@ func ErrMsg(msg string, args ...interface{}) {
 func Msg(msg string, args ...interface{}) {
 	if len(args) == 0 {
 		fmt.Fprint(os.Stderr, msg)
-		return
+	} else {
+		fmt.Fprintf(os.Stderr, msg, args...)
 	}
-	fmt.Fprintf(os.Stderr, msg, args...)
 
 	// Get rid of the annoying fact that messages need \n at the end, but do
 	// it in a backward compatible way.

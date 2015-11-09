@@ -5,3 +5,4 @@ glide
 *.sublime-project
 *.sublime-workspace
 dist/
+.DS_Store

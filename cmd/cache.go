@@ -13,15 +13,22 @@ import (
 	"github.com/Masterminds/cookoo"
 )
 
+var cacheEnabled = true
+
+var errCacheDisabled = errors.New("Cache disabled")
+
 // EnsureCacheDir Creates the $HOME/.glide/cache directory (unless home is
 // specified to be different) if it does not exist.
 func EnsureCacheDir(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	home := p.Get("home", "").(string)
 	if home == "" {
-		return nil, errors.New("No home directory set to create")
+		cacheEnabled = false
+		Warn("Unable to locate home directory")
+		return false, nil
 	}
 	err := os.MkdirAll(filepath.Join(home, "cache", "info"), os.ModeDir|os.ModePerm)
 	if err != nil {
+		cacheEnabled = false
 		Warn("Error creating Glide directory %s", home)
 	}
 	return false, nil
@@ -69,6 +76,9 @@ type cacheRepoInfo struct {
 }
 
 func saveCacheRepoData(key string, data cacheRepoInfo, location string) error {
+	if !cacheEnabled {
+		return errCacheDisabled
+	}
 	data.LastUpdate = time.Now().String()
 	d, err := json.Marshal(data)
 	if err != nil {
@@ -87,6 +97,9 @@ func saveCacheRepoData(key string, data cacheRepoInfo, location string) error {
 }
 
 func cacheRepoData(key, location string) (*cacheRepoInfo, error) {
+	if !cacheEnabled {
+		return &cacheRepoInfo{}, errCacheDisabled
+	}
 	c := &cacheRepoInfo{}
 	p := filepath.Join(location, "cache", "info", key+".json")
 	f, err := ioutil.ReadFile(p)

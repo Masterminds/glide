@@ -304,7 +304,10 @@ func VcsGet(dep *yaml.Dependency, dest, home string, cache, cacheGopath, skipGop
 					if err == nil {
 						Debug("Saving default branch for %s", repo.Remote())
 						c := cacheRepoInfo{DefaultBranch: branch}
-						saveCacheRepoData(key, c, home)
+						err = saveCacheRepoData(key, c, home)
+						if err == errCacheDisabled {
+							Debug("Unable to cache default branch because caching is disabled")
+						}
 					}
 				}
 
@@ -357,7 +360,9 @@ func VcsGet(dep *yaml.Dependency, dest, home string, cache, cacheGopath, skipGop
 						Debug("Saving default branch for %s", repo.Remote())
 						c := cacheRepoInfo{DefaultBranch: branch}
 						err = saveCacheRepoData(key, c, home)
-						if err != nil {
+						if err == errCacheDisabled {
+							Debug("Unable to cache default branch because caching is disabled")
+						} else if err != nil {
 							Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
 						}
 					}
@@ -406,7 +411,9 @@ func VcsGet(dep *yaml.Dependency, dest, home string, cache, cacheGopath, skipGop
 			Debug("Saving default branch for %s", repo.Remote())
 			c := cacheRepoInfo{DefaultBranch: branch}
 			err = saveCacheRepoData(key, c, home)
-			if err != nil {
+			if err == errCacheDisabled {
+				Debug("Unable to cache default branch because caching is disabled")
+			} else if err != nil {
 				Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
 			}
 		}
@@ -605,7 +612,6 @@ func VcsLastCommit(dep *yaml.Dependency, vend string) (string, error) {
 
 // Some repos will have multiple branches in them (e.g. Git) while others
 // (e.g. Svn) will not.
-// TODO(mattfarina): Add API calls to github, bitbucket, etc.
 func defaultBranch(repo v.Repo, home string) string {
 
 	// Svn and Bzr use different locations (paths or entire locations)
@@ -666,7 +672,12 @@ func defaultBranch(repo v.Repo, home string) string {
 		db := gh["default_branch"].(string)
 		if kerr == nil {
 			d.DefaultBranch = db
-			saveCacheRepoData(key, d, home)
+			err := saveCacheRepoData(key, d, home)
+			if err == errCacheDisabled {
+				Debug("Unable to cache default branch because caching is disabled")
+			} else if err != nil {
+				Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
+			}
 		}
 		return db
 	}
@@ -695,7 +706,12 @@ func defaultBranch(repo v.Repo, home string) string {
 		db := bb["name"].(string)
 		if kerr == nil {
 			d.DefaultBranch = db
-			saveCacheRepoData(key, d, home)
+			err := saveCacheRepoData(key, d, home)
+			if err == errCacheDisabled {
+				Debug("Unable to cache default branch because caching is disabled")
+			} else if err != nil {
+				Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
+			}
 		}
 		return db
 	}
