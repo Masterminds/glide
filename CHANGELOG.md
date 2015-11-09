@@ -1,3 +1,9 @@
+# Release 0.7.1 (xxxx-xx-xx)
+
+- Fixed #135: Hard failure when home directory not found for cache.
+- Fixed #137: Some messages not ending in "\n".
+- Fixed #132 and #133: Build from source directions incorrect.
+
 # Release 0.7.0 (2015-11-02)
 
 - Fixed #110: Distribution as .tag.gz instead of .zip.
