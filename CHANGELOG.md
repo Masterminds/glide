@@ -1,4 +1,4 @@
-# Release 0.7.1 (xxxx-xx-xx)
+# Release 0.7.1 (2015-11-10)
 
 - Fixed #136: Fixed infinite recursion in list and tree commands.
 - Fixed issue where glide guess listed a null parent.
