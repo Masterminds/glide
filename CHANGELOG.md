@@ -1,5 +1,6 @@
 # Release 0.7.1 (xxxx-xx-xx)
 
+- Fixed #136: Fixed infinite recursion in list and tree commands.
 - Fixed issue where glide guess listed a null parent.
 - Fixed #135: Hard failure when home directory not found for cache.
 - Fixed #137: Some messages not ending in "\n".

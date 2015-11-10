@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"container/list"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,7 +31,9 @@ func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	}
 
 	fmt.Println(myName)
-	displayTree(buildContext, basedir, myName, 1, showcore)
+	l := list.New()
+	l.PushBack(myName)
+	displayTree(buildContext, basedir, myName, 1, showcore, l)
 	return nil, nil
 }
 
@@ -87,12 +90,16 @@ func listDeps(b *BuildCtxt, info map[string]*pinfo, name, path string) {
 	default:
 		info[name] = found
 		for _, i := range walkDeps(b, found.Path, found.Name) {
-			listDeps(b, info, i, found.Path)
+			// Only walk the deps that are not already found to avoid
+			// infinite recursion.
+			if _, f := info[found.Name]; f == false {
+				listDeps(b, info, i, found.Path)
+			}
 		}
 	}
 }
 
-func displayTree(b *BuildCtxt, basedir, myName string, level int, core bool) {
+func displayTree(b *BuildCtxt, basedir, myName string, level int, core bool, l *list.List) {
 	deps := walkDeps(b, basedir, myName)
 	for _, name := range deps {
 		found := findPkg(b, name, basedir)
@@ -105,8 +112,17 @@ func displayTree(b *BuildCtxt, basedir, myName string, level int, core bool) {
 			continue
 		}
 		fmt.Print(strings.Repeat("\t", level))
-		fmt.Printf("%s   (%s)\n", found.Name, found.Path)
-		displayTree(b, found.Path, found.Name, level+1, core)
+
+		f := findInList(found.Name, l)
+		if f == true {
+			fmt.Printf("(Recursion) %s   (%s)\n", found.Name, found.Path)
+		} else {
+			// Every branch in the tree is a copy to handle all the branches
+			cl := copyList(l)
+			cl.PushBack(found.Name)
+			fmt.Printf("%s   (%s)\n", found.Name, found.Path)
+			displayTree(b, found.Path, found.Name, level+1, core, cl)
+		}
 	}
 }
 
@@ -247,5 +263,23 @@ func excludeSubtree(path string, fi os.FileInfo) bool {
 	if strings.HasPrefix(top, "_") || (strings.HasPrefix(top, ".") && top != ".") {
 		return true
 	}
+	return false
+}
+
+func copyList(l *list.List) *list.List {
+	n := list.New()
+	for e := l.Front(); e != nil; e = e.Next() {
+		n.PushBack(e.Value.(string))
+	}
+	return n
+}
+
+func findInList(n string, l *list.List) bool {
+	for e := l.Front(); e != nil; e = e.Next() {
+		if e.Value.(string) == n {
+			return true
+		}
+	}
+
 	return false
 }
