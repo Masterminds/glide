@@ -69,7 +69,7 @@ func ToYaml(cfg *Config) (string, error) {
 
 // Config is the top-level configuration object.
 type Config struct {
-	Parent     *Config
+	Parent     *Config      `yaml:"-"`
 	Name       string       `yaml:"package"`
 	Imports    Dependencies `yaml:"import"`
 	DevImports Dependencies `yaml:"devimport,omitempty"`

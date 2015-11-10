@@ -1,5 +1,6 @@
 # Release 0.7.1 (xxxx-xx-xx)
 
+- Fixed issue where glide guess listed a null parent.
 - Fixed #135: Hard failure when home directory not found for cache.
 - Fixed #137: Some messages not ending in "\n".
 - Fixed #132 and #133: Build from source directions incorrect (thanks hyPiRion).
