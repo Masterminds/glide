@@ -37,12 +37,9 @@ func CheckColor(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 // Most importantly, it fails if glide.yaml is not present in the current
 // working directory.
 func ReadyToGlide(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	defer fmt.Printf("Final file: %#v\n", p)
 	fname := p.Get("filename", "glide.yaml").(string)
-	if _, err := os.Stat(fname); err != nil {
-		cwd, _ := os.Getwd()
-		return false, fmt.Errorf("%s is missing from %s", fname, cwd)
-	}
-	return true, nil
+	return LookupManifestFile(fname, p)
 }
 
 // VersionGuard ensures that the Go version is correct.

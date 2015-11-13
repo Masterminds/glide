@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"testing"
 
 	"github.com/Masterminds/cookoo"
@@ -39,6 +40,24 @@ import:
     subpackages:
       - yaml
 `
+
+func TestLookupManifestFile(t *testing.T) {
+	defer os.Chdir("cmd")
+	os.Chdir("..")
+
+	params := map[string]interface{}{"filename": "glide.yml"}
+	p := cookoo.NewParams(1)
+	p.Init(params)
+
+	exists, err := LookupManifestFile("glide.yaml", p)
+	if err != nil {
+		t.Errorf("Error while looking up the file: %s", err)
+	}
+
+	if exists.(bool) == false {
+		t.Error("Cannot find the file")
+	}
+}
 
 func TestFromYaml(t *testing.T) {
 	reg, router, cxt := cookoo.Cookoo()

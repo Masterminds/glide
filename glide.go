@@ -319,8 +319,8 @@ Example:
 		{
 			Name:      "update",
 			ShortName: "up",
-			Aliases:   []string{"install"},
-			Usage:     "Update or install a project's dependencies",
+			//Aliases:   []string{"install"},
+			Usage: "Update or install a project's dependencies",
 			Description: `This uses the native VCS of each package to try to
 	pull the most applicable updates. Packages with fixed refs (Versions or
 	tags) will not be updated. Packages with no ref or with a branch ref will
