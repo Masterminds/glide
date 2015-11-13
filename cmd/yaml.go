@@ -13,7 +13,7 @@ import (
 )
 
 // YAML language compatible file extensions
-var YAMLExtensions = []string{".yml", ".yaml"}
+var YAMLExtensions = []string{".yaml", ".yml"}
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
 //
@@ -42,7 +42,7 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 // in the current working directory
 func LookupManifestFile(fname string, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	ext := filepath.Ext(fname)
-	if ext != ".yml" && ext != ".yaml" {
+	if ext != YAMLExtensions[0] && ext != YAMLExtensions[1] {
 		return FileExists(fname)
 	}
 
