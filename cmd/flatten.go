@@ -58,9 +58,12 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	err := recFlatten(f, force, home, cache, cacheGopath, skipGopath)
 	flattenSetRefs(f)
 	Info("Project relies on %d dependencies.", len(deps))
-	exportFlattenedDeps(conf, deps)
 
-	return conf, err
+	// A shallow copy should be all that's needed.
+	confcopy := conf.Clone()
+	exportFlattenedDeps(confcopy, deps)
+
+	return confcopy, err
 }
 
 func exportFlattenedDeps(conf *yaml.Config, in map[string]*yaml.Dependency) {

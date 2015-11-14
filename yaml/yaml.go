@@ -108,6 +108,15 @@ func (c *Config) GetRoot() *Config {
 	return c
 }
 
+// Clone performs a deep clone of the Config instance
+func (c *Config) Clone() *Config {
+	n := &Config{}
+	n.Name = c.Name
+	n.Imports = c.Imports.Clone()
+	n.DevImports = c.DevImports.Clone()
+	return n
+}
+
 // Dependencies is a collection of Dependency
 type Dependencies []*Dependency
 
@@ -158,6 +167,20 @@ func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 	return vcs.NewRepo(remote, dest)
 }
 
+func (d *Dependency) Clone() *Dependency {
+	return &Dependency{
+		Name:             d.Name,
+		Reference:        d.Reference,
+		Pin:              d.Pin,
+		Repository:       d.Repository,
+		VcsType:          d.VcsType,
+		Subpackages:      d.Subpackages,
+		Arch:             d.Arch,
+		Os:               d.Os,
+		UpdateAsVendored: d.UpdateAsVendored,
+	}
+}
+
 // Get a dependency by name
 func (d Dependencies) Get(name string) *Dependency {
 	for _, dep := range d {
@@ -166,6 +189,14 @@ func (d Dependencies) Get(name string) *Dependency {
 		}
 	}
 	return nil
+}
+
+func (d Dependencies) Clone() Dependencies {
+	n := make(Dependencies, 0, 1)
+	for _, v := range d {
+		n = append(n, v.Clone())
+	}
+	return n
 }
 
 // DeDupe cleans up duplicates on a list of dependencies.
