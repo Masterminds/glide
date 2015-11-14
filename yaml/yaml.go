@@ -55,6 +55,16 @@ func FromYaml(yml string) (*Config, error) {
 			v.Subpackages = append(v.Subpackages, subpkg)
 		}
 	}
+
+	c.Imports, err = c.Imports.DeDupe()
+	if err != nil {
+		return c, err
+	}
+	c.DevImports, err = c.DevImports.DeDupe()
+	if err != nil {
+		return c, err
+	}
+
 	return c, nil
 }
 
@@ -201,30 +211,30 @@ func (d Dependencies) Clone() Dependencies {
 
 // DeDupe cleans up duplicates on a list of dependencies.
 func (d Dependencies) DeDupe() (Dependencies, error) {
-	checked := map[string]*Dependency{}
+	checked := map[string]int{}
+	imports := make(Dependencies, 0, 1)
+	i := 0
 	for _, dep := range d {
 		// The first time we encounter a dependency add it to the list
 		if val, ok := checked[dep.Name]; !ok {
-			checked[dep.Name] = dep
+			checked[dep.Name] = i
+			imports = append(imports, dep)
+			i++
 		} else {
 			// In here we've encountered a dependency for the second time.
 			// Make sure the details are the same or return an error.
-			if dep.Reference != val.Reference {
-				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Reference, val.Reference)
+			v := imports[val]
+			if dep.Reference != v.Reference {
+				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Reference, v.Reference)
 			}
-			if dep.Repository != val.Repository || dep.VcsType != val.VcsType {
+			if dep.Repository != v.Repository || dep.VcsType != v.VcsType {
 				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
 			}
-			if !reflect.DeepEqual(dep.Os, val.Os) || !reflect.DeepEqual(dep.Arch, val.Arch) {
+			if !reflect.DeepEqual(dep.Os, v.Os) || !reflect.DeepEqual(dep.Arch, v.Arch) {
 				return d, fmt.Errorf("Import %s repeated with different OS or Architecture filtering", dep.Name)
 			}
-			checked[dep.Name].Subpackages = stringArrayDeDupe(checked[dep.Name].Subpackages, dep.Subpackages...)
+			imports[checked[dep.Name]].Subpackages = stringArrayDeDupe(v.Subpackages, dep.Subpackages...)
 		}
-	}
-
-	imports := make(Dependencies, 0, 1)
-	for _, dep := range checked {
-		imports = append(imports, dep)
 	}
 
 	return imports, nil

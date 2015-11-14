@@ -1,6 +1,7 @@
 # Release 0.7.2 (2015-11-XX)
 
 - Fixed #139: glide.yaml file imports being reordered when file written.
+- Fixed #140: packages in glide.yaml were no longer being deduped.
 
 # Release 0.7.1 (2015-11-10)
 
