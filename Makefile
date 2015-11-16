@@ -2,7 +2,7 @@ VERSION := $(shell git describe --tags)
 DIST_DIRS := find * -type d -exec
 
 build:
-	go build -o glide -ldflags "-X main.version=${VERSION}" glide.go
+	go build -o glide -ldflags "-X main.version=$(VERSION)" glide.go
 
 install: build
 	install -d ${DESTDIR}/usr/local/bin/
@@ -29,7 +29,7 @@ bootstrap-dist:
 
 build-all:
 	gox -verbose \
-	-ldflags "-X main.version=${VERSION}" \
+	-ldflags "-X main.version=$(VERSION)" \
 	-os="linux darwin windows " \
 	-arch="amd64 386" \
 	-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
