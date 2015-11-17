@@ -54,7 +54,7 @@ func VendoredSetup(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 }
 
 // VendoredCleanUp is a command that cleans up vendored codebases after an update.
-// If enabled (via update) it removed the VCS info from updated vendored
+// If enabled (via update) it removes the VCS info from updated vendored
 // packages. This should be a suffix to UpdateImports and  VendoredSetup should
 // be a prefix to UpdateImports.
 func VendoredCleanUp(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -59,13 +58,18 @@ func ParseYamlString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 // 	- out (io.Writer): An output stream to write to. Default is os.Stdout.
 // 	- filename (string): If set, the file will be opened and the content will be written to it.
 func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil).(*yaml.Config)
+	cfg := p.Get("conf", nil)
 	toStdout := p.Get("toStdout", true).(bool)
 
-	yml, err := yaml.ToYaml(cfg)
+	//yml, err := yaml.ToYaml(cfg)
+	//if err != nil {
+	//return nil, err
+	//}
+	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return nil, err
 	}
+
 	var out io.Writer
 	if nn, ok := p.Has("filename"); ok && len(nn.(string)) > 0 {
 		file, err := os.Create(nn.(string))
@@ -73,10 +77,12 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		}
 		defer file.Close()
 		out = io.Writer(file)
-		fmt.Fprint(out, yml)
+		//fmt.Fprint(out, yml)
+		out.Write(data)
 	} else if toStdout {
 		out = p.Get("out", os.Stdout).(io.Writer)
-		fmt.Fprint(out, yml)
+		//fmt.Fprint(out, yml)
+		out.Write(data)
 	}
 
 	// Otherwise we supress output.

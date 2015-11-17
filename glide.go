@@ -564,10 +564,22 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("pin", "Print a YAML file with all of the packages pinned to the current version.").
 		Includes("@startup").
 		Includes("@ready").
-		Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
+		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
+		Using("packages").From("cxt:packages").
+		Using("force").From("cxt:forceUpdate").
+		Using("skip").From("cxt:skipFlatten").
+		Using("home").From("cxt:home").
+		Using("cache").From("cxt:useCache").
+		Using("cacheGopath").From("cxt:cacheGopath").
+		Using("skipGopath").From("cxt:skipGopath").
+		//Does(cmd.VendoredCleanUp, "_").
+		//Using("conf").From("cxt:flattened").
+		//Using("update").From("cxt:updateVendoredDeps").
+		// Write the Lockfile
 		Does(cmd.WriteYaml, "out").
-		Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:toPath")
+		Using("conf").From("cxt:Lockfile").
+		Using("filename").From("cxt:toPath").
+		Using("toStdout").From("cxt:toStdout")
 
 	reg.Route("import gpm", "Read a Godeps file").
 		Includes("@startup").

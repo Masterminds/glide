@@ -77,6 +77,13 @@ func ToYaml(cfg *Config) (string, error) {
 	return string(yml), nil
 }
 
+// Marhsal encodes using the package's YAML encoder.
+//
+// Use this instead of ToYaml.
+func Marshal(v interface{}) ([]byte, error) {
+	return yaml.Marshal(v)
+}
+
 // Config is the top-level configuration object.
 type Config struct {
 	Parent     *Config      `yaml:"-"`

@@ -59,6 +59,8 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	flattenSetRefs(f)
 	Info("Project relies on %d dependencies.", len(deps))
 
+	c.Put("Lockfile", yaml.LockfileFromMap(deps))
+
 	// A shallow copy should be all that's needed.
 	confcopy := conf.Clone()
 	exportFlattenedDeps(confcopy, deps)
