@@ -56,6 +56,13 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	f := &flattening{conf, vend, vend, deps, packages}
 
 	err := recFlatten(f, force, home, cache, cacheGopath, skipGopath)
+	if err != nil {
+		return conf, err
+	}
+	err = conf.DeDupe()
+	if err != nil {
+		return conf, err
+	}
 	flattenSetRefs(f)
 	Info("Project relies on %d dependencies.", len(deps))
 
@@ -136,6 +143,11 @@ func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, skip
 func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath, skipGopath bool) error {
 	//vdir := path.Join(base, "vendor")
 	for _, imp := range f.deps {
+		// If the top package name in the glide.yaml file is present in the deps
+		// skip it because we already have it.
+		if imp.Name == f.conf.Name {
+			continue
+		}
 		wd := path.Join(f.top, imp.Name)
 		if VcsExists(imp, wd) {
 			if updateCache[imp.Name] {

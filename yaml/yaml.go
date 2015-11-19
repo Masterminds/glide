@@ -56,11 +56,7 @@ func FromYaml(yml string) (*Config, error) {
 		}
 	}
 
-	c.Imports, err = c.Imports.DeDupe()
-	if err != nil {
-		return c, err
-	}
-	c.DevImports, err = c.DevImports.DeDupe()
+	c.DeDupe()
 	if err != nil {
 		return c, err
 	}
@@ -115,6 +111,43 @@ func (c *Config) HasRecursiveDependency(name string) bool {
 		return c.Parent.HasRecursiveDependency(name)
 	}
 	return false
+}
+
+func (c *Config) DeDupe() error {
+
+	// Remove duplicates in the imports
+	var err error
+	c.Imports, err = c.Imports.DeDupe()
+	if err != nil {
+		return err
+	}
+	c.DevImports, err = c.DevImports.DeDupe()
+	if err != nil {
+		return err
+	}
+
+	// If the name on the config object is part of the imports remove it.
+	found := -1
+	for i, dep := range c.Imports {
+		if dep.Name == c.Name {
+			found = i
+		}
+	}
+	if found >= 0 {
+		c.Imports = append(c.Imports[:found], c.Imports[found+1:]...)
+	}
+
+	found = -1
+	for i, dep := range c.DevImports {
+		if dep.Name == c.Name {
+			found = i
+		}
+	}
+	if found >= 0 {
+		c.Imports = append(c.DevImports[:found], c.DevImports[found+1:]...)
+	}
+
+	return nil
 }
 
 // GetRoot follows the Parent down to the top node
