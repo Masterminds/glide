@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
 )
 
 // GuessDeps tries to get the dependencies for the current directory.
@@ -26,15 +26,15 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		return nil, err
 	}
 
-	config := new(yaml.Config)
+	config := new(cfg.Config)
 
 	// Get the name of the top level package
 	config.Name = guessPackageName(buildContext, base)
-	config.Imports = make([]*yaml.Dependency, len(deps))
+	config.Imports = make([]*cfg.Dependency, len(deps))
 	i := 0
 	for pa := range deps {
 		Info("Found reference to %s\n", pa)
-		d := &yaml.Dependency{
+		d := &cfg.Dependency{
 			Name: pa,
 		}
 		config.Imports[i] = d

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
 )
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
@@ -16,7 +16,7 @@ import (
 //	- filename (string): YAML filename as a string
 //
 // Returns:
-//	- *yaml.Config: The configuration.
+//	- *cfg.Config: The configuration.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
 	//conf := new(Config)
@@ -24,12 +24,12 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := yaml.FromYaml(string(yml))
+	conf, err := cfg.ConfigFromYaml(yml)
 	if err != nil {
 		return nil, err
 	}
 
-	return cfg, nil
+	return conf, nil
 }
 
 // ParseYamlString parses a YAML string. This is similar but different to
@@ -39,33 +39,29 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 //	- yaml (string): YAML as a string.
 //
 // Returns:
-//	- *yaml.Config: The configuration.
+//	- *cfg.Config: The configuration.
 func ParseYamlString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	yamlString := p.Get("yaml", "").(string)
 
-	cfg, err := yaml.FromYaml(string(yamlString))
+	conf, err := cfg.ConfigFromYaml([]byte(yamlString))
 	if err != nil {
 		return nil, err
 	}
 
-	return cfg, nil
+	return conf, nil
 }
 
-// WriteYaml writes a yaml.Node to the console as a string.
+// WriteYaml writes the config as YAML.
 //
 // Params:
-//	- conf: A *yaml.Config to render.
+//	- conf: A *cfg.Config to render.
 // 	- out (io.Writer): An output stream to write to. Default is os.Stdout.
 // 	- filename (string): If set, the file will be opened and the content will be written to it.
 func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil)
+	conf := p.Get("conf", nil).(*cfg.Config)
 	toStdout := p.Get("toStdout", true).(bool)
 
-	//yml, err := yaml.ToYaml(cfg)
-	//if err != nil {
-	//return nil, err
-	//}
-	data, err := yaml.Marshal(cfg)
+	data, err := conf.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -89,12 +85,12 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	return true, nil
 }
 
-// AddDependencies adds a list of *Dependency objects to the given *yaml.Config.
+// AddDependencies adds a list of *Dependency objects to the given *cfg.Config.
 //
 // This is used to merge in packages from other sources or config files.
 func AddDependencies(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	deps := p.Get("dependencies", []*yaml.Dependency{}).([]*yaml.Dependency)
-	config := p.Get("conf", nil).(*yaml.Config)
+	deps := p.Get("dependencies", []*cfg.Dependency{}).([]*cfg.Dependency)
+	config := p.Get("conf", nil).(*cfg.Config)
 
 	// Make a set of existing package names for quick comparison.
 	pkgSet := make(map[string]bool, len(config.Imports))

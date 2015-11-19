@@ -1,13 +1,15 @@
-package yaml
+package cfg
 
 import (
 	"time"
 )
 
+// Lockfile represents a glide.lock file.
 type Lockfile struct {
-	Hash    string    `yaml:"hash"`
-	Updated time.Time `yaml:"updated"`
-	Imports []*Lock   `yaml:"imports"`
+	Hash       string    `yaml:"hash"`
+	Updated    time.Time `yaml:"updated"`
+	Imports    []*Lock   `yaml:"imports"`
+	DevImports []*Lock   `yaml:"devImports"`
 }
 
 type Lock struct {

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/util"
-	"github.com/Masterminds/glide/yaml"
 )
 
 // This file contains commands for working with Godep.
@@ -48,19 +48,19 @@ func HasGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Int
 // Params:
 // - dir (string): the project's directory
 //
-// Returns an []*yaml.Dependency
+// Returns an []*cfg.Dependency
 func ParseGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
 	return parseGodepGodeps(dir)
 }
-func parseGodepGodeps(dir string) ([]*yaml.Dependency, error) {
+func parseGodepGodeps(dir string) ([]*cfg.Dependency, error) {
 	path := filepath.Join(dir, "Godeps/Godeps.json")
 	if _, err := os.Stat(path); err != nil {
-		return []*yaml.Dependency{}, nil
+		return []*cfg.Dependency{}, nil
 	}
 	Info("Found Godeps.json file.\n")
 
-	buf := []*yaml.Dependency{}
+	buf := []*cfg.Dependency{}
 
 	godeps := new(Godeps)
 
@@ -96,7 +96,7 @@ func parseGodepGodeps(dir string) ([]*yaml.Dependency, error) {
 			}
 		} else {
 			seen[pkg] = true
-			dep := &yaml.Dependency{Name: pkg, Reference: d.Rev}
+			dep := &cfg.Dependency{Name: pkg, Reference: d.Rev}
 			if len(sub) > 0 {
 				dep.Subpackages = []string{sub}
 			}

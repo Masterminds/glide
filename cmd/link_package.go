@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
 )
 
 // LinkPackage creates a symlink to the project within the GOPATH.
 func LinkPackage(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := c.Get("cfg", "").(*yaml.Config)
-	pname := p.Get("path", cfg.Name).(string)
+	conf := c.Get("cfg", "").(*cfg.Config)
+	pname := p.Get("path", conf.Name).(string)
 
 	// Per issue #10, this may be nicer to work with in cases where repos are
 	// moved.

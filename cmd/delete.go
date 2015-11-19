@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
 )
 
 // DeleteUnusedPackages removes packages from vendor/ that are no longer used.
@@ -27,7 +27,7 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 	}
 
 	// Build directory tree of what to keep.
-	cfg := p.Get("conf", nil).(*yaml.Config)
+	cfg := p.Get("conf", nil).(*cfg.Config)
 	var pkgList []string
 	for _, dep := range cfg.Imports {
 		pkgList = append(pkgList, dep.Name)

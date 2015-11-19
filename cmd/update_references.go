@@ -4,7 +4,7 @@ import (
 	"path"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
 )
 
 // UpdateReferences updates the revision numbers on all of the imports.
@@ -13,10 +13,10 @@ import (
 // be updated.
 //
 // Params:
-// 	- conf (*yaml.Config): Configuration
+// 	- conf (*cfg.Config): Configuration
 // 	- packages ([]string): A list of packages to update. Default is all packages.
 func UpdateReferences(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", &yaml.Config{}).(*yaml.Config)
+	conf := p.Get("conf", &cfg.Config{}).(*cfg.Config)
 	plist := p.Get("packages", []string{}).([]string)
 	vend, _ := VendorPath(c)
 	pkgs := list2map(plist)
@@ -27,33 +27,33 @@ func UpdateReferences(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.I
 		return false, err
 	}
 
-	if len(cfg.Imports) == 0 {
-		return cfg, nil
+	if len(conf.Imports) == 0 {
+		return conf, nil
 	}
 
 	// Walk the dependency tree to discover all the packages to pin.
-	packages := make([]string, len(cfg.Imports))
-	for i, v := range cfg.Imports {
+	packages := make([]string, len(conf.Imports))
+	for i, v := range conf.Imports {
 		packages[i] = v.Name
 	}
-	deps := make(map[string]*yaml.Dependency, len(cfg.Imports))
-	for _, imp := range cfg.Imports {
+	deps := make(map[string]*cfg.Dependency, len(conf.Imports))
+	for _, imp := range conf.Imports {
 		deps[imp.Name] = imp
 	}
-	f := &flattening{cfg, vend, vend, deps, packages}
+	f := &flattening{conf, vend, vend, deps, packages}
 	err = discoverDependencyTree(f)
 	if err != nil {
-		return cfg, err
+		return conf, err
 	}
 
-	exportFlattenedDeps(cfg, deps)
+	exportFlattenedDeps(conf, deps)
 
-	err = cfg.DeDupe()
+	err = conf.DeDupe()
 	if err != nil {
-		return cfg, err
+		return conf, err
 	}
 
-	for _, imp := range cfg.Imports {
+	for _, imp := range conf.Imports {
 		if restrict && !pkgs[imp.Name] {
 			Debug("===> Skipping %q", imp.Name)
 			continue
@@ -65,7 +65,7 @@ func UpdateReferences(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.I
 		imp.Reference = commit
 	}
 
-	return cfg, nil
+	return conf, nil
 }
 
 func discoverDependencyTree(f *flattening) error {
