@@ -223,7 +223,11 @@ func walkDeps(b *BuildCtxt, base, myName string) []string {
 
 		pkg, err := b.ImportDir(path, 0)
 		if err != nil {
-			return err
+			if !strings.HasPrefix(err.Error(), "no buildable Go source") {
+				Warn("Error: %s (%s)", err, path)
+				// Not sure if we should return here.
+				//return err
+			}
 		}
 
 		if pkg.Goroot {
