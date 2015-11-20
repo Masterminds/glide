@@ -34,7 +34,7 @@ devimport:
   - package: github.com/kylelemons/go-gypsy
 `
 
-func TestConfigFromYaml(t *testing.T) {
+func TestManualConfigFromYaml(t *testing.T) {
 	cfg := &Config{}
 	err := yaml.Unmarshal([]byte(yml), &cfg)
 	if err != nil {
@@ -86,5 +86,31 @@ func TestClone(t *testing.T) {
 
 	if cfg.Name == cfg2.Name {
 		t.Error("Cloning Config name failed")
+	}
+}
+
+func TestConfigFromYaml(t *testing.T) {
+	c, err := ConfigFromYaml([]byte(yml))
+	if err != nil {
+		t.Error("ConfigFromYaml failed to parse yaml")
+	}
+
+	if c.Name != "fake/testing" {
+		t.Error("ConfigFromYaml failed to properly parse yaml")
+	}
+}
+
+func TestHasDependency(t *testing.T) {
+	c, err := ConfigFromYaml([]byte(yml))
+	if err != nil {
+		t.Error("ConfigFromYaml failed to parse yaml for HasDependency")
+	}
+
+	if c.HasDependency("github.com/Masterminds/convert") != true {
+		t.Error("HasDependency failing to pickup depenency")
+	}
+
+	if c.HasDependency("foo/bar/bar") != false {
+		t.Error("HasDependency picking up dependency it shouldn't")
 	}
 }
