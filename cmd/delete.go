@@ -30,7 +30,12 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 	cfg := p.Get("conf", nil).(*yaml.Config)
 	var pkgList []string
 	for _, dep := range cfg.Imports {
-		pkgList = append(pkgList, dep.Name)
+		for _, sub := range dep.Subpackages {
+			pkgList = append(pkgList, dep.Name+"/"+sub)
+		}
+		if len(dep.Subpackages) == 0 {
+			pkgList = append(pkgList, dep.Name)
+		}
 	}
 
 	// Callback function for filepath.Walk to delete packages not in yaml file.
@@ -55,8 +60,9 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 		// First check if the path has a prefix that's a specific package. If
 		// so we keep it to keep the package.
 		for _, name := range pkgList {
-			if strings.HasPrefix(localPath, name) {
+			if localPath == name || strings.HasPrefix(localPath, name+"/") || strings.HasSuffix(name, "/.") && localPath == name[:len(name)-2] {
 				keep = true
+				break
 			}
 		}
 
@@ -66,8 +72,9 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 		// and packages we know about to mark as keepers.
 		if keep == false {
 			for _, name := range pkgList {
-				if strings.HasPrefix(name, localPath) {
+				if strings.HasPrefix(name, localPath+"/") {
 					keep = true
+					break
 				}
 			}
 		}
@@ -75,7 +82,7 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 		// If the parent directory has already been marked for delete this
 		// directory doesn't need to be marked.
 		for _, markedDirectory := range markForDelete {
-			if strings.HasPrefix(path, markedDirectory) {
+			if strings.HasPrefix(path, markedDirectory+"/") {
 				return nil
 			}
 		}
