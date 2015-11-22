@@ -5,11 +5,15 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/yaml"
 )
+
+// YAML language compatible file extensions
+var YAMLExtensions = []string{".yaml", ".yml"}
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
 //
@@ -20,17 +24,58 @@ import (
 //	- *yaml.Config: The configuration.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
-	//conf := new(Config)
+
 	yml, err := ioutil.ReadFile(fname)
 	if err != nil {
 		return nil, err
 	}
+
 	cfg, err := yaml.FromYaml(string(yml))
 	if err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
+}
+
+// LookupManifestFile look up for a given file
+// in the current working directory
+func LookupManifestFile(fname string, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	ext := filepath.Ext(fname)
+	if ext != YAMLExtensions[0] && ext != YAMLExtensions[1] {
+		return FileExists(fname)
+	}
+
+	var err cookoo.Interrupt
+	var exists interface{}
+	var name string = filepath.Base(fname[0 : len(fname)-len(ext)])
+
+	for _, ext := range YAMLExtensions {
+		filename := name + ext
+		exists, err = FileExists(filename)
+		if err != nil {
+			continue
+		}
+
+		// Overwrite YAML file params
+		params := p.AsMap()
+		params["yaml"] = filename
+		params["filename"] = filename
+		p.Init(params)
+		break
+	}
+
+	return exists, err
+}
+
+// FileExists verifies if the given filename exists in the
+// current working directory
+func FileExists(fname string) (interface{}, cookoo.Interrupt) {
+	if _, err := os.Stat(fname); err != nil {
+		cwd, _ := os.Getwd()
+		return false, fmt.Errorf("%s is missing from %s", fname, cwd)
+	}
+	return true, nil
 }
 
 // ParseYamlString parses a YAML string. This is similar but different to
