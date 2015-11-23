@@ -19,9 +19,9 @@ type Config struct {
 
 // A transitive representation of a dependency for importing and exploting to yaml.
 type cf struct {
-	Name       *string       `yaml:"package"`
-	Imports    *Dependencies `yaml:"import"`
-	DevImports *Dependencies `yaml:"devimport,omitempty"`
+	Name       string       `yaml:"package"`
+	Imports    Dependencies `yaml:"import"`
+	DevImports Dependencies `yaml:"devimport,omitempty"`
 }
 
 // ConfigFromYaml returns an instance of Config from YAML
@@ -42,14 +42,13 @@ func (c *Config) Marshal() ([]byte, error) {
 
 // UnmarshalYAML is a hook for gopkg.in/yaml.v2 in the unmarshalling process
 func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	newConfig := &cf{
-		&c.Name,
-		&c.Imports,
-		&c.DevImports,
-	}
+	newConfig := &cf{}
 	if err := unmarshal(&newConfig); err != nil {
 		return err
 	}
+	c.Name = newConfig.Name
+	c.Imports = newConfig.Imports
+	c.DevImports = newConfig.DevImports
 
 	// Cleanup the Config object now that we have it.
 	err := c.DeDupe()
@@ -60,7 +59,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name: &c.Name,
+		Name: c.Name,
 	}
 	i, err := c.Imports.Clone().DeDupe()
 	if err != nil {
@@ -72,8 +71,8 @@ func (c *Config) MarshalYAML() (interface{}, error) {
 		return newConfig, err
 	}
 
-	newConfig.Imports = &i
-	newConfig.DevImports = &di
+	newConfig.Imports = i
+	newConfig.DevImports = di
 
 	return newConfig, nil
 }
@@ -208,33 +207,31 @@ type Dependency struct {
 
 // A transitive representation of a dependency for importing and exploting to yaml.
 type dep struct {
-	Name        *string   `yaml:"package"`
-	Reference   *string   `yaml:"version,omitempty"`
-	Ref         *string   `yaml:"ref,omitempty"`
-	Repository  *string   `yaml:"repo,omitempty"`
-	VcsType     *string   `yaml:"vcs,omitempty"`
-	Subpackages *[]string `yaml:"subpackages,omitempty"`
-	Arch        *[]string `yaml:"arch,omitempty"`
-	Os          *[]string `yaml:"os,omitempty"`
+	Name        string   `yaml:"package"`
+	Reference   string   `yaml:"version,omitempty"`
+	Ref         string   `yaml:"ref,omitempty"`
+	Repository  string   `yaml:"repo,omitempty"`
+	VcsType     string   `yaml:"vcs,omitempty"`
+	Subpackages []string `yaml:"subpackages,omitempty"`
+	Arch        []string `yaml:"arch,omitempty"`
+	Os          []string `yaml:"os,omitempty"`
 }
 
 // UnmarshalYAML is a hook for gopkg.in/yaml.v2 in the unmarshaling process
 func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var ref string
-	newDep := &dep{
-		&d.Name,
-		&d.Reference,
-		&ref,
-		&d.Repository,
-		&d.VcsType,
-		&d.Subpackages,
-		&d.Arch,
-		&d.Os,
-	}
+	newDep := &dep{}
 	err := unmarshal(&newDep)
 	if err != nil {
 		return err
 	}
+	d.Name = newDep.Name
+	d.Reference = newDep.Reference
+	d.Repository = newDep.Repository
+	d.VcsType = newDep.VcsType
+	d.Subpackages = newDep.Subpackages
+	d.Arch = newDep.Arch
+	d.Os = newDep.Os
 
 	if d.Reference == "" && ref != "" {
 		d.Reference = ref
@@ -260,13 +257,13 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	// Make sure we only write the correct vcs type to file
 	t := filterVcsType(d.VcsType)
 	newDep := &dep{
-		Name:        &d.Name,
-		Reference:   &d.Reference,
-		Repository:  &d.Repository,
-		VcsType:     &t,
-		Subpackages: &d.Subpackages,
-		Arch:        &d.Arch,
-		Os:          &d.Os,
+		Name:        d.Name,
+		Reference:   d.Reference,
+		Repository:  d.Repository,
+		VcsType:     t,
+		Subpackages: d.Subpackages,
+		Arch:        d.Arch,
+		Os:          d.Os,
 	}
 
 	return newDep, nil
