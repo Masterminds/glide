@@ -26,6 +26,8 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		return nil, err
 	}
 
+	Info("Generating a YAML configuration file and guessing the dependencies")
+
 	config := new(cfg.Config)
 
 	// Get the name of the top level package

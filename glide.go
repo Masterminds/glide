@@ -124,22 +124,15 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:      "create",
 			ShortName: "init",
-			Usage:     "Initialize a new project, creating a template glide.yaml",
+			Usage:     "Initialize a new project, creating a glide.yaml file",
 			Description: `This command starts from a project without Glide and
-	sets it up. Once this step is done, you may edit the glide.yaml file and then
-	you may run 'glide install' to fetch your initial dependencies.
+	sets it up. It generates a glide.yaml file, parsing your codebase to guess
+	the dependencies to include. Once this step is done you may edit the
+	glide.yaml file to update imported dependency properties such as the version
+	or version range to include.
 
-	By default, the project name is 'main'. You can specify an alternative on
-	the commandline:
-
-		$ glide create github.com/Masterminds/foo
-
-	For a project that already has a glide.yaml file, you may skip 'glide create'
-	and instead run 'glide up'.`,
+	To fetch the dependencies you may run 'glide install'.`,
 			Action: func(c *cli.Context) {
-				if len(c.Args()) >= 1 {
-					cxt.Put("project", c.Args()[0])
-				}
 				setupHandler(c, "create", cxt, router)
 			},
 		},
@@ -429,27 +422,6 @@ Example:
 			},
 		},
 		{
-			Name:  "guess",
-			Usage: "Guess dependencies for existing source.",
-			Description: `This looks through existing source and dependencies,
-	and tries to guess all of the dependent packages.
-
-	By default, 'glide guess' writes to standard output. But if a filename
-	is supplied, the results are written to the file:
-
-		$ glide guess glide.yaml
-
-	The above will overwrite the glide.yaml file.`,
-			Action: func(c *cli.Context) {
-				outfile := ""
-				if len(c.Args()) == 1 {
-					outfile = c.Args()[0]
-				}
-				cxt.Put("toPath", outfile)
-				setupHandler(c, "guess", cxt, router)
-			},
-		},
-		{
 			Name:  "about",
 			Usage: "Learn about Glide",
 			Action: func(c *cli.Context) {
@@ -610,18 +582,14 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath")
 
-	reg.Route("guess", "Guess dependencies").
-		Includes("@ready").
+	reg.Route("create", "Guess dependencies").
+		Includes("@startup").
+		Does(cmd.GuardYaml, "_").
+		Using("filename").From("cxt:yaml").
 		Does(cmd.GuessDeps, "cfg").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:toPath")
-
-	reg.Route("create", "Initialize Glide").
-		Includes("@startup").
-		Does(cmd.InitGlide, "init").
-		Using("filename").From("cxt:yaml").
-		Using("project").From("cxt:project").WithDefault("main")
+		Using("filename").From("cxt:yaml")
 
 	reg.Route("name", "Print environment").
 		Includes("@startup").
