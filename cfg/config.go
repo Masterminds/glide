@@ -219,7 +219,6 @@ type dep struct {
 
 // UnmarshalYAML is a hook for gopkg.in/yaml.v2 in the unmarshaling process
 func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var ref string
 	newDep := &dep{}
 	err := unmarshal(&newDep)
 	if err != nil {
@@ -233,8 +232,8 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	d.Arch = newDep.Arch
 	d.Os = newDep.Os
 
-	if d.Reference == "" && ref != "" {
-		d.Reference = ref
+	if d.Reference == "" && newDep.Ref != "" {
+		d.Reference = newDep.Ref
 	}
 
 	// Make sure only legitimate VCS are listed.
