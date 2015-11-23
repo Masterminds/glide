@@ -510,13 +510,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
 
-	reg.Route("exec", "Execute command with GOPATH set.").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.ExecCmd, "cmd").
-		Using("args").From("cxt:cliArgs").
-		Using("filename").From("cxt:yaml")
-
 	reg.Route("update", "Update dependencies.").
 		Includes("@startup").
 		Includes("@ready").
