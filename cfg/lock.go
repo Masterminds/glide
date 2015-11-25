@@ -4,6 +4,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 // Lockfile represents a glide.lock file.
@@ -12,6 +14,15 @@ type Lockfile struct {
 	Updated    time.Time `yaml:"updated"`
 	Imports    Locks     `yaml:"imports"`
 	DevImports Locks     `yaml:"devImports"`
+}
+
+// Marshal converts a Config instance to YAML
+func (lf *Lockfile) Marshal() ([]byte, error) {
+	yml, err := yaml.Marshal(&lf)
+	if err != nil {
+		return []byte{}, err
+	}
+	return yml, nil
 }
 
 type Locks []*Lock
@@ -43,8 +54,9 @@ type Lock struct {
 	Version string `yaml:"version"`
 }
 
-func NewLockfile(ds Dependencies) *Lockfile {
+func NewLockfile(ds Dependencies, hash string) *Lockfile {
 	lf := &Lockfile{
+		Hash:    hash,
 		Updated: time.Now(),
 		Imports: make([]*Lock, len(ds)),
 	}
@@ -52,7 +64,7 @@ func NewLockfile(ds Dependencies) *Lockfile {
 	for i := 0; i < len(ds); i++ {
 		lf.Imports[i] = &Lock{
 			Name:    ds[i].Name,
-			Version: ds[i].Reference,
+			Version: ds[i].Pin,
 		}
 	}
 
@@ -61,8 +73,9 @@ func NewLockfile(ds Dependencies) *Lockfile {
 	return lf
 }
 
-func LockfileFromMap(ds map[string]*Dependency) *Lockfile {
+func LockfileFromMap(ds map[string]*Dependency, hash string) *Lockfile {
 	lf := &Lockfile{
+		Hash:    hash,
 		Updated: time.Now(),
 		Imports: make([]*Lock, len(ds)),
 	}

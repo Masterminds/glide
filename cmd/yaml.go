@@ -97,6 +97,31 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	return true, nil
 }
 
+// WriteLock writes the lock as YAML.
+//
+// Params:
+//	- lockfile: A *cfg.Lockfile to render.
+// 	- out (io.Writer): An output stream to write to. Default is os.Stdout.
+func WriteLock(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	lockfile := p.Get("lockfile", nil).(*cfg.Lockfile)
+
+	data, err := lockfile.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	var out io.Writer
+	file, err := os.Create("glide.lock")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+	out = io.Writer(file)
+	out.Write(data)
+
+	return true, nil
+}
+
 // AddDependencies adds a list of *Dependency objects to the given *cfg.Config.
 //
 // This is used to merge in packages from other sources or config files.

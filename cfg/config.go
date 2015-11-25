@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"reflect"
 	"strings"
@@ -137,6 +138,18 @@ func (c *Config) DeDupe() error {
 	}
 
 	return nil
+}
+
+// Hash generates a sha256 hash for a given Config
+func (c *Config) Hash() (string, error) {
+	yml, err := c.Marshal()
+	if err != nil {
+		return "", err
+	}
+
+	hash := sha256.New()
+	hash.Sum(yml)
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
 // Dependencies is a collection of Dependency

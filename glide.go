@@ -516,7 +516,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath").
-		Using("toStdout").From("cxt:toStdout")
+		Using("toStdout").From("cxt:toStdout").
+		Does(cmd.WriteLock, "lock").
+		Using("lockfile").From("cxt:Lockfile")
 
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 

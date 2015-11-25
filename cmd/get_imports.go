@@ -514,12 +514,18 @@ func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath
 
 // VcsVersion set the VCS version for a checkout.
 func VcsVersion(dep *cfg.Dependency, vend string) error {
+	cwd := path.Join(vend, dep.Name)
+
 	// If there is no refernece configured there is nothing to set.
 	if dep.Reference == "" {
+		// Before exiting update the pinned version
+		repo, err := dep.GetRepo(cwd)
+		dep.Pin, err = repo.Version()
+		if err != nil {
+			return err
+		}
 		return nil
 	}
-
-	cwd := path.Join(vend, dep.Name)
 
 	// When the directory is not empty and has no VCS directory it's
 	// a vendored files situation.
@@ -583,6 +589,10 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 		}
 		if err := repo.UpdateVersion(ver); err != nil {
 			Error("Failed to set version to %s: %s\n", dep.Reference, err)
+			return err
+		}
+		dep.Pin, err = repo.Version()
+		if err != nil {
 			return err
 		}
 	}
