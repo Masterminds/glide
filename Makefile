@@ -17,12 +17,19 @@ clean:
 	rm -rf ./dist
 
 bootstrap:
+	rm -rf ./vendor
 	mkdir ./vendor
+	
 	git clone https://github.com/Masterminds/cookoo vendor/github.com/Masterminds/cookoo
+	rm -rf vendor/github.com/Masterminds/cookoo/.git
 	git clone https://github.com/Masterminds/vcs vendor/github.com/Masterminds/vcs
+	rm -rf vendor/github.com/Masterminds/vcs/.git
 	git clone https://gopkg.in/yaml.v2 vendor/gopkg.in/yaml.v2
+	rm -rf vendor/gopkg.in/yaml.v2/.git
 	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli
+	rm -rf vendor/github.com/codegangsta/cli/.git
 	git clone https://github.com/Masterminds/semver vendor/github.com/Masterminds/semver
+	rm -rf vendor/github.com/Masterminds/semver/.git
 
 bootstrap-dist:
 	go get -u github.com/mitchellh/gox
