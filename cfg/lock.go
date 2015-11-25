@@ -1,6 +1,8 @@
 package cfg
 
 import (
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -8,8 +10,32 @@ import (
 type Lockfile struct {
 	Hash       string    `yaml:"hash"`
 	Updated    time.Time `yaml:"updated"`
-	Imports    []*Lock   `yaml:"imports"`
-	DevImports []*Lock   `yaml:"devImports"`
+	Imports    Locks     `yaml:"imports"`
+	DevImports Locks     `yaml:"devImports"`
+}
+
+type Locks []*Lock
+
+// Len returns the length of the Locks. This is needed for sorting with
+// the sort package.
+func (l Locks) Len() int {
+	return len(l)
+}
+
+// Less is needed for the sort interface. It compares two locks based on
+// their name.
+func (l Locks) Less(i, j int) bool {
+
+	// Names are normalized to lowercase because case affects sorting order. For
+	// example, Masterminds comes before kylelemons. Making them lowercase
+	// causes kylelemons to come first which is what is expected.
+	return strings.ToLower(l[i].Name) < strings.ToLower(l[j].Name)
+}
+
+// Swap is needed for the sort interface. It swaps the position of two
+// locks.
+func (l Locks) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
 }
 
 type Lock struct {
@@ -17,7 +43,7 @@ type Lock struct {
 	Version string `yaml:"version"`
 }
 
-func NewLockfile(ds []*Dependency) *Lockfile {
+func NewLockfile(ds Dependencies) *Lockfile {
 	lf := &Lockfile{
 		Updated: time.Now(),
 		Imports: make([]*Lock, len(ds)),
@@ -29,6 +55,8 @@ func NewLockfile(ds []*Dependency) *Lockfile {
 			Version: ds[i].Reference,
 		}
 	}
+
+	sort.Sort(lf.Imports)
 
 	return lf
 }
@@ -47,6 +75,8 @@ func LockfileFromMap(ds map[string]*Dependency) *Lockfile {
 		}
 		i++
 	}
+
+	sort.Sort(lf.Imports)
 
 	return lf
 }
