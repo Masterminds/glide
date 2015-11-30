@@ -105,6 +105,8 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 func WriteLock(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	lockfile := p.Get("lockfile", nil).(*cfg.Lockfile)
 
+	Info("Writing glide.lock file")
+
 	data, err := lockfile.Marshal()
 	if err != nil {
 		return nil, err

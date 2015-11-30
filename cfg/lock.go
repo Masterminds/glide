@@ -16,6 +16,13 @@ type Lockfile struct {
 	DevImports Locks     `yaml:"devImports"`
 }
 
+// LockfileFromYaml returns an instance of Lockfile from YAML
+func LockfileFromYaml(yml []byte) (*Lockfile, error) {
+	lock := &Lockfile{}
+	err := yaml.Unmarshal([]byte(yml), &lock)
+	return lock, err
+}
+
 // Marshal converts a Config instance to YAML
 func (lf *Lockfile) Marshal() ([]byte, error) {
 	yml, err := yaml.Marshal(&lf)
@@ -50,8 +57,13 @@ func (l Locks) Swap(i, j int) {
 }
 
 type Lock struct {
-	Name    string `yaml:"name"`
-	Version string `yaml:"version"`
+	Name        string   `yaml:"name"`
+	Version     string   `yaml:"version"`
+	Repository  string   `yaml:"repo,omitempty"`
+	VcsType     string   `yaml:"vcs,omitempty"`
+	Subpackages []string `yaml:"subpackages,omitempty"`
+	Arch        []string `yaml:"arch,omitempty"`
+	Os          []string `yaml:"os,omitempty"`
 }
 
 func NewLockfile(ds Dependencies, hash string) *Lockfile {
@@ -63,8 +75,13 @@ func NewLockfile(ds Dependencies, hash string) *Lockfile {
 
 	for i := 0; i < len(ds); i++ {
 		lf.Imports[i] = &Lock{
-			Name:    ds[i].Name,
-			Version: ds[i].Pin,
+			Name:        ds[i].Name,
+			Version:     ds[i].Pin,
+			Repository:  ds[i].Repository,
+			VcsType:     ds[i].VcsType,
+			Subpackages: ds[i].Subpackages,
+			Arch:        ds[i].Arch,
+			Os:          ds[i].Os,
 		}
 	}
 
@@ -83,8 +100,13 @@ func LockfileFromMap(ds map[string]*Dependency, hash string) *Lockfile {
 	i := 0
 	for name, dep := range ds {
 		lf.Imports[i] = &Lock{
-			Name:    name,
-			Version: dep.Pin,
+			Name:        name,
+			Version:     dep.Pin,
+			Repository:  dep.Repository,
+			VcsType:     dep.VcsType,
+			Subpackages: dep.Subpackages,
+			Arch:        dep.Arch,
+			Os:          dep.Os,
 		}
 		i++
 	}

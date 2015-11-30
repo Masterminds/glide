@@ -310,10 +310,75 @@ Example:
 			},
 		},
 		{
+			Name:      "install",
+			ShortName: "i",
+			Usage:     "Install a project's dependencies",
+			Description: `This uses the native VCS of each packages to install
+		the appropriate version. There are two ways a projects dependencies can
+	be installed. When there is a glide.yaml file defining the dependencies but
+	no lock file (glide.lock) the dependencies are installed using the "update"
+	command and a glide.lock file is generated pinning all dependencies. If a
+	glide.lock file is already present the dependencies are installed or updated
+	from the lock file.`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "delete",
+					Usage: "Delete vendor packages not specified in config.",
+				},
+				cli.BoolFlag{
+					Name:  "no-recursive, quick",
+					Usage: "Disable updating dependencies' dependencies. Only update things in glide.yaml.",
+				},
+				cli.BoolFlag{
+					Name:  "force",
+					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
+				},
+				cli.BoolFlag{
+					Name:  "update-vendored, u",
+					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+				},
+				cli.StringFlag{
+					Name:  "file, f",
+					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+				},
+				cli.BoolFlag{
+					Name:  "cache",
+					Usage: "When downloading dependencies attempt to cache them.",
+				},
+				cli.BoolFlag{
+					Name:  "cache-gopath",
+					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+				},
+				cli.BoolFlag{
+					Name:  "skip-gopath",
+					Usage: "Skip attempting to copy a dependency from the GOPATH.",
+				},
+			},
+			Action: func(c *cli.Context) {
+				cxt.Put("deleteOptIn", c.Bool("delete"))
+				cxt.Put("forceUpdate", c.Bool("force"))
+				cxt.Put("skipFlatten", c.Bool("no-recursive"))
+				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
+				cxt.Put("toPath", c.String("file"))
+				cxt.Put("toStdout", false)
+				cxt.Put("useCache", c.Bool("cache"))
+				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
+				cxt.Put("skipGopath", c.Bool("skip-gopath"))
+				if c.Bool("import") {
+					cxt.Put("importGodeps", true)
+					cxt.Put("importGPM", true)
+					cxt.Put("importGb", true)
+				}
+				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
+
+				cxt.Put("packages", []string(c.Args()))
+				setupHandler(c, "install", cxt, router)
+			},
+		},
+		{
 			Name:      "update",
 			ShortName: "up",
-			Aliases:   []string{"install"},
-			Usage:     "Update or install a project's dependencies",
+			Usage:     "Update a project's dependencies",
 			Description: `This uses the native VCS of each package to try to
 	pull the most applicable updates. Packages with fixed refs (Versions or
 	tags) will not be updated. Packages with no ref or with a branch ref will
@@ -481,6 +546,28 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
+
+	reg.Route("install", "Install dependencies.").
+		Includes("@startup").
+		Includes("@ready").
+		Does(cmd.CowardMode, "_").
+		Does(cmd.LockFileExists, "_").
+		Does(cmd.LoadLockFile, "lock").
+		Using("conf").From("cxt:cfg").
+		Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
+		Does(cmd.DeleteUnusedPackages, "deleted").
+		Using("conf").From("cxt:cfg").
+		Using("optIn").From("cxt:deleteOptIn").
+		Does(cmd.VendoredSetup, "cfg").
+		Using("conf").From("cxt:cfg").
+		Using("update").From("cxt:updateVendoredDeps").
+		Does(cmd.Install, "icfg").
+		Using("conf").From("cxt:cfg").
+		Using("lock").From("cxt:lock").
+		Does(cmd.SetReference, "version").Using("conf").From("cxt:icfg").
+		Does(cmd.VendoredCleanUp, "_").
+		Using("conf").From("cxt:icfg").
+		Using("update").From("cxt:updateVendoredDeps")
 
 	reg.Route("update", "Update dependencies.").
 		Includes("@startup").
