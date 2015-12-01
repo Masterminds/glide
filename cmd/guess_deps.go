@@ -27,13 +27,12 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	// If there error is that no go source files were found try looking one
 	// level deeper. Some Go projects don't have go source files at the top
 	// level.
-	Info(err.Error())
 	switch err.(type) {
 	case *build.NoGoError:
-		Info("walking deps")
 		filepath.Walk(base, func(path string, fi os.FileInfo, err error) error {
 			if excludeSubtree(path, fi) {
-				if fi.IsDir() {
+				top := filepath.Base(path)
+				if fi.IsDir() && (top == "vendor" || top == "testdata") {
 					return filepath.SkipDir
 				}
 				return nil
@@ -64,7 +63,6 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 				case ptypeGoroot, ptypeCgo:
 					break
 				default:
-					Info("found: %s", imp)
 					deps[imp] = true
 				}
 			}
