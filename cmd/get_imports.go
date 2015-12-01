@@ -520,6 +520,9 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 	if dep.Reference == "" {
 		// Before exiting update the pinned version
 		repo, err := dep.GetRepo(cwd)
+		if err != nil {
+			return err
+		}
 		dep.Pin, err = repo.Version()
 		if err != nil {
 			return err

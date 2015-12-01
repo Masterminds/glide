@@ -176,13 +176,15 @@ func findPkg(b *BuildCtxt, name, cwd string) *pinfo {
 	if err != nil {
 		abs = cwd
 	}
-	for wd := abs; wd != "/"; wd = filepath.Dir(wd) {
-		p = filepath.Join(wd, "vendor", name)
-		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
-			info.Path = p
-			info.PType = ptypeVendor
-			info.Vendored = true
-			return info
+	if abs != "." {
+		for wd := abs; wd != "/"; wd = filepath.Dir(wd) {
+			p = filepath.Join(wd, "vendor", name)
+			if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
+				info.Path = p
+				info.PType = ptypeVendor
+				info.Vendored = true
+				return info
+			}
 		}
 	}
 	// Check $GOPATH
