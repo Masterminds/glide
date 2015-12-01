@@ -170,7 +170,13 @@ func findPkg(b *BuildCtxt, name, cwd string) *pinfo {
 	}
 
 	// Recurse backward to scan other vendor/ directories
-	for wd := cwd; wd != "/"; wd = filepath.Dir(wd) {
+	// If the cwd isn't an absolute path walking upwards looking for vendor/
+	// folders can get into an infinate loop.
+	abs, err := filepath.Abs(cwd)
+	if err != nil {
+		abs = cwd
+	}
+	for wd := abs; wd != "/"; wd = filepath.Dir(wd) {
 		p = filepath.Join(wd, "vendor", name)
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 			info.Path = p

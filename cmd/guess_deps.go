@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"go/build"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -20,18 +22,66 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	base := p.Get("dirname", ".").(string)
 	deps := make(map[string]bool)
 	err = findDeps(buildContext, deps, base, "")
+	name := guessPackageName(buildContext, base)
+
+	// If there error is that no go source files were found try looking one
+	// level deeper. Some Go projects don't have go source files at the top
+	// level.
+	Info(err.Error())
+	switch err.(type) {
+	case *build.NoGoError:
+		Info("walking deps")
+		filepath.Walk(base, func(path string, fi os.FileInfo, err error) error {
+			if excludeSubtree(path, fi) {
+				if fi.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
+			pkg, err := buildContext.ImportDir(path, 0)
+			if err != nil {
+				// When there is an error we skip it and keep going.
+				return nil
+			}
+
+			if pkg.Goroot {
+				return nil
+			}
+
+			for _, imp := range pkg.Imports {
+
+				// Skip subpackages of the project we're in.
+				if strings.HasPrefix(imp, name) {
+					continue
+				}
+				if imp == name {
+					continue
+				}
+
+				found := findPkg(buildContext, imp, base)
+				switch found.PType {
+				case ptypeGoroot, ptypeCgo:
+					break
+				default:
+					Info("found: %s", imp)
+					deps[imp] = true
+				}
+			}
+
+			return nil
+		})
+	}
+
 	deps = compactDeps(deps)
 	delete(deps, base)
-	if err != nil {
-		return nil, err
-	}
 
 	Info("Generating a YAML configuration file and guessing the dependencies")
 
 	config := new(cfg.Config)
 
 	// Get the name of the top level package
-	config.Name = guessPackageName(buildContext, base)
+	config.Name = name
 	config.Imports = make([]*cfg.Dependency, len(deps))
 	i := 0
 	for pa := range deps {
@@ -126,7 +176,12 @@ func guessPackageName(b *BuildCtxt, base string) string {
 
 	pkg, err := b.Import(base, cwd, 0)
 	if err != nil {
-		return "main"
+		// There may not be any top level Go source files but the project may
+		// still be within the GOPATH.
+		if strings.HasPrefix(base, b.GOPATH) {
+			p := strings.TrimPrefix(base, b.GOPATH)
+			return strings.Trim(p, string(os.PathSeparator))
+		}
 	}
 
 	return pkg.ImportPath
