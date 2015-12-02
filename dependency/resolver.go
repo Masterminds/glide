@@ -69,6 +69,46 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	return false, nil
 }
 
+/*
+// LocalPackageHandler is a MisingPackageHandler for dealing with local package resolution.
+//
+// This should be used when importing the subpackages on a local project.
+type LocalPackageHandler struct {
+	localpath string
+	localpkg  string
+	// Fallthru is the fallthru MissingPackageHandler.
+	// LocalPackageHandler only deals with the present package's subpackages.
+	// All other work falls through to another handler. Use this to override
+	// that handler.
+	Fallthru MissingPackageHandler
+}
+
+func NewLocalPackageHandler(localpath string) (*LocalPackageHandler, error) {
+	gopath := filepath.Join(os.Getenv("GOPATH"), "src")
+	lpkg, err := filepath.Rel(gopath, localpath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LocalPackageHandler{
+		localpath: localpath,
+		localpkg:  lpkg,
+		Fallthru:  new(DefaultMissingPackageHandler),
+	}, nil
+}
+func (l *LocalPackageHandler) NotFound(pkg string) (bool, error) {
+	return l.Fallthru.NotFound(pkg)
+}
+func (l *LocalPackageHandler) OnGopath(pkg string) (bool, error) {
+	msg.Info("Looking for %s on %s", pkg, l.localpkg)
+	if strings.HasPrefix(pkg, l.localpkg) {
+		msg.Info("Found %s on %s", pkg, l.localpath)
+		return true, nil
+	}
+	return l.Fallthru.OnGopath(pkg)
+}
+*/
+
 // Resolver resolves a dependency tree.
 type Resolver struct {
 	Handler      MissingPackageHandler
@@ -116,6 +156,16 @@ func NewResolver(basedir string) (*Resolver, error) {
 	return r, nil
 }
 
+// Create a new resolver optimized for resolving local packages and vendored packages.
+//func NewLocalResolver(basedir string) (*Resolver, error) {
+//r, err := NewResolver(basedir)
+//if err != nil {
+//return r, err
+//}
+//r.Handler, err = NewLocalPackageHandler(r.basedir)
+//return r, err
+//}
+
 // Resolve takes a package name and returns all of the imported package names.
 //
 // If a package is not found, this calls the Fetcher. If the Fetcher returns
@@ -123,17 +173,75 @@ func NewResolver(basedir string) (*Resolver, error) {
 // will add that package to the deps array and continue on without trying it.
 // And if the Fetcher returns an error, this will stop resolution and return
 // the error.
-func (r *Resolver) Resolve(pkg string) ([]string, error) {
-	deps := []string{}
+//
+// If basepath is set to $GOPATH, this will start from that package's root there.
+// If basepath is set to a project's vendor path, the scanning will begin from
+// there.
+func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
+	target := filepath.Join(basepath, pkg)
+	msg.Info("Scanning %s", target)
+	l := list.New()
+	l.PushBack(target)
+	return r.resolveList(l)
+}
 
-	// Get the path to the package.
+// ResolveLocal resolves dependencies for the current project.
+func (r *Resolver) ResolveLocal() ([]string, error) {
+	// We build a list of local source to walk, then send this list
+	// to resolveList.
+	l := list.New()
+	alreadySeen := map[string]bool{}
+	err := filepath.Walk(r.basedir, func(path string, fi os.FileInfo, err error) error {
+		if err != nil && err != filepath.SkipDir {
+			return err
+		}
+		if !fi.IsDir() {
+			return nil
+		}
+		if !srcDir(fi) {
+			return filepath.SkipDir
+		}
 
-	// Walk the package and collect all of its dependencies.
-	// filepath.Walk(
+		// Scan for dependencies, and anything that's not part of the local
+		// package gets added to the scan list.
+		p, err := r.BuildContext.ImportDir(path, 0)
+		if err != nil {
+			if strings.HasPrefix(err.Error(), "no buildable Go source") {
+				return nil
+			}
+			return err
+		}
 
-	//p, err := r.BuildContext.ImportDir(pkg, 0)
+		// We are only looking for dependencies in vendor. No root, cgo, etc.
+		for _, imp := range p.Imports {
+			if alreadySeen[imp] {
+				continue
+			}
+			msg.Info("Scanning %s", imp)
+			alreadySeen[imp] = true
+			info := r.FindPkg(imp)
+			switch info.Loc {
+			case LocUnknown, LocVendor:
+				msg.Info("adding pkg %s", imp)
+				l.PushBack(filepath.Join(r.VendorDir, imp)) // Do we need a path on this?
+			case LocGopath:
+				msg.Info("Checking for %s on %s", info.Path, r.basedir)
+				if !strings.HasPrefix(info.Path, r.basedir) {
+					msg.Warn("YAY %s on %s", info.Path, r.basedir)
+					l.PushBack(imp)
+				}
+			}
+		}
 
-	return deps, nil
+		return nil
+	})
+
+	if err != nil {
+		msg.Error("Failed to build an initial list of packages to scan: %s", err)
+		return []string{}, err
+	}
+
+	return r.resolveList(l)
 }
 
 // ResolveAll takes a list of packages and returns an inclusive list of all
@@ -150,6 +258,11 @@ func (r *Resolver) Resolve(pkg string) ([]string, error) {
 // an error is returned.
 func (r *Resolver) ResolveAll(deps []*yaml.Dependency) ([]string, error) {
 	queue := sliceToQueue(deps, r.VendorDir)
+	return r.resolveList(queue)
+}
+
+// resolveList takes a list and resolves it.
+func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 
 	var failedDep string
 	for e := queue.Front(); e != nil; e = e.Next() {
@@ -170,6 +283,7 @@ func (r *Resolver) ResolveAll(deps []*yaml.Dependency) ([]string, error) {
 			// Skip dirs that are not source.
 			if !srcDir(fi) {
 				//msg.Debug("Skip resource %s", fi.Name())
+				msg.Info("Skip resource %s", fi.Name())
 				return filepath.SkipDir
 			}
 
