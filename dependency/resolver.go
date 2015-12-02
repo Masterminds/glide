@@ -69,47 +69,15 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	return false, nil
 }
 
-/*
-// LocalPackageHandler is a MisingPackageHandler for dealing with local package resolution.
-//
-// This should be used when importing the subpackages on a local project.
-type LocalPackageHandler struct {
-	localpath string
-	localpkg  string
-	// Fallthru is the fallthru MissingPackageHandler.
-	// LocalPackageHandler only deals with the present package's subpackages.
-	// All other work falls through to another handler. Use this to override
-	// that handler.
-	Fallthru MissingPackageHandler
-}
-
-func NewLocalPackageHandler(localpath string) (*LocalPackageHandler, error) {
-	gopath := filepath.Join(os.Getenv("GOPATH"), "src")
-	lpkg, err := filepath.Rel(gopath, localpath)
-	if err != nil {
-		return nil, err
-	}
-
-	return &LocalPackageHandler{
-		localpath: localpath,
-		localpkg:  lpkg,
-		Fallthru:  new(DefaultMissingPackageHandler),
-	}, nil
-}
-func (l *LocalPackageHandler) NotFound(pkg string) (bool, error) {
-	return l.Fallthru.NotFound(pkg)
-}
-func (l *LocalPackageHandler) OnGopath(pkg string) (bool, error) {
-	msg.Info("Looking for %s on %s", pkg, l.localpkg)
-	if strings.HasPrefix(pkg, l.localpkg) {
-		msg.Info("Found %s on %s", pkg, l.localpath)
-		return true, nil
-	}
-	return l.Fallthru.OnGopath(pkg)
-}
-*/
-
 // Resolver resolves a dependency tree.
+//
+// It operates in two modes:
+// - local resolution (ResolveLocal) determines the dependencies of the local project.
+// - vendor resolving (Resolve, ResolveAll) determines the dependencies of vendored
+//   projects.
+//
+// Local resolution is for guessing initial dependencies. Vendor resolution is
+// for determining vendored dependencies.
 type Resolver struct {
 	Handler      MissingPackageHandler
 	basedir      string
@@ -156,16 +124,6 @@ func NewResolver(basedir string) (*Resolver, error) {
 	return r, nil
 }
 
-// Create a new resolver optimized for resolving local packages and vendored packages.
-//func NewLocalResolver(basedir string) (*Resolver, error) {
-//r, err := NewResolver(basedir)
-//if err != nil {
-//return r, err
-//}
-//r.Handler, err = NewLocalPackageHandler(r.basedir)
-//return r, err
-//}
-
 // Resolve takes a package name and returns all of the imported package names.
 //
 // If a package is not found, this calls the Fetcher. If the Fetcher returns
@@ -186,6 +144,9 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 }
 
 // ResolveLocal resolves dependencies for the current project.
+//
+// This begins with the project, builds up a list of external dependencies, and
+// then runs ResolveAll on those.
 func (r *Resolver) ResolveLocal() ([]string, error) {
 	// We build a list of local source to walk, then send this list
 	// to resolveList.
