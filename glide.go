@@ -37,13 +37,9 @@
 package main
 
 import (
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cmd"
-	"github.com/Masterminds/glide/dependency"
-	"github.com/Masterminds/glide/msg"
-	"github.com/Masterminds/glide/yaml"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/codegangsta/cli"
@@ -429,25 +425,7 @@ Example:
 			vendor are only included if they are used by the project.
 			`,
 			Action: func(c *cli.Context) {
-				//setupHandler(c, "list", cxt, router)
-				fname := c.GlobalString("yaml")
-				//parse YAML
-				f, err := ioutil.ReadFile(fname)
-				if err != nil {
-					msg.Error("Failed to open %s: %s", fname, err)
-				}
-				gc, _ := yaml.FromYaml(string(f))
-				r, err := dependency.NewResolver(".")
-				if err != nil {
-					msg.Error("Failed. %s", err)
-				}
-				res, err := r.ResolveAll(gc.Imports)
-				if err != nil {
-					msg.Error("Failed resolve: %s", err)
-				}
-				for _, r := range res {
-					msg.Puts("\t%s", r)
-				}
+				setupHandler(c, "list", cxt, router)
 			},
 		},
 		{

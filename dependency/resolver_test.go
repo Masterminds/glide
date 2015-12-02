@@ -3,28 +3,58 @@ package dependency
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Masterminds/glide/yaml"
 )
 
-func TestResolveLocal(t *testing.T) {
+func TestResolveLocalShallow(t *testing.T) {
 	r, err := NewResolver("../")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	l, err := r.ResolveLocal()
+	l, err := r.ResolveLocal(false)
 	if err != nil {
 		t.Fatalf("Failed to resolve: %s", err)
 	}
 
-	for _, p := range l {
-		t.Log(p)
+	expect := []string{
+		"github.com/Masterminds/cookoo",
+		"github.com/Masterminds/semver",
+		"github.com/Masterminds/vcs",
+		"gopkg.in/yaml.v2",
+		"github.com/codegangsta/cli",
 	}
 
-	if len(l) != 12 {
-		t.Errorf("Expected 12 dep, got %d: %s", len(l))
+	for _, p := range expect {
+		found := false
+		for _, li := range l {
+			if strings.HasSuffix(li, p) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Could not find %s in resolved list.", p)
+		}
+	}
+}
+
+func TestResolveLocalDeep(t *testing.T) {
+	r, err := NewResolver("../")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	l, err := r.ResolveLocal(true)
+	if err != nil {
+		t.Fatalf("Failed to resolve: %s", err)
+	}
+
+	if len(l) < 8 {
+		t.Errorf("Expected at least 8 deps, got %d: %s", len(l))
 	}
 }
 
@@ -46,12 +76,11 @@ func TestResolve(t *testing.T) {
 }
 
 func TestResolveAll(t *testing.T) {
-	t.Skip()
 	// These are build dependencies of Glide, so we know they are here.
 	deps := []*yaml.Dependency{
 		&yaml.Dependency{Name: "github.com/codegangsta/cli"},
 		&yaml.Dependency{Name: "github.com/Masterminds/cookoo"},
-		&yaml.Dependency{Name: "github.com/Masterminds/squirrel"},
+		&yaml.Dependency{Name: "github.com/Masterminds/semver"},
 		&yaml.Dependency{Name: "gopkg.in/yaml.v2"},
 	}
 
@@ -64,17 +93,7 @@ func TestResolveAll(t *testing.T) {
 		t.Fatalf("Failed to resolve: %s", err)
 	}
 
-	if len(l) < 3 {
-		t.Errorf("Expected len=3, got %d", len(l))
-	}
-
-	println("SEEN")
-	for k := range r.seen {
-		println(k)
-	}
-	println("RESULT")
-
-	for _, v := range l {
-		println(v)
+	if len(l) < len(deps) {
+		t.Errorf("Expected at least %d deps, got %d", len(deps), len(l))
 	}
 }

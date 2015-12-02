@@ -109,7 +109,7 @@ func NewResolver(basedir string) (*Resolver, error) {
 	vdir := filepath.Join(basedir, "vendor")
 
 	r := &Resolver{
-		Handler:      &DefaultMissingPackageHandler{Missing: []string{}},
+		Handler:      &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}},
 		basedir:      basedir,
 		VendorDir:    vdir,
 		BuildContext: build.Default,
@@ -137,7 +137,7 @@ func NewResolver(basedir string) (*Resolver, error) {
 // there.
 func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	target := filepath.Join(basepath, pkg)
-	msg.Info("Scanning %s", target)
+	//msg.Debug("Scanning %s", target)
 	l := list.New()
 	l.PushBack(target)
 	return r.resolveList(l)
@@ -145,9 +145,12 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 
 // ResolveLocal resolves dependencies for the current project.
 //
-// This begins with the project, builds up a list of external dependencies, and
-// then runs ResolveAll on those.
-func (r *Resolver) ResolveLocal() ([]string, error) {
+// This begins with the project, builds up a list of external dependencies.
+//
+// If the deep flag is set to true, this will then resolve all of the dependencies
+// of the dependencies it has found. If not, it will return just the packages that
+// the base project relies upon.
+func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 	// We build a list of local source to walk, then send this list
 	// to resolveList.
 	l := list.New()
@@ -178,18 +181,18 @@ func (r *Resolver) ResolveLocal() ([]string, error) {
 			if alreadySeen[imp] {
 				continue
 			}
-			msg.Info("Scanning %s", imp)
 			alreadySeen[imp] = true
 			info := r.FindPkg(imp)
 			switch info.Loc {
 			case LocUnknown, LocVendor:
-				msg.Info("adding pkg %s", imp)
 				l.PushBack(filepath.Join(r.VendorDir, imp)) // Do we need a path on this?
 			case LocGopath:
-				msg.Info("Checking for %s on %s", info.Path, r.basedir)
 				if !strings.HasPrefix(info.Path, r.basedir) {
-					msg.Warn("YAY %s on %s", info.Path, r.basedir)
-					l.PushBack(imp)
+					// FIXME: This is a package outside of the project we're
+					// scanning. It should really be on vendor. But we don't
+					// want it to reference GOPATH. We want it to be detected
+					// and moved.
+					l.PushBack(filepath.Join(r.VendorDir, imp))
 				}
 			}
 		}
@@ -202,7 +205,17 @@ func (r *Resolver) ResolveLocal() ([]string, error) {
 		return []string{}, err
 	}
 
-	return r.resolveList(l)
+	if deep {
+		return r.resolveList(l)
+	}
+
+	// If we're not doing a deep scan, we just convert the list into an
+	// array and return.
+	res := make([]string, 0, l.Len())
+	for e := l.Front(); e != nil; e = e.Next() {
+		res = append(res, e.Value.(string))
+	}
+	return res, nil
 }
 
 // ResolveAll takes a list of packages and returns an inclusive list of all
@@ -228,8 +241,8 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 	var failedDep string
 	for e := queue.Front(); e != nil; e = e.Next() {
 		dep := e.Value.(string)
-		msg.Warn("#### %s ####", dep)
-		msg.Info("Seen Count: %d", len(r.seen))
+		//msg.Warn("#### %s ####", dep)
+		//msg.Info("Seen Count: %d", len(r.seen))
 		// Catch the outtermost dependency.
 		failedDep = dep
 		err := filepath.Walk(dep, func(path string, fi os.FileInfo, err error) error {
@@ -244,7 +257,6 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 			// Skip dirs that are not source.
 			if !srcDir(fi) {
 				//msg.Debug("Skip resource %s", fi.Name())
-				msg.Info("Skip resource %s", fi.Name())
 				return filepath.SkipDir
 			}
 
@@ -286,8 +298,11 @@ func (r *Resolver) queueUnseen(pkg string, queue *list.List) error {
 	if err != nil && !strings.HasPrefix(err.Error(), "no buildable Go source") {
 		msg.Error("Could not find %s: %s", pkg, err)
 		return err
-	} else if err != nil {
-		msg.Warn(err.Error())
+		// NOTE: If we uncomment this, we get lots of "no buildable Go source" errors,
+		// which don't ever seem to be helpful. They don't actually indicate an error
+		// condition, and it's perfectly okay to run into that condition.
+		//} else if err != nil {
+		//	msg.Warn(err.Error())
 	}
 
 	for _, d := range deps {
@@ -295,10 +310,6 @@ func (r *Resolver) queueUnseen(pkg string, queue *list.List) error {
 			r.alreadyQ[d] = true
 			queue.PushBack(d)
 		}
-		//if _, ok := r.seen[d]; !ok {
-		//queue.PushBack(d)
-		////r.seen[d] = true
-		//}
 	}
 	return nil
 }
