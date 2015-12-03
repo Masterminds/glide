@@ -48,13 +48,8 @@ func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 // Returns:
 //
 func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	//buildContext, err := GetBuildContext()
-	//if err != nil {
-	//return nil, err
-	//}
 	basedir := p.Get("dir", ".").(string)
 	deep := p.Get("deep", true).(bool)
-	//myName := guessPackageName(buildContext, basedir)
 
 	basedir, err := filepath.Abs(basedir)
 	if err != nil {
@@ -73,27 +68,10 @@ func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 		return nil, err
 	}
 
-	/*
-		direct := map[string]*pinfo{}
-		d := walkDeps(buildContext, basedir, myName)
-		for _, i := range d {
-			listDeps(buildContext, direct, i, basedir)
-		}
-
-		sortable := make([]string, len(direct))
-		i := 0
-		for k := range direct {
-			sortable[i] = k
-			i++
-		}
-	*/
-
 	sort.Strings(sortable)
 
 	fmt.Println("INSTALLED packages:")
 	for _, k := range sortable {
-		//t := direct[k].PType
-		//fmt.Printf("%s (Location: %s)\n", k, ptypeString(t))
 		v, err := filepath.Rel(basedir, k)
 		if err != nil {
 			msg.Warn("Failed to Rel path: %s", err)
