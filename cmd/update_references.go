@@ -70,6 +70,7 @@ func UpdateReferences(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.I
 
 func discoverDependencyTree(f *flattening) error {
 	Debug("---> Inspecting %s for dependencies (%d packages).\n", f.curr, len(f.scan))
+	scanned := map[string]bool{}
 	for _, imp := range f.scan {
 		Debug("----> Scanning %s", imp)
 		base := path.Join(f.top, imp)
@@ -82,7 +83,7 @@ func discoverDependencyTree(f *flattening) error {
 			mod = m
 		} else if m, ok = mergeGb(base, imp, f.deps, f.top); ok {
 			mod = m
-		} else if m, ok = mergeGuess(base, imp, f.deps, f.top); ok {
+		} else if m, ok = mergeGuess(base, imp, f.deps, f.top, scanned); ok {
 			mod = m
 		}
 

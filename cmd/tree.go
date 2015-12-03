@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/dependency"
+	"github.com/Masterminds/glide/msg"
 )
 
 // Tree prints a tree representing dependencies.
@@ -40,40 +42,55 @@ func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 // ListDeps lists all of the dependencies of the current project.
 //
 // Params:
+//  - dir (string): basedir
+//  - deep (bool): whether to do a deep scan or a shallow scan
 //
 // Returns:
 //
 func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	buildContext, err := GetBuildContext()
-	if err != nil {
-		return nil, err
-	}
 	basedir := p.Get("dir", ".").(string)
-	myName := guessPackageName(buildContext, basedir)
+	deep := p.Get("deep", true).(bool)
 
-	basedir, err = filepath.Abs(basedir)
+	basedir, err := filepath.Abs(basedir)
 	if err != nil {
 		return nil, err
 	}
 
-	direct := map[string]*pinfo{}
-	d := walkDeps(buildContext, basedir, myName)
-	for _, i := range d {
-		listDeps(buildContext, direct, i, basedir)
+	r, err := dependency.NewResolver(basedir)
+	if err != nil {
+		return nil, err
 	}
+	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}}
+	r.Handler = h
 
-	sortable := make([]string, len(direct))
-	i := 0
-	for k := range direct {
-		sortable[i] = k
-		i++
+	sortable, err := r.ResolveLocal(deep)
+	if err != nil {
+		return nil, err
 	}
 
 	sort.Strings(sortable)
 
+	fmt.Println("INSTALLED packages:")
 	for _, k := range sortable {
-		t := direct[k].PType
-		fmt.Printf("%s (Location: %s)\n", k, ptypeString(t))
+		v, err := filepath.Rel(basedir, k)
+		if err != nil {
+			msg.Warn("Failed to Rel path: %s", err)
+			v = k
+		}
+		fmt.Printf("\t%s\n", v)
+	}
+
+	if len(h.Missing) > 0 {
+		fmt.Println("\nMISSING packages:")
+		for _, pkg := range h.Missing {
+			fmt.Printf("\t%s\n", pkg)
+		}
+	}
+	if len(h.Gopath) > 0 {
+		fmt.Println("\nGOPATH packages:")
+		for _, pkg := range h.Gopath {
+			fmt.Printf("\t%s\n", pkg)
+		}
 	}
 
 	return nil, nil
@@ -231,7 +248,11 @@ func walkDeps(b *BuildCtxt, base, myName string) []string {
 
 		pkg, err := b.ImportDir(path, 0)
 		if err != nil {
-			return err
+			if !strings.HasPrefix(err.Error(), "no buildable Go source") {
+				Warn("Error: %s (%s)", err, path)
+				// Not sure if we should return here.
+				//return err
+			}
 		}
 
 		if pkg.Goroot {
