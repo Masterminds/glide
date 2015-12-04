@@ -85,7 +85,7 @@ func getRootFromGoGet(pkg string) string {
 		return pkg
 	}
 
-	addToRemotePackageCache(pkg)
+	addToRemotePackageCache(nu)
 	return nu
 }
 
