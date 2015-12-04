@@ -86,10 +86,10 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 	for _, pa := range sortable {
 		n := strings.TrimPrefix(pa, vpath)
-		Info("Found reference to %s\n", n)
 		root := util.GetRootFromPackage(n)
 
 		if !config.HasDependency(root) {
+			Info("Found reference to %s\n", n)
 			d := &cfg.Dependency{
 				Name: root,
 			}
@@ -101,6 +101,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		} else {
 			subpkg := strings.TrimPrefix(n, root)
 			if len(subpkg) > 0 && subpkg != "/" {
+				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
 				f := false
 				for _, v := range d.Subpackages {
@@ -109,6 +110,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 					}
 				}
 				if !f {
+					Info("Adding sub-package %s to %s\n", subpkg, root)
 					d.Subpackages = append(d.Subpackages, subpkg)
 				}
 			}
