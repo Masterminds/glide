@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -14,15 +15,55 @@ import (
 // GuessDeps tries to get the dependencies for the current directory.
 //
 // Params
-// 	- dirname (string): Directory to use as the base. Default: "."
+//  - dirname (string): Directory to use as the base. Default: "."
+//  - skipImport (book): Whether to skip importing from Godep, GPM, and gb
 func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	buildContext, err := GetBuildContext()
 	if err != nil {
 		return nil, err
 	}
 	base := p.Get("dirname", ".").(string)
+	skipImport := p.Get("skipImport", false).(bool)
 	name := guessPackageName(buildContext, base)
 
+	Info("Generating a YAML configuration file and guessing the dependencies")
+
+	config := new(cfg.Config)
+
+	// Get the name of the top level package
+	config.Name = name
+
+	// Import by looking at other package managers and looking over the
+	// entire directory structure.
+
+	// Attempt to import from other package managers.
+	if !skipImport {
+		Info("Attempting to import from other package managers (use --skip-import to skip)")
+		deps := []*cfg.Dependency{}
+		absBase, err := filepath.Abs(base)
+		if err != nil {
+			return nil, err
+		}
+
+		if d, ok := guessImportGodep(absBase); ok {
+			Info("Importing Godep configuration")
+			Warn("Godep uses commit id versions. Consider using Semantic Versions with Glide")
+			deps = d
+		} else if d, ok := guessImportGPM(absBase); ok {
+			Info("Importing GPM configuration")
+			deps = d
+		} else if d, ok := guessImportGB(absBase); ok {
+			Info("Importing GB configuration")
+			deps = d
+		}
+
+		for _, i := range deps {
+			Info("Found imported reference to %s\n", i.Name)
+			config.Imports = append(config.Imports, i)
+		}
+	}
+
+	// Resolve dependencies by looking at the tree.
 	r, err := dependency.NewResolver(base)
 	if err != nil {
 		return nil, err
@@ -38,32 +79,40 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 	sort.Strings(sortable)
 
-	Info("Generating a YAML configuration file and guessing the dependencies")
-
-	config := new(cfg.Config)
 	vpath := r.VendorDir
 	if !strings.HasSuffix(vpath, "/") {
 		vpath = vpath + string(os.PathSeparator)
 	}
 
-	// Get the name of the top level package
-	config.Name = name
-	config.Imports = make([]*cfg.Dependency, len(sortable))
-	i := 0
 	for _, pa := range sortable {
 		n := strings.TrimPrefix(pa, vpath)
 		Info("Found reference to %s\n", n)
 		root := util.GetRootFromPackage(n)
 
-		d := &cfg.Dependency{
-			Name: root,
+		if !config.HasDependency(root) {
+			d := &cfg.Dependency{
+				Name: root,
+			}
+			subpkg := strings.TrimPrefix(n, root)
+			if len(subpkg) > 0 && subpkg != "/" {
+				d.Subpackages = []string{subpkg}
+			}
+			config.Imports = append(config.Imports, d)
+		} else {
+			subpkg := strings.TrimPrefix(n, root)
+			if len(subpkg) > 0 && subpkg != "/" {
+				d := config.Imports.Get(root)
+				f := false
+				for _, v := range d.Subpackages {
+					if v == subpkg {
+						f = true
+					}
+				}
+				if !f {
+					d.Subpackages = append(d.Subpackages, subpkg)
+				}
+			}
 		}
-		subpkg := strings.TrimPrefix(n, root)
-		if len(subpkg) > 0 && subpkg != "/" {
-			d.Subpackages = []string{subpkg}
-		}
-		config.Imports[i] = d
-		i++
 	}
 
 	return config, nil
@@ -88,4 +137,31 @@ func guessPackageName(b *BuildCtxt, base string) string {
 	}
 
 	return pkg.ImportPath
+}
+
+func guessImportGodep(dir string) ([]*cfg.Dependency, bool) {
+	d, err := parseGodepGodeps(dir)
+	if err != nil || len(d) == 0 {
+		return []*cfg.Dependency{}, false
+	}
+
+	return d, true
+}
+
+func guessImportGPM(dir string) ([]*cfg.Dependency, bool) {
+	d, err := parseGPMGodeps(dir)
+	if err != nil || len(d) == 0 {
+		return []*cfg.Dependency{}, false
+	}
+
+	return d, true
+}
+
+func guessImportGB(dir string) ([]*cfg.Dependency, bool) {
+	d, err := parseGbManifest(dir)
+	if err != nil || len(d) == 0 {
+		return []*cfg.Dependency{}, false
+	}
+
+	return d, true
 }

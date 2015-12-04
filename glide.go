@@ -132,7 +132,14 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	or version range to include.
 
 	To fetch the dependencies you may run 'glide install'.`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "skip-import",
+					Usage: "When initializing skip importing from other package managers.",
+				},
+			},
 			Action: func(c *cli.Context) {
+				cxt.Put("skipImport", c.Bool("skip-import"))
 				setupHandler(c, "create", cxt, router)
 			},
 		},
@@ -676,6 +683,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.GuardYaml, "_").
 		Using("filename").From("cxt:yaml").
 		Does(cmd.GuessDeps, "cfg").
+		Using("skipImport").From("cxt:skipImport").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:yaml")
