@@ -552,7 +552,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("skipGopath").From("cxt:skipGopath").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
-		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
+		Using("filename").WithDefault("glide.yaml").From("cxt:yaml").
+		Does(cmd.WriteLock, "lock").
+		Using("lockfile").From("cxt:Lockfile")
 
 	reg.Route("install", "Install dependencies.").
 		Includes("@startup").
