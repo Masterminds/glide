@@ -145,7 +145,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		},
 		{
 			Name:  "get",
-			Usage: "Install one or more package into `vendor/` and add dependency to glide.yaml.",
+			Usage: "Install one or more packages into `vendor/` and add dependency to glide.yaml.",
 			Description: `Gets one or more package (like 'go get') and then adds that file
 	to the glide.yaml file. Multiple package names can be specified on one line.
 
@@ -154,19 +154,14 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	The above will install the project github.com/Masterminds/cookoo and add
 	the subpackage 'web'.
 
-	If a fetched dependency has a glide.yaml file, 'get' will also install
-	all of the dependencies for that dependency. Those are installed in a scoped
-	vendor directory. So dependency vendor/foo/bar has its dependencies stored
-	in vendor/foo/bar/vendor. This behavior can be disabled using
-	'--no-recursive'
+	If a fetched dependency has a glide.yaml file, configuration from Godep,
+	GPM, or GB Glide that configuration will be used to find the dependencies
+	and versions to fetch. If those are not available the dependent packages will
+	be fetched as either a version specified elsewhere or the latest version.
 
-	If '--import' is set, this will also read the dependency projects, looking
-	for gb, Godep and GPM files. When it finds them, it will build a comparable
-	glide.yaml file, and then fetch all of the necessary dependencies. The
-	dependencies are then vendored in the appropriate project. Subsequent calls
-	to 'glide up' will use the glide.yaml to maintain those dependencies.
-	However, only if you call 'glide up --import' will the glide file be
-	rebuilt. When '--no-recursive' is used, '--import' does nothing.
+	When adding a new dependency Glide will perform an update to work out the
+	the versions to use from the dependency tree. This will generate an updated
+	glide.lock file with specific locked versions to use.
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
