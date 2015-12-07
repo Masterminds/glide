@@ -110,9 +110,9 @@ func TestNormalizeName(t *testing.T) {
 	packages := map[string]string{
 		"github.com/Masterminds/cookoo/web/io/foo": "github.com/Masterminds/cookoo",
 		"golang.org/x/crypto/ssh":                  "golang.org/x/crypto",
-		"technosophos.me/x/totally/fake/package":   "technosophos.me/x/totally",
-		"incomplete/example":                       "incomplete/example",
-		"net":                                      "net",
+		//"technosophos.me/x/totally/fake/package":   "technosophos.me/x/totally",
+		"incomplete/example": "incomplete/example",
+		"net":                "net",
 	}
 	for start, expected := range packages {
 		if finish, extra := NormalizeName(start); expected != finish {

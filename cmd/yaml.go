@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/util"
 )
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
@@ -154,13 +155,24 @@ func AddDependencies(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 // For example, golang.org/x/crypto/ssh becomes golang.org/x/crypto. 'ssh' is
 // returned as extra data.
 func NormalizeName(name string) (string, string) {
-	parts := strings.SplitN(name, "/", 4)
-	extra := ""
-	if len(parts) < 3 {
-		return name, extra
+	root := util.GetRootFromPackage(name)
+	extra := strings.TrimPrefix(name, root)
+	if len(extra) > 0 && extra != "/" {
+		extra = strings.TrimPrefix(extra, "/")
+	} else {
+		// If extra is / (which is what it would be here) we want to return ""
+		extra = ""
 	}
-	if len(parts) == 4 {
-		extra = parts[3]
-	}
-	return strings.Join(parts[0:3], "/"), extra
+
+	return root, extra
+
+	// parts := strings.SplitN(name, "/", 4)
+	// extra := ""
+	// if len(parts) < 3 {
+	// 	return name, extra
+	// }
+	// if len(parts) == 4 {
+	// 	extra = parts[3]
+	// }
+	// return strings.Join(parts[0:3], "/"), extra
 }
