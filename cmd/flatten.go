@@ -11,7 +11,7 @@ import (
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/msg"
-	//"github.com/Masterminds/glide/util"
+	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
 )
 
@@ -59,17 +59,17 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	f := &flattening{conf, vend, vend, deps, packages}
 
-	pkgs, err := findAllProjects(f, strings.TrimSuffix(vend, "/vendor"))
-	if err != nil {
-		return conf, err
-	}
-	conf.Imports = pkgs
-	return conf, nil
+	//pkgs, err := findAllProjects(f, strings.TrimSuffix(vend, "/vendor"))
+	//if err != nil {
+	//return conf, err
+	//}
+	//conf.Imports = pkgs
+	//return conf, nil
 
 	// The assumption here is that once something has been scanned once in a
 	// run, there is no need to scan it again.
 	scanned := map[string]bool{}
-	err = recFlatten(f, force, home, cache, cacheGopath, skipGopath, scanned)
+	err := recFlatten(f, force, home, cache, cacheGopath, skipGopath, scanned)
 	if err != nil {
 		return conf, err
 	}
@@ -328,6 +328,7 @@ func mergeGuess(fullpath, pkg string, deps map[string]*cfg.Dependency, vend stri
 		UseCache:       false,
 		UseCacheGopath: false,
 		SkipGopath:     true,
+		alreadyDone:    map[string]bool{},
 	}
 
 	resolved, err := resolver.ResolveAll([]*cfg.Dependency{&cfg.Dependency{Name: pkg}})
@@ -353,7 +354,7 @@ func mergeGuess(fullpath, pkg string, deps map[string]*cfg.Dependency, vend stri
 		//scanned[d] = true
 	}
 
-	msg.Info("Returning %v (len: %d)", cp, len(cp))
+	msg.Debug("Returning %v (len: %d)", cp, len(cp))
 	return cp, true
 
 	/*
@@ -544,12 +545,19 @@ func mergeDeps(orig map[string]*cfg.Dependency, add []*cfg.Dependency, vend stri
 type InstallMissingPackagesHandler struct {
 	Vendor, Home                         string
 	UseCache, UseCacheGopath, SkipGopath bool
+	alreadyDone                          map[string]bool
 }
 
 func (i *InstallMissingPackagesHandler) NotFound(pkg string) (bool, error) {
-	d := &cfg.Dependency{Name: pkg}
-	dest := filepath.Join(i.Vendor, pkg)
-	msg.Info("Cloning %s into %s", pkg, dest)
+	proj := util.GetRootFromPackage(pkg)
+	if i.alreadyDone[proj] {
+		return true, nil
+	}
+	i.alreadyDone[proj] = true
+	d := &cfg.Dependency{Name: proj}
+	dest := filepath.Join(i.Vendor, proj)
+
+	msg.Info("Cloning %s into %s", proj, dest)
 	if err := VcsGet(d, dest, i.Home, i.UseCache, i.UseCacheGopath, i.SkipGopath); err != nil {
 		return false, err
 	}

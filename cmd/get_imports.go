@@ -827,3 +827,13 @@ NextVar:
 	}
 	return out
 }
+
+// list2map takes a list of packages names and creates a map of normalized names.
+func list2map(in []string) map[string]bool {
+	out := make(map[string]bool, len(in))
+	for _, v := range in {
+		v, _ := NormalizeName(v)
+		out[v] = true
+	}
+	return out
+}
