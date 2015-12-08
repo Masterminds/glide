@@ -72,6 +72,11 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 			continue
 		}
 
+		if conf.HasIgnore(root) {
+			Warn("Package %q is set to be ignored in glide.yaml. Skipping", root)
+			continue
+		}
+
 		dest := path.Join(cwd, root)
 
 		if err != nil {
@@ -801,6 +806,16 @@ func findCurrentBranch(repo v.Repo) string {
 	}
 
 	return ""
+}
+
+// list2map takes a list of packages names and creates a map of normalized names.
+func list2map(in []string) map[string]bool {
+	out := make(map[string]bool, len(in))
+	for _, v := range in {
+		v, _ := NormalizeName(v)
+		out[v] = true
+	}
+	return out
 }
 
 func envForDir(dir string) []string {

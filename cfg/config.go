@@ -14,6 +14,7 @@ import (
 // Config is the top-level configuration object.
 type Config struct {
 	Name       string       `yaml:"package"`
+	Ignore     []string     `yaml:"ignore,omitempty"`
 	Imports    Dependencies `yaml:"import"`
 	DevImports Dependencies `yaml:"devimport,omitempty"`
 }
@@ -21,6 +22,7 @@ type Config struct {
 // A transitive representation of a dependency for importing and exploting to yaml.
 type cf struct {
 	Name       string       `yaml:"package"`
+	Ignore     []string     `yaml:"ignore,omitempty"`
 	Imports    Dependencies `yaml:"import"`
 	DevImports Dependencies `yaml:"devimport,omitempty"`
 }
@@ -48,6 +50,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	c.Name = newConfig.Name
+	c.Ignore = newConfig.Ignore
 	c.Imports = newConfig.Imports
 	c.DevImports = newConfig.DevImports
 
@@ -60,7 +63,8 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name: c.Name,
+		Name:   c.Name,
+		Ignore: c.Ignore,
 	}
 	i, err := c.Imports.Clone().DeDupe()
 	if err != nil {
@@ -93,10 +97,22 @@ func (c *Config) HasDependency(name string) bool {
 	return false
 }
 
+// HasIgnore returns true if the given name is listed on the ignore list.
+func (c *Config) HasIgnore(name string) bool {
+	for _, v := range c.Ignore {
+		if v == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Clone performs a deep clone of the Config instance
 func (c *Config) Clone() *Config {
 	n := &Config{}
 	n.Name = c.Name
+	n.Ignore = c.Ignore
 	n.Imports = c.Imports.Clone()
 	n.DevImports = c.DevImports.Clone()
 	return n
@@ -134,7 +150,30 @@ func (c *Config) DeDupe() error {
 		}
 	}
 	if found >= 0 {
-		c.Imports = append(c.DevImports[:found], c.DevImports[found+1:]...)
+		c.DevImports = append(c.DevImports[:found], c.DevImports[found+1:]...)
+	}
+
+	// If something is on the ignore list remove it from the imports.
+	for _, v := range c.Ignore {
+		found = -1
+		for k, d := range c.Imports {
+			if v == d.Name {
+				found = k
+			}
+		}
+		if found >= 0 {
+			c.Imports = append(c.Imports[:found], c.Imports[found+1:]...)
+		}
+
+		found = -1
+		for k, d := range c.DevImports {
+			if v == d.Name {
+				found = k
+			}
+		}
+		if found >= 0 {
+			c.DevImports = append(c.DevImports[:found], c.DevImports[found+1:]...)
+		}
 	}
 
 	return nil
