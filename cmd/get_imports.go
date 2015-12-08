@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"sync"
 	//"log"
 
 	"os"
@@ -22,6 +23,9 @@ import (
 	"github.com/Masterminds/semver"
 	v "github.com/Masterminds/vcs"
 )
+
+// Used for the fan out/in pattern used with VCS calls.
+var concurrentWorkers = 20
 
 //func init() {
 // Uncomment the line below and the log import to see the output
@@ -152,22 +156,55 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 // SetReference is a command to set the VCS reference (commit id, tag, etc) for
 // a project.
 func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil).(*cfg.Config)
+	conf := p.Get("conf", nil).(*cfg.Config)
 	cwd, err := VendorPath(c)
 	if err != nil {
 		return false, err
 	}
 
-	if len(cfg.Imports) == 0 {
+	if len(conf.Imports) == 0 {
 		Info("No references set.\n")
 		return false, nil
 	}
+	//
+	// for _, dep := range conf.Imports {
+	// 	if err := VcsVersion(dep, cwd); err != nil {
+	// 		Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+	// 	}
+	// }
 
-	for _, dep := range cfg.Imports {
-		if err := VcsVersion(dep, cwd); err != nil {
-			Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
-		}
+	done := make(chan struct{}, concurrentWorkers)
+	in := make(chan *cfg.Dependency, concurrentWorkers)
+	var wg sync.WaitGroup
+
+	for i := 0; i < concurrentWorkers; i++ {
+		go func(ch <-chan *cfg.Dependency) {
+			for {
+				select {
+				case dep := <-ch:
+					if err := VcsVersion(dep, cwd); err != nil {
+						Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+					}
+					wg.Done()
+				case <-done:
+					return
+				}
+			}
+		}(in)
 	}
+
+	for _, dep := range conf.Imports {
+		wg.Add(1)
+		in <- dep
+	}
+
+	wg.Wait()
+	// Close goroutines setting the version
+	for i := 0; i < concurrentWorkers; i++ {
+		done <- struct{}{}
+	}
+	// close(done)
+	// close(in)
 
 	return true, nil
 }
@@ -218,7 +255,6 @@ func VcsExists(dep *cfg.Dependency, dest string) bool {
 //
 // VcsGet installs into the dest.
 func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, skipGopath bool) error {
-
 	// When not skipping the $GOPATH look in it for a copy of the package
 	if !skipGopath {
 		// Check if the $GOPATH has a viable version to use and if so copy to vendor
@@ -414,7 +450,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, skipGopa
 			if err == errCacheDisabled {
 				Debug("Unable to cache default branch because caching is disabled")
 			} else if err != nil {
-				Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
+				Debug("Error saving %s to cache - Error: %s", repo.Remote(), err)
 			}
 		}
 	}

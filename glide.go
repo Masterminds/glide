@@ -568,6 +568,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.Install, "icfg").
 		Using("conf").From("cxt:cfg").
 		Using("lock").From("cxt:lock").
+		Using("home").From("cxt:home").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:icfg").
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:icfg").

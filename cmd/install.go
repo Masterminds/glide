@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"sync"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/cfg"
@@ -101,10 +102,41 @@ func Install(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 		return false, nil
 	}
 
+	// for _, dep := range newConf.Imports {
+	// 	if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, skipGopath); err != nil {
+	// 		Warn("Update failed for %s: %s\n", dep.Name, err)
+	// 	}
+	// }
+
+	done := make(chan struct{}, concurrentWorkers)
+	in := make(chan *cfg.Dependency, concurrentWorkers)
+	var wg sync.WaitGroup
+
+	for i := 0; i < concurrentWorkers; i++ {
+		go func(ch <-chan *cfg.Dependency) {
+			for {
+				select {
+				case dep := <-ch:
+					if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, skipGopath); err != nil {
+						Warn("Update failed for %s: %s\n", dep.Name, err)
+					}
+					wg.Done()
+				case <-done:
+					return
+				}
+			}
+		}(in)
+	}
+
 	for _, dep := range newConf.Imports {
-		if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, skipGopath); err != nil {
-			Warn("Update failed for %s: %s\n", dep.Name, err)
-		}
+		wg.Add(1)
+		in <- dep
+	}
+
+	wg.Wait()
+	// Close goroutines setting the version
+	for i := 0; i < concurrentWorkers; i++ {
+		done <- struct{}{}
 	}
 
 	return newConf, nil
