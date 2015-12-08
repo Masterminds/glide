@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"path"
+	"path/filepath"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/dependency"
 )
 
 // UpdateReferences updates the revision numbers on all of the imports.
@@ -70,34 +71,75 @@ func UpdateReferences(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.I
 
 func discoverDependencyTree(f *flattening) error {
 	Debug("---> Inspecting %s for dependencies (%d packages).\n", f.curr, len(f.scan))
-	scanned := map[string]bool{}
-	for _, imp := range f.scan {
-		Debug("----> Scanning %s", imp)
-		base := path.Join(f.top, imp)
-		mod := []string{}
-		if m, ok := mergeGlide(base, imp, f.deps, f.top); ok {
-			mod = m
-		} else if m, ok = mergeGodep(base, imp, f.deps, f.top); ok {
-			mod = m
-		} else if m, ok = mergeGPM(base, imp, f.deps, f.top); ok {
-			mod = m
-		} else if m, ok = mergeGb(base, imp, f.deps, f.top); ok {
-			mod = m
-		} else if m, ok = mergeGuess(base, imp, f.deps, f.top, scanned); ok {
-			mod = m
-		}
 
-		if len(mod) > 0 {
-			Debug("----> Looking for dependencies in %q (%d)", imp, len(mod))
-			f2 := &flattening{
-				conf: f.conf,
-				top:  f.top,
-				curr: base,
-				deps: f.deps,
-				scan: mod}
-			discoverDependencyTree(f2)
+	// projects tracks which projects we have seen. Initially, it's everytning
+	// in f.deps. As we go, we'll merge in all of the others that we find.
+	projects := f.deps
+
+	// Get all of the packages that are used.
+	resolver, err := dependency.NewResolver(f.top)
+	if err != nil {
+		return err
+	}
+
+	dlist := make([]*cfg.Dependency, 0, len(f.deps))
+	for _, d := range f.deps {
+		dlist = append(dlist, d)
+	}
+	pkgs, err := resolver.ResolveAll(dlist)
+	if err != nil {
+		return err
+	}
+
+	// From the packages, we just want the repositories. So we get a normalized
+	// list of dependencies.
+	for _, d := range pkgs {
+		d, err = filepath.Rel(f.top, d)
+		if err != nil {
+			Warn("Cannot resolve relative path: %s", err)
+		}
+		d, _ := NormalizeName(d)
+
+		if _, ok := projects[d]; !ok {
+			projects[d] = &cfg.Dependency{Name: d}
+			Info("====> %s", d)
 		}
 	}
+
+	// At this point, we know that we have an exhaustive list of packages, so
+	// we can now just look for files that will tell us what version of each
+	// package to use.
+
+	/*
+		scanned := map[string]bool{}
+		for _, imp := range f.scan {
+			Debug("----> Scanning %s", imp)
+			base := path.Join(f.top, imp)
+			mod := []string{}
+			if m, ok := mergeGlide(base, imp, f.deps, f.top); ok {
+				mod = m
+			} else if m, ok = mergeGodep(base, imp, f.deps, f.top); ok {
+				mod = m
+			} else if m, ok = mergeGPM(base, imp, f.deps, f.top); ok {
+				mod = m
+			} else if m, ok = mergeGb(base, imp, f.deps, f.top); ok {
+				mod = m
+			} else if m, ok = mergeGuess(base, imp, f.deps, f.top, scanned); ok {
+				mod = m
+			}
+
+			if len(mod) > 0 {
+				Debug("----> Looking for dependencies in %q (%d)", imp, len(mod))
+				f2 := &flattening{
+					conf: f.conf,
+					top:  f.top,
+					curr: base,
+					deps: f.deps,
+					scan: mod}
+				discoverDependencyTree(f2)
+			}
+		}
+	*/
 
 	return nil
 }

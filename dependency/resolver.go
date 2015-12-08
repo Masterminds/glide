@@ -137,7 +137,7 @@ func NewResolver(basedir string) (*Resolver, error) {
 // there.
 func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	target := filepath.Join(basepath, pkg)
-	//msg.Debug("Scanning %s", target)
+	msg.Info("Resolving %s", target)
 	l := list.New()
 	l.PushBack(target)
 	return r.resolveList(l)

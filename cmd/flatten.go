@@ -4,11 +4,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/cfg"
-	"github.com/Masterminds/glide/util"
+	"github.com/Masterminds/glide/dependency"
+	"github.com/Masterminds/glide/msg"
+	//"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
 )
 
@@ -56,10 +59,17 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	f := &flattening{conf, vend, vend, deps, packages}
 
+	pkgs, err := findAllProjects(f, strings.TrimSuffix(vend, "/vendor"))
+	if err != nil {
+		return conf, err
+	}
+	conf.Imports = pkgs
+	return conf, nil
+
 	// The assumption here is that once something has been scanned once in a
 	// run, there is no need to scan it again.
 	scanned := map[string]bool{}
-	err := recFlatten(f, force, home, cache, cacheGopath, skipGopath, scanned)
+	err = recFlatten(f, force, home, cache, cacheGopath, skipGopath, scanned)
 	if err != nil {
 		return conf, err
 	}
@@ -141,6 +151,40 @@ func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, skip
 	}
 
 	return nil
+}
+
+// Get a list of all projects.
+func findAllProjects(f *flattening, top string) ([]*cfg.Dependency, error) {
+
+	seen := map[string]bool{}
+	for _, imp := range f.conf.Imports {
+		seen[imp.Name] = true
+	}
+
+	res, err := dependency.NewResolver(top)
+	if err != nil {
+		return []*cfg.Dependency{}, err
+	}
+
+	prjs, err := res.ResolveAll(f.conf.Imports)
+	if err != nil {
+		return []*cfg.Dependency{}, err
+	}
+
+	out := make([]*cfg.Dependency, len(f.conf.Imports))
+	copy(out, f.conf.Imports)
+	for _, p := range prjs {
+		p, err = filepath.Rel(f.top, p)
+		if err != nil {
+			Warn("Rel: %s", err)
+		}
+
+		p, _ = NormalizeName(p)
+		if !seen[p] {
+			out = append(out, &cfg.Dependency{Name: p})
+		}
+	}
+	return out, nil
 }
 
 // flattenGlideUp does a glide update in the middle of a flatten operation.
@@ -264,65 +308,107 @@ func mergeGPM(dir, pkg string, deps map[string]*cfg.Dependency, vend string) ([]
 // This always returns true because it always handles the job of searching
 // for dependencies. So generally it should be the last merge strategy
 // that you try.
-func mergeGuess(dir, pkg string, deps map[string]*cfg.Dependency, vend string, scanned map[string]bool) ([]string, bool) {
-	Info("Scanning %s for dependencies.", pkg)
-	buildContext, err := GetBuildContext()
+func mergeGuess(fullpath, pkg string, deps map[string]*cfg.Dependency, vend string, scanned map[string]bool) ([]string, bool) {
+	if scanned[pkg] {
+		return []string{}, true
+	}
+	scanned[pkg] = true
+
+	vendor := strings.TrimSuffix(fullpath, pkg)
+	Info("Scanning %s for dependencies in %s.", pkg, vendor)
+	resolver, err := dependency.NewResolver(strings.TrimSuffix(vendor, "vendor/"))
 	if err != nil {
 		Warn("Could not scan package %q: %s", pkg, err)
 		return []string{}, false
 	}
 
-	res := []string{}
-
-	if _, err := os.Stat(dir); err != nil {
-		Warn("Directory is missing: %s", dir)
-		return res, true
+	resolver.Handler = &InstallMissingPackagesHandler{
+		Vendor:         vendor,
+		Home:           vendor,
+		UseCache:       false,
+		UseCacheGopath: false,
+		SkipGopath:     true,
 	}
 
-	d := walkDeps(buildContext, dir, pkg)
-	for _, oname := range d {
-		if _, ok := scanned[oname]; ok {
-			//Info("===> Scanned %s already. Skipping", name)
+	resolved, err := resolver.ResolveAll([]*cfg.Dependency{&cfg.Dependency{Name: pkg}})
+	if err != nil {
+		msg.Error("Failed to resolve %s: %s", pkg, err)
+	}
+
+	cp := []string{} // := make([]string, 0, len(resolved))
+	for _, d := range resolved {
+		d, err = filepath.Rel(vendor, d)
+		if err != nil {
+			msg.Warn("Failed to get relative path of %s", d)
+		} else if d == "." || d == "" {
 			continue
 		}
-		Debug("=> Scanning %s", oname)
-		name, _ := NormalizeName(oname)
-		//if _, ok := deps[name]; ok {
-		//scanned[oname] = true
-		//Debug("====> Seen %s already. Skipping", name)
-		//continue
-		//}
+		d, _ = NormalizeName(d)
 
-		found := findPkg(buildContext, name, dir)
-		switch found.PType {
-		case ptypeUnknown:
-			Info("==> Unknown %s (%s)", name, oname)
-			Debug("✨☆ Undownloaded dependency: %s", name)
-			repo := util.GetRootFromPackage(name)
-			nd := &cfg.Dependency{
-				Name:       name,
-				Repository: "https://" + repo,
-			}
-			deps[name] = nd
-			res = append(res, name)
-		case ptypeGoroot, ptypeCgo:
-			scanned[oname] = true
-			// Why do we break rather than continue?
-			break
-		default:
-			// We're looking for dependencies that might exist in $GOPATH
-			// but not be on vendor. We add any that are on $GOPATH.
-			if _, ok := deps[name]; !ok {
-				Debug("✨☆ GOPATH dependency: %s", name)
-				nd := &cfg.Dependency{Name: name}
-				deps[name] = nd
-				res = append(res, name)
-			}
-			scanned[oname] = true
+		// Just in case self comes up here, we skip it.
+		if d == pkg || d == "" {
+			continue
 		}
+		cp = append(cp, d)
+		//scanned[d] = true
 	}
 
-	return res, true
+	msg.Info("Returning %v (len: %d)", cp, len(cp))
+	return cp, true
+
+	/*
+		res := []string{}
+
+		if _, err := os.Stat(dir); err != nil {
+			Warn("Directory is missing: %s", dir)
+			return res, true
+		}
+
+		d := walkDeps(buildContext, dir, pkg)
+		for _, oname := range d {
+			if _, ok := scanned[oname]; ok {
+				//Info("===> Scanned %s already. Skipping", name)
+				continue
+			}
+			Debug("=> Scanning %s", oname)
+			name, _ := NormalizeName(oname)
+			//if _, ok := deps[name]; ok {
+			//scanned[oname] = true
+			//Debug("====> Seen %s already. Skipping", name)
+			//continue
+			//}
+
+			found := findPkg(buildContext, name, dir)
+			switch found.PType {
+			case ptypeUnknown:
+				Info("==> Unknown %s (%s)", name, oname)
+				Debug("✨☆ Undownloaded dependency: %s", name)
+				repo := util.GetRootFromPackage(name)
+				nd := &cfg.Dependency{
+					Name:       name,
+					Repository: "https://" + repo,
+				}
+				deps[name] = nd
+				res = append(res, name)
+			case ptypeGoroot, ptypeCgo:
+				scanned[oname] = true
+				// Why do we break rather than continue?
+				break
+			default:
+				// We're looking for dependencies that might exist in $GOPATH
+				// but not be on vendor. We add any that are on $GOPATH.
+				if _, ok := deps[name]; !ok {
+					Debug("✨☆ GOPATH dependency: %s", name)
+					nd := &cfg.Dependency{Name: name}
+					deps[name] = nd
+					res = append(res, name)
+				}
+				scanned[oname] = true
+			}
+		}
+
+		return res, true
+	*/
 }
 
 // mergeDeps merges any dependency array into deps.
@@ -452,4 +538,24 @@ func mergeDeps(orig map[string]*cfg.Dependency, add []*cfg.Dependency, vend stri
 		}
 	}
 	return mod
+}
+
+// InstallMissingPackagesHandler is a missing package handler that installs missing packages.
+type InstallMissingPackagesHandler struct {
+	Vendor, Home                         string
+	UseCache, UseCacheGopath, SkipGopath bool
+}
+
+func (i *InstallMissingPackagesHandler) NotFound(pkg string) (bool, error) {
+	d := &cfg.Dependency{Name: pkg}
+	dest := filepath.Join(i.Vendor, pkg)
+	msg.Info("Cloning %s into %s", pkg, dest)
+	if err := VcsGet(d, dest, i.Home, i.UseCache, i.UseCacheGopath, i.SkipGopath); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (i *InstallMissingPackagesHandler) OnGopath(pkg string) (bool, error) {
+	return i.NotFound(pkg)
 }

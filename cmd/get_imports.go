@@ -254,6 +254,11 @@ func VcsExists(dep *cfg.Dependency, dest string) bool {
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
 // VcsGet installs into the dest.
+//
+// dep is the dependency to try to install. dest is the destination. home is the
+// (what?). cache indicates whether to store in a local cache. cacheGopath indicates
+// whether to store a copy in Gopath, and skipGopath prevents copying from Gopath
+// into the present project.
 func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, skipGopath bool) error {
 	// When not skipping the $GOPATH look in it for a copy of the package
 	if !skipGopath {
