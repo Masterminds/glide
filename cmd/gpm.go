@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
 )
 
 // This file contains commands for working with GPM/GVP.
@@ -25,22 +25,22 @@ func HasGPMGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 // Params
 // 	- dir (string): Directory root.
 //
-// Returns an []*yaml.Dependency
+// Returns an []*cfg.Dependency
 func GPMGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
 	return parseGPMGodeps(dir)
 }
-func parseGPMGodeps(dir string) ([]*yaml.Dependency, error) {
+func parseGPMGodeps(dir string) ([]*cfg.Dependency, error) {
 	path := filepath.Join(dir, "Godeps")
 	if i, err := os.Stat(path); err != nil {
-		return []*yaml.Dependency{}, nil
+		return []*cfg.Dependency{}, nil
 	} else if i.IsDir() {
 		Info("Godeps is a directory. This is probably a Godep project.\n")
-		return []*yaml.Dependency{}, nil
+		return []*cfg.Dependency{}, nil
 	}
 	Info("Found Godeps file.\n")
 
-	buf := []*yaml.Dependency{}
+	buf := []*cfg.Dependency{}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -50,7 +50,7 @@ func parseGPMGodeps(dir string) ([]*yaml.Dependency, error) {
 	for scanner.Scan() {
 		parts, ok := parseGodepsLine(scanner.Text())
 		if ok {
-			dep := &yaml.Dependency{Name: parts[0]}
+			dep := &cfg.Dependency{Name: parts[0]}
 			if len(parts) > 1 {
 				dep.Reference = parts[1]
 			}
@@ -70,11 +70,11 @@ func GPMGodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	dir := cookoo.GetString("dir", "", p)
 	path := filepath.Join(dir, "Godeps-Git")
 	if _, err := os.Stat(path); err != nil {
-		return []*yaml.Dependency{}, nil
+		return []*cfg.Dependency{}, nil
 	}
 	Info("Found Godeps-Git file.\n")
 
-	buf := []*yaml.Dependency{}
+	buf := []*cfg.Dependency{}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -84,7 +84,7 @@ func GPMGodepsGit(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	for scanner.Scan() {
 		parts, ok := parseGodepsLine(scanner.Text())
 		if ok {
-			dep := &yaml.Dependency{Name: parts[1], Repository: parts[0]}
+			dep := &cfg.Dependency{Name: parts[1], Repository: parts[0]}
 			if len(parts) > 2 {
 				dep.Reference = parts[2]
 			}

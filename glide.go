@@ -124,28 +124,28 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 		{
 			Name:      "create",
 			ShortName: "init",
-			Usage:     "Initialize a new project, creating a template glide.yaml",
+			Usage:     "Initialize a new project, creating a glide.yaml file",
 			Description: `This command starts from a project without Glide and
-	sets it up. Once this step is done, you may edit the glide.yaml file and then
-	you may run 'glide install' to fetch your initial dependencies.
+	sets it up. It generates a glide.yaml file, parsing your codebase to guess
+	the dependencies to include. Once this step is done you may edit the
+	glide.yaml file to update imported dependency properties such as the version
+	or version range to include.
 
-	By default, the project name is 'main'. You can specify an alternative on
-	the commandline:
-
-		$ glide create github.com/Masterminds/foo
-
-	For a project that already has a glide.yaml file, you may skip 'glide create'
-	and instead run 'glide up'.`,
+	To fetch the dependencies you may run 'glide install'.`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "skip-import",
+					Usage: "When initializing skip importing from other package managers.",
+				},
+			},
 			Action: func(c *cli.Context) {
-				if len(c.Args()) >= 1 {
-					cxt.Put("project", c.Args()[0])
-				}
+				cxt.Put("skipImport", c.Bool("skip-import"))
 				setupHandler(c, "create", cxt, router)
 			},
 		},
 		{
 			Name:  "get",
-			Usage: "Install one or more package into `vendor/` and add dependency to glide.yaml.",
+			Usage: "Install one or more packages into `vendor/` and add dependency to glide.yaml.",
 			Description: `Gets one or more package (like 'go get') and then adds that file
 	to the glide.yaml file. Multiple package names can be specified on one line.
 
@@ -154,19 +154,14 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	The above will install the project github.com/Masterminds/cookoo and add
 	the subpackage 'web'.
 
-	If a fetched dependency has a glide.yaml file, 'get' will also install
-	all of the dependencies for that dependency. Those are installed in a scoped
-	vendor directory. So dependency vendor/foo/bar has its dependencies stored
-	in vendor/foo/bar/vendor. This behavior can be disabled using
-	'--no-recursive'
+	If a fetched dependency has a glide.yaml file, configuration from Godep,
+	GPM, or GB Glide that configuration will be used to find the dependencies
+	and versions to fetch. If those are not available the dependent packages will
+	be fetched as either a version specified elsewhere or the latest version.
 
-	If '--import' is set, this will also read the dependency projects, looking
-	for gb, Godep and GPM files. When it finds them, it will build a comparable
-	glide.yaml file, and then fetch all of the necessary dependencies. The
-	dependencies are then vendored in the appropriate project. Subsequent calls
-	to 'glide up' will use the glide.yaml to maintain those dependencies.
-	However, only if you call 'glide up --import' will the glide file be
-	rebuilt. When '--no-recursive' is used, '--import' does nothing.
+	When adding a new dependency Glide will perform an update to work out the
+	the versions to use from the dependency tree. This will generate an updated
+	glide.lock file with specific locked versions to use.
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
@@ -317,10 +312,75 @@ Example:
 			},
 		},
 		{
+			Name:      "install",
+			ShortName: "i",
+			Usage:     "Install a project's dependencies",
+			Description: `This uses the native VCS of each packages to install
+		the appropriate version. There are two ways a projects dependencies can
+	be installed. When there is a glide.yaml file defining the dependencies but
+	no lock file (glide.lock) the dependencies are installed using the "update"
+	command and a glide.lock file is generated pinning all dependencies. If a
+	glide.lock file is already present the dependencies are installed or updated
+	from the lock file.`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "delete",
+					Usage: "Delete vendor packages not specified in config.",
+				},
+				cli.BoolFlag{
+					Name:  "no-recursive, quick",
+					Usage: "Disable updating dependencies' dependencies. Only update things in glide.yaml.",
+				},
+				cli.BoolFlag{
+					Name:  "force",
+					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
+				},
+				cli.BoolFlag{
+					Name:  "update-vendored, u",
+					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+				},
+				cli.StringFlag{
+					Name:  "file, f",
+					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+				},
+				cli.BoolFlag{
+					Name:  "cache",
+					Usage: "When downloading dependencies attempt to cache them.",
+				},
+				cli.BoolFlag{
+					Name:  "cache-gopath",
+					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+				},
+				cli.BoolFlag{
+					Name:  "skip-gopath",
+					Usage: "Skip attempting to copy a dependency from the GOPATH.",
+				},
+			},
+			Action: func(c *cli.Context) {
+				cxt.Put("deleteOptIn", c.Bool("delete"))
+				cxt.Put("forceUpdate", c.Bool("force"))
+				cxt.Put("skipFlatten", c.Bool("no-recursive"))
+				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
+				cxt.Put("toPath", c.String("file"))
+				cxt.Put("toStdout", false)
+				cxt.Put("useCache", c.Bool("cache"))
+				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
+				cxt.Put("skipGopath", c.Bool("skip-gopath"))
+				if c.Bool("import") {
+					cxt.Put("importGodeps", true)
+					cxt.Put("importGPM", true)
+					cxt.Put("importGb", true)
+				}
+				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
+
+				cxt.Put("packages", []string(c.Args()))
+				setupHandler(c, "install", cxt, router)
+			},
+		},
+		{
 			Name:      "update",
 			ShortName: "up",
-			Aliases:   []string{"install"},
-			Usage:     "Update or install a project's dependencies",
+			Usage:     "Update a project's dependencies",
 			Description: `This uses the native VCS of each package to try to
 	pull the most applicable updates. Packages with fixed refs (Versions or
 	tags) will not be updated. Packages with no ref or with a branch ref will
@@ -429,27 +489,6 @@ Example:
 			},
 		},
 		{
-			Name:  "guess",
-			Usage: "Guess dependencies for existing source.",
-			Description: `This looks through existing source and dependencies,
-	and tries to guess all of the dependent packages.
-
-	By default, 'glide guess' writes to standard output. But if a filename
-	is supplied, the results are written to the file:
-
-		$ glide guess glide.yaml
-
-	The above will overwrite the glide.yaml file.`,
-			Action: func(c *cli.Context) {
-				outfile := ""
-				if len(c.Args()) == 1 {
-					outfile = c.Args()[0]
-				}
-				cxt.Put("toPath", outfile)
-				setupHandler(c, "guess", cxt, router)
-			},
-		},
-		{
 			Name:  "about",
 			Usage: "Learn about Glide",
 			Action: func(c *cli.Context) {
@@ -508,14 +547,32 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("skipGopath").From("cxt:skipGopath").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
-		Using("filename").WithDefault("glide.yaml").From("cxt:yaml")
+		Using("filename").WithDefault("glide.yaml").From("cxt:yaml").
+		Does(cmd.WriteLock, "lock").
+		Using("lockfile").From("cxt:Lockfile")
 
-	reg.Route("exec", "Execute command with GOPATH set.").
+	reg.Route("install", "Install dependencies.").
 		Includes("@startup").
 		Includes("@ready").
-		Does(cmd.ExecCmd, "cmd").
-		Using("args").From("cxt:cliArgs").
-		Using("filename").From("cxt:yaml")
+		Does(cmd.CowardMode, "_").
+		Does(cmd.LockFileExists, "_").
+		Does(cmd.LoadLockFile, "lock").
+		Using("conf").From("cxt:cfg").
+		Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
+		Does(cmd.DeleteUnusedPackages, "deleted").
+		Using("conf").From("cxt:cfg").
+		Using("optIn").From("cxt:deleteOptIn").
+		Does(cmd.VendoredSetup, "cfg").
+		Using("conf").From("cxt:cfg").
+		Using("update").From("cxt:updateVendoredDeps").
+		Does(cmd.Install, "icfg").
+		Using("conf").From("cxt:cfg").
+		Using("lock").From("cxt:lock").
+		Using("home").From("cxt:home").
+		Does(cmd.SetReference, "version").Using("conf").From("cxt:icfg").
+		Does(cmd.VendoredCleanUp, "_").
+		Using("conf").From("cxt:icfg").
+		Using("update").From("cxt:updateVendoredDeps")
 
 	reg.Route("update", "Update dependencies.").
 		Includes("@startup").
@@ -551,7 +608,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath").
-		Using("toStdout").From("cxt:toStdout")
+		Using("toStdout").From("cxt:toStdout").
+		Does(cmd.WriteLock, "lock").
+		Using("lockfile").From("cxt:Lockfile")
 
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 
@@ -564,10 +623,22 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("pin", "Print a YAML file with all of the packages pinned to the current version.").
 		Includes("@startup").
 		Includes("@ready").
-		Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
+		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
+		Using("packages").From("cxt:packages").
+		Using("force").From("cxt:forceUpdate").
+		Using("skip").From("cxt:skipFlatten").
+		Using("home").From("cxt:home").
+		Using("cache").From("cxt:useCache").
+		Using("cacheGopath").From("cxt:cacheGopath").
+		Using("skipGopath").From("cxt:skipGopath").
+		//Does(cmd.VendoredCleanUp, "_").
+		//Using("conf").From("cxt:flattened").
+		//Using("update").From("cxt:updateVendoredDeps").
+		// Write the Lockfile
 		Does(cmd.WriteYaml, "out").
-		Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:toPath")
+		Using("conf").From("cxt:Lockfile").
+		Using("filename").From("cxt:toPath").
+		Using("toStdout").From("cxt:toStdout")
 
 	reg.Route("import gpm", "Read a Godeps file").
 		Includes("@startup").
@@ -605,18 +676,15 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath")
 
-	reg.Route("guess", "Guess dependencies").
-		Includes("@ready").
+	reg.Route("create", "Guess dependencies").
+		Includes("@startup").
+		Does(cmd.GuardYaml, "_").
+		Using("filename").From("cxt:yaml").
 		Does(cmd.GuessDeps, "cfg").
+		Using("skipImport").From("cxt:skipImport").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:toPath")
-
-	reg.Route("create", "Initialize Glide").
-		Includes("@startup").
-		Does(cmd.InitGlide, "init").
-		Using("filename").From("cxt:yaml").
-		Using("project").From("cxt:project").WithDefault("main")
+		Using("filename").From("cxt:yaml")
 
 	reg.Route("name", "Print environment").
 		Includes("@startup").

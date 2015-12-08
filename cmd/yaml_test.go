@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
 )
 
 var yamlFile = `
@@ -32,55 +32,36 @@ devimport:
   - package: github.com/kylelemons/go-gypsy
 `
 
-var childYamlFile = `
-package: fake/testing/more
-import:
-  - package: github.com/kylelemons/go-gypsy
-    subpackages:
-      - yaml
-`
-
 func TestFromYaml(t *testing.T) {
 	reg, router, cxt := cookoo.Cookoo()
 
 	reg.Route("t", "Testing").
-		Does(ParseYamlString, "cfg").Using("yaml").WithDefault(yamlFile).
-		Does(ParseYamlString, "childCfg").Using("yaml").WithDefault(childYamlFile)
+		Does(ParseYamlString, "cfg").Using("yaml").WithDefault(yamlFile)
 
 	if err := router.HandleRequest("t", cxt, false); err != nil {
 		t.Errorf("Failed to parse YAML: %s", err)
 	}
 
-	cfg := cxt.Get("cfg", nil).(*yaml.Config)
-	cfgChild := cxt.Get("childCfg", nil).(*yaml.Config)
-	cfgChild.Parent = cfg
+	conf := cxt.Get("cfg", nil).(*cfg.Config)
 
-	if cfg.Name != "fake/testing" {
-		t.Errorf("Expected name to be 'fake/teting', not '%s'", cfg.Name)
+	if conf.Name != "fake/testing" {
+		t.Errorf("Expected name to be 'fake/teting', not '%s'", conf.Name)
 	}
 
-	if len(cfg.Imports) != 3 {
-		t.Errorf("Expected 3 imports, got %d", len(cfg.Imports))
+	if len(conf.Imports) != 3 {
+		t.Errorf("Expected 3 imports, got %d", len(conf.Imports))
 	}
 
-	if cfg.Parent != nil {
-		t.Error("Expected root glide Parent to be nil")
-	}
-
-	if cfg.Imports.Get("github.com/Masterminds/convert") == nil {
+	if conf.Imports.Get("github.com/Masterminds/convert") == nil {
 		t.Error("Expected Imports.Get to return Dependency")
 	}
 
-	if cfg.Imports.Get("github.com/doesnot/exist") != nil {
+	if conf.Imports.Get("github.com/doesnot/exist") != nil {
 		t.Error("Execpted Imports.Get to return nil")
 	}
 
-	if cfgChild.HasRecursiveDependency("github.com/Masterminds/convert") == false {
-		t.Errorf("Expected to find a recursive dependency")
-	}
-
-	var imp *yaml.Dependency
-	for _, d := range cfg.Imports {
+	var imp *cfg.Dependency
+	for _, d := range conf.Imports {
 		if d.Name == "github.com/Masterminds/convert" {
 			imp = d
 		}
@@ -119,7 +100,7 @@ func TestFromYaml(t *testing.T) {
 		t.Errorf("Got wrong reference.")
 	}
 
-	if len(cfg.DevImports) != 1 {
+	if len(conf.DevImports) != 1 {
 		t.Errorf("Expected one dev import.")
 	}
 
@@ -129,9 +110,9 @@ func TestNormalizeName(t *testing.T) {
 	packages := map[string]string{
 		"github.com/Masterminds/cookoo/web/io/foo": "github.com/Masterminds/cookoo",
 		"golang.org/x/crypto/ssh":                  "golang.org/x/crypto",
-		"technosophos.me/x/totally/fake/package":   "technosophos.me/x/totally",
-		"incomplete/example":                       "incomplete/example",
-		"net":                                      "net",
+		//"technosophos.me/x/totally/fake/package":   "technosophos.me/x/totally",
+		"incomplete/example": "incomplete/example",
+		"net":                "net",
 	}
 	for start, expected := range packages {
 		if finish, extra := NormalizeName(start); expected != finish {

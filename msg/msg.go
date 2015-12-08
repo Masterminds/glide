@@ -1,12 +1,10 @@
 // +build !windows
 
-package cmd
+package msg
 
 import (
 	"fmt"
-	"os"
 	"strings"
-	"sync"
 )
 
 // These contanstants map to color codes for shell scripts making them
@@ -19,8 +17,6 @@ const (
 	Cyan   = "0;36"
 	Pink   = "1;35"
 )
-
-var outputLock sync.Mutex
 
 // Color returns a string in a certain color. The first argument is a string
 // containing the color code or a constant from the table above mapped to a code.
@@ -39,8 +35,8 @@ func Info(msg string, args ...interface{}) {
 	if Quiet {
 		return
 	}
-	i := fmt.Sprint(Color(Green, "[INFO] "))
-	Msg(i+msg, args...)
+	fmt.Fprint(Stderr, Color(Green, "[INFO] "))
+	Msg(msg, args...)
 }
 
 // Debug logs debug information
@@ -48,53 +44,49 @@ func Debug(msg string, args ...interface{}) {
 	if Quiet || !IsDebugging {
 		return
 	}
-	i := fmt.Sprint("[DEBUG] ")
-	Msg(i+msg, args...)
+	fmt.Fprint(Stderr, "[DEBUG] ")
+	Msg(msg, args...)
 }
 
 // Warn logs a warning
 func Warn(msg string, args ...interface{}) {
-	i := fmt.Sprint(Color(Yellow, "[WARN] "))
-	ErrMsg(i+msg, args...)
+	fmt.Fprint(Stderr, Color(Yellow, "[WARN] "))
+	ErrMsg(msg, args...)
 }
 
 // Error logs and error.
 func Error(msg string, args ...interface{}) {
-	i := fmt.Sprint(Color(Red, "[ERROR] "))
-	ErrMsg(i+msg, args...)
+	fmt.Fprint(Stderr, Color(Red, "[ERROR] "))
+	ErrMsg(msg, args...)
 }
 
 // ErrMsg sends a message to Stderr
 func ErrMsg(msg string, args ...interface{}) {
-	outputLock.Lock()
-	defer outputLock.Unlock()
-
-	// If messages don't have a newline on the end we add one.
-	e := ""
-	if !strings.HasSuffix(msg, "\n") {
-		e = "\n"
-	}
 	if len(args) == 0 {
-		fmt.Fprint(os.Stderr, msg+e)
+		fmt.Fprint(Stderr, msg)
 	} else {
-		fmt.Fprintf(os.Stderr, msg+e, args...)
+		fmt.Fprintf(Stderr, msg, args...)
+	}
+
+	// Get rid of the annoying fact that messages need \n at the end, but do
+	// it in a backward compatible way.
+	if !strings.HasSuffix(msg, "\n") {
+		fmt.Fprintln(Stderr)
 	}
 }
 
 // Msg prints a message with optional arguments, that can be printed, of
 // varying types.
 func Msg(msg string, args ...interface{}) {
-	outputLock.Lock()
-	defer outputLock.Unlock()
-
-	// If messages don't have a newline on the end we add one.
-	e := ""
-	if !strings.HasSuffix(msg, "\n") {
-		e = "\n"
-	}
 	if len(args) == 0 {
-		fmt.Fprint(os.Stderr, msg+e)
+		fmt.Fprint(Stderr, msg)
 	} else {
-		fmt.Fprintf(os.Stderr, msg+e, args...)
+		fmt.Fprintf(Stderr, msg, args...)
+	}
+
+	// Get rid of the annoying fact that messages need \n at the end, but do
+	// it in a backward compatible way.
+	if !strings.HasSuffix(msg, "\n") {
+		fmt.Fprintln(Stderr)
 	}
 }

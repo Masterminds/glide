@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"sync"
 	//"log"
 
 	"os"
@@ -17,11 +18,14 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/util"
-	"github.com/Masterminds/glide/yaml"
 	"github.com/Masterminds/semver"
 	v "github.com/Masterminds/vcs"
 )
+
+// Used for the fan out/in pattern used with VCS calls.
+var concurrentWorkers = 20
 
 //func init() {
 // Uncomment the line below and the log import to see the output
@@ -42,7 +46,7 @@ import (
 // 	- []*Dependency: A list of constructed dependencies.
 func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	names := p.Get("packages", []string{}).([]string)
-	cfg := p.Get("conf", nil).(*yaml.Config)
+	conf := p.Get("conf", nil).(*cfg.Config)
 	insecure := p.Get("insecure", false).(bool)
 	home := p.Get("home", "").(string)
 	cache := p.Get("cache", false).(bool)
@@ -51,7 +55,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 
 	Info("Preparing to install %d package.", len(names))
 
-	deps := []*yaml.Dependency{}
+	deps := []*cfg.Dependency{}
 	for _, name := range names {
 		cwd, err := VendorPath(c)
 		if err != nil {
@@ -63,8 +67,13 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 			return nil, fmt.Errorf("Package name is required for %q.", name)
 		}
 
-		if cfg.HasDependency(root) {
+		if conf.HasDependency(root) {
 			Warn("Package %q is already in glide.yaml. Skipping", root)
+			continue
+		}
+
+		if conf.HasIgnore(root) {
+			Warn("Package %q is set to be ignored in glide.yaml. Skipping", root)
 			continue
 		}
 
@@ -75,7 +84,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 			return false, err
 		}
 
-		dep := &yaml.Dependency{
+		dep := &cfg.Dependency{
 			Name: root,
 		}
 
@@ -93,7 +102,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 			return dep, err
 		}
 
-		cfg.Imports = append(cfg.Imports, dep)
+		conf.Imports = append(conf.Imports, dep)
 
 		deps = append(deps, dep)
 
@@ -106,10 +115,10 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 // Params:
 //
 // 	- force (bool): force packages to update (default false)
-//	- conf (*yaml.Config): The configuration
+//	- conf (*cfg.Config): The configuration
 // 	- packages([]string): The packages to update. Default is all.
 func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil).(*yaml.Config)
+	cfg := p.Get("conf", nil).(*cfg.Config)
 	force := p.Get("force", true).(bool)
 	plist := p.Get("packages", []string{}).([]string)
 	home := p.Get("home", "").(string)
@@ -152,29 +161,62 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 // SetReference is a command to set the VCS reference (commit id, tag, etc) for
 // a project.
 func SetReference(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil).(*yaml.Config)
+	conf := p.Get("conf", nil).(*cfg.Config)
 	cwd, err := VendorPath(c)
 	if err != nil {
 		return false, err
 	}
 
-	if len(cfg.Imports) == 0 {
+	if len(conf.Imports) == 0 {
 		Info("No references set.\n")
 		return false, nil
 	}
+	//
+	// for _, dep := range conf.Imports {
+	// 	if err := VcsVersion(dep, cwd); err != nil {
+	// 		Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+	// 	}
+	// }
 
-	for _, dep := range cfg.Imports {
-		if err := VcsVersion(dep, cwd); err != nil {
-			Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
-		}
+	done := make(chan struct{}, concurrentWorkers)
+	in := make(chan *cfg.Dependency, concurrentWorkers)
+	var wg sync.WaitGroup
+
+	for i := 0; i < concurrentWorkers; i++ {
+		go func(ch <-chan *cfg.Dependency) {
+			for {
+				select {
+				case dep := <-ch:
+					if err := VcsVersion(dep, cwd); err != nil {
+						Warn("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+					}
+					wg.Done()
+				case <-done:
+					return
+				}
+			}
+		}(in)
 	}
+
+	for _, dep := range conf.Imports {
+		wg.Add(1)
+		in <- dep
+	}
+
+	wg.Wait()
+	// Close goroutines setting the version
+	for i := 0; i < concurrentWorkers; i++ {
+		done <- struct{}{}
+	}
+	// close(done)
+	// close(in)
 
 	return true, nil
 }
 
 // filterArchOs indicates a dependency should be filtered out because it is
 // the wrong GOOS or GOARCH.
-func filterArchOs(dep *yaml.Dependency) bool {
+func filterArchOs(dep *cfg.Dependency) bool {
 	found := false
 	if len(dep.Arch) > 0 {
 		for _, a := range dep.Arch {
@@ -205,7 +247,7 @@ func filterArchOs(dep *yaml.Dependency) bool {
 }
 
 // VcsExists checks if the directory has a local VCS checkout.
-func VcsExists(dep *yaml.Dependency, dest string) bool {
+func VcsExists(dep *cfg.Dependency, dest string) bool {
 	repo, err := dep.GetRepo(dest)
 	if err != nil {
 		return false
@@ -217,8 +259,7 @@ func VcsExists(dep *yaml.Dependency, dest string) bool {
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
 // VcsGet installs into the dest.
-func VcsGet(dep *yaml.Dependency, dest, home string, cache, cacheGopath, skipGopath bool) error {
-
+func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, skipGopath bool) error {
 	// When not skipping the $GOPATH look in it for a copy of the package
 	if !skipGopath {
 		// Check if the $GOPATH has a viable version to use and if so copy to vendor
@@ -414,7 +455,7 @@ func VcsGet(dep *yaml.Dependency, dest, home string, cache, cacheGopath, skipGop
 			if err == errCacheDisabled {
 				Debug("Unable to cache default branch because caching is disabled")
 			} else if err != nil {
-				Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
+				Debug("Error saving %s to cache - Error: %s", repo.Remote(), err)
 			}
 		}
 	}
@@ -423,7 +464,7 @@ func VcsGet(dep *yaml.Dependency, dest, home string, cache, cacheGopath, skipGop
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *yaml.Dependency, vend, home string, force, cache, cacheGopath, skipGopath bool) error {
+func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath, skipGopath bool) error {
 	Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
@@ -513,13 +554,22 @@ func VcsUpdate(dep *yaml.Dependency, vend, home string, force, cache, cacheGopat
 }
 
 // VcsVersion set the VCS version for a checkout.
-func VcsVersion(dep *yaml.Dependency, vend string) error {
+func VcsVersion(dep *cfg.Dependency, vend string) error {
+	cwd := path.Join(vend, dep.Name)
+
 	// If there is no refernece configured there is nothing to set.
 	if dep.Reference == "" {
+		// Before exiting update the pinned version
+		repo, err := dep.GetRepo(cwd)
+		if err != nil {
+			return err
+		}
+		dep.Pin, err = repo.Version()
+		if err != nil {
+			return err
+		}
 		return nil
 	}
-
-	cwd := path.Join(vend, dep.Name)
 
 	// When the directory is not empty and has no VCS directory it's
 	// a vendored files situation.
@@ -585,13 +635,17 @@ func VcsVersion(dep *yaml.Dependency, vend string) error {
 			Error("Failed to set version to %s: %s\n", dep.Reference, err)
 			return err
 		}
+		dep.Pin, err = repo.Version()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 // VcsLastCommit gets the last commit ID from the given dependency.
-func VcsLastCommit(dep *yaml.Dependency, vend string) (string, error) {
+func VcsLastCommit(dep *cfg.Dependency, vend string) (string, error) {
 	cwd := path.Join(vend, dep.Name)
 	repo, err := dep.GetRepo(cwd)
 	if err != nil {
@@ -752,6 +806,16 @@ func findCurrentBranch(repo v.Repo) string {
 	}
 
 	return ""
+}
+
+// list2map takes a list of packages names and creates a map of normalized names.
+func list2map(in []string) map[string]bool {
+	out := make(map[string]bool, len(in))
+	for _, v := range in {
+		v, _ := NormalizeName(v)
+		out[v] = true
+	}
+	return out
 }
 
 func envForDir(dir string) []string {

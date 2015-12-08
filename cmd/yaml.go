@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/util"
 )
 
 // ParseYaml parses the glide.yaml format and returns a Configuration object.
@@ -17,7 +18,7 @@ import (
 //	- filename (string): YAML filename as a string
 //
 // Returns:
-//	- *yaml.Config: The configuration.
+//	- *cfg.Config: The configuration.
 func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	fname := p.Get("filename", "glide.yaml").(string)
 	//conf := new(Config)
@@ -25,12 +26,12 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := yaml.FromYaml(string(yml))
+	conf, err := cfg.ConfigFromYaml(yml)
 	if err != nil {
 		return nil, err
 	}
 
-	return cfg, nil
+	return conf, nil
 }
 
 // ParseYamlString parses a YAML string. This is similar but different to
@@ -40,32 +41,44 @@ func ParseYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 //	- yaml (string): YAML as a string.
 //
 // Returns:
-//	- *yaml.Config: The configuration.
+//	- *cfg.Config: The configuration.
 func ParseYamlString(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	yamlString := p.Get("yaml", "").(string)
 
-	cfg, err := yaml.FromYaml(string(yamlString))
+	conf, err := cfg.ConfigFromYaml([]byte(yamlString))
 	if err != nil {
 		return nil, err
 	}
 
-	return cfg, nil
+	return conf, nil
 }
 
-// WriteYaml writes a yaml.Node to the console as a string.
+// GuardYaml protects the glide yaml file from being overwritten.
+func GuardYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	fname := p.Get("filename", "glide.yaml").(string)
+	if _, err := os.Stat(fname); err == nil {
+		cwd, _ := os.Getwd()
+		return false, fmt.Errorf("Cowardly refusing to overwrite %s in %s", fname, cwd)
+	}
+
+	return true, nil
+}
+
+// WriteYaml writes the config as YAML.
 //
 // Params:
-//	- conf: A *yaml.Config to render.
+//	- conf: A *cfg.Config to render.
 // 	- out (io.Writer): An output stream to write to. Default is os.Stdout.
 // 	- filename (string): If set, the file will be opened and the content will be written to it.
 func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	cfg := p.Get("conf", nil).(*yaml.Config)
+	conf := p.Get("conf", nil).(*cfg.Config)
 	toStdout := p.Get("toStdout", true).(bool)
 
-	yml, err := yaml.ToYaml(cfg)
+	data, err := conf.Marshal()
 	if err != nil {
 		return nil, err
 	}
+
 	var out io.Writer
 	if nn, ok := p.Has("filename"); ok && len(nn.(string)) > 0 {
 		file, err := os.Create(nn.(string))
@@ -73,22 +86,51 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		}
 		defer file.Close()
 		out = io.Writer(file)
-		fmt.Fprint(out, yml)
+		//fmt.Fprint(out, yml)
+		out.Write(data)
 	} else if toStdout {
 		out = p.Get("out", os.Stdout).(io.Writer)
-		fmt.Fprint(out, yml)
+		//fmt.Fprint(out, yml)
+		out.Write(data)
 	}
 
 	// Otherwise we supress output.
 	return true, nil
 }
 
-// AddDependencies adds a list of *Dependency objects to the given *yaml.Config.
+// WriteLock writes the lock as YAML.
+//
+// Params:
+//	- lockfile: A *cfg.Lockfile to render.
+// 	- out (io.Writer): An output stream to write to. Default is os.Stdout.
+func WriteLock(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
+	lockfile := p.Get("lockfile", nil).(*cfg.Lockfile)
+
+	Info("Writing glide.lock file")
+
+	data, err := lockfile.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	var out io.Writer
+	file, err := os.Create("glide.lock")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+	out = io.Writer(file)
+	out.Write(data)
+
+	return true, nil
+}
+
+// AddDependencies adds a list of *Dependency objects to the given *cfg.Config.
 //
 // This is used to merge in packages from other sources or config files.
 func AddDependencies(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	deps := p.Get("dependencies", []*yaml.Dependency{}).([]*yaml.Dependency)
-	config := p.Get("conf", nil).(*yaml.Config)
+	deps := p.Get("dependencies", []*cfg.Dependency{}).([]*cfg.Dependency)
+	config := p.Get("conf", nil).(*cfg.Config)
 
 	// Make a set of existing package names for quick comparison.
 	pkgSet := make(map[string]bool, len(config.Imports))
@@ -113,13 +155,24 @@ func AddDependencies(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 // For example, golang.org/x/crypto/ssh becomes golang.org/x/crypto. 'ssh' is
 // returned as extra data.
 func NormalizeName(name string) (string, string) {
-	parts := strings.SplitN(name, "/", 4)
-	extra := ""
-	if len(parts) < 3 {
-		return name, extra
+	root := util.GetRootFromPackage(name)
+	extra := strings.TrimPrefix(name, root)
+	if len(extra) > 0 && extra != "/" {
+		extra = strings.TrimPrefix(extra, "/")
+	} else {
+		// If extra is / (which is what it would be here) we want to return ""
+		extra = ""
 	}
-	if len(parts) == 4 {
-		extra = parts[3]
-	}
-	return strings.Join(parts[0:3], "/"), extra
+
+	return root, extra
+
+	// parts := strings.SplitN(name, "/", 4)
+	// extra := ""
+	// if len(parts) < 3 {
+	// 	return name, extra
+	// }
+	// if len(parts) == 4 {
+	// 	extra = parts[3]
+	// }
+	// return strings.Join(parts[0:3], "/"), extra
 }

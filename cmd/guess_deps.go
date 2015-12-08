@@ -2,116 +2,122 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/dependency"
+	"github.com/Masterminds/glide/util"
 )
 
 // GuessDeps tries to get the dependencies for the current directory.
 //
 // Params
-// 	- dirname (string): Directory to use as the base. Default: "."
+//  - dirname (string): Directory to use as the base. Default: "."
+//  - skipImport (book): Whether to skip importing from Godep, GPM, and gb
 func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	buildContext, err := GetBuildContext()
 	if err != nil {
 		return nil, err
 	}
 	base := p.Get("dirname", ".").(string)
-	deps := make(map[string]bool)
-	err = findDeps(buildContext, deps, base, "")
-	deps = compactDeps(deps)
-	delete(deps, base)
+	skipImport := p.Get("skipImport", false).(bool)
+	name := guessPackageName(buildContext, base)
+
+	Info("Generating a YAML configuration file and guessing the dependencies")
+
+	config := new(cfg.Config)
+
+	// Get the name of the top level package
+	config.Name = name
+
+	// Import by looking at other package managers and looking over the
+	// entire directory structure.
+
+	// Attempt to import from other package managers.
+	if !skipImport {
+		Info("Attempting to import from other package managers (use --skip-import to skip)")
+		deps := []*cfg.Dependency{}
+		absBase, err := filepath.Abs(base)
+		if err != nil {
+			return nil, err
+		}
+
+		if d, ok := guessImportGodep(absBase); ok {
+			Info("Importing Godep configuration")
+			Warn("Godep uses commit id versions. Consider using Semantic Versions with Glide")
+			deps = d
+		} else if d, ok := guessImportGPM(absBase); ok {
+			Info("Importing GPM configuration")
+			deps = d
+		} else if d, ok := guessImportGB(absBase); ok {
+			Info("Importing GB configuration")
+			deps = d
+		}
+
+		for _, i := range deps {
+			Info("Found imported reference to %s\n", i.Name)
+			config.Imports = append(config.Imports, i)
+		}
+	}
+
+	// Resolve dependencies by looking at the tree.
+	r, err := dependency.NewResolver(base)
 	if err != nil {
 		return nil, err
 	}
 
-	config := new(yaml.Config)
+	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}}
+	r.Handler = h
 
-	// Get the name of the top level package
-	config.Name = guessPackageName(buildContext, base)
-	config.Imports = make([]*yaml.Dependency, len(deps))
-	i := 0
-	for pa := range deps {
-		Info("Found reference to %s\n", pa)
-		d := &yaml.Dependency{
-			Name: pa,
-		}
-		config.Imports[i] = d
-		i++
-	}
-
-	return config, nil
-}
-
-// findDeps finds all of the dependenices.
-// https://golang.org/src/cmd/go/pkg.go#485
-//
-// As of Go 1.5 the go command knows about the vendor directory but the go/build
-// package does not. It only knows about the GOPATH and GOROOT. In order to look
-// for packages in the vendor/ directory we need to fake it for now.
-func findDeps(b *BuildCtxt, soFar map[string]bool, name, vpath string) error {
-	cwd, err := os.Getwd()
+	sortable, err := r.ResolveLocal(false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Skip cgo pseudo-package.
-	if name == "C" {
-		return nil
+	sort.Strings(sortable)
+
+	vpath := r.VendorDir
+	if !strings.HasSuffix(vpath, "/") {
+		vpath = vpath + string(os.PathSeparator)
 	}
 
-	pkg, err := b.Import(name, cwd, 0)
-	if err != nil {
-		return err
-	}
+	for _, pa := range sortable {
+		n := strings.TrimPrefix(pa, vpath)
+		root := util.GetRootFromPackage(n)
 
-	if pkg.Goroot {
-		return nil
-	}
-
-	if vpath == "" {
-		vpath = pkg.ImportPath
-	}
-
-	// When the vendor/ directory is present make sure we strip it out before
-	// registering it as a guess.
-	realName := strings.TrimPrefix(pkg.ImportPath, vpath+"/vendor/")
-
-	// Before adding a name to the list make sure it's not the name of the
-	// top level package.
-	lookupName, _ := NormalizeName(realName)
-	if vpath != lookupName {
-		soFar[realName] = true
-	}
-	for _, imp := range pkg.Imports {
-		if !soFar[imp] {
-
-			// Try looking for a dependency as a vendor. If it's not there then
-			// fall back to a way where it will be found in the GOPATH or GOROOT.
-			if err := findDeps(b, soFar, vpath+"/vendor/"+imp, vpath); err != nil {
-				if err := findDeps(b, soFar, imp, vpath); err != nil {
-					return err
+		if !config.HasDependency(root) {
+			Info("Found reference to %s\n", n)
+			d := &cfg.Dependency{
+				Name: root,
+			}
+			subpkg := strings.TrimPrefix(n, root)
+			if len(subpkg) > 0 && subpkg != "/" {
+				d.Subpackages = []string{subpkg}
+			}
+			config.Imports = append(config.Imports, d)
+		} else {
+			subpkg := strings.TrimPrefix(n, root)
+			if len(subpkg) > 0 && subpkg != "/" {
+				subpkg = strings.TrimPrefix(subpkg, "/")
+				d := config.Imports.Get(root)
+				f := false
+				for _, v := range d.Subpackages {
+					if v == subpkg {
+						f = true
+					}
+				}
+				if !f {
+					Info("Adding sub-package %s to %s\n", subpkg, root)
+					d.Subpackages = append(d.Subpackages, subpkg)
 				}
 			}
 		}
 	}
-	return nil
-}
 
-// compactDeps registers only top level packages.
-//
-// Minimize the package imports. For example, importing github.com/Masterminds/cookoo
-// and github.com/Masterminds/cookoo/io should not import two packages. Only one
-// package needs to be referenced.
-func compactDeps(soFar map[string]bool) map[string]bool {
-	basePackages := make(map[string]bool, len(soFar))
-	for k := range soFar {
-		base, _ := NormalizeName(k)
-		basePackages[base] = true
-	}
-
-	return basePackages
+	return config, nil
 }
 
 // Attempt to guess at the package name at the top level. When unable to detect
@@ -124,8 +130,40 @@ func guessPackageName(b *BuildCtxt, base string) string {
 
 	pkg, err := b.Import(base, cwd, 0)
 	if err != nil {
-		return "main"
+		// There may not be any top level Go source files but the project may
+		// still be within the GOPATH.
+		if strings.HasPrefix(base, b.GOPATH) {
+			p := strings.TrimPrefix(base, b.GOPATH)
+			return strings.Trim(p, string(os.PathSeparator))
+		}
 	}
 
 	return pkg.ImportPath
+}
+
+func guessImportGodep(dir string) ([]*cfg.Dependency, bool) {
+	d, err := parseGodepGodeps(dir)
+	if err != nil || len(d) == 0 {
+		return []*cfg.Dependency{}, false
+	}
+
+	return d, true
+}
+
+func guessImportGPM(dir string) ([]*cfg.Dependency, bool) {
+	d, err := parseGPMGodeps(dir)
+	if err != nil || len(d) == 0 {
+		return []*cfg.Dependency{}, false
+	}
+
+	return d, true
+}
+
+func guessImportGB(dir string) ([]*cfg.Dependency, bool) {
+	d, err := parseGbManifest(dir)
+	if err != nil || len(d) == 0 {
+		return []*cfg.Dependency{}, false
+	}
+
+	return d, true
 }

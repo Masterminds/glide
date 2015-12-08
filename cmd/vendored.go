@@ -5,7 +5,7 @@ import (
 	"path"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/vcs"
 )
 
@@ -15,17 +15,17 @@ import (
 // VendoredCleanUp should be a suffix to UpdateImports.
 func VendoredSetup(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	update := p.Get("update", true).(bool)
-	cfg := p.Get("conf", nil).(*yaml.Config)
+	conf := p.Get("conf", nil).(*cfg.Config)
 	if update != true {
-		return cfg, nil
+		return conf, nil
 	}
 
 	vend, err := VendorPath(c)
 	if err != nil {
-		return cfg, err
+		return conf, err
 	}
 
-	for _, dep := range cfg.Imports {
+	for _, dep := range conf.Imports {
 		cwd := path.Join(vend, dep.Name)
 
 		// When the directory is not empty and has no VCS directory it's
@@ -50,11 +50,11 @@ func VendoredSetup(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 		}
 	}
 
-	return cfg, nil
+	return conf, nil
 }
 
 // VendoredCleanUp is a command that cleans up vendored codebases after an update.
-// If enabled (via update) it removed the VCS info from updated vendored
+// If enabled (via update) it removes the VCS info from updated vendored
 // packages. This should be a suffix to UpdateImports and  VendoredSetup should
 // be a prefix to UpdateImports.
 func VendoredCleanUp(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
@@ -62,14 +62,14 @@ func VendoredCleanUp(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 	if update != true {
 		return false, nil
 	}
-	cfg := p.Get("conf", nil).(*yaml.Config)
+	conf := p.Get("conf", nil).(*cfg.Config)
 
 	vend, err := VendorPath(c)
 	if err != nil {
 		return false, err
 	}
 
-	for _, dep := range cfg.Imports {
+	for _, dep := range conf.Imports {
 		if dep.UpdateAsVendored == true {
 			Info("Cleaning up vendored package %s\n", dep.Name)
 

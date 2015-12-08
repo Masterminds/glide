@@ -1,5 +1,8 @@
 # Glide: Vendor Package Management for Golang
 
+Are you used to tools such as Cargo, npm, Composer, Nuget, Pip, Maven, Bunder,
+or other modern package managers? If so, Glide is the comparable Go tool.
+
 *Manage your vendor and vendored packages with ease.* Glide is a tool for
 managing the `vendor` directory within a Go package. This feature, first
 introduced in Go 1.5, allows each package to have a `vendor` directory
@@ -36,7 +39,10 @@ package name), etc. When `glide up` is run it downloads the packages (or updates
 to the `vendor` directory. It then recursively walks through the downloaded
 packages looking for those with a `glide.yaml` file (or Godep, gb, or GPM config
 file) that don't already have a `vendor` directory and installing their
-dependencies to their `vendor` directories.
+dependencies to their `vendor` directories. Once Glide has downloaded and figured
+out versions to use in the dependency tree it creates a `glide.lock` file
+containing the complete dependency tree pinned to specific versions. To install
+the correct versions use `glide install`.
 
 A projects is structured like this:
 
@@ -44,6 +50,8 @@ A projects is structured like this:
 - $GOPATH/src/myProject (Your project)
   |
   |-- glide.yaml
+  |
+  |-- glide.lock
   |
   |-- main.go (Your main go code can live here)
   |
@@ -102,40 +110,46 @@ $ glide up                                # Update to newest versions of the pac
 Check out the `glide.yaml` in this directory, or examples in the `docs/`
 directory.
 
-### glide create [optional package name]
+### glide create (aliased to init)
 
-Initialize a new workspace. Among other things, this creates a stub
-`glide.yaml`
+Initialize a new workspace. Among other things, this creates a `glide.yaml` file
+while attempting to guess the packages and versions to put in it. For example,
+if your project is using Godep it will use the versions specified there. Glide
+is smart enough to scan your codebase and detect the imports being used whether
+they are specified with another package manager or not.
 
 ```
 $ glide create
-[INFO] Initialized. You can now edit 'glide.yaml'
+[INFO] Generating a YAML configuration file and guessing the dependencies
+[INFO] Attempting to import from other package managers (use --skip-import to skip)
+[INFO] Found reference to github.com/Sirupsen/logrus
+[INFO] Adding sub-package hooks/syslog to github.com/Sirupsen/logrus
+[INFO] Found reference to github.com/boltdb/bolt
+[INFO] Found reference to github.com/gorilla/websocket
+[INFO] Found reference to github.com/mndrix/ps
+[INFO] Found reference to github.com/spf13/cobra
+[INFO] Found reference to github.com/spf13/pflag
+[INFO] Found reference to github.com/tinylib/msgp/msgp
+[INFO] Found reference to github.com/unrolled/secure
+[INFO] Found reference to github.com/xeipuuv/gojsonschema
+[INFO] Found reference to github.com/zenazn/goji/graceful
+[INFO] Adding sub-package web to github.com/zenazn/goji
+[INFO] Adding sub-package web/mutil to github.com/zenazn/goji
 ```
-
-If an optional package name is specified, Glide will add it to
-glide.yaml as the name of your project.
 
 ### glide get [package name]
 
-You can download package to your `vendor` directory and have it added to your
+You can download one or more packages to your `vendor` directory and have it added to your
 `glide.yaml` file with `glide get`.
 
 ```
 $ glide get github.com/Masterminds/cookoo
 ```
 
-### glide guess and glide pin
+When `glide get` is used it will introspect the listed package to resolve its
+dependencies including using Godep, GPM, and GB config files.
 
-To help with the creating and managing your `glide.yaml` files there are two
-more helper commands. The `glide guess` command will look over your project,
-read the imports, attempt to intelligently guess at the ones you need to list,
-and create the text for a `glide.yaml` file.
-
-There are times you need to pin a dependency to a version, such as when you're
-preparing to deploy to production. For that case there is the `glide pin` command
-that will pin each dependency in the `glide.yaml` file to the current commit id.
-
-### glide up (aliased to update and install)
+### glide update (aliased to up)
 
 Download or update all of the libraries listed in the `glide.yaml` file and put
 them in the `vendor` directory. It will also recursively walk through the
@@ -147,6 +161,30 @@ $ glide up
 
 This will recurse over the packages looking for other projects managed by Glide,
 Godep, gb, and GPM. When one is found those packages will be installed as needed.
+
+A `glide.lock` file will be created or updated with the dependencies pinned to
+specific versions. For example, if in the `glide.yaml` file a version was
+specified as a range (e.g., `^1.2.3`) it will be set to a specific commit id in
+the `glide.lock` file. That allows for reproducible installs (see `glide install`).
+
+### glide install
+
+When you want to install the specific versions from the `glide.lock` file use
+`glide install`.
+
+```
+$ glide install
+```
+
+This will read the `glide.lock` file, making sure it's tied to the `glide.yaml`
+file, and install the commit id specific versions there.
+
+When the `glide.lock` file doesn't tie to the `glide.yaml` file, such as there
+being a change, it will provide an error. Running `glide up` will recreate the
+`glide.lock` file when updating the dependency tree.
+
+If no `glide.lock` file is present `glide install` will perform an `update` and
+generate a lock file.
 
 ## glide novendor (aliased to nv)
 
@@ -238,20 +276,16 @@ that a project imports.
 
 ```
 $ glide list
-github.com/Masterminds/cookoo (Location: vendored)
-github.com/Masterminds/cookoo/io (Location: vendored)
-github.com/Masterminds/glide/cmd (Location: gopath)
-github.com/Masterminds/glide/gb (Location: gopath)
-github.com/Masterminds/glide/util (Location: gopath)
-github.com/Masterminds/glide/yaml (Location: gopath)
-github.com/Masterminds/semver (Location: vendored)
-github.com/Masterminds/vcs (Location: vendored)
-github.com/codegangsta/cli (Location: vendored)
-gopkg.in/yaml.v2 (Location: vendored)
+INSTALLED packages:
+	vendor/github.com/Masterminds/cookoo
+	vendor/github.com/Masterminds/cookoo/fmt
+	vendor/github.com/Masterminds/cookoo/io
+	vendor/github.com/Masterminds/cookoo/web
+	vendor/github.com/Masterminds/semver
+	vendor/github.com/Masterminds/vcs
+	vendor/github.com/codegangsta/cli
+	vendor/gopkg.in/yaml.v2
 ```
-
-The possible locations for `list` are `vendored`, `gopath`, and `missing` (if
-the package is not installed anywhere accessible).
 
 ### glide help
 
@@ -267,7 +301,7 @@ Print the version and exit.
 
 ```
 $ glide --version
-glide version 0.7.0
+glide version 0.8.0
 ```
 
 ### glide.yaml
@@ -347,7 +381,16 @@ See the `docs/` folder for more examples.
 The Git, SVN, Mercurial (Hg), and Bzr source control systems are supported. This
 happens through the [vcs package](https://github.com/masterminds/vcs).
 
-## Troubleshooting
+## Frequently Asked Questions (F.A.Q.)
+
+#### Q: Why does Glide have the concept of sub-packages when Go doesn't?
+
+In Go every directory is a package. This works well when you have one repo
+containing all of your packages. When you have different packages in different
+VCS locations things become a bit more complicated. A project containing a
+collection of packages should be handled with the same information including
+the version. By grouping packages this way we are able to manage the related
+information.
 
 #### Q: bzr (or hg) is not working the way I expected. Why?
 
@@ -379,7 +422,7 @@ output. **It will not overwrite your glide.yaml file.**
 You can write it to file like this:
 
 ```
-$ glide import godep > new-glide.yaml
+$ glide import godep -f glide.yaml
 ```
 
 #### Q: Can Glide fetch a package based on OS or Arch?

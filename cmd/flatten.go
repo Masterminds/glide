@@ -7,7 +7,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
-	"github.com/Masterminds/glide/yaml"
+	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
 )
 
@@ -20,12 +21,12 @@ import (
 //	- packages ([]string): The packages to read. If this is empty, it reads all
 //		packages.
 //	- force (bool): force vcs updates.
-//	- conf (*yaml.Config): The configuration.
+//	- conf (*cfg.Config): The configuration.
 //
 // Returns:
 //
 func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	conf := p.Get("conf", &yaml.Config{}).(*yaml.Config)
+	conf := p.Get("conf", &cfg.Config{}).(*cfg.Config)
 	skip := p.Get("skip", false).(bool)
 	home := p.Get("home", "").(string)
 	cache := p.Get("cache", false).(bool)
@@ -48,7 +49,7 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	}
 
 	// Build an initial dependency map.
-	deps := make(map[string]*yaml.Dependency, len(conf.Imports))
+	deps := make(map[string]*cfg.Dependency, len(conf.Imports))
 	for _, imp := range conf.Imports {
 		deps[imp.Name] = imp
 	}
@@ -69,6 +70,12 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	flattenSetRefs(f)
 	Info("Project relies on %d dependencies.", len(deps))
 
+	hash, err := conf.Hash()
+	if err != nil {
+		return conf, err
+	}
+	c.Put("Lockfile", cfg.LockfileFromMap(deps, hash))
+
 	// A shallow copy should be all that's needed.
 	confcopy := conf.Clone()
 	exportFlattenedDeps(confcopy, deps)
@@ -76,8 +83,8 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	return confcopy, err
 }
 
-func exportFlattenedDeps(conf *yaml.Config, in map[string]*yaml.Dependency) {
-	out := make([]*yaml.Dependency, len(in))
+func exportFlattenedDeps(conf *cfg.Config, in map[string]*cfg.Dependency) {
+	out := make([]*cfg.Dependency, len(in))
 	i := 0
 	for _, v := range in {
 		out[i] = v
@@ -87,13 +94,13 @@ func exportFlattenedDeps(conf *yaml.Config, in map[string]*yaml.Dependency) {
 }
 
 type flattening struct {
-	conf *yaml.Config
+	conf *cfg.Config
 	// Top vendor path, e.g. project/vendor
 	top string
 	// Current path
 	curr string
 	// Built list of dependencies
-	deps map[string]*yaml.Dependency
+	deps map[string]*cfg.Dependency
 	// Dependencies that need to be scanned.
 	scan []string
 }
@@ -108,19 +115,17 @@ func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, skip
 		Debug("----> Scanning %s", imp)
 		base := path.Join(f.top, imp)
 		mod := []string{}
-		if m, ok := mergeGlide(base, imp, f.deps, f.top); ok {
+		if m, ok := mergeGlide(base, imp, f); ok {
 			mod = m
-		} else if m, ok = mergeGodep(base, imp, f.deps, f.top); ok {
+		} else if m, ok = mergeGodep(base, imp, f); ok {
 			mod = m
-		} else if m, ok = mergeGPM(base, imp, f.deps, f.top); ok {
+		} else if m, ok = mergeGPM(base, imp, f); ok {
 			mod = m
-		} else if m, ok = mergeGb(base, imp, f.deps, f.top); ok {
+		} else if m, ok = mergeGb(base, imp, f); ok {
 			mod = m
-		} else if m, ok = mergeGuess(base, imp, f.deps, f.top, scanned); ok {
+		} else if m, ok = mergeGuess(base, imp, f, scanned); ok {
 			mod = m
 		}
-		//mod, _ = mergeGuess(base, imp, f.deps, f.top, scanned)
-		//Info("Scanned: %v", scanned)
 
 		if len(mod) > 0 {
 			Debug("----> Updating all dependencies for %q (%d)", imp, len(mod))
@@ -192,7 +197,9 @@ func flattenSetRefs(f *flattening) {
 	}
 }
 
-func mergeGlide(dir, name string, deps map[string]*yaml.Dependency, vend string) ([]string, bool) {
+func mergeGlide(dir, name string, f *flattening) ([]string, bool) {
+	deps := f.deps
+	vend := f.top
 	gp := path.Join(dir, "glide.yaml")
 	if _, err := os.Stat(gp); err != nil {
 		return []string{}, false
@@ -204,7 +211,7 @@ func mergeGlide(dir, name string, deps map[string]*yaml.Dependency, vend string)
 		return []string{}, false
 	}
 
-	conf, err := yaml.FromYaml(string(yml))
+	conf, err := cfg.ConfigFromYaml(yml)
 	if err != nil {
 		Warn("Found glide file %q, but can't use it: %s", gp, err)
 		return []string{}, false
@@ -212,14 +219,16 @@ func mergeGlide(dir, name string, deps map[string]*yaml.Dependency, vend string)
 
 	Info("Found glide.yaml in %s", gp)
 
-	return mergeDeps(deps, conf.Imports, vend), true
+	return mergeDeps(deps, conf.Imports, vend, f), true
 }
 
 // listGodep appends Godeps entries to the deps.
 //
 // It returns true if any dependencies were found (even if not added because
 // they are duplicates).
-func mergeGodep(dir, name string, deps map[string]*yaml.Dependency, vend string) ([]string, bool) {
+func mergeGodep(dir, name string, f *flattening) ([]string, bool) {
+	deps := f.deps
+	vend := f.top
 	Debug("Looking in %s/Godeps/ for a Godeps.json file.\n", dir)
 	d, err := parseGodepGodeps(dir)
 	if err != nil {
@@ -230,28 +239,32 @@ func mergeGodep(dir, name string, deps map[string]*yaml.Dependency, vend string)
 	}
 
 	Info("Found Godeps.json file for %q", name)
-	return mergeDeps(deps, d, vend), true
+	return mergeDeps(deps, d, vend, f), true
 }
 
 // listGb merges GB dependencies into the deps.
-func mergeGb(dir, pkg string, deps map[string]*yaml.Dependency, vend string) ([]string, bool) {
+func mergeGb(dir, pkg string, f *flattening) ([]string, bool) {
+	deps := f.deps
+	vend := f.top
 	Debug("Looking in %s/vendor/ for a manifest file.\n", dir)
 	d, err := parseGbManifest(dir)
 	if err != nil || len(d) == 0 {
 		return []string{}, false
 	}
 	Info("Found gb manifest file for %q", pkg)
-	return mergeDeps(deps, d, vend), true
+	return mergeDeps(deps, d, vend, f), true
 }
 
 // mergeGPM merges GPM Godeps files into deps.
-func mergeGPM(dir, pkg string, deps map[string]*yaml.Dependency, vend string) ([]string, bool) {
+func mergeGPM(dir, pkg string, f *flattening) ([]string, bool) {
+	deps := f.deps
+	vend := f.top
 	d, err := parseGPMGodeps(dir)
 	if err != nil || len(d) == 0 {
 		return []string{}, false
 	}
 	Info("Found GPM file for %q", pkg)
-	return mergeDeps(deps, d, vend), true
+	return mergeDeps(deps, d, vend, f), true
 }
 
 // mergeGuess guesses dependencies and merges.
@@ -259,75 +272,80 @@ func mergeGPM(dir, pkg string, deps map[string]*yaml.Dependency, vend string) ([
 // This always returns true because it always handles the job of searching
 // for dependencies. So generally it should be the last merge strategy
 // that you try.
-func mergeGuess(dir, pkg string, deps map[string]*yaml.Dependency, vend string, scanned map[string]bool) ([]string, bool) {
-	// Info("Scanning %s for dependencies.", pkg)
-	// buildContext, err := GetBuildContext()
-	// if err != nil {
-	// 	Warn("Could not scan package %q: %s", pkg, err)
-	// 	return []string{}, false
-	// }
-	//
-	// res := []string{}
-	//
-	// if _, err := os.Stat(dir); err != nil {
-	// 	Warn("Directory is missing: %s", dir)
-	// 	return res, true
-	// }
-	//
-	// d := walkDeps(buildContext, dir, pkg)
-	// for _, oname := range d {
-	// 	if _, ok := scanned[oname]; ok {
-	// 		//Info("===> Scanned %s already. Skipping", name)
-	// 		continue
-	// 	}
-	// 	Info("=> Scanning %s", oname)
-	// 	name, _ := NormalizeName(oname)
-	// 	//if _, ok := deps[name]; ok {
-	// 	//scanned[oname] = true
-	// 	//Debug("====> Seen %s already. Skipping", name)
-	// 	//continue
-	// 	//}
-	//
-	// 	repo := util.GetRootFromPackage(name)
-	// 	found := findPkg(buildContext, name, dir)
-	// 	switch found.PType {
-	// 	case ptypeUnknown:
-	// 		Info("==> Unknown %s (%s)", name, oname)
-	// 		Debug("✨☆ Undownloaded dependency: %s", name)
-	// 		nd := &yaml.Dependency{
-	// 			Name:       name,
-	// 			Repository: "https://" + repo,
-	// 		}
-	// 		deps[name] = nd
-	// 		res = append(res, name)
-	// 	case ptypeGoroot, ptypeCgo:
-	// 		scanned[oname] = true
-	// 		// Why do we break rather than continue?
-	// 		break
-	// 	default:
-	// 		// We're looking for dependencies that might exist in $GOPATH
-	// 		// but not be on vendor. We add any that are on $GOPATH.
-	// 		if _, ok := deps[name]; !ok {
-	// 			Debug("✨☆ GOPATH dependency: %s", name)
-	// 			nd := &yaml.Dependency{Name: name}
-	// 			deps[name] = nd
-	// 			res = append(res, name)
-	// 		}
-	// 		scanned[oname] = true
-	// 	}
-	// }
-	//
-	// return res, true
-	Info("Package %s manages its own dependencies", pkg)
-	return []string{}, true
+func mergeGuess(dir, pkg string, f *flattening, scanned map[string]bool) ([]string, bool) {
+	deps := f.deps
+	Info("Scanning %s for dependencies.", pkg)
+	buildContext, err := GetBuildContext()
+	if err != nil {
+		Warn("Could not scan package %q: %s", pkg, err)
+		return []string{}, false
+	}
+
+	res := []string{}
+
+	if _, err := os.Stat(dir); err != nil {
+		Warn("Directory is missing: %s", dir)
+		return res, true
+	}
+
+	d := walkDeps(buildContext, dir, pkg)
+	for _, oname := range d {
+		if _, ok := scanned[oname]; ok {
+			//Info("===> Scanned %s already. Skipping", name)
+			continue
+		}
+		Debug("=> Scanning %s", oname)
+		name, _ := NormalizeName(oname)
+		//if _, ok := deps[name]; ok {
+		//scanned[oname] = true
+		//Debug("====> Seen %s already. Skipping", name)
+		//continue
+		//}
+		if f.conf.HasIgnore(name) {
+			Debug("==> Skipping %s because it is on the ignore list", name)
+			continue
+		}
+
+		found := findPkg(buildContext, name, dir)
+		switch found.PType {
+		case ptypeUnknown:
+			Info("==> Unknown %s (%s)", name, oname)
+			Debug("✨☆ Undownloaded dependency: %s", name)
+			repo := util.GetRootFromPackage(name)
+			nd := &cfg.Dependency{
+				Name:       name,
+				Repository: "https://" + repo,
+			}
+			deps[name] = nd
+			res = append(res, name)
+		case ptypeGoroot, ptypeCgo:
+			scanned[oname] = true
+			// Why do we break rather than continue?
+			break
+		default:
+			// We're looking for dependencies that might exist in $GOPATH
+			// but not be on vendor. We add any that are on $GOPATH.
+			if _, ok := deps[name]; !ok {
+				Debug("✨☆ GOPATH dependency: %s", name)
+				nd := &cfg.Dependency{Name: name}
+				deps[name] = nd
+				res = append(res, name)
+			}
+			scanned[oname] = true
+		}
+	}
+
+	return res, true
 }
 
 // mergeDeps merges any dependency array into deps.
-func mergeDeps(orig map[string]*yaml.Dependency, add []*yaml.Dependency, vend string) []string {
+func mergeDeps(orig map[string]*cfg.Dependency, add []*cfg.Dependency, vend string, f *flattening) []string {
 	mod := []string{}
 	for _, dd := range add {
-		// Add it unless it's already there.
-		if existing, ok := orig[dd.Name]; !ok {
+		if f.conf.HasIgnore(dd.Name) {
+			Debug("Skipping %s because it is on the ignore list", dd.Name)
+		} else if existing, ok := orig[dd.Name]; !ok {
+			// Add it unless it's already there.
 			orig[dd.Name] = dd
 			Debug("Adding %s to the scan list", dd.Name)
 			mod = append(mod, dd.Name)

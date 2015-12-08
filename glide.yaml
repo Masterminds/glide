@@ -2,7 +2,7 @@ package: github.com/Masterminds/glide
 import:
   - package: gopkg.in/yaml.v2
   - package: github.com/Masterminds/cookoo
-    version: master
+    version: ^1.2.0
     repo:    git@github.com:Masterminds/cookoo.git
     vcs:     git
     subpackages:

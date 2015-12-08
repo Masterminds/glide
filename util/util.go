@@ -53,6 +53,11 @@ func GetRootFromPackage(pkg string) string {
 // ?go-get=1 to the url.
 func getRootFromGoGet(pkg string) string {
 
+	p, found := checkRemotePackageCache(pkg)
+	if found {
+		return p
+	}
+
 	vcsURL := "https://" + pkg
 	u, err := url.Parse(vcsURL)
 	if err != nil {
@@ -66,18 +71,40 @@ func getRootFromGoGet(pkg string) string {
 	checkURL := u.String()
 	resp, err := http.Get(checkURL)
 	if err != nil {
+		addToRemotePackageCache(pkg)
 		return pkg
 	}
 	defer resp.Body.Close()
 
 	nu, err := parseImportFromBody(u, resp.Body)
 	if err != nil {
+		addToRemotePackageCache(pkg)
 		return pkg
 	} else if nu == "" {
+		addToRemotePackageCache(pkg)
 		return pkg
 	}
 
+	addToRemotePackageCache(nu)
 	return nu
+}
+
+// The caching is not concurrency safe but should be made to be that way.
+// This implementation is far too much of a hack... rewrite needed.
+var remotePackageCache = make(map[string]bool)
+
+func checkRemotePackageCache(pkg string) (string, bool) {
+	for k := range remotePackageCache {
+		if strings.HasPrefix(pkg, k) {
+			return k, true
+		}
+	}
+
+	return pkg, false
+}
+
+func addToRemotePackageCache(pkg string) {
+	remotePackageCache[pkg] = true
 }
 
 func parseImportFromBody(ur *url.URL, r io.ReadCloser) (u string, err error) {
