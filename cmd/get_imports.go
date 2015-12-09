@@ -530,6 +530,11 @@ func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath
 			} else if err != nil {
 				return err
 			} else {
+
+				if repo.IsDirty() {
+					return fmt.Errorf("%s contains uncommited changes. Skipping update.", dep.Name)
+				}
+
 				// Check if the current version is a tag or commit id. If it is
 				// and that version is already checked out we can skip updating
 				// which is faster than going out to the Internet to perform
