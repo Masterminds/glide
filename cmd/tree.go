@@ -195,6 +195,11 @@ func findPkg(b *BuildCtxt, name, cwd string) *pinfo {
 	}
 	if abs != "." {
 		for wd := abs; wd != "/"; wd = filepath.Dir(wd) {
+
+			// Don't look for packages outside the GOPATH
+			if wd == b.GOPATH {
+				break
+			}
 			p = filepath.Join(wd, "vendor", name)
 			if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 				info.Path = p

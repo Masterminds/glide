@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -155,6 +156,18 @@ func AddDependencies(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 // For example, golang.org/x/crypto/ssh becomes golang.org/x/crypto. 'ssh' is
 // returned as extra data.
 func NormalizeName(name string) (string, string) {
+
+	// Fastpath check if a name in the GOROOT. There is an issue when a pkg
+	// is in the GOROOT and GetRootFromPackage tries to look it up because it
+	// expects remote names.
+	b, err := GetBuildContext()
+	if err == nil {
+		p := filepath.Join(b.GOROOT, "src", name)
+		if _, err := os.Stat(p); err == nil {
+			return name, ""
+		}
+	}
+
 	root := util.GetRootFromPackage(name)
 	extra := strings.TrimPrefix(name, root)
 	if len(extra) > 0 && extra != "/" {
