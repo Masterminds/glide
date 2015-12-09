@@ -1,14 +1,14 @@
 package: github.com/Masterminds/glide
 import:
-  - package: gopkg.in/yaml.v2
-  - package: github.com/Masterminds/cookoo
-    version: ^1.2.0
-    repo:    git@github.com:Masterminds/cookoo.git
-    vcs:     git
-    subpackages:
-      - .
-  - package: github.com/Masterminds/vcs
-    version: ^1.2.0
-  - package: github.com/codegangsta/cli
-  - package: github.com/Masterminds/semver
-    version: ^1.0.0
+- package: gopkg.in/yaml.v2
+- package: github.com/Masterminds/cookoo
+  version: ^1.2.0
+  repo: git@github.com:Masterminds/cookoo.git
+  vcs: git
+  subpackages:
+  - .
+- package: github.com/Masterminds/vcs
+  version: ^1.2.0
+- package: github.com/codegangsta/cli
+- package: github.com/Masterminds/semver
+  version: ^1.0.0

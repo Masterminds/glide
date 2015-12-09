@@ -55,11 +55,18 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 
 	Info("Preparing to install %d package.", len(names))
 
+	cwd, err := VendorPath(c)
+	if err != nil {
+		return nil, err
+	}
+
 	deps := []*cfg.Dependency{}
 	for _, name := range names {
-		cwd, err := VendorPath(c)
-		if err != nil {
-			return nil, err
+		var version string
+		parts := strings.Split(name, "#")
+		if len(parts) > 1 {
+			name = parts[0]
+			version = parts[1]
 		}
 
 		root := util.GetRootFromPackage(name)
@@ -86,6 +93,10 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 
 		dep := &cfg.Dependency{
 			Name: root,
+		}
+
+		if version != "" {
+			dep.Reference = version
 		}
 
 		// When retriving from an insecure location set the repo to the

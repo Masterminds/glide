@@ -37,6 +37,14 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 		return conf, nil
 	}
 	packages := p.Get("packages", []string{}).([]string)
+
+	// When packages are passed around with a #version on the end it needs
+	// to be stripped.
+	for k, v := range packages {
+		parts := strings.Split(v, "#")
+		packages[k] = parts[0]
+	}
+
 	force := p.Get("force", true).(bool)
 	vend, _ := VendorPath(c)
 
