@@ -31,7 +31,7 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	home := p.Get("home", "").(string)
 	cache := p.Get("cache", false).(bool)
 	cacheGopath := p.Get("cacheGopath", false).(bool)
-	skipGopath := p.Get("skipGopath", false).(bool)
+	useGopath := p.Get("useGopath", false).(bool)
 
 	if skip {
 		return conf, nil
@@ -59,7 +59,7 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	// The assumption here is that once something has been scanned once in a
 	// run, there is no need to scan it again.
 	scanned := map[string]bool{}
-	err := recFlatten(f, force, home, cache, cacheGopath, skipGopath, scanned)
+	err := recFlatten(f, force, home, cache, cacheGopath, useGopath, scanned)
 	if err != nil {
 		return conf, err
 	}
@@ -109,7 +109,7 @@ type flattening struct {
 var updateCache = map[string]bool{}
 
 // refFlatten recursively flattens the vendor tree.
-func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, skipGopath bool, scanned map[string]bool) error {
+func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, useGopath bool, scanned map[string]bool) error {
 	Debug("---> Inspecting %s for changes (%d packages).\n", f.curr, len(f.scan))
 	for _, imp := range f.scan {
 		Debug("----> Scanning %s", imp)
@@ -129,14 +129,14 @@ func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, skip
 
 		if len(mod) > 0 {
 			Debug("----> Updating all dependencies for %q (%d)", imp, len(mod))
-			flattenGlideUp(f, base, home, force, cache, cacheGopath, skipGopath)
+			flattenGlideUp(f, base, home, force, cache, cacheGopath, useGopath)
 			f2 := &flattening{
 				conf: f.conf,
 				top:  f.top,
 				curr: base,
 				deps: f.deps,
 				scan: mod}
-			recFlatten(f2, force, home, cache, cacheGopath, skipGopath, scanned)
+			recFlatten(f2, force, home, cache, cacheGopath, useGopath, scanned)
 		}
 	}
 
@@ -148,7 +148,7 @@ func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, skip
 // While this is expensive, it is also necessary to make sure we have the
 // correct version of all dependencies. We might be able to simplify by
 // marking packages dirty when they are added.
-func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath, skipGopath bool) error {
+func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath, useGopath bool) error {
 	//vdir := path.Join(base, "vendor")
 	for _, imp := range f.deps {
 		// If the top package name in the glide.yaml file is present in the deps
@@ -163,7 +163,7 @@ func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath,
 				continue
 			}
 			Debug("Updating project %s (%s)\n", imp.Name, wd)
-			if err := VcsUpdate(imp, f.top, home, force, cache, cacheGopath, skipGopath); err != nil {
+			if err := VcsUpdate(imp, f.top, home, force, cache, cacheGopath, useGopath); err != nil {
 				// We can still go on just fine even if this fails.
 				Warn("Skipped update %s: %s\n", imp.Name, err)
 				continue
@@ -171,7 +171,7 @@ func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath,
 			updateCache[imp.Name] = true
 		} else {
 			Debug("Importing %s to project %s\n", imp.Name, wd)
-			if err := VcsGet(imp, wd, home, cache, cacheGopath, skipGopath); err != nil {
+			if err := VcsGet(imp, wd, home, cache, cacheGopath, useGopath); err != nil {
 				Warn("Skipped getting %s: %v\n", imp.Name, err)
 				continue
 			}

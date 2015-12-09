@@ -57,7 +57,7 @@ func Install(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	home := p.Get("home", "").(string)
 	cache := p.Get("cache", false).(bool)
 	cacheGopath := p.Get("cacheGopath", false).(bool)
-	skipGopath := p.Get("skipGopath", false).(bool)
+	useGopath := p.Get("useGopath", false).(bool)
 
 	cwd, err := VendorPath(c)
 	if err != nil {
@@ -103,7 +103,7 @@ func Install(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	}
 
 	// for _, dep := range newConf.Imports {
-	// 	if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, skipGopath); err != nil {
+	// 	if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, useGopath); err != nil {
 	// 		Warn("Update failed for %s: %s\n", dep.Name, err)
 	// 	}
 	// }
@@ -117,7 +117,7 @@ func Install(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 			for {
 				select {
 				case dep := <-ch:
-					if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, skipGopath); err != nil {
+					if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, useGopath); err != nil {
 						Warn("Update failed for %s: %s\n", dep.Name, err)
 					}
 					wg.Done()

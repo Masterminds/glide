@@ -185,8 +185,8 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
 				},
 				cli.BoolFlag{
-					Name:  "skip-gopath",
-					Usage: "Skip attempting to copy a dependency from the GOPATH.",
+					Name:  "use-gopath",
+					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -199,7 +199,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				cxt.Put("insecure", c.Bool("insecure"))
 				cxt.Put("useCache", c.Bool("cache"))
 				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
-				cxt.Put("skipGopath", c.Bool("skip-gopath"))
+				cxt.Put("useGopath", c.Bool("use-gopath"))
 				// FIXME: Are these used anywhere?
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
@@ -352,8 +352,8 @@ Example:
 					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
 				},
 				cli.BoolFlag{
-					Name:  "skip-gopath",
-					Usage: "Skip attempting to copy a dependency from the GOPATH.",
+					Name:  "use-gopath",
+					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -365,7 +365,7 @@ Example:
 				cxt.Put("toStdout", false)
 				cxt.Put("useCache", c.Bool("cache"))
 				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
-				cxt.Put("skipGopath", c.Bool("skip-gopath"))
+				cxt.Put("useGopath", c.Bool("use-gopath"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
@@ -435,8 +435,8 @@ Example:
 					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
 				},
 				cli.BoolFlag{
-					Name:  "skip-gopath",
-					Usage: "Skip attempting to copy a dependency from the GOPATH.",
+					Name:  "use-gopath",
+					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -448,7 +448,7 @@ Example:
 				cxt.Put("toStdout", false)
 				cxt.Put("useCache", c.Bool("cache"))
 				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
-				cxt.Put("skipGopath", c.Bool("skip-gopath"))
+				cxt.Put("useGopath", c.Bool("use-gopath"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
@@ -537,14 +537,14 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("home").From("cxt:home").
 		Using("cache").From("cxt:useCache").
 		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("skipGopath").From("cxt:skipGopath").
+		Using("useGopath").From("cxt:useGopath").
 		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
 		Using("home").From("cxt:home").
 		Using("cache").From("cxt:useCache").
 		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("skipGopath").From("cxt:skipGopath").
+		Using("useGopath").From("cxt:useGopath").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml").
@@ -592,7 +592,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("home").From("cxt:home").
 		Using("cache").From("cxt:useCache").
 		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("skipGopath").From("cxt:skipGopath").
+		Using("useGopath").From("cxt:useGopath").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
@@ -601,7 +601,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("home").From("cxt:home").
 		Using("cache").From("cxt:useCache").
 		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("skipGopath").From("cxt:skipGopath").
+		Using("useGopath").From("cxt:useGopath").
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:flattened").
 		Using("update").From("cxt:updateVendoredDeps").
@@ -630,7 +630,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("home").From("cxt:home").
 		Using("cache").From("cxt:useCache").
 		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("skipGopath").From("cxt:skipGopath").
+		Using("useGopath").From("cxt:useGopath").
 		//Does(cmd.VendoredCleanUp, "_").
 		//Using("conf").From("cxt:flattened").
 		//Using("update").From("cxt:updateVendoredDeps").

@@ -51,7 +51,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	home := p.Get("home", "").(string)
 	cache := p.Get("cache", false).(bool)
 	cacheGopath := p.Get("cacheGopath", false).(bool)
-	skipGopath := p.Get("skipGopath", false).(bool)
+	useGopath := p.Get("useGopath", false).(bool)
 
 	Info("Preparing to install %d package.", len(names))
 
@@ -98,7 +98,7 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 		if len(subpkg) > 0 && subpkg != "/" {
 			dep.Subpackages = []string{subpkg}
 		}
-		if err := VcsGet(dep, dest, home, cache, cacheGopath, skipGopath); err != nil {
+		if err := VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
 			return dep, err
 		}
 
@@ -124,7 +124,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	home := p.Get("home", "").(string)
 	cache := p.Get("cache", false).(bool)
 	cacheGopath := p.Get("cacheGopath", false).(bool)
-	skipGopath := p.Get("skipGopath", false).(bool)
+	useGopath := p.Get("useGopath", false).(bool)
 
 	pkgs := list2map(plist)
 	restrict := len(pkgs) > 0
@@ -150,7 +150,7 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 		// flattening from causing unnecessary updates.
 		updateCache[dep.Name] = true
 
-		if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, skipGopath); err != nil {
+		if err := VcsUpdate(dep, cwd, home, force, cache, cacheGopath, useGopath); err != nil {
 			Warn("Update failed for %s: %s\n", dep.Name, err)
 		}
 	}
@@ -259,9 +259,9 @@ func VcsExists(dep *cfg.Dependency, dest string) bool {
 // VcsGet figures out how to fetch a dependency, and then gets it.
 //
 // VcsGet installs into the dest.
-func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, skipGopath bool) error {
+func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath bool) error {
 	// When not skipping the $GOPATH look in it for a copy of the package
-	if !skipGopath {
+	if useGopath {
 		// Check if the $GOPATH has a viable version to use and if so copy to vendor
 		gps := Gopaths()
 		for _, p := range gps {
@@ -464,7 +464,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, skipGopa
 }
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath, skipGopath bool) error {
+func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath, useGopath bool) error {
 	Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
@@ -475,7 +475,7 @@ func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath
 	dest := path.Join(vend, dep.Name)
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		if err = VcsGet(dep, dest, home, cache, cacheGopath, skipGopath); err != nil {
+		if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
 			Warn("Unable to checkout %s\n", dep.Name)
 			return err
 		}
@@ -512,7 +512,7 @@ func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath
 				if rerr != nil {
 					return rerr
 				}
-				if err = VcsGet(dep, dest, home, cache, cacheGopath, skipGopath); err != nil {
+				if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
 					Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
