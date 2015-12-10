@@ -48,17 +48,8 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 	names := p.Get("packages", []string{}).([]string)
 	conf := p.Get("conf", nil).(*cfg.Config)
 	insecure := p.Get("insecure", false).(bool)
-	home := p.Get("home", "").(string)
-	cache := p.Get("cache", false).(bool)
-	cacheGopath := p.Get("cacheGopath", false).(bool)
-	useGopath := p.Get("useGopath", false).(bool)
 
 	Info("Preparing to install %d package.", len(names))
-
-	cwd, err := VendorPath(c)
-	if err != nil {
-		return nil, err
-	}
 
 	deps := []*cfg.Dependency{}
 	for _, name := range names {
@@ -84,13 +75,6 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 			continue
 		}
 
-		dest := path.Join(cwd, root)
-
-		if err != nil {
-			Error("Could not construct repo for %q: %s", name, err)
-			return false, err
-		}
-
 		dep := &cfg.Dependency{
 			Name: root,
 		}
@@ -109,8 +93,11 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 		if len(subpkg) > 0 && subpkg != "/" {
 			dep.Subpackages = []string{subpkg}
 		}
-		if err := VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
-			return dep, err
+
+		if dep.Reference != "" {
+			Info("Importing %s with the version %s", dep.Name, dep.Reference)
+		} else {
+			Info("Importing %s", dep.Name)
 		}
 
 		conf.Imports = append(conf.Imports, dep)
@@ -118,6 +105,8 @@ func GetAll(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) 
 		deps = append(deps, dep)
 
 	}
+
+	Info("Walking the dependency tree to calculate versions")
 	return deps, nil
 }
 

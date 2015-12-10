@@ -165,16 +165,20 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "no-recursive",
+					Name:  "insecure",
+					Usage: "Use http:// rather than https:// to retrieve pacakges.",
+				},
+				cli.BoolFlag{
+					Name:  "no-recursive, quick",
 					Usage: "Disable updating dependencies' dependencies.",
 				},
 				cli.BoolFlag{
-					Name:  "import",
-					Usage: "When fetching dependencies, convert Godeps (GPM, Godep) to glide.yaml and pull dependencies",
+					Name:  "force",
+					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
 				},
 				cli.BoolFlag{
-					Name:  "insecure",
-					Usage: "Use http:// rather than https:// to retrieve pacakges.",
+					Name:  "update-vendored, u",
+					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
 				},
 				cli.BoolFlag{
 					Name:  "cache",
@@ -194,6 +198,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
 				}
+				cxt.Put("forceUpdate", c.Bool("force"))
 				cxt.Put("packages", []string(c.Args()))
 				cxt.Put("skipFlatten", !c.Bool("no-recursive"))
 				cxt.Put("insecure", c.Bool("insecure"))
@@ -206,6 +211,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					cxt.Put("importGPM", true)
 					cxt.Put("importGb", true)
 				}
+				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
 				setupHandler(c, "get", cxt, router)
 			},
 		},
@@ -530,14 +536,21 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Includes("@startup").
 		Includes("@ready").
 		Does(cmd.GetAll, "goget").
-		Using("filename").From("cxt:yaml").
 		Using("packages").From("cxt:packages").
 		Using("conf").From("cxt:cfg").
 		Using("insecure").From("cxt:insecure").
+		Does(cmd.VendoredSetup, "cfg").
+		Using("conf").From("cxt:cfg").
+		Using("update").From("cxt:updateVendoredDeps").
+		Does(cmd.UpdateImports, "dependencies").
+		Using("conf").From("cxt:cfg").
+		Using("force").From("cxt:forceUpdate").
+		//Using("packages").From("cxt:packages").
 		Using("home").From("cxt:home").
 		Using("cache").From("cxt:useCache").
 		Using("cacheGopath").From("cxt:cacheGopath").
 		Using("useGopath").From("cxt:useGopath").
+		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
 		Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
@@ -545,6 +558,9 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("cache").From("cxt:useCache").
 		Using("cacheGopath").From("cxt:cacheGopath").
 		Using("useGopath").From("cxt:useGopath").
+		Does(cmd.VendoredCleanUp, "_").
+		Using("conf").From("cxt:flattened").
+		Using("update").From("cxt:updateVendoredDeps").
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").WithDefault("glide.yaml").From("cxt:yaml").
