@@ -6,49 +6,21 @@ import (
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/cfg"
-	"github.com/Masterminds/vcs"
 )
+
+// If we are updating the vendored dependencies. That is those stored in the
+// local project VCS.
+var updatingVendored = false
 
 // VendoredSetup is a command that does the setup for vendored directories.
 // If enabled (via update) it marks vendored directories that are being updated
 // and removed the old code. This should be a prefix to UpdateImports and
 // VendoredCleanUp should be a suffix to UpdateImports.
 func VendoredSetup(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	update := p.Get("update", true).(bool)
+	update := p.Get("update", false).(bool)
 	conf := p.Get("conf", nil).(*cfg.Config)
-	if update != true {
-		return conf, nil
-	}
 
-	vend, err := VendorPath(c)
-	if err != nil {
-		return conf, err
-	}
-
-	for _, dep := range conf.Imports {
-		cwd := path.Join(vend, dep.Name)
-
-		// When the directory is not empty and has no VCS directory it's
-		// a vendored files situation.
-		empty, err := isDirectoryEmpty(cwd)
-		if err != nil {
-			Error("Error with the directory %s\n", cwd)
-			continue
-		}
-		_, err = vcs.DetectVcsFromFS(cwd)
-		if empty == false && err == vcs.ErrCannotDetectVCS {
-			Info("Updating vendored package %s\n", dep.Name)
-
-			// Remove old directory. cmd.UpdateImports will retrieve the version
-			// and cmd.SetReference will set the version.
-			err = os.RemoveAll(cwd)
-			if err != nil {
-				Error("Unable to update vendored dependency %s.\n", dep.Name)
-			} else {
-				dep.UpdateAsVendored = true
-			}
-		}
-	}
+	updatingVendored = update
 
 	return conf, nil
 }

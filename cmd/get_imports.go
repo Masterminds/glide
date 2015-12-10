@@ -500,9 +500,30 @@ func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath
 			return err
 		}
 		_, err = v.DetectVcsFromFS(dest)
-		if empty == false && err == v.ErrCannotDetectVCS {
+		if updatingVendored == false && empty == false && err == v.ErrCannotDetectVCS {
 			Warn("%s appears to be a vendored package. Unable to update. Consider the '--update-vendored' flag.\n", dep.Name)
 		} else {
+
+			if updatingVendored == true && empty == false && err == v.ErrCannotDetectVCS {
+				// A vendored package, no repo, and updating the vendored packages
+				// has been opted into.
+				Info("%s is a vendored package. Updating.", dep.Name)
+				err = os.RemoveAll(dest)
+				if err != nil {
+					Error("Unable to update vendored dependency %s.\n", dep.Name)
+					return err
+				} else {
+					dep.UpdateAsVendored = true
+				}
+
+				if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
+					Warn("Unable to checkout %s\n", dep.Name)
+					return err
+				}
+
+				return nil
+			}
+
 			repo, err := dep.GetRepo(dest)
 
 			// Tried to checkout a repo to a path that does not work. Either the
@@ -529,11 +550,9 @@ func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath
 				}
 			} else if err != nil {
 				return err
+			} else if repo.IsDirty() {
+				return fmt.Errorf("%s contains uncommited changes. Skipping update", dep.Name)
 			} else {
-
-				if repo.IsDirty() {
-					return fmt.Errorf("%s contains uncommited changes. Skipping update.", dep.Name)
-				}
 
 				// Check if the current version is a tag or commit id. If it is
 				// and that version is already checked out we can skip updating

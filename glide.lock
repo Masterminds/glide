@@ -1,10 +1,8 @@
 hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-updated: 2015-12-09T10:37:37.177792534-05:00
+updated: 2015-12-10T10:46:38.137326757-05:00
 imports:
 - name: github.com/codegangsta/cli
   version: 0302d3914d2a6ad61404584cdae6e6dbc9c03599
-- name: github.com/Masterminds/convert
-  version: a9949121a2e2192ca92fa6dddfeaaa4a4412d955
 - name: github.com/Masterminds/cookoo
   version: 78aa11ce75e257c51be7ea945edb84cf19c4a6de
   repo: git@github.com:Masterminds/cookoo.git
