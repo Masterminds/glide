@@ -285,29 +285,29 @@ Example:
 				setupHandler(c, "nv", cxt, router)
 			},
 		},
-		{
-			Name:  "pin",
-			Usage: "Print a YAML file with all of the packages pinned to the current version",
-			Description: `Begins with the current glide.yaml and sets an absolute ref
-    for every package. The version is derived from the repository version. It will be
-    either a commit or a tag, depending on the state of the VCS tree.
-
-    By default, output is written to standard out. However, if you supply a filename,
-    the data will be written to that:
-
-        $ glide pin glide.yaml
-
-    The above will overwrite your glide.yaml file. You have been warned.
-	`,
-			Action: func(c *cli.Context) {
-				outfile := ""
-				if len(c.Args()) == 1 {
-					outfile = c.Args()[0]
-				}
-				cxt.Put("toPath", outfile)
-				setupHandler(c, "pin", cxt, router)
-			},
-		},
+		// 	{
+		// 		Name:  "pin",
+		// 		Usage: "Print a YAML file with all of the packages pinned to the current version",
+		// 		Description: `Begins with the current glide.yaml and sets an absolute ref
+		// for every package. The version is derived from the repository version. It will be
+		// either a commit or a tag, depending on the state of the VCS tree.
+		//
+		// By default, output is written to standard out. However, if you supply a filename,
+		// the data will be written to that:
+		//
+		//     $ glide pin glide.yaml
+		//
+		// The above will overwrite your glide.yaml file. You have been warned.
+		// `,
+		// 		Action: func(c *cli.Context) {
+		// 			outfile := ""
+		// 			if len(c.Args()) == 1 {
+		// 				outfile = c.Args()[0]
+		// 			}
+		// 			cxt.Put("toPath", outfile)
+		// 			setupHandler(c, "pin", cxt, router)
+		// 		},
+		// 	},
 		{
 			Name:  "rebuild",
 			Usage: "Rebuild ('go build') the dependencies",
