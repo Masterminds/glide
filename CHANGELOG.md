@@ -1,3 +1,20 @@
+# Release 0.8.0 (2015-12-10)
+
+- Issues #156 and #85: Added lockfile support (glide.lock). This file records
+  commit id pinned versions of the entire dependency tree. The `glide install`
+  command installs the pinned dependencies from the `glide.lock` file while
+  `glide update` updates the tree and lockfile. Most people should use `glide
+  install` unless they want to intentionally updated the pinned dependencies.
+  `glide install` is able to use concurrency to more quickly install update.
+- Issues #33 and #159: Glide notifies if a dependency checkout has uncomitted
+  changes.
+- Issue #146: Glide scans projects not managed by a dependency manager, fetches
+  their dependencies, and pins them in the glide.lock file.
+- Issue #99: Glide `get` pins dependencies by default and allows a version to
+  be passed in. For example, `glide get github.com/Masterminds/convert#^1.0.0`
+  will fetch `github.com/Masterminds/convert` with a version of `^1.0.0`.
+- Issue #155: Copying packages from the `GOPATH` is now opt-in.
+
 # Release 0.7.2 (2015-11-16)
 
 - Fixed #139: glide.yaml file imports being reordered when file written.
