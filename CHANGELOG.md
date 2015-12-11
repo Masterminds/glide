@@ -14,6 +14,7 @@
   be passed in. For example, `glide get github.com/Masterminds/convert#^1.0.0`
   will fetch `github.com/Masterminds/convert` with a version of `^1.0.0`.
 - Issue #155: Copying packages from the `GOPATH` is now opt-in.
+- Removed the pin command as it's not longer needed now that there are lockfiles.
 
 # Release 0.7.2 (2015-11-16)
 
