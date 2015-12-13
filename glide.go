@@ -39,6 +39,7 @@ package main
 import (
 	"path/filepath"
 
+	"github.com/Masterminds/glide/action"
 	"github.com/Masterminds/glide/cmd"
 
 	"github.com/Masterminds/cookoo"
@@ -109,11 +110,10 @@ func main() {
 		},
 	}
 	app.CommandNotFound = func(c *cli.Context, command string) {
-		cxt.Put("os.Args", os.Args)
-		cxt.Put("command", command)
-		setupHandler(c, "@plugin", cxt, router)
+		// TODO: Set some useful env vars.
+		action.Plugin(command, os.Args)
 	}
-
+	app.Before = startup
 	app.Commands = commands(cxt, router)
 
 	app.Run(os.Args)
@@ -268,7 +268,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Usage:       "Print the name of this project.",
 			Description: `Read the glide.yaml file and print the name given on the 'package' line.`,
 			Action: func(c *cli.Context) {
-				setupHandler(c, "name", cxt, router)
+				action.Name(glidefile(c))
 			},
 		},
 		{
@@ -281,8 +281,19 @@ Example:
 
 			$ go test $(glide novendor)
 `,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "dir,d",
+					Usage: "Specify a directory to run novendor against.",
+					Value: ".",
+				},
+				cli.BoolFlag{
+					Name:  "no-subdir,x",
+					Usage: "Specify this to prevent nv from append '/...' to all directories.",
+				},
+			},
 			Action: func(c *cli.Context) {
-				setupHandler(c, "nv", cxt, router)
+				action.NoVendor(c.String("dir"), true, !c.Bool("no-subdir"))
 			},
 		},
 		// 	{
@@ -499,7 +510,7 @@ Example:
 			Name:  "about",
 			Usage: "Learn about Glide",
 			Action: func(c *cli.Context) {
-				setupHandler(c, "about", cxt, router)
+				action.About()
 			},
 		},
 	}
@@ -704,32 +715,12 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:yaml")
 
-	reg.Route("name", "Print environment").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.PrintName, "status").
-		Using("conf").From("cxt:cfg")
-
 	reg.Route("tree", "Print a dependency graph.").
 		Includes("@startup").
 		Does(cmd.Tree, "tree")
 	reg.Route("list", "Print a dependency graph.").
 		Includes("@startup").
 		Does(cmd.ListDeps, "list")
-
-	reg.Route("nv", "No Vendor").
-		Includes("@startup").
-		Does(cmd.NoVendor, "paths").
-		Does(cmd.PathString, "out").Using("paths").From("cxt:paths")
-
-	reg.Route("about", "Status").
-		Includes("@startup").
-		Does(cmd.About, "about")
-
-	reg.Route("@plugin", "Try to send to a plugin.").
-		Includes("@ready").
-		Does(cmd.DropToShell, "plugin").
-		Using("command").From("cxt:command")
 }
 
 func defaultGlideDir() string {
@@ -738,4 +729,35 @@ func defaultGlideDir() string {
 		return ""
 	}
 	return filepath.Join(c.HomeDir, ".glide")
+}
+
+// startup sets up the base environment.
+//
+// It does not assume the presence of a Glide.yaml file or vendor/ directory,
+// so it can be used by any Glide command.
+func startup(c *cli.Context) error {
+	action.Debug(c.Bool("debug"))
+	action.NoColor(c.Bool("no-color"))
+	action.Quiet(c.Bool("quiet"))
+	action.MustGoVendor()
+	return nil
+}
+
+// Get the path to the glide.yaml file.
+//
+// This returns the name of the path, even if the file does not exist. The value
+// may be set by the user, or it may be the default.
+func glidefile(c *cli.Context) string {
+	path := c.String("file")
+	if path == "" {
+		// For now, we construct a basic assumption. In the future, we could
+		// traverse backward to see if a glide.yaml exists in a parent.
+		path = "./glide.yaml"
+	}
+	a, err := filepath.Abs(path)
+	if err != nil {
+		// Underlying fs didn't provide working dir.
+		return path
+	}
+	return a
 }
