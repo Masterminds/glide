@@ -503,7 +503,7 @@ Example:
 			vendor are only included if they are used by the project.
 			`,
 			Action: func(c *cli.Context) {
-				setupHandler(c, "list", cxt, router)
+				action.List(".", true)
 			},
 		},
 		{
@@ -718,9 +718,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("tree", "Print a dependency graph.").
 		Includes("@startup").
 		Does(cmd.Tree, "tree")
-	reg.Route("list", "Print a dependency graph.").
-		Includes("@startup").
-		Does(cmd.ListDeps, "list")
 }
 
 func defaultGlideDir() string {

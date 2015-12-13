@@ -29,3 +29,8 @@ func Puts(msg string, args ...interface{}) {
 	fmt.Fprintf(Stdout, msg, args...)
 	fmt.Fprintln(Stdout)
 }
+
+func Die(msg string, args ...interface{}) {
+	Error(msg, args...)
+	os.Exit(1)
+}

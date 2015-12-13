@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
@@ -56,4 +57,21 @@ files. Glide has embraced this. Please remove the _vendor
 directory or move the _vendor/src/ directory to vendor/.` + "\n")
 		os.Exit(1)
 	}
+}
+
+// EnsureGopath fails if GOPATH is not set, or if $GOPATH/src is missing.
+//
+// Otherwise it returns the value of GOPATH.
+func EnsureGopath() string {
+	gp := os.Getenv("GOPATH")
+	if gp == "" {
+		msg.Die("$GOPATH is not set.")
+	}
+	_, err := os.Stat(path.Join(gp, "src"))
+	if err != nil {
+		msg.Error("Could not find %s/src.\n", gp)
+		msg.Info("As of Glide 0.5/Go 1.5, this is required.\n")
+		msg.Die("Wihtout src, cannot continue. %s", err)
+	}
+	return gp
 }
