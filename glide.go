@@ -739,7 +739,7 @@ func startup(c *cli.Context) error {
 	action.Debug(c.Bool("debug"))
 	action.NoColor(c.Bool("no-color"))
 	action.Quiet(c.Bool("quiet"))
-	action.MustGoVendor()
+	action.EnsureGoVendor()
 	return nil
 }
 
