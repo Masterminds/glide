@@ -283,7 +283,7 @@ func mergeGPM(dir, pkg string, f *flattening) ([]string, bool) {
 func mergeGuess(dir, pkg string, f *flattening, scanned map[string]bool) ([]string, bool) {
 	deps := f.deps
 	Info("Scanning %s for dependencies.", pkg)
-	buildContext, err := GetBuildContext()
+	buildContext, err := util.GetBuildContext()
 	if err != nil {
 		Warn("Could not scan package %q: %s", pkg, err)
 		return []string{}, false

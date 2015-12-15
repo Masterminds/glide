@@ -18,7 +18,7 @@ import (
 //  - dirname (string): Directory to use as the base. Default: "."
 //  - skipImport (book): Whether to skip importing from Godep, GPM, and gb
 func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	buildContext, err := GetBuildContext()
+	buildContext, err := util.GetBuildContext()
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 // Attempt to guess at the package name at the top level. When unable to detect
 // a name goes to default of "main".
-func guessPackageName(b *BuildCtxt, base string) string {
+func guessPackageName(b *util.BuildCtxt, base string) string {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "main"

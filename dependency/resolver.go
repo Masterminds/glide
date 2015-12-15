@@ -2,13 +2,13 @@ package dependency
 
 import (
 	"container/list"
-	"go/build"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	"github.com/Masterminds/glide/util"
 )
 
 // MissingPackageHandler handles the case where a package is missing during scanning.
@@ -82,7 +82,7 @@ type Resolver struct {
 	Handler      MissingPackageHandler
 	basedir      string
 	VendorDir    string
-	BuildContext build.Context
+	BuildContext *util.BuildCtxt
 	seen         map[string]bool
 
 	// Items already in the queue.
@@ -108,11 +108,16 @@ func NewResolver(basedir string) (*Resolver, error) {
 	}
 	vdir := filepath.Join(basedir, "vendor")
 
+	buildContext, err := util.GetBuildContext()
+	if err != nil {
+		return nil, err
+	}
+
 	r := &Resolver{
 		Handler:      &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}},
 		basedir:      basedir,
 		VendorDir:    vdir,
-		BuildContext: build.Default,
+		BuildContext: buildContext,
 		seen:         map[string]bool{},
 		alreadyQ:     map[string]bool{},
 		findCache:    map[string]*PkgInfo{},

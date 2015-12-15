@@ -3,9 +3,12 @@ package util
 import (
 	"encoding/xml"
 	"fmt"
+	"go/build"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -217,4 +220,26 @@ var vcsList = []*vcsInfo{
 	{
 		pattern: `^(?P<rootpkg>(?P<repo>([a-z0-9.\-]+\.)+[a-z0-9.\-]+(:[0-9]+)?/[A-Za-z0-9_.\-/]*?)\.(bzr|git|hg|svn))(/[A-Za-z0-9_.\-]+)*$`,
 	},
+}
+
+// BuildCtxt is a convenience wrapper for not having to import go/build
+// anywhere else
+type BuildCtxt struct {
+	build.Context
+}
+
+// GetBuildContext returns a build context from go/build. When the $GOROOT
+// variable is not set in the users environment it sets the context's root
+// path to the path returned by 'go env GOROOT'.
+func GetBuildContext() (*BuildCtxt, error) {
+	buildContext := &BuildCtxt{build.Default}
+	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
+		out, err := exec.Command("go", "env", "GOROOT").Output()
+		if goRoot = strings.TrimSpace(string(out)); len(goRoot) == 0 || err != nil {
+			return nil, fmt.Errorf("Please set the $GOROOT environment " +
+				"variable to use this command\n")
+		}
+		buildContext.GOROOT = goRoot
+	}
+	return buildContext, nil
 }

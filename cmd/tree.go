@@ -11,11 +11,12 @@ import (
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/msg"
+	"github.com/Masterminds/glide/util"
 )
 
 // Tree prints a tree representing dependencies.
 func Tree(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	buildContext, err := GetBuildContext()
+	buildContext, err := util.GetBuildContext()
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +97,7 @@ func ListDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt
 	return nil, nil
 }
 
-func listDeps(b *BuildCtxt, info map[string]*pinfo, name, path string) {
+func listDeps(b *util.BuildCtxt, info map[string]*pinfo, name, path string) {
 	found := findPkg(b, name, path)
 	switch found.PType {
 	case ptypeUnknown:
@@ -116,7 +117,7 @@ func listDeps(b *BuildCtxt, info map[string]*pinfo, name, path string) {
 	}
 }
 
-func displayTree(b *BuildCtxt, basedir, myName string, level int, core bool, l *list.List) {
+func displayTree(b *util.BuildCtxt, basedir, myName string, level int, core bool, l *list.List) {
 	deps := walkDeps(b, basedir, myName)
 	for _, name := range deps {
 		found := findPkg(b, name, basedir)
@@ -177,7 +178,7 @@ type pinfo struct {
 	Vendored   bool
 }
 
-func findPkg(b *BuildCtxt, name, cwd string) *pinfo {
+func findPkg(b *util.BuildCtxt, name, cwd string) *pinfo {
 	var fi os.FileInfo
 	var err error
 	var p string
@@ -241,7 +242,7 @@ func isLink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
 }
 
-func walkDeps(b *BuildCtxt, base, myName string) []string {
+func walkDeps(b *util.BuildCtxt, base, myName string) []string {
 	externalDeps := []string{}
 	filepath.Walk(base, func(path string, fi os.FileInfo, err error) error {
 		if excludeSubtree(path, fi) {

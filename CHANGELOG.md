@@ -1,3 +1,8 @@
+# Release 0.8.1 (xxxx-xx-xx)
+
+- Fixed #163: Was detecting std lib packages when the GOROOT was different at
+  runtime than compile time.
+
 # Release 0.8.0 (2015-12-10)
 
 - Issues #156 and #85: Added lockfile support (glide.lock). This file records
