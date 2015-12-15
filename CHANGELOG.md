@@ -3,6 +3,8 @@
 - Fixed #163: Was detecting std lib packages when the GOROOT was different at
   runtime than compile time.
 - Fixed #165: glide update panics with --no-recursive option.
+- Added back zip build option to build scripts. This is useful for some
+  environments.
 
 # Release 0.8.0 (2015-12-10)
 
