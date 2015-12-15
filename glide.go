@@ -394,9 +394,10 @@ Example:
 
 	If a dependency has a glide.yaml file, update will read that file and
 	update those dependencies accordingly. Those dependencies are maintained in
-	a scoped vendor directory. 'vendor/foo/bar' will have its dependencies
-	stored in 'vendor/foo/bar/vendor'. This behavior can be disabled with
-	'--no-recursive'.
+	a the top level 'vendor/' directory. 'vendor/foo/bar' will have its
+	dependencies stored in 'vendor/'. This behavior can be disabled with
+	'--no-recursive'. When this behavior is skipped a glide.lock file is not
+	generated because the full dependency tree cannot be known.
 
 	Glide will also import Godep, GB, and GPM files as it finds them in dependencies.
 	It will create a glide.yaml file from the Godeps data, and then update. This
@@ -626,7 +627,8 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("filename").From("cxt:toPath").
 		Using("toStdout").From("cxt:toStdout").
 		Does(cmd.WriteLock, "lock").
-		Using("lockfile").From("cxt:Lockfile")
+		Using("lockfile").From("cxt:Lockfile").
+		Using("skip").From("cxt:skipFlatten")
 
 	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
 

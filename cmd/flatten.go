@@ -34,6 +34,7 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	useGopath := p.Get("useGopath", false).(bool)
 
 	if skip {
+		Warn("Skipping lockfile generation because full dependency tree is not being calculated")
 		return conf, nil
 	}
 	packages := p.Get("packages", []string{}).([]string)
