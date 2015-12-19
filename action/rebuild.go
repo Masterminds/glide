@@ -12,6 +12,11 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 )
 
+// Rebuild rebuilds '.a' files for a project.
+//
+// Prior to Go 1.4, this could substantially reduce time on incremental compiles.
+// It remains to be seen whether this is tremendously beneficial to modern Go
+// programs.
 func Rebuild(yamlpath string) {
 	conf := EnsureConfig(yamlpath)
 	vpath, err := gpath.Vendor()
