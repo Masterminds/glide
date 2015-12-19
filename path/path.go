@@ -23,7 +23,7 @@ var GlideFile = DefaultGlideFile
 //
 // Based on working directory, VendorDir and GlideFile, this attempts to
 // guess the location of the vendor directory.
-func VendorPath() (string, error) {
+func Vendor() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err

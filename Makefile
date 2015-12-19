@@ -9,7 +9,7 @@ install: build
 	install -m 755 ./glide ${DESTDIR}/usr/local/bin/glide
 
 test:
-	go test . ./cmd ./gb
+	go test . ./cmd ./gb ./path ./action
 
 clean:
 	rm -f ./glide.test

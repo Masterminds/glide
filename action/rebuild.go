@@ -9,11 +9,12 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	gpath "github.com/Masterminds/glide/path"
 )
 
 func Rebuild(yamlpath string) {
 	conf := EnsureConfig(yamlpath)
-	vpath, err := VendorPath(conf)
+	vpath, err := gpath.Vendor()
 	if err != nil {
 		msg.Die("Could not get vendor path: %s", err)
 	}
@@ -86,7 +87,7 @@ func buildPath(path string) error {
 	p := "." + string(filepath.Separator) + filepath.Join("vendor", path)
 	out, err := exec.Command("go", "install", p).CombinedOutput()
 	if err != nil {
-		Warn("Failed to run 'go install' for %s: %s", path, string(out))
+		msg.Warn("Failed to run 'go install' for %s: %s", path, string(out))
 	}
 	return err
 }

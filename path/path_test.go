@@ -28,13 +28,13 @@ func TestGlideWD(t *testing.T) {
 
 }
 
-func TestVendorPath(t *testing.T) {
+func TestVendor(t *testing.T) {
 	td, err := filepath.Abs(testdata)
 	if err != nil {
 		t.Fatal(err)
 	}
 	os.Chdir(filepath.Join(td, "a/b/c"))
-	res, err := VendorPath()
+	res, err := Vendor()
 	if err != nil {
 		t.Errorf("Failed to resolve vendor directory: %s", err)
 	}
