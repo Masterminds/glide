@@ -18,7 +18,7 @@ import (
 // It remains to be seen whether this is tremendously beneficial to modern Go
 // programs.
 func Rebuild(yamlpath string) {
-	conf := EnsureConfig(yamlpath)
+	conf := EnsureConfig()
 	vpath, err := gpath.Vendor()
 	if err != nil {
 		msg.Die("Could not get vendor path: %s", err)

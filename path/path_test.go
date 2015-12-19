@@ -33,6 +33,7 @@ func TestVendor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	wd, _ := os.Getwd()
 	os.Chdir(filepath.Join(td, "a/b/c"))
 	res, err := Vendor()
 	if err != nil {
@@ -42,4 +43,22 @@ func TestVendor(t *testing.T) {
 	if res != expect {
 		t.Errorf("Failed to find vendor: expected %s got %s", expect, res)
 	}
+	os.Chdir(wd)
+}
+func TestGlide(t *testing.T) {
+	wd, _ := os.Getwd()
+	td, err := filepath.Abs(testdata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Chdir(filepath.Join(td, "a/b/c"))
+	res, err := Glide()
+	if err != nil {
+		t.Errorf("Failed to resolve vendor directory: %s", err)
+	}
+	expect := filepath.Join(td, "a", "glide.yaml")
+	if res != expect {
+		t.Errorf("Failed to find vendor: expected %s got %s", expect, res)
+	}
+	os.Chdir(wd)
 }

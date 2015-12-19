@@ -5,7 +5,7 @@ import (
 )
 
 // Name prints the name of the package, according to the glide.yaml file.
-func Name(yamlpath string) {
-	conf := EnsureConfig(yamlpath)
+func Name() {
+	conf := EnsureConfig()
 	msg.Puts(conf.Name)
 }

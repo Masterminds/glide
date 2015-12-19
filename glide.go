@@ -268,7 +268,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 			Usage:       "Print the name of this project.",
 			Description: `Read the glide.yaml file and print the name given on the 'package' line.`,
 			Action: func(c *cli.Context) {
-				action.Name(glidefile(c))
+				action.Name()
 			},
 		},
 		{

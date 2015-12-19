@@ -2,6 +2,7 @@ package msg
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sync"
 )
@@ -16,10 +17,10 @@ var IsDebugging = false
 var NoColor = false
 
 // Stdout is the location where this prints output.
-var Stdout = os.Stdout
+var Stdout io.Writer = os.Stdout
 
 // Stderr is the location where this prints logs.
-var Stderr = os.Stderr
+var Stderr io.Writer = os.Stderr
 
 // If this is true, Die() will panic instead of exiting.
 var PanicOnDie = false

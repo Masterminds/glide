@@ -8,12 +8,19 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	gpath "github.com/Masterminds/glide/path"
 )
 
 // EnsureConfig loads and returns a config file.
 //
 // Any error will cause an immediate exit, with an error printed to Stderr.
-func EnsureConfig(yamlpath string) *cfg.Config {
+func EnsureConfig() *cfg.Config {
+	yamlpath, err := gpath.Glide()
+	if err != nil {
+		msg.ExitCode(2)
+		msg.Die("Failed to find %s: %s", yamlpath, err)
+	}
+
 	yml, err := ioutil.ReadFile(yamlpath)
 	if err != nil {
 		msg.ExitCode(2)

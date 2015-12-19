@@ -40,6 +40,23 @@ func Vendor() (string, error) {
 	return gopath, nil
 }
 
+// Glide gets the path to the closest glide file.
+func Glide() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	// Find the directory that contains glide.yaml
+	yamldir, err := GlideWD(cwd)
+	if err != nil {
+		return cwd, err
+	}
+
+	gf := filepath.Join(yamldir, GlideFile)
+	return gf, nil
+}
+
 // GlideWD finds the working directory of the glide.yaml file, starting at dir.
 //
 // If the glide file is not found in the current directory, it recurses up
