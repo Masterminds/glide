@@ -13,7 +13,7 @@ import (
 
 func Rebuild(yamlpath string) {
 	conf := EnsureConfig(yamlpath)
-	vpath, err := VendorPath(c)
+	vpath, err := VendorPath(conf)
 	if err != nil {
 		msg.Die("Could not get vendor path: %s", err)
 	}
@@ -26,29 +26,27 @@ func Rebuild(yamlpath string) {
 	}
 
 	for _, dep := range conf.Imports {
-		if err := buildDep(c, dep, vpath); err != nil {
+		if err := buildDep(dep, vpath); err != nil {
 			msg.Warn("Failed to build %s: %s\n", dep.Name, err)
 		}
 	}
-
-	return true, nil
 }
 
-func buildDep(c cookoo.Context, dep *cfg.Dependency, vpath string) error {
+func buildDep(dep *cfg.Dependency, vpath string) error {
 	if len(dep.Subpackages) == 0 {
-		buildPath(c, dep.Name)
+		buildPath(dep.Name)
 	}
 
 	for _, pkg := range dep.Subpackages {
 		if pkg == "**" || pkg == "..." {
 			//Info("Building all packages in %s\n", dep.Name)
-			buildPath(c, path.Join(dep.Name, "..."))
+			buildPath(path.Join(dep.Name, "..."))
 		} else {
 			paths, err := resolvePackages(vpath, dep.Name, pkg)
 			if err != nil {
-				Warn("Error resolving packages: %s", err)
+				msg.Warn("Error resolving packages: %s", err)
 			}
-			buildPaths(c, paths)
+			buildPaths(paths)
 		}
 	}
 
@@ -72,9 +70,9 @@ func resolvePackages(vpath, pkg, subpkg string) ([]string, error) {
 	return p, nil
 }
 
-func buildPaths(c cookoo.Context, paths []string) error {
+func buildPaths(paths []string) error {
 	for _, path := range paths {
-		if err := buildPath(c, path); err != nil {
+		if err := buildPath(path); err != nil {
 			return err
 		}
 	}
@@ -82,8 +80,8 @@ func buildPaths(c cookoo.Context, paths []string) error {
 	return nil
 }
 
-func buildPath(c cookoo.Context, path string) error {
-	Info("Running go build %s\n", path)
+func buildPath(path string) error {
+	msg.Info("Running go build %s\n", path)
 	// . in a filepath.Join is removed so it needs to be prepended separately.
 	p := "." + string(filepath.Separator) + filepath.Join("vendor", path)
 	out, err := exec.Command("go", "install", p).CombinedOutput()
