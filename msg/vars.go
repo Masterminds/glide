@@ -3,6 +3,7 @@ package msg
 import (
 	"fmt"
 	"os"
+	"sync"
 )
 
 // Quiet, if true, suppresses chatty levels, like Info.
@@ -20,6 +21,13 @@ var Stdout = os.Stdout
 // Stderr is the location where this prints logs.
 var Stderr = os.Stderr
 
+// If this is true, Die() will panic instead of exiting.
+var PanicOnDie = false
+
+var ecode = 1
+
+var elock sync.Mutex
+
 // Puts formats a message and then prints to Stdout.
 //
 // It does not prefix the message, does not color it, or otherwise decorate it.
@@ -32,5 +40,21 @@ func Puts(msg string, args ...interface{}) {
 
 func Die(msg string, args ...interface{}) {
 	Error(msg, args...)
-	os.Exit(1)
+	if PanicOnDie {
+		panic("trapped a Die() call")
+	}
+	os.Exit(ecode)
+}
+
+// ExitCode sets the exit code used by Die.
+//
+// The default is 1.
+//
+// Returns the old error code.
+func ExitCode(e int) int {
+	elock.Lock()
+	old := ecode
+	ecode = e
+	elock.Unlock()
+	return old
 }

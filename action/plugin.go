@@ -14,8 +14,8 @@ func Plugin(command string, args []string) {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		msg.Error("Could not get working directory: %s", err)
-		os.Exit(99)
+		msg.ExitCode(99)
+		msg.Die("Could not get working directory: %s", err)
 	}
 
 	cmd := "glide-" + command
@@ -23,8 +23,8 @@ func Plugin(command string, args []string) {
 	if fullcmd, err = exec.LookPath(cmd); err != nil {
 		fullcmd = cwd + "/" + cmd
 		if _, err := os.Stat(fullcmd); err != nil {
-			msg.Error("Command %s does not exist.", cmd)
-			os.Exit(99)
+			msg.ExitCode(99)
+			msg.Die("Command %s does not exist.", cmd)
 		}
 	}
 
