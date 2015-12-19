@@ -1,0 +1,3 @@
+package: github.com/Masterminds/glide/testdata/plugin
+import:
+  - package: example.com/x/foo

@@ -16,13 +16,13 @@ import (
 func EnsureConfig(yamlpath string) *cfg.Config {
 	yml, err := ioutil.ReadFile(yamlpath)
 	if err != nil {
-		msg.Error("Failed to load %s: %s", yamlpath, err)
-		os.Exit(2)
+		msg.ExitCode(2)
+		msg.Die("Failed to load %s: %s", yamlpath, err)
 	}
 	conf, err := cfg.ConfigFromYaml(yml)
 	if err != nil {
-		msg.Error("Failed to parse %s: %s", yamlpath, err)
-		os.Exit(3)
+		msg.ExitCode(3)
+		msg.Die("Failed to parse %s: %s", yamlpath, err)
 	}
 
 	return conf

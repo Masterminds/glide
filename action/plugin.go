@@ -9,7 +9,8 @@ import (
 
 // Plugin attempts to find and execute a plugin based on a command.
 //
-// Exit code 99 means the plugin was never executed.
+// Exit code 99 means the plugin was never executed. Code 1 means the program
+// exited badly.
 func Plugin(command string, args []string) {
 
 	cwd, err := os.Getwd()
