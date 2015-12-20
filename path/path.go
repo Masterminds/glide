@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const DefaultGlideFile = "glide.yaml"
@@ -91,4 +92,27 @@ func GlideWD(dir string) (string, error) {
 	}
 
 	return GlideWD(base)
+}
+
+// Gopath gets GOPATH from environment and return the most relevant path.
+//
+// A GOPATH can contain a colon-separated list of paths. This retrieves the
+// GOPATH and returns only the FIRST ("most relevant") path.
+//
+// This should be used carefully. If, for example, you are looking for a package,
+// you may be better off using Gopaths.
+func Gopath() string {
+	gopaths := Gopaths()
+	if len(gopaths) == 0 {
+		return ""
+	}
+	return gopaths[0]
+}
+
+// Gopaths retrieves the Gopath as a list when there is more than one path
+// listed in the Gopath.
+func Gopaths() []string {
+	p := os.Getenv("GOPATH")
+	p = strings.Trim(p, string(filepath.ListSeparator))
+	return filepath.SplitList(p)
 }
