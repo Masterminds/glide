@@ -516,6 +516,13 @@ func isLink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
 }
 
+// Returns true if this is a directory that could have source code, false otherwise.
+//
+// Directories with _ or . prefixes are skipped, as are testdata and vendor.
+func IsSrcDir(fi os.FileInfo) bool {
+	return srcDir(fi)
+}
+
 func srcDir(fi os.FileInfo) bool {
 	if !fi.IsDir() {
 		return false

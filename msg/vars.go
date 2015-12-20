@@ -39,6 +39,13 @@ func Puts(msg string, args ...interface{}) {
 	fmt.Fprintln(Stdout)
 }
 
+// Print prints exactly the string given.
+//
+// It prints to Stdout.
+func Print(msg string) {
+	fmt.Fprint(Stdout, msg)
+}
+
 func Die(msg string, args ...interface{}) {
 	Error(msg, args...)
 	if PanicOnDie {

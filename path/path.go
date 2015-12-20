@@ -116,3 +116,8 @@ func Gopaths() []string {
 	p = strings.Trim(p, string(filepath.ListSeparator))
 	return filepath.SplitList(p)
 }
+
+// IsLink returns true if the given FileInfo references a link.
+func IsLink(fi os.FileInfo) bool {
+	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
+}

@@ -122,6 +122,8 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 
 // Attempt to guess at the package name at the top level. When unable to detect
 // a name goes to default of "main".
+//
+// DEPRECATED. Use BuildCtxt.PackageName(base)
 func guessPackageName(b *util.BuildCtxt, base string) string {
 	cwd, err := os.Getwd()
 	if err != nil {

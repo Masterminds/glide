@@ -466,7 +466,7 @@ Example:
 	vendor/ are only included if they are referenced by the main project or
 	one of its dependencies.`,
 			Action: func(c *cli.Context) {
-				setupHandler(c, "tree", cxt, router)
+				action.Tree(".", false)
 			},
 		},
 		{
@@ -664,10 +664,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteYaml, "out").
 		Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:yaml")
-
-	reg.Route("tree", "Print a dependency graph.").
-		Includes("@startup").
-		Does(cmd.Tree, "tree")
 }
 
 func defaultGlideDir() string {
