@@ -13,11 +13,28 @@ const DefaultGlideFile = "glide.yaml"
 // As of Go 1.5, this is always vendor.
 var VendorDir = "vendor"
 
+// HomeDir is the home directory for Glide.
+//
+// HomeDir is where cache files and other configuration data are stored.
+var HomeDir = "$HOME/.glide"
+
 // GlideFile is the name of the Glide file.
 //
 // Setting this is not concurrency safe. For consistency, it should really
 // only be set once, at startup, or not at all.
 var GlideFile = DefaultGlideFile
+
+// Home returns the Glide home directory ($GLIDE_HOME or ~/.glide, typically).
+//
+// This normalizes to an absolute path, and passes through os.ExpandEnv.
+func Home() string {
+	h := os.ExpandEnv(HomeDir)
+	var err error
+	if h, err = filepath.Abs(HomeDir); err != nil {
+		return HomeDir
+	}
+	return h
+}
 
 // VendorPath calculates the path to the vendor directory.
 //

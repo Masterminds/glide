@@ -13,6 +13,6 @@ func TestRebuild(t *testing.T) {
 	if err := os.Chdir("../testdata/rebuild"); err != nil {
 		t.Errorf("Could not change dir: %s (%s)", err, wd)
 	}
-	Rebuild("glide.yaml")
+	Rebuild()
 	os.Chdir(wd)
 }

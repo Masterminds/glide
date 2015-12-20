@@ -296,36 +296,14 @@ Example:
 				action.NoVendor(c.String("dir"), true, !c.Bool("no-subdir"))
 			},
 		},
-		// 	{
-		// 		Name:  "pin",
-		// 		Usage: "Print a YAML file with all of the packages pinned to the current version",
-		// 		Description: `Begins with the current glide.yaml and sets an absolute ref
-		// for every package. The version is derived from the repository version. It will be
-		// either a commit or a tag, depending on the state of the VCS tree.
-		//
-		// By default, output is written to standard out. However, if you supply a filename,
-		// the data will be written to that:
-		//
-		//     $ glide pin glide.yaml
-		//
-		// The above will overwrite your glide.yaml file. You have been warned.
-		// `,
-		// 		Action: func(c *cli.Context) {
-		// 			outfile := ""
-		// 			if len(c.Args()) == 1 {
-		// 				outfile = c.Args()[0]
-		// 			}
-		// 			cxt.Put("toPath", outfile)
-		// 			setupHandler(c, "pin", cxt, router)
-		// 		},
-		// 	},
 		{
 			Name:  "rebuild",
 			Usage: "Rebuild ('go build') the dependencies",
 			Description: `This rebuilds the packages' '.a' files. On some systems
 	this can improve performance on subsequent 'go run' and 'go build' calls.`,
 			Action: func(c *cli.Context) {
-				setupHandler(c, "rebuild", cxt, router)
+				action.Rebuild()
+				//setupHandler(c, "rebuild", cxt, router)
 			},
 		},
 		{
@@ -641,34 +619,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("lockfile").From("cxt:Lockfile").
 		Using("skip").From("cxt:skipFlatten")
 
-	//Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
-
-	reg.Route("rebuild", "Rebuild dependencies").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.CowardMode, "_").
-		Does(cmd.Rebuild, "rebuild").Using("conf").From("cxt:cfg")
-
-	reg.Route("pin", "Print a YAML file with all of the packages pinned to the current version.").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
-		Using("packages").From("cxt:packages").
-		Using("force").From("cxt:forceUpdate").
-		Using("skip").From("cxt:skipFlatten").
-		Using("home").From("cxt:home").
-		Using("cache").From("cxt:useCache").
-		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("useGopath").From("cxt:useGopath").
-		//Does(cmd.VendoredCleanUp, "_").
-		//Using("conf").From("cxt:flattened").
-		//Using("update").From("cxt:updateVendoredDeps").
-		// Write the Lockfile
-		Does(cmd.WriteYaml, "out").
-		Using("conf").From("cxt:Lockfile").
-		Using("filename").From("cxt:toPath").
-		Using("toStdout").From("cxt:toStdout")
-
 	reg.Route("import gpm", "Read a Godeps file").
 		Includes("@startup").
 		Includes("@ready").
@@ -736,6 +686,7 @@ func startup(c *cli.Context) error {
 	action.Debug(c.Bool("debug"))
 	action.NoColor(c.Bool("no-color"))
 	action.Quiet(c.Bool("quiet"))
+	action.Init(c.String("yaml"), c.String("home"))
 	action.EnsureGoVendor()
 	return nil
 }

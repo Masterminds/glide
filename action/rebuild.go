@@ -17,7 +17,7 @@ import (
 // Prior to Go 1.4, this could substantially reduce time on incremental compiles.
 // It remains to be seen whether this is tremendously beneficial to modern Go
 // programs.
-func Rebuild(yamlpath string) {
+func Rebuild() {
 	conf := EnsureConfig()
 	vpath, err := gpath.Vendor()
 	if err != nil {
