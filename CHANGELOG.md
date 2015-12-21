@@ -1,4 +1,9 @@
-# Release 0.8.1 (xxxx-xx-xx)
+# Release 0.8.2 (xxxx-xx-xx)
+
+- Fixed #169: cookoo git url has auth info. Makes glide unbuildable for
+  environments not setup for GitHub.
+
+# Release 0.8.1 (2015-12-15)
 
 - Fixed #163: Was detecting std lib packages when the GOROOT was different at
   runtime than compile time.
