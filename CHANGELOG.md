@@ -2,6 +2,7 @@
 
 - Fixed #169: cookoo git url has auth info. Makes glide unbuildable for
   environments not setup for GitHub.
+- Fixed #180: the hash in the glide.lock file was not being properly calculated.
 
 # Release 0.8.1 (2015-12-15)
 

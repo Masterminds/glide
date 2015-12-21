@@ -187,7 +187,7 @@ func (c *Config) Hash() (string, error) {
 	}
 
 	hash := sha256.New()
-	hash.Sum(yml)
+	hash.Write(yml)
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
