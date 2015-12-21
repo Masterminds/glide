@@ -372,7 +372,7 @@ According to the above, the following packages will be built:
 
 1. The `go-gypsy/yaml` package
 2. The `cookoo` package (`.`), along with `cookoo/web` and `cookoo/cli`
-3. Everything in `awz` (`...`)
+3. Everything in `amz` (`...`)
 
 See the `docs/` folder for more examples.
 
