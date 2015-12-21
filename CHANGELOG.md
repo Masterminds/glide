@@ -1,4 +1,4 @@
-# Release 0.8.2 (xxxx-xx-xx)
+# Release 0.8.2 (2015-12-21)
 
 - Fixed #169: cookoo git url has auth info. Makes glide unbuildable for
   environments not setup for GitHub.
