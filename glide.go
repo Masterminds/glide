@@ -536,6 +536,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 	reg.Route("get", "Install a pkg in vendor, and store the results in the glide.yaml").
 		Includes("@startup").
 		Includes("@ready").
+		Does(cmd.CowardMode, "_").
 		Does(cmd.GetAll, "goget").
 		Using("packages").From("cxt:packages").
 		Using("conf").From("cxt:cfg").

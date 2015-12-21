@@ -5,6 +5,8 @@
 - Fixed #180: the hash in the glide.lock file was not being properly calculated.
 - Fixed #174: glide get was causing an error when the flad --updated-vendored
   was being used.
+- Fixed #175: glide get when the GOPATH isn't setup properly could end up in
+  an infinate loop.
 
 # Release 0.8.1 (2015-12-15)
 

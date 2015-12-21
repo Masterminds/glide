@@ -81,7 +81,7 @@ func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 
 	_, err := os.Stat(path.Join(gopath, "src"))
 	if err != nil {
-		Error("Could not find %s/src.\n", gopath)
+		Error("Could not find %s/src. The GOPATH does not appear to be properly setup.\n", gopath)
 		Info("As of Glide 0.5/Go 1.5, this is required.\n")
 		return false, err
 	}
