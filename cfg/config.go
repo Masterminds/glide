@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Masterminds/glide/msg"
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/vcs"
 	"gopkg.in/yaml.v2"
@@ -293,8 +294,11 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	// Get the root name for the package
 	o := d.Name
+	msg.Debug("before name: %s", o)
 	d.Name = util.GetRootFromPackage(d.Name)
+	msg.Debug("after name: %s", d.Name)
 	subpkg := strings.TrimPrefix(o, d.Name)
+	msg.Debug("subpkg: %s", subpkg)
 	if len(subpkg) > 0 && subpkg != "/" {
 		d.Subpackages = append(d.Subpackages, strings.TrimPrefix(subpkg, "/"))
 	}

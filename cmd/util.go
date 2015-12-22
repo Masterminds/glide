@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/cookoo"
+	"github.com/Masterminds/glide/msg"
 )
 
 // Quiet, when set to true, can suppress Info and Debug messages.
@@ -21,6 +22,7 @@ var NoColor = false
 func BeQuiet(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	Quiet = p.Get("quiet", false).(bool)
 	IsDebugging = p.Get("debug", false).(bool)
+	msg.IsDebugging = IsDebugging
 	return Quiet, nil
 }
 

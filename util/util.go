@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Masterminds/glide/msg"
 	"github.com/Masterminds/vcs"
 )
 
@@ -35,6 +36,7 @@ func GetRootFromPackage(pkg string) string {
 		}
 
 		if m[1] != "" {
+			msg.Debug("GetRootFromPackage (regex): %s", m[1])
 			return m[1]
 		}
 	}
@@ -42,7 +44,7 @@ func GetRootFromPackage(pkg string) string {
 	// There are cases where a package uses the special go get magic for
 	// redirects. If we've not discovered the location already try that.
 	pkg = getRootFromGoGet(pkg)
-
+	msg.Debug("GetRootFromPackage (getRootFromGoGet): %s", pkg)
 	return pkg
 }
 
@@ -150,6 +152,7 @@ func parseImportFromBody(ur *url.URL, r io.ReadCloser) (u string, err error) {
 				continue
 			} else {
 				u = f[0]
+				msg.Debug("go-import: %s", u)
 				return
 			}
 
