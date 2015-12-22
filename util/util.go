@@ -98,7 +98,7 @@ var remotePackageCache = make(map[string]bool)
 
 func checkRemotePackageCache(pkg string) (string, bool) {
 	for k := range remotePackageCache {
-		if strings.HasPrefix(pkg, k) {
+		if k == pkg {
 			return k, true
 		}
 	}
