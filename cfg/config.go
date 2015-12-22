@@ -295,7 +295,7 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	o := d.Name
 	d.Name = util.GetRootFromPackage(d.Name)
 	subpkg := strings.TrimPrefix(o, d.Name)
-	if len(subpkg) > 0 && subpkg != o {
+	if len(subpkg) > 0 && subpkg != "/" {
 		d.Subpackages = append(d.Subpackages, strings.TrimPrefix(subpkg, "/"))
 	}
 
