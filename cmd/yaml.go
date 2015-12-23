@@ -79,6 +79,7 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(data)
 
 	var out io.Writer
 	if nn, ok := p.Has("filename"); ok && len(nn.(string)) > 0 {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -41,6 +42,11 @@ func LoadLockFile(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	if err != nil {
 		return nil, err
 	}
+
+	Warn("Lockfile hash: %s", lock.Hash)
+	Warn("glide.yaml generated hash: %s", hash)
+	y, _ := conf.Marshal()
+	fmt.Println(y)
 
 	if hash != lock.Hash {
 		return nil, errors.New("Lock file does not match YAML configuration. Consider running 'update'")
