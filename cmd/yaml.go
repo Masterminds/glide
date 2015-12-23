@@ -80,6 +80,8 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 		return nil, err
 	}
 	fmt.Println(data)
+	h, _ := conf.Hash()
+	Info("conf hash is %s", h)
 
 	var out io.Writer
 	if nn, ok := p.Has("filename"); ok && len(nn.(string)) > 0 {
