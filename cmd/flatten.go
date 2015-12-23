@@ -39,6 +39,16 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	}
 	packages := p.Get("packages", []string{}).([]string)
 
+	// Operate on a clone of the conf so any changes don't impact later operations.
+	// This is a deep clone so dependencies are also cloned.
+	confcopy := conf.Clone()
+
+	// Generate a hash of the conf for later use in lockfile generation.
+	hash, err := conf.Hash()
+	if err != nil {
+		return conf, err
+	}
+
 	// When packages are passed around with a #version on the end it needs
 	// to be stripped.
 	for k, v := range packages {
@@ -51,42 +61,36 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	// If no packages are supplied, we do them all.
 	if len(packages) == 0 {
-		packages = make([]string, len(conf.Imports))
-		for i, v := range conf.Imports {
+		packages = make([]string, len(confcopy.Imports))
+		for i, v := range confcopy.Imports {
 			packages[i] = v.Name
 		}
 	}
 
 	// Build an initial dependency map.
-	deps := make(map[string]*cfg.Dependency, len(conf.Imports))
-	for _, imp := range conf.Imports {
+	deps := make(map[string]*cfg.Dependency, len(confcopy.Imports))
+	for _, imp := range confcopy.Imports {
 		deps[imp.Name] = imp
 	}
 
-	f := &flattening{conf, vend, vend, deps, packages}
+	f := &flattening{confcopy, vend, vend, deps, packages}
 
 	// The assumption here is that once something has been scanned once in a
 	// run, there is no need to scan it again.
 	scanned := map[string]bool{}
-	err := recFlatten(f, force, home, cache, cacheGopath, useGopath, scanned)
+	err = recFlatten(f, force, home, cache, cacheGopath, useGopath, scanned)
 	if err != nil {
-		return conf, err
+		return confcopy, err
 	}
-	err = conf.DeDupe()
+	err = confcopy.DeDupe()
 	if err != nil {
-		return conf, err
+		return confcopy, err
 	}
 	flattenSetRefs(f)
 	Info("Project relies on %d dependencies.", len(deps))
 
-	hash, err := conf.Hash()
-	if err != nil {
-		return conf, err
-	}
 	c.Put("Lockfile", cfg.LockfileFromMap(deps, hash))
 
-	// A shallow copy should be all that's needed.
-	confcopy := conf.Clone()
 	exportFlattenedDeps(confcopy, deps)
 
 	return confcopy, err
