@@ -1,9 +1,11 @@
 # Release 0.8.3 (xxxx-xx-xx)
 
-- Issue #185 and #187: Inaccurate hash being generated for lock file with nested
+- Fixed #185 and #187: Inaccurate hash being generated for lock file with nested
   version ranges.
-- Issue #182 and #183: Caching on go-import lookups mishandled some prefixes.
+- Fixed #182 and #183: Caching on go-import lookups mishandled some prefixes.
 - Fixed issue in deduping and sub-package names.
+- Fixed #189: nested dependencies that do not contain VCS information were not
+  being updated properly when --updated-vendored was being used.
 
 # Release 0.8.2 (2015-12-21)
 

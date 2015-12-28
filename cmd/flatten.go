@@ -170,25 +170,20 @@ func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath,
 			continue
 		}
 		wd := path.Join(f.top, imp.Name)
-		if VcsExists(imp, wd) {
-			if updateCache[imp.Name] {
-				Debug("----> Already updated %s", imp.Name)
-				continue
-			}
-			Debug("Updating project %s (%s)\n", imp.Name, wd)
-			if err := VcsUpdate(imp, f.top, home, force, cache, cacheGopath, useGopath); err != nil {
-				// We can still go on just fine even if this fails.
-				Warn("Skipped update %s: %s\n", imp.Name, err)
-				continue
-			}
-			updateCache[imp.Name] = true
-		} else {
-			Debug("Importing %s to project %s\n", imp.Name, wd)
-			if err := VcsGet(imp, wd, home, cache, cacheGopath, useGopath); err != nil {
-				Warn("Skipped getting %s: %v\n", imp.Name, err)
-				continue
-			}
+
+		if updateCache[imp.Name] {
+			Debug("----> Already updated %s", imp.Name)
+			continue
 		}
+
+		Debug("Getting project %s (%s)\n", imp.Name, wd)
+
+		if err := VcsUpdate(imp, f.top, home, force, cache, cacheGopath, useGopath); err != nil {
+			// We can still go on just fine even if this fails.
+			Warn("Skipped getting %s: %s\n", imp.Name, err)
+			continue
+		}
+		updateCache[imp.Name] = true
 
 		// If a revision has been set use it.
 		err := VcsVersion(imp, f.top)
