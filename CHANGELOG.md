@@ -1,3 +1,10 @@
+# Release 0.8.3 (xxxx-xx-xx)
+
+- Issue #185 and #187: Inaccurate hash being generated for lock file with nested
+  version ranges.
+- Issue #182 and #183: Caching on go-import lookups mishandled some prefixes.
+- Fixed issue in deduping and sub-package names.
+
 # Release 0.8.2 (2015-12-21)
 
 - Fixed #169: cookoo git url has auth info. Makes glide unbuildable for
