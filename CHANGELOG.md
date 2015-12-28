@@ -6,6 +6,7 @@
 - Fixed issue in deduping and sub-package names.
 - Fixed #189: nested dependencies that do not contain VCS information were not
   being updated properly when --updated-vendored was being used.
+- Fixed #186: glide up PACKAGE was failing to generate a proper glide.lock file.
 
 # Release 0.8.2 (2015-12-21)
 

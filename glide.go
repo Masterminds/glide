@@ -613,7 +613,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("useGopath").From("cxt:useGopath").
 		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
 		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
-		Using("packages").From("cxt:packages").
+		//Using("packages").From("cxt:packages").
 		Using("force").From("cxt:forceUpdate").
 		Using("skip").From("cxt:skipFlatten").
 		Using("home").From("cxt:home").

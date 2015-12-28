@@ -142,6 +142,26 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	for _, dep := range cfg.Imports {
 		if restrict && !pkgs[dep.Name] {
 			Debug("===> Skipping %q", dep.Name)
+
+			// Even though skipping check if the package exists and has VCS info
+			// needed for other operations.
+			dest := path.Join(cwd, dep.Name)
+			if _, err := os.Stat(dest); os.IsNotExist(err) {
+				Warn("Package %s not checked out to vendor/ folder", dep.Name)
+				Error("Unable to generate accurate glide.lock because %s is missing", dep.Name)
+			} else {
+				empty, err := isDirectoryEmpty(dest)
+				_, err2 := v.DetectVcsFromFS(dest)
+				if err != nil || empty == true {
+					Warn("Package %s not checked out to vendor/ folder. Directory empty", dep.Name)
+					Error("Unable to generate accurate glide.lock because %s is missing", dep.Name)
+					continue
+				} else if empty == false && err2 == v.ErrCannotDetectVCS {
+					Warn("%s appears to be a vendored package missing version control data", dep.Name)
+					Error("Unable to generate accurate glide.lock because %s version control data is missing", dep.Name)
+				}
+			}
+
 			continue
 		}
 
