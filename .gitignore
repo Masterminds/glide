@@ -1,6 +1,7 @@
 _vendor
 vendor/
 glide
+glide.exe
 *.a
 *.sublime-project
 *.sublime-workspace
