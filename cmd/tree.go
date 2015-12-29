@@ -211,7 +211,7 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *pinfo {
 		}
 	}
 	// Check $GOPATH
-	for _, r := range strings.Split(b.GOPATH, ":") {
+	for _, r := range filepath.SplitList(b.GOPATH) {
 		p = filepath.Join(r, "src", filepath.FromSlash(name))
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 			info.Path = p
@@ -221,7 +221,7 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *pinfo {
 	}
 
 	// Check $GOROOT
-	for _, r := range strings.Split(b.GOROOT, ":") {
+	for _, r := range filepath.SplitList(b.GOROOT) {
 		p = filepath.Join(r, "src", filepath.FromSlash(name))
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 			info.Path = p
