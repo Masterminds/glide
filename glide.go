@@ -560,6 +560,7 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("cache").From("cxt:useCache").
 		Using("cacheGopath").From("cxt:cacheGopath").
 		Using("useGopath").From("cxt:useGopath").
+		Using("skip").From("cxt:skipFlatten").
 		Does(cmd.VendoredCleanUp, "_").
 		Using("conf").From("cxt:flattened").
 		Using("update").From("cxt:updateVendoredDeps").

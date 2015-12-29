@@ -105,11 +105,6 @@ func WriteYaml(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 //	- lockfile: A *cfg.Lockfile to render.
 // 	- out (io.Writer): An output stream to write to. Default is os.Stdout.
 func WriteLock(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
-	skip := p.Get("skip", false).(bool)
-	if skip {
-		return false, nil
-	}
-
 	lockfile := p.Get("lockfile", nil).(*cfg.Lockfile)
 
 	Info("Writing glide.lock file")

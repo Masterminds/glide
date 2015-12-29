@@ -33,10 +33,6 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	cacheGopath := p.Get("cacheGopath", false).(bool)
 	useGopath := p.Get("useGopath", false).(bool)
 
-	if skip {
-		Warn("Skipping lockfile generation because full dependency tree is not being calculated")
-		return conf, nil
-	}
 	packages := p.Get("packages", []string{}).([]string)
 
 	// Operate on a clone of the conf so any changes don't impact later operations.
@@ -71,6 +67,13 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	deps := make(map[string]*cfg.Dependency, len(confcopy.Imports))
 	for _, imp := range confcopy.Imports {
 		deps[imp.Name] = imp
+	}
+
+	if skip {
+		Warn("Skipping recursive flattening")
+		Info("Project relies on %d dependencies.", len(deps))
+		c.Put("Lockfile", cfg.LockfileFromMap(deps, hash))
+		return conf, nil
 	}
 
 	f := &flattening{confcopy, vend, vend, deps, packages}
