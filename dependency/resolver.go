@@ -141,7 +141,7 @@ func NewResolver(basedir string) (*Resolver, error) {
 // If basepath is set to a project's vendor path, the scanning will begin from
 // there.
 func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
-	target := filepath.Join(basepath, pkg)
+	target := filepath.Join(basepath, filepath.FromSlash(pkg))
 	//msg.Debug("Scanning %s", target)
 	l := list.New()
 	l.PushBack(target)
@@ -190,14 +190,14 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 			info := r.FindPkg(imp)
 			switch info.Loc {
 			case LocUnknown, LocVendor:
-				l.PushBack(filepath.Join(r.VendorDir, imp)) // Do we need a path on this?
+				l.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp))) // Do we need a path on this?
 			case LocGopath:
 				if !strings.HasPrefix(info.Path, r.basedir) {
 					// FIXME: This is a package outside of the project we're
 					// scanning. It should really be on vendor. But we don't
 					// want it to reference GOPATH. We want it to be detected
 					// and moved.
-					l.PushBack(filepath.Join(r.VendorDir, imp))
+					l.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
 				}
 			}
 		}
@@ -362,7 +362,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 				msg.Error("Failed to fetch %s: %s", imp, err)
 			}
 			if found {
-				buf = append(buf, filepath.Join(r.VendorDir, imp))
+				buf = append(buf, filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
 				continue
 			}
 			r.seen[info.Path] = true
@@ -378,7 +378,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 			// for subsequent processing. Otherwise, we assume that we're
 			// in a less-than-perfect, but functional, situation.
 			if found {
-				buf = append(buf, filepath.Join(r.VendorDir, imp))
+				buf = append(buf, filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
 				continue
 			}
 			msg.Warn("Package %s is on GOPATH, but not vendored. Ignoring.", imp)
@@ -397,7 +397,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 func sliceToQueue(deps []*cfg.Dependency, basepath string) *list.List {
 	l := list.New()
 	for _, e := range deps {
-		l.PushBack(filepath.Join(basepath, e.Name))
+		l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name)))
 	}
 	return l
 }
@@ -454,7 +454,7 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 	}
 
 	// Check _only_ if this dep is in the current vendor directory.
-	p = filepath.Join(r.VendorDir, name)
+	p = filepath.Join(r.VendorDir, filepath.FromSlash(name))
 	if pkgExists(p) {
 		info.Path = p
 		info.Loc = LocVendor
@@ -466,7 +466,7 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 	// TODO: Do we need this if we always flatten?
 	// Recurse backward to scan other vendor/ directories
 	//for wd := cwd; wd != "/"; wd = filepath.Dir(wd) {
-	//p = filepath.Join(wd, "vendor", name)
+	//p = filepath.Join(wd, "vendor", filepath.FromSlash(name))
 	//if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 	//info.Path = p
 	//info.PType = ptypeVendor
@@ -477,7 +477,7 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 
 	// Check $GOPATH
 	for _, rr := range strings.Split(r.BuildContext.GOPATH, ":") {
-		p = filepath.Join(rr, "src", name)
+		p = filepath.Join(rr, "src", filepath.FromSlash(name))
 		if pkgExists(p) {
 			info.Path = p
 			info.Loc = LocGopath
@@ -488,7 +488,7 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 
 	// Check $GOROOT
 	for _, rr := range strings.Split(r.BuildContext.GOROOT, ":") {
-		p = filepath.Join(rr, "src", name)
+		p = filepath.Join(rr, "src", filepath.FromSlash(name))
 		if pkgExists(p) {
 			info.Path = p
 			info.Loc = LocGoroot

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/Masterminds/glide/cfg"
@@ -46,7 +46,7 @@ func VendoredCleanUp(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.In
 			Info("Cleaning up vendored package %s\n", dep.Name)
 
 			// Remove the VCS directory
-			cwd := path.Join(vend, dep.Name)
+			cwd := filepath.Join(vend, filepath.FromSlash(dep.Name))
 			repo, err := dep.GetRepo(cwd)
 			if err != nil {
 				Error("Error cleaning up %s:%s", dep.Name, err)

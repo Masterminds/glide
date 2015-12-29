@@ -167,7 +167,7 @@ func NormalizeName(name string) (string, string) {
 	// expects remote names.
 	b, err := util.GetBuildContext()
 	if err == nil {
-		p := filepath.Join(b.GOROOT, "src", name)
+		p := filepath.Join(b.GOROOT, "src", filepath.FromSlash(name))
 		if _, err := os.Stat(p); err == nil {
 			return name, ""
 		}
