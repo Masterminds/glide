@@ -358,14 +358,16 @@ a package. Example:
 package: github.com/technosophos/glide
 import:
   - package: github.com/kylelemons/go-gypsy
-    subpackage: yaml
+    subpackages:
+      - yaml
   - package: github.com/Masterminds/cookoo
-    subpackage:
+    subpackages:
       - .
       - cli
       - web
   - package: github.com/crowdmob/amz
-    subpackage: ...
+    subpackages:
+      - ...
 ```
 
 According to the above, the following packages will be built:
