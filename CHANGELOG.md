@@ -1,5 +1,9 @@
 # Release 0.8.3 (xxxx-xx-xx)
 
+- Fixed #199: `glide up` on Windows unable to detect dependencies when GOPATH
+  and GOROOT on a different drive or when GOROOT ends in a path separator.
+- Fixed #194: `glide up` stalling on Windows due to POSIX path separators and
+  path list separators being used.
 - Fixed #185 and #187: Inaccurate hash being generated for lock file with nested
   version ranges.
 - Fixed #182 and #183: Caching on go-import lookups mishandled some prefixes.

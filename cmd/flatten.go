@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -126,7 +127,7 @@ func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, useG
 	Debug("---> Inspecting %s for changes (%d packages).\n", f.curr, len(f.scan))
 	for _, imp := range f.scan {
 		Debug("----> Scanning %s", imp)
-		base := path.Join(f.top, imp)
+		base := filepath.Join(f.top, filepath.FromSlash(imp))
 		mod := []string{}
 		if m, ok := mergeGlide(base, imp, f); ok {
 			mod = m
@@ -169,7 +170,7 @@ func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath,
 		if imp.Name == f.conf.Name {
 			continue
 		}
-		wd := path.Join(f.top, imp.Name)
+		wd := filepath.Join(f.top, filepath.FromSlash(imp.Name))
 
 		if updateCache[imp.Name] {
 			Debug("----> Already updated %s", imp.Name)
@@ -365,7 +366,7 @@ func mergeDeps(orig map[string]*cfg.Dependency, add []*cfg.Dependency, vend stri
 		} else if dd.Reference != "" && existing.Reference != "" && dd.Reference != existing.Reference {
 			// Check if one is a version and the other is a constraint. If the
 			// version is in the constraint use that.
-			dest := path.Join(vend, dd.Name)
+			dest := filepath.Join(vend, filepath.FromSlash(dd.Name))
 			repo, err := existing.GetRepo(dest)
 			if err != nil {
 				Warn("Unable to access repo for %s\n", existing.Name)

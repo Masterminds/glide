@@ -198,10 +198,13 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *pinfo {
 		for wd := abs; wd != "/"; wd = filepath.Dir(wd) {
 
 			// Don't look for packages outside the GOPATH
-			if wd == b.GOPATH {
+			// Note, the GOPATH may or may not end with the path separator.
+			// The output of filepath.Dir does not the the path separator on the
+			// end so we need to test both.
+			if wd == b.GOPATH || wd+string(os.PathSeparator) == b.GOPATH {
 				break
 			}
-			p = filepath.Join(wd, "vendor", name)
+			p = filepath.Join(wd, "vendor", filepath.FromSlash(name))
 			if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 				info.Path = p
 				info.PType = ptypeVendor
@@ -211,8 +214,8 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *pinfo {
 		}
 	}
 	// Check $GOPATH
-	for _, r := range strings.Split(b.GOPATH, ":") {
-		p = filepath.Join(r, "src", name)
+	for _, r := range filepath.SplitList(b.GOPATH) {
+		p = filepath.Join(r, "src", filepath.FromSlash(name))
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 			info.Path = p
 			info.PType = ptypeGopath
@@ -221,8 +224,8 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *pinfo {
 	}
 
 	// Check $GOROOT
-	for _, r := range strings.Split(b.GOROOT, ":") {
-		p = filepath.Join(r, "src", name)
+	for _, r := range filepath.SplitList(b.GOROOT) {
+		p = filepath.Join(r, "src", filepath.FromSlash(name))
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || isLink(fi)) {
 			info.Path = p
 			info.PType = ptypeGoroot

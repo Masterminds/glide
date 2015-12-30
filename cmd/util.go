@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -79,7 +78,7 @@ func CowardMode(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 		return false, fmt.Errorf("No GOPATH is set.\n")
 	}
 
-	_, err := os.Stat(path.Join(gopath, "src"))
+	_, err := os.Stat(filepath.Join(gopath, "src"))
 	if err != nil {
 		Error("Could not find %s/src. The GOPATH does not appear to be properly setup.\n", gopath)
 		Info("As of Glide 0.5/Go 1.5, this is required.\n")
@@ -161,9 +160,9 @@ func copyDir(source string, dest string) error {
 
 	for _, obj := range objects {
 
-		sp := filepath.Join(source, "/", obj.Name())
+		sp := filepath.Join(source, obj.Name())
 
-		dp := filepath.Join(dest, "/", obj.Name())
+		dp := filepath.Join(dest, obj.Name())
 
 		if obj.IsDir() {
 			err = copyDir(sp, dp)
