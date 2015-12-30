@@ -1,5 +1,7 @@
 # Release 0.8.3 (xxxx-xx-xx)
 
+- Issue #198: Instead of stopping `glide install` for a hash failures providing
+  a warning. Failed hash check is currently too agressive.
 - Fixed #199: `glide up` on Windows unable to detect dependencies when GOPATH
   and GOROOT on a different drive or when GOROOT ends in a path separator.
 - Fixed #194: `glide up` stalling on Windows due to POSIX path separators and
