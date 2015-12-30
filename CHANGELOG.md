@@ -1,4 +1,4 @@
-# Release 0.8.3 (xxxx-xx-xx)
+# Release 0.8.3 (2015-12-30)
 
 - Issue #198: Instead of stopping `glide install` for a hash failures providing
   a warning. Failed hash check is currently too aggressive.
