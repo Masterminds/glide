@@ -139,8 +139,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				},
 			},
 			Action: func(c *cli.Context) {
-				cxt.Put("skipImport", c.Bool("skip-import"))
-				setupHandler(c, "create", cxt, router)
+				action.Create(".", c.Bool("skip-import"))
 			},
 		},
 		{
@@ -654,16 +653,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Using("conf").From("cxt:cfg").
 		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
 		Using("filename").From("cxt:toPath")
-
-	reg.Route("create", "Guess dependencies").
-		Includes("@startup").
-		Does(cmd.GuardYaml, "_").
-		Using("filename").From("cxt:yaml").
-		Does(cmd.GuessDeps, "cfg").
-		Using("skipImport").From("cxt:skipImport").
-		Does(cmd.WriteYaml, "out").
-		Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:yaml")
 }
 
 func defaultGlideDir() string {

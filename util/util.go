@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -266,4 +267,34 @@ func GetBuildContext() (*BuildCtxt, error) {
 		buildContext.GOROOT = goRoot
 	}
 	return buildContext, nil
+}
+
+// NormalizeName takes a package name and normalizes it to the top level package.
+//
+// For example, golang.org/x/crypto/ssh becomes golang.org/x/crypto. 'ssh' is
+// returned as extra data.
+//
+// FIXME: Is this deprecated?
+func NormalizeName(name string) (string, string) {
+	// Fastpath check if a name in the GOROOT. There is an issue when a pkg
+	// is in the GOROOT and GetRootFromPackage tries to look it up because it
+	// expects remote names.
+	b, err := GetBuildContext()
+	if err == nil {
+		p := filepath.Join(b.GOROOT, "src", name)
+		if _, err := os.Stat(p); err == nil {
+			return name, ""
+		}
+	}
+
+	root := GetRootFromPackage(name)
+	extra := strings.TrimPrefix(name, root)
+	if len(extra) > 0 && extra != "/" {
+		extra = strings.TrimPrefix(extra, "/")
+	} else {
+		// If extra is / (which is what it would be here) we want to return ""
+		extra = ""
+	}
+
+	return root, extra
 }

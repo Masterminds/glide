@@ -1,3 +1,12 @@
+# Release 0.9.0 (xxxx-xx-xx)
+
+- Refactored Glide
+  - Many features broken out into packages. All but `action/` can be
+    used as libraries.
+  - Support for GPM Godeps-Git has been removed
+  - Cookoo is not used anymore
+  - The `action/` package replaces `cmd/`
+
 # Release 0.8.1 (xxxx-xx-xx)
 
 - Fixed #163: Was detecting std lib packages when the GOROOT was different at
