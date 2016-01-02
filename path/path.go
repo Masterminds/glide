@@ -1,7 +1,13 @@
+/* Package path contains path and environment utilities for Glide.
+
+This includes tools to find and manipulate Go path variables, as well as
+tools for copying from one path to another.
+*/
 package action
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,6 +30,8 @@ var HomeDir = "$HOME/.glide"
 // Setting this is not concurrency safe. For consistency, it should really
 // only be set once, at startup, or not at all.
 var GlideFile = DefaultGlideFile
+
+const LockFile = "glide.lock"
 
 // Home returns the Glide home directory ($GLIDE_HOME or ~/.glide, typically).
 //
@@ -120,4 +128,109 @@ func Gopaths() []string {
 // IsLink returns true if the given FileInfo references a link.
 func IsLink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
+}
+
+// HasLock returns true if this can stat a lockfile at the givin location.
+func HasLock(basepath string) bool {
+	_, err := os.Stat(filepath.Join(basepath, LockFile))
+	return err == nil
+}
+
+// IsDirectoryEmpty checks if a directory is empty.
+func IsDirectoryEmpty(dir string) (bool, error) {
+	f, err := os.Open(dir)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdir(1)
+
+	if err == io.EOF {
+		return true, nil
+	}
+
+	return false, err
+}
+
+// CopyDir copies an entire source directory to the dest directory.
+//
+// This is akin to `cp -a src/* dest/`
+//
+// We copy the directory here rather than jumping out to a shell so we can
+// support multiple operating systems.
+func CopyDir(source string, dest string) error {
+
+	// get properties of source dir
+	si, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(dest, si.Mode())
+	if err != nil {
+		return err
+	}
+
+	d, _ := os.Open(source)
+
+	objects, err := d.Readdir(-1)
+
+	for _, obj := range objects {
+
+		sp := filepath.Join(source, "/", obj.Name())
+
+		dp := filepath.Join(dest, "/", obj.Name())
+
+		if obj.IsDir() {
+			err = CopyDir(sp, dp)
+			if err != nil {
+				return err
+			}
+		} else {
+			// perform copy
+			err = CopyFile(sp, dp)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	return nil
+}
+
+// CopyFile copies a source file to a destination.
+//
+// It follows symbolic links and retains modes.
+func CopyFile(source string, dest string) error {
+	ln, err := os.Readlink(source)
+	if err == nil {
+		return os.Symlink(ln, dest)
+	}
+	s, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+
+	defer s.Close()
+
+	d, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+
+	defer d.Close()
+
+	_, err = io.Copy(d, s)
+	if err != nil {
+		return err
+	}
+
+	si, err := os.Stat(source)
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(dest, si.Mode())
+
+	return err
 }

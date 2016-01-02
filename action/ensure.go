@@ -66,6 +66,19 @@ directory or move the _vendor/src/ directory to vendor/.` + "\n")
 	}
 }
 
+// EnsureVendorDir ensures that a vendor/ directory is present in the cwd.
+func EnsureVendorDir() {
+	fi, err := os.Stat(gpath.VendorDir)
+	if err != nil {
+		msg.Debug("Creating %s", gpath.VendorDir)
+		if err := os.MkdirAll(gpath.VendorDir, os.ModeDir|0755); err != nil {
+			msg.Die("Could not create %s: %s", gpath.VendorDir, err)
+		}
+	} else if !fi.IsDir() {
+		msg.Die("Vendor is not a directory")
+	}
+}
+
 // EnsureGopath fails if GOPATH is not set, or if $GOPATH/src is missing.
 //
 // Otherwise it returns the value of GOPATH.

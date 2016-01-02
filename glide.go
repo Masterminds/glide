@@ -41,6 +41,8 @@ import (
 
 	"github.com/Masterminds/glide/action"
 	"github.com/Masterminds/glide/cmd"
+	gpath "github.com/Masterminds/glide/path"
+	"github.com/Masterminds/glide/repo"
 
 	"github.com/Masterminds/cookoo"
 	"github.com/codegangsta/cli"
@@ -348,24 +350,35 @@ Example:
 				},
 			},
 			Action: func(c *cli.Context) {
-				cxt.Put("deleteOptIn", c.Bool("delete"))
-				cxt.Put("forceUpdate", c.Bool("force"))
+				installer := &repo.Installer{
+					DeleteUnused:   c.Bool("deleteOptIn"),
+					UpdateVendored: c.Bool("update-vendored"),
+					Force:          c.Bool("force"),
+					UseCache:       c.Bool("cache"),
+					UseCacheGopath: c.Bool("cache-gopath"),
+					UseGopath:      c.Bool("use-gopath"),
+					Home:           gpath.Home(),
+				}
+
+				action.Install(installer)
+				//cxt.Put("deleteOptIn", c.Bool("delete"))
+				//cxt.Put("forceUpdate", c.Bool("force"))
 				cxt.Put("skipFlatten", c.Bool("no-recursive"))
 				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
 				cxt.Put("toPath", c.String("file"))
 				cxt.Put("toStdout", false)
-				cxt.Put("useCache", c.Bool("cache"))
-				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
-				cxt.Put("useGopath", c.Bool("use-gopath"))
+				//cxt.Put("useCache", c.Bool("cache"))
+				//cxt.Put("cacheGopath", c.Bool("cache-gopath"))
+				//cxt.Put("useGopath", c.Bool("use-gopath"))
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
 					cxt.Put("importGb", true)
 				}
-				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
+				//cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
 
 				cxt.Put("packages", []string(c.Args()))
-				setupHandler(c, "install", cxt, router)
+				//setupHandler(c, "install", cxt, router)
 			},
 		},
 		{
