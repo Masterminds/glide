@@ -17,6 +17,15 @@ import (
 	"github.com/Masterminds/glide/util"
 )
 
+// Create creates/initializes a new Glide repository.
+//
+// This will fail if a glide.yaml already exists.
+//
+// By default, this will scan the present source code directory for dependencies.
+//
+// If skipImport is set to true, this will not attempt to import from an existing
+// GPM, Godep, or GB project if one should exist. However, it will still attempt
+// to read the local source to determine required packages.
 func Create(base string, skipImport bool) {
 	glidefile := gpath.GlideFile
 	// Guard against overwrites.
@@ -29,7 +38,6 @@ func Create(base string, skipImport bool) {
 	if err != nil {
 		msg.Die("Could not marshal config file: %s", err)
 	}
-
 	if err := ioutil.WriteFile(glidefile, buf, 0666); err != nil {
 		msg.Die("Could not save %s: %s", glidefile, err)
 	}

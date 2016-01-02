@@ -228,8 +228,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 						},
 					},
 					Action: func(c *cli.Context) {
-						cxt.Put("toPath", c.String("file"))
-						setupHandler(c, "import godep", cxt, router)
+						action.ImportGodep(c.String("file"))
 					},
 				},
 				{
@@ -242,8 +241,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 						},
 					},
 					Action: func(c *cli.Context) {
-						cxt.Put("toPath", c.String("file"))
-						setupHandler(c, "import gpm", cxt, router)
+						action.ImportGPM(c.String("file"))
 					},
 				},
 				{
@@ -256,8 +254,7 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 						},
 					},
 					Action: func(c *cli.Context) {
-						cxt.Put("toPath", c.String("file"))
-						setupHandler(c, "import gb", cxt, router)
+						action.ImportGB(c.String("file"))
 					},
 				},
 			},
@@ -617,42 +614,6 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteLock, "lock").
 		Using("lockfile").From("cxt:Lockfile").
 		Using("skip").From("cxt:skipFlatten")
-
-	reg.Route("import gpm", "Read a Godeps file").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.GPMGodeps, "godeps").
-		Does(cmd.AddDependencies, "addGodeps").
-		Using("dependencies").From("cxt:godeps").
-		Using("conf").From("cxt:cfg").
-		Does(cmd.GPMGodepsGit, "godepsGit").
-		Does(cmd.AddDependencies, "addGodepsGit").
-		Using("dependencies").From("cxt:godepsGit").
-		Using("conf").From("cxt:cfg").
-		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:toPath")
-
-	reg.Route("import godep", "Read a Godeps.json file").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.ParseGodepGodeps, "godeps").
-		Does(cmd.AddDependencies, "addGodeps").
-		Using("dependencies").From("cxt:godeps").
-		Using("conf").From("cxt:cfg").
-		// Does(cmd.UpdateReferences, "refs").Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:toPath")
-
-	reg.Route("import gb", "Read a vendor/manifest file").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.GbManifest, "manifest").
-		Does(cmd.AddDependencies, "addGodeps").
-		Using("dependencies").From("cxt:manifest").
-		Using("conf").From("cxt:cfg").
-		Does(cmd.WriteYaml, "out").Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:toPath")
 }
 
 func defaultGlideDir() string {
