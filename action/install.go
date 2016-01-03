@@ -45,6 +45,8 @@ func Install(installer *repo.Installer) {
 		msg.Die("Failed to install: %s", err)
 	}
 
+	msg.Info("Setting references.")
+
 	// Set reference
 	if err := repo.SetReference(newConf); err != nil {
 		msg.Error("Failed to set references: %s (Skip to cleanup)", err)
@@ -56,6 +58,9 @@ func Install(installer *repo.Installer) {
 	}
 }
 
+// LoadLockfile loads the contents of a glide.lock file.
+//
+// TODO: This should go in another package.
 func LoadLockfile(base string, conf *cfg.Config) (*cfg.Lockfile, error) {
 	yml, err := ioutil.ReadFile(filepath.Join(base, gpath.LockFile))
 	if err != nil {

@@ -301,7 +301,6 @@ Example:
 	this can improve performance on subsequent 'go run' and 'go build' calls.`,
 			Action: func(c *cli.Context) {
 				action.Rebuild()
-				//setupHandler(c, "rebuild", cxt, router)
 			},
 		},
 		{
@@ -322,19 +321,19 @@ Example:
 				},
 				cli.BoolFlag{
 					Name:  "no-recursive, quick",
-					Usage: "Disable updating dependencies' dependencies. Only update things in glide.yaml.",
+					Usage: "Disable updating dependencies' dependencies. Only update things in glide.yaml. (DEPRECATED: This no longer has any effect.)",
 				},
 				cli.BoolFlag{
 					Name:  "force",
-					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
+					Usage: "If there was a change in the repo or VCS switch to new one. Warning: changes will be lost.",
 				},
 				cli.BoolFlag{
 					Name:  "update-vendored, u",
-					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Usage: "Update vendored packages (without local VCS repo). Warning: this may destroy local modifications to vendor/.",
 				},
 				cli.StringFlag{
 					Name:  "file, f",
-					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+					Usage: "Save all of the discovered dependencies to a Glide YAML file. (DEPRECATED: This has no impact.)",
 				},
 				cli.BoolFlag{
 					Name:  "cache",
@@ -361,24 +360,27 @@ Example:
 				}
 
 				action.Install(installer)
-				//cxt.Put("deleteOptIn", c.Bool("delete"))
-				//cxt.Put("forceUpdate", c.Bool("force"))
+
+				// Was used by nested update.
 				cxt.Put("skipFlatten", c.Bool("no-recursive"))
 				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
+
+				// Not sure what this is for
 				cxt.Put("toPath", c.String("file"))
+
+				// This is never used here, but was used by Update.
 				cxt.Put("toStdout", false)
-				//cxt.Put("useCache", c.Bool("cache"))
-				//cxt.Put("cacheGopath", c.Bool("cache-gopath"))
-				//cxt.Put("useGopath", c.Bool("use-gopath"))
+
+				// This is never set to true, apparently.
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
 					cxt.Put("importGb", true)
 				}
-				//cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
 
+				// This is a bug. Install should never limit which packages are
+				// installed.
 				cxt.Put("packages", []string(c.Args()))
-				//setupHandler(c, "install", cxt, router)
 			},
 		},
 		{
@@ -445,6 +447,18 @@ Example:
 				},
 			},
 			Action: func(c *cli.Context) {
+				installer := &repo.Installer{
+					DeleteUnused:   c.Bool("deleteOptIn"),
+					UpdateVendored: c.Bool("update-vendored"),
+					Force:          c.Bool("force"),
+					UseCache:       c.Bool("cache"),
+					UseCacheGopath: c.Bool("cache-gopath"),
+					UseGopath:      c.Bool("use-gopath"),
+					Home:           gpath.Home(),
+				}
+
+				action.Update(installer)
+
 				cxt.Put("deleteOptIn", c.Bool("delete"))
 				cxt.Put("forceUpdate", c.Bool("force"))
 				cxt.Put("skipFlatten", c.Bool("no-recursive"))
@@ -462,7 +476,7 @@ Example:
 				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
 
 				cxt.Put("packages", []string(c.Args()))
-				setupHandler(c, "update", cxt, router)
+				//setupHandler(c, "update", cxt, router)
 			},
 		},
 		{
@@ -566,28 +580,30 @@ func routes(reg *cookoo.Registry, cxt cookoo.Context) {
 		Does(cmd.WriteLock, "lock").
 		Using("lockfile").From("cxt:Lockfile")
 
-	reg.Route("install", "Install dependencies.").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.CowardMode, "_").
-		Does(cmd.LockFileExists, "_").
-		Does(cmd.LoadLockFile, "lock").
-		Using("conf").From("cxt:cfg").
-		Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
-		Does(cmd.DeleteUnusedPackages, "deleted").
-		Using("conf").From("cxt:cfg").
-		Using("optIn").From("cxt:deleteOptIn").
-		Does(cmd.VendoredSetup, "cfg").
-		Using("conf").From("cxt:cfg").
-		Using("update").From("cxt:updateVendoredDeps").
-		Does(cmd.Install, "icfg").
-		Using("conf").From("cxt:cfg").
-		Using("lock").From("cxt:lock").
-		Using("home").From("cxt:home").
-		Does(cmd.SetReference, "version").Using("conf").From("cxt:icfg").
-		Does(cmd.VendoredCleanUp, "_").
-		Using("conf").From("cxt:icfg").
-		Using("update").From("cxt:updateVendoredDeps")
+	/*
+		reg.Route("install", "Install dependencies.").
+			Includes("@startup").
+			Includes("@ready").
+			Does(cmd.CowardMode, "_").
+			Does(cmd.LockFileExists, "_").
+			Does(cmd.LoadLockFile, "lock").
+			Using("conf").From("cxt:cfg").
+			Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
+			Does(cmd.DeleteUnusedPackages, "deleted").
+			Using("conf").From("cxt:cfg").
+			Using("optIn").From("cxt:deleteOptIn").
+			Does(cmd.VendoredSetup, "cfg").
+			Using("conf").From("cxt:cfg").
+			Using("update").From("cxt:updateVendoredDeps").
+			Does(cmd.Install, "icfg").
+			Using("conf").From("cxt:cfg").
+			Using("lock").From("cxt:lock").
+			Using("home").From("cxt:home").
+			Does(cmd.SetReference, "version").Using("conf").From("cxt:icfg").
+			Does(cmd.VendoredCleanUp, "_").
+			Using("conf").From("cxt:icfg").
+			Using("update").From("cxt:updateVendoredDeps")
+	*/
 
 	reg.Route("update", "Update dependencies.").
 		Includes("@startup").
