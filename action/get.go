@@ -26,11 +26,9 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 	}
 
 	// Add the packages to the config.
-	deps, err := addPkgsToConfig(conf, names, insecure)
-	if err != nil {
+	if _, err := addPkgsToConfig(conf, names, insecure); err != nil {
 		msg.Die("Failed to get new packages: %s", err)
 	}
-	conf.Imports = deps
 
 	// Get all repos and update them.
 	// TODO: Can we streamline this in any way? The reason that we update all
@@ -52,6 +50,7 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 
 	// Flatten
 	// Flatten is not implemented right now because I think Update handles it.
+	msg.Warn("Flatten is not implemented.")
 
 	// VendoredCleanup
 	if installer.UpdateVendored {
