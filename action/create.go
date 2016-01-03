@@ -1,7 +1,6 @@
 package action
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,11 +33,7 @@ func Create(base string, skipImport bool) {
 	// Guess deps
 	conf := guessDeps(base, skipImport)
 	// Write YAML
-	buf, err := conf.Marshal()
-	if err != nil {
-		msg.Die("Could not marshal config file: %s", err)
-	}
-	if err := ioutil.WriteFile(glidefile, buf, 0666); err != nil {
+	if err := conf.WriteFile(glidefile); err != nil {
 		msg.Die("Could not save %s: %s", glidefile, err)
 	}
 }

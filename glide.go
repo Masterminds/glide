@@ -40,7 +40,6 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/glide/action"
-	"github.com/Masterminds/glide/cmd"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
 
@@ -77,10 +76,7 @@ no longer exist.
 var VendorDir = "vendor"
 
 func main() {
-	reg, router, cxt := cookoo.Cookoo()
-	cxt.Put("VendorDir", VendorDir)
-
-	routes(reg, cxt)
+	_, router, cxt := cookoo.Cookoo()
 
 	app := cli.NewApp()
 	app.Name = "glide"
@@ -199,21 +195,25 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
 				}
-				cxt.Put("forceUpdate", c.Bool("force"))
-				cxt.Put("packages", []string(c.Args()))
+
+				inst := &repo.Installer{
+					Force:          c.Bool("force"),
+					UseCache:       c.Bool("cache"),
+					UseGopath:      c.Bool("use-gopath"),
+					UseCacheGopath: c.Bool("cache-gopath"),
+					UpdateVendored: c.Bool("update-vendored"),
+				}
+				packages := []string(c.Args())
+				insecure := c.Bool("insecure")
+				action.Get(packages, inst, insecure)
+
 				cxt.Put("skipFlatten", !c.Bool("no-recursive"))
-				cxt.Put("insecure", c.Bool("insecure"))
-				cxt.Put("useCache", c.Bool("cache"))
-				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
-				cxt.Put("useGopath", c.Bool("use-gopath"))
 				// FIXME: Are these used anywhere?
 				if c.Bool("import") {
 					cxt.Put("importGodeps", true)
 					cxt.Put("importGPM", true)
 					cxt.Put("importGb", true)
 				}
-				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
-				setupHandler(c, "get", cxt, router)
 			},
 		},
 		{
@@ -515,134 +515,6 @@ Example:
 			},
 		},
 	}
-}
-
-func setupHandler(c *cli.Context, route string, cxt cookoo.Context, router *cookoo.Router) {
-	cxt.Put("q", c.GlobalBool("quiet"))
-	cxt.Put("debug", c.GlobalBool("debug"))
-	cxt.Put("no-color", c.GlobalBool("no-color"))
-	cxt.Put("yaml", c.GlobalString("yaml"))
-	cxt.Put("home", c.GlobalString("home"))
-	cxt.Put("cliArgs", c.Args())
-	if err := router.HandleRequest(route, cxt, false); err != nil {
-		fmt.Printf("Oops! %s\n", err)
-		os.Exit(1)
-	}
-}
-
-func routes(reg *cookoo.Registry, cxt cookoo.Context) {
-	reg.Route("@startup", "Parse args and send to the right subcommand.").
-		// TODO: Add setup for debug in addition to quiet.
-		Does(cmd.BeQuiet, "quiet").
-		Using("quiet").From("cxt:q").
-		Using("debug").From("cxt:debug").
-		Does(cmd.CheckColor, "no-color").
-		Using("no-color").From("cxt:no-color").
-		Does(cmd.VersionGuard, "v")
-
-	reg.Route("@ready", "Prepare for glide commands.").
-		Does(cmd.ReadyToGlide, "ready").Using("filename").From("cxt:yaml").
-		Does(cmd.ParseYaml, "cfg").Using("filename").From("cxt:yaml").
-		Does(cmd.EnsureCacheDir, "_").Using("home").From("cxt:home")
-
-	reg.Route("get", "Install a pkg in vendor, and store the results in the glide.yaml").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.GetAll, "goget").
-		Using("packages").From("cxt:packages").
-		Using("conf").From("cxt:cfg").
-		Using("insecure").From("cxt:insecure").
-		Does(cmd.VendoredSetup, "cfg").
-		Using("conf").From("cxt:cfg").
-		Using("update").From("cxt:updateVendoredDeps").
-		Does(cmd.UpdateImports, "dependencies").
-		Using("conf").From("cxt:cfg").
-		Using("force").From("cxt:forceUpdate").
-		//Using("packages").From("cxt:packages").
-		Using("home").From("cxt:home").
-		Using("cache").From("cxt:useCache").
-		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("useGopath").From("cxt:useGopath").
-		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
-		Does(cmd.Flatten, "flatten").Using("conf").From("cxt:cfg").
-		//Using("packages").From("cxt:packages").
-		Using("force").From("cxt:forceUpdate").
-		Using("home").From("cxt:home").
-		Using("cache").From("cxt:useCache").
-		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("useGopath").From("cxt:useGopath").
-		Does(cmd.VendoredCleanUp, "_").
-		Using("conf").From("cxt:flattened").
-		Using("update").From("cxt:updateVendoredDeps").
-		Does(cmd.WriteYaml, "out").
-		Using("conf").From("cxt:cfg").
-		Using("filename").WithDefault("glide.yaml").From("cxt:yaml").
-		Does(cmd.WriteLock, "lock").
-		Using("lockfile").From("cxt:Lockfile")
-
-	/*
-		reg.Route("install", "Install dependencies.").
-			Includes("@startup").
-			Includes("@ready").
-			Does(cmd.CowardMode, "_").
-			Does(cmd.LockFileExists, "_").
-			Does(cmd.LoadLockFile, "lock").
-			Using("conf").From("cxt:cfg").
-			Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
-			Does(cmd.DeleteUnusedPackages, "deleted").
-			Using("conf").From("cxt:cfg").
-			Using("optIn").From("cxt:deleteOptIn").
-			Does(cmd.VendoredSetup, "cfg").
-			Using("conf").From("cxt:cfg").
-			Using("update").From("cxt:updateVendoredDeps").
-			Does(cmd.Install, "icfg").
-			Using("conf").From("cxt:cfg").
-			Using("lock").From("cxt:lock").
-			Using("home").From("cxt:home").
-			Does(cmd.SetReference, "version").Using("conf").From("cxt:icfg").
-			Does(cmd.VendoredCleanUp, "_").
-			Using("conf").From("cxt:icfg").
-			Using("update").From("cxt:updateVendoredDeps")
-	*/
-
-	reg.Route("update", "Update dependencies.").
-		Includes("@startup").
-		Includes("@ready").
-		Does(cmd.CowardMode, "_").
-		Does(cmd.Mkdir, "dir").Using("dir").WithDefault(VendorDir).
-		Does(cmd.DeleteUnusedPackages, "deleted").
-		Using("conf").From("cxt:cfg").
-		Using("optIn").From("cxt:deleteOptIn").
-		Does(cmd.VendoredSetup, "cfg").
-		Using("conf").From("cxt:cfg").
-		Using("update").From("cxt:updateVendoredDeps").
-		Does(cmd.UpdateImports, "dependencies").
-		Using("conf").From("cxt:cfg").
-		Using("force").From("cxt:forceUpdate").
-		Using("packages").From("cxt:packages").
-		Using("home").From("cxt:home").
-		Using("cache").From("cxt:useCache").
-		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("useGopath").From("cxt:useGopath").
-		Does(cmd.SetReference, "version").Using("conf").From("cxt:cfg").
-		Does(cmd.Flatten, "flattened").Using("conf").From("cxt:cfg").
-		Using("packages").From("cxt:packages").
-		Using("force").From("cxt:forceUpdate").
-		Using("skip").From("cxt:skipFlatten").
-		Using("home").From("cxt:home").
-		Using("cache").From("cxt:useCache").
-		Using("cacheGopath").From("cxt:cacheGopath").
-		Using("useGopath").From("cxt:useGopath").
-		Does(cmd.VendoredCleanUp, "_").
-		Using("conf").From("cxt:flattened").
-		Using("update").From("cxt:updateVendoredDeps").
-		Does(cmd.WriteYaml, "out").
-		Using("conf").From("cxt:cfg").
-		Using("filename").From("cxt:toPath").
-		Using("toStdout").From("cxt:toStdout").
-		Does(cmd.WriteLock, "lock").
-		Using("lockfile").From("cxt:Lockfile").
-		Using("skip").From("cxt:skipFlatten")
 }
 
 func defaultGlideDir() string {

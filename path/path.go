@@ -125,6 +125,19 @@ func Gopaths() []string {
 	return filepath.SplitList(p)
 }
 
+// Basepath returns the current working directory.
+//
+// If there is an error getting the working directory, this returns ".", which
+// should function in cases where the directory is unlinked... Then again,
+// maybe not.
+func Basepath() string {
+	base, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return base
+}
+
 // IsLink returns true if the given FileInfo references a link.
 func IsLink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink == os.ModeSymlink

@@ -35,8 +35,8 @@ func Info(msg string, args ...interface{}) {
 	if Quiet {
 		return
 	}
-	fmt.Fprint(Stderr, Color(Green, "[INFO] "))
-	Msg(msg, args...)
+	prefix := Color(Green, "[INFO] ")
+	Msg(prefix+msg, args...)
 }
 
 // Debug logs debug information
@@ -44,20 +44,20 @@ func Debug(msg string, args ...interface{}) {
 	if Quiet || !IsDebugging {
 		return
 	}
-	fmt.Fprint(Stderr, "[DEBUG] ")
-	Msg(msg, args...)
+	prefix := "[DEBUG] "
+	Msg(prefix+msg, args...)
 }
 
 // Warn logs a warning
 func Warn(msg string, args ...interface{}) {
-	fmt.Fprint(Stderr, Color(Yellow, "[WARN] "))
-	ErrMsg(msg, args...)
+	prefix := Color(Yellow, "[WARN] ")
+	ErrMsg(prefix+msg, args...)
 }
 
 // Error logs and error.
 func Error(msg string, args ...interface{}) {
-	fmt.Fprint(Stderr, Color(Red, "[ERROR] "))
-	ErrMsg(msg, args...)
+	prefix := Color(Red, "[ERROR] ")
+	ErrMsg(prefix+msg, args...)
 }
 
 // ErrMsg sends a message to Stderr
@@ -78,15 +78,15 @@ func ErrMsg(msg string, args ...interface{}) {
 // Msg prints a message with optional arguments, that can be printed, of
 // varying types.
 func Msg(msg string, args ...interface{}) {
+	// Get rid of the annoying fact that messages need \n at the end, but do
+	// it in a backward compatible way.
+	if !strings.HasSuffix(msg, "\n") {
+		msg += "\n"
+	}
+
 	if len(args) == 0 {
 		fmt.Fprint(Stderr, msg)
 	} else {
 		fmt.Fprintf(Stderr, msg, args...)
-	}
-
-	// Get rid of the annoying fact that messages need \n at the end, but do
-	// it in a backward compatible way.
-	if !strings.HasSuffix(msg, "\n") {
-		fmt.Fprintln(Stderr)
 	}
 }

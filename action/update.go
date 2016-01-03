@@ -1,7 +1,6 @@
 package action
 
 import (
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cfg"
@@ -62,12 +61,7 @@ func Update(installer *repo.Installer) {
 	// file, not the glide.yaml file.
 
 	// Write lock
-	ldata, err := lock.Marshal()
-	if err != nil {
-		msg.Error("Could not marshal the lock file: %s", err)
-		return
-	}
-	if err := ioutil.WriteFile(filepath.Join(base, gpath.LockFile), ldata, 0666); err != nil {
+	if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 		msg.Error("Could not write lock file to %s: %s", base, err)
 		return
 	}
