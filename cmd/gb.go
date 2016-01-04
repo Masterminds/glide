@@ -12,7 +12,7 @@ import (
 
 func HasGbManifest(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
-	path := filepath.Join(dir, "vendor/manifest")
+	path := filepath.Join(dir, "vendor", "manifest")
 	_, err := os.Stat(path)
 	return err == nil, nil
 }
@@ -29,7 +29,7 @@ func GbManifest(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interru
 }
 
 func parseGbManifest(dir string) ([]*cfg.Dependency, error) {
-	path := filepath.Join(dir, "vendor/manifest")
+	path := filepath.Join(dir, "vendor", "manifest")
 	if fi, err := os.Stat(path); err != nil || fi.IsDir() {
 		return []*cfg.Dependency{}, nil
 	}

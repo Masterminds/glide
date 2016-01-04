@@ -75,40 +75,40 @@ func getRootFromGoGet(pkg string) string {
 	checkURL := u.String()
 	resp, err := http.Get(checkURL)
 	if err != nil {
-		addToRemotePackageCache(pkg)
+		addToRemotePackageCache(pkg, pkg)
 		return pkg
 	}
 	defer resp.Body.Close()
 
 	nu, err := parseImportFromBody(u, resp.Body)
 	if err != nil {
-		addToRemotePackageCache(pkg)
+		addToRemotePackageCache(pkg, pkg)
 		return pkg
 	} else if nu == "" {
-		addToRemotePackageCache(pkg)
+		addToRemotePackageCache(pkg, pkg)
 		return pkg
 	}
 
-	addToRemotePackageCache(nu)
+	addToRemotePackageCache(pkg, nu)
 	return nu
 }
 
 // The caching is not concurrency safe but should be made to be that way.
 // This implementation is far too much of a hack... rewrite needed.
-var remotePackageCache = make(map[string]bool)
+var remotePackageCache = make(map[string]string)
 
 func checkRemotePackageCache(pkg string) (string, bool) {
-	for k := range remotePackageCache {
-		if strings.HasPrefix(pkg, k) {
-			return k, true
+	for k, v := range remotePackageCache {
+		if pkg == k {
+			return v, true
 		}
 	}
 
 	return pkg, false
 }
 
-func addToRemotePackageCache(pkg string) {
-	remotePackageCache[pkg] = true
+func addToRemotePackageCache(pkg, v string) {
+	remotePackageCache[pkg] = v
 }
 
 func parseImportFromBody(ur *url.URL, r io.ReadCloser) (u string, err error) {

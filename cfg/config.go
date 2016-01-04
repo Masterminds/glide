@@ -212,7 +212,7 @@ func (c *Config) Hash() (string, error) {
 	}
 
 	hash := sha256.New()
-	hash.Sum(yml)
+	hash.Write(yml)
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
@@ -320,7 +320,7 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	o := d.Name
 	d.Name = util.GetRootFromPackage(d.Name)
 	subpkg := strings.TrimPrefix(o, d.Name)
-	if len(subpkg) > 0 && subpkg != o {
+	if len(subpkg) > 0 && subpkg != "/" {
 		d.Subpackages = append(d.Subpackages, strings.TrimPrefix(subpkg, "/"))
 	}
 

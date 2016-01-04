@@ -7,7 +7,33 @@
   - Cookoo is not used anymore
   - The `action/` package replaces `cmd/`
 
-# Release 0.8.1 (xxxx-xx-xx)
+# Release 0.8.3 (2015-12-30)
+
+- Issue #198: Instead of stopping `glide install` for a hash failures providing
+  a warning. Failed hash check is currently too aggressive.
+- Fixed #199: `glide up` on Windows unable to detect dependencies when GOPATH
+  and GOROOT on a different drive or when GOROOT ends in a path separator.
+- Fixed #194: `glide up` stalling on Windows due to POSIX path separators and
+  path list separators being used.
+- Fixed #185 and #187: Inaccurate hash being generated for lock file with nested
+  version ranges.
+- Fixed #182 and #183: Caching on go-import lookups mishandled some prefixes.
+- Fixed issue in deduping and sub-package names.
+- Fixed #189: nested dependencies that do not contain VCS information were not
+  being updated properly when --updated-vendored was being used.
+- Fixed #186: glide up PACKAGE was failing to generate a proper glide.lock file.
+
+# Release 0.8.2 (2015-12-21)
+
+- Fixed #169: cookoo git url has auth info. Makes glide unbuildable for
+  environments not setup for GitHub.
+- Fixed #180: the hash in the glide.lock file was not being properly calculated.
+- Fixed #174: glide get was causing an error when the flag --updated-vendored
+  was being used.
+- Fixed #175: glide get when the GOPATH isn't setup properly could end up in
+  an infinite loop.
+
+# Release 0.8.1 (2015-12-15)
 
 - Fixed #163: Was detecting std lib packages when the GOROOT was different at
   runtime than compile time.

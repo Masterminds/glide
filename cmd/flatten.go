@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/cookoo"
@@ -39,6 +40,16 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 	}
 	packages := p.Get("packages", []string{}).([]string)
 
+	// Operate on a clone of the conf so any changes don't impact later operations.
+	// This is a deep clone so dependencies are also cloned.
+	confcopy := conf.Clone()
+
+	// Generate a hash of the conf for later use in lockfile generation.
+	hash, err := conf.Hash()
+	if err != nil {
+		return conf, err
+	}
+
 	// When packages are passed around with a #version on the end it needs
 	// to be stripped.
 	for k, v := range packages {
@@ -51,42 +62,36 @@ func Flatten(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt)
 
 	// If no packages are supplied, we do them all.
 	if len(packages) == 0 {
-		packages = make([]string, len(conf.Imports))
-		for i, v := range conf.Imports {
+		packages = make([]string, len(confcopy.Imports))
+		for i, v := range confcopy.Imports {
 			packages[i] = v.Name
 		}
 	}
 
 	// Build an initial dependency map.
-	deps := make(map[string]*cfg.Dependency, len(conf.Imports))
-	for _, imp := range conf.Imports {
+	deps := make(map[string]*cfg.Dependency, len(confcopy.Imports))
+	for _, imp := range confcopy.Imports {
 		deps[imp.Name] = imp
 	}
 
-	f := &flattening{conf, vend, vend, deps, packages}
+	f := &flattening{confcopy, vend, vend, deps, packages}
 
 	// The assumption here is that once something has been scanned once in a
 	// run, there is no need to scan it again.
 	scanned := map[string]bool{}
-	err := recFlatten(f, force, home, cache, cacheGopath, useGopath, scanned)
+	err = recFlatten(f, force, home, cache, cacheGopath, useGopath, scanned)
 	if err != nil {
-		return conf, err
+		return confcopy, err
 	}
-	err = conf.DeDupe()
+	err = confcopy.DeDupe()
 	if err != nil {
-		return conf, err
+		return confcopy, err
 	}
 	flattenSetRefs(f)
 	Info("Project relies on %d dependencies.", len(deps))
 
-	hash, err := conf.Hash()
-	if err != nil {
-		return conf, err
-	}
 	c.Put("Lockfile", cfg.LockfileFromMap(deps, hash))
 
-	// A shallow copy should be all that's needed.
-	confcopy := conf.Clone()
 	exportFlattenedDeps(confcopy, deps)
 
 	return confcopy, err
@@ -122,7 +127,7 @@ func recFlatten(f *flattening, force bool, home string, cache, cacheGopath, useG
 	Debug("---> Inspecting %s for changes (%d packages).\n", f.curr, len(f.scan))
 	for _, imp := range f.scan {
 		Debug("----> Scanning %s", imp)
-		base := path.Join(f.top, imp)
+		base := filepath.Join(f.top, filepath.FromSlash(imp))
 		mod := []string{}
 		if m, ok := mergeGlide(base, imp, f); ok {
 			mod = m
@@ -165,26 +170,21 @@ func flattenGlideUp(f *flattening, base, home string, force, cache, cacheGopath,
 		if imp.Name == f.conf.Name {
 			continue
 		}
-		wd := path.Join(f.top, imp.Name)
-		if VcsExists(imp, wd) {
-			if updateCache[imp.Name] {
-				Debug("----> Already updated %s", imp.Name)
-				continue
-			}
-			Debug("Updating project %s (%s)\n", imp.Name, wd)
-			if err := VcsUpdate(imp, f.top, home, force, cache, cacheGopath, useGopath); err != nil {
-				// We can still go on just fine even if this fails.
-				Warn("Skipped update %s: %s\n", imp.Name, err)
-				continue
-			}
-			updateCache[imp.Name] = true
-		} else {
-			Debug("Importing %s to project %s\n", imp.Name, wd)
-			if err := VcsGet(imp, wd, home, cache, cacheGopath, useGopath); err != nil {
-				Warn("Skipped getting %s: %v\n", imp.Name, err)
-				continue
-			}
+		wd := filepath.Join(f.top, filepath.FromSlash(imp.Name))
+
+		if updateCache[imp.Name] {
+			Debug("----> Already updated %s", imp.Name)
+			continue
 		}
+
+		Debug("Getting project %s (%s)\n", imp.Name, wd)
+
+		if err := VcsUpdate(imp, f.top, home, force, cache, cacheGopath, useGopath); err != nil {
+			// We can still go on just fine even if this fails.
+			Warn("Skipped getting %s: %s\n", imp.Name, err)
+			continue
+		}
+		updateCache[imp.Name] = true
 
 		// If a revision has been set use it.
 		err := VcsVersion(imp, f.top)
@@ -366,7 +366,7 @@ func mergeDeps(orig map[string]*cfg.Dependency, add []*cfg.Dependency, vend stri
 		} else if dd.Reference != "" && existing.Reference != "" && dd.Reference != existing.Reference {
 			// Check if one is a version and the other is a constraint. If the
 			// version is in the constraint use that.
-			dest := path.Join(vend, dd.Name)
+			dest := filepath.Join(vend, filepath.FromSlash(dd.Name))
 			repo, err := existing.GetRepo(dest)
 			if err != nil {
 				Warn("Unable to access repo for %s\n", existing.Name)

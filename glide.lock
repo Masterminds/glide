@@ -1,12 +1,10 @@
-hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-updated: 2015-12-10T12:31:08.864762919-05:00
+hash: foo
+updated: 2015-12-21T09:29:33.170992254-05:00
 imports:
 - name: github.com/codegangsta/cli
-  version: 0302d3914d2a6ad61404584cdae6e6dbc9c03599
+  version: b5232bb2934f606f9f27a1305f1eea224e8e8b88
 - name: github.com/Masterminds/cookoo
   version: 78aa11ce75e257c51be7ea945edb84cf19c4a6de
-  repo: git@github.com:Masterminds/cookoo.git
-  vcs: git
   subpackages:
   - .
 - name: github.com/Masterminds/semver

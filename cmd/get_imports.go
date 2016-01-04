@@ -13,7 +13,6 @@ import (
 	//"log"
 
 	"os"
-	"path"
 	"runtime"
 	"strings"
 
@@ -142,6 +141,26 @@ func UpdateImports(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inte
 	for _, dep := range cfg.Imports {
 		if restrict && !pkgs[dep.Name] {
 			Debug("===> Skipping %q", dep.Name)
+
+			// Even though skipping check if the package exists and has VCS info
+			// needed for other operations.
+			dest := filepath.Join(cwd, filepath.FromSlash(dep.Name))
+			if _, err := os.Stat(dest); os.IsNotExist(err) {
+				Warn("Package %s not checked out to vendor/ folder", dep.Name)
+				Error("Unable to generate accurate glide.lock because %s is missing", dep.Name)
+			} else {
+				empty, err := isDirectoryEmpty(dest)
+				_, err2 := v.DetectVcsFromFS(dest)
+				if err != nil || empty == true {
+					Warn("Package %s not checked out to vendor/ folder. Directory empty", dep.Name)
+					Error("Unable to generate accurate glide.lock because %s is missing", dep.Name)
+					continue
+				} else if empty == false && err2 == v.ErrCannotDetectVCS {
+					Warn("%s appears to be a vendored package missing version control data", dep.Name)
+					Error("Unable to generate accurate glide.lock because %s version control data is missing", dep.Name)
+				}
+			}
+
 			continue
 		}
 
@@ -265,7 +284,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 		// Check if the $GOPATH has a viable version to use and if so copy to vendor
 		gps := Gopaths()
 		for _, p := range gps {
-			d := filepath.Join(p, "src", dep.Name)
+			d := filepath.Join(p, "src", filepath.FromSlash(dep.Name))
 			if _, err := os.Stat(d); err == nil {
 				empty, err := isDirectoryEmpty(d)
 				if empty || err != nil {
@@ -322,7 +341,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 		// Since we didn't find an existing copy in the GOPATHs try to clone there.
 		gp := Gopath()
 		if gp != "" {
-			d := filepath.Join(gp, "src", dep.Name)
+			d := filepath.Join(gp, "src", filepath.FromSlash(dep.Name))
 			if _, err := os.Stat(d); os.IsNotExist(err) {
 				// Empty directory so we checkout out the code here.
 				Debug("Retrieving %s to %s before copying to vendor", dep.Name, d)
@@ -472,7 +491,7 @@ func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath
 		return nil
 	}
 
-	dest := path.Join(vend, dep.Name)
+	dest := filepath.Join(vend, filepath.FromSlash(dep.Name))
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
 		if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
@@ -579,7 +598,7 @@ func VcsUpdate(dep *cfg.Dependency, vend, home string, force, cache, cacheGopath
 
 // VcsVersion set the VCS version for a checkout.
 func VcsVersion(dep *cfg.Dependency, vend string) error {
-	cwd := path.Join(vend, dep.Name)
+	cwd := filepath.Join(vend, filepath.FromSlash(dep.Name))
 
 	// If there is no refernece configured there is nothing to set.
 	if dep.Reference == "" {
@@ -670,7 +689,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 
 // VcsLastCommit gets the last commit ID from the given dependency.
 func VcsLastCommit(dep *cfg.Dependency, vend string) (string, error) {
-	cwd := path.Join(vend, dep.Name)
+	cwd := filepath.Join(vend, filepath.FromSlash(dep.Name))
 	repo, err := dep.GetRepo(cwd)
 	if err != nil {
 		return "", err

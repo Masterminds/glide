@@ -90,7 +90,7 @@ func DeleteUnusedPackages(c cookoo.Context, p *cookoo.Params) (interface{}, cook
 	}
 
 	// Walk vendor directory
-	searchPath = vpath + "/"
+	searchPath = vpath + string(os.PathSeparator)
 	err = filepath.Walk(searchPath, fn)
 	if err != nil {
 		return false, err

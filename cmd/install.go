@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -43,7 +42,7 @@ func LoadLockFile(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Inter
 	}
 
 	if hash != lock.Hash {
-		return nil, errors.New("Lock file does not match YAML configuration. Consider running 'update'")
+		Warn("Lock file may be out of date. Hash check of YAML failed. You may need to run 'update'")
 	}
 
 	return lock, nil

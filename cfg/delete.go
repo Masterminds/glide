@@ -83,7 +83,7 @@ func DeleteUnusedPackages(conf *Config) error {
 	}
 
 	// Walk vendor directory
-	searchPath = vpath + "/"
+	searchPath = vpath + string(os.PathSeparator)
 	err = filepath.Walk(searchPath, fn)
 	if err != nil {
 		return err

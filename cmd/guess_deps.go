@@ -80,7 +80,7 @@ func GuessDeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrup
 	sort.Strings(sortable)
 
 	vpath := r.VendorDir
-	if !strings.HasSuffix(vpath, "/") {
+	if !strings.HasSuffix(vpath, string(os.PathSeparator)) {
 		vpath = vpath + string(os.PathSeparator)
 	}
 

@@ -358,21 +358,23 @@ a package. Example:
 package: github.com/technosophos/glide
 import:
   - package: github.com/kylelemons/go-gypsy
-    subpackage: yaml
+    subpackages:
+      - yaml
   - package: github.com/Masterminds/cookoo
-    subpackage:
+    subpackages:
       - .
       - cli
       - web
   - package: github.com/crowdmob/amz
-    subpackage: ...
+    subpackages:
+      - ...
 ```
 
 According to the above, the following packages will be built:
 
 1. The `go-gypsy/yaml` package
 2. The `cookoo` package (`.`), along with `cookoo/web` and `cookoo/cli`
-3. Everything in `awz` (`...`)
+3. Everything in `amz` (`...`)
 
 See the `docs/` folder for more examples.
 

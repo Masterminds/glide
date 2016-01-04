@@ -38,7 +38,7 @@ type GodepDependency struct {
 // HasGodepGodeps is a command to detect if a package contains a Godeps.json file.
 func HasGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Interrupt) {
 	dir := cookoo.GetString("dir", "", p)
-	path := filepath.Join(dir, "Godeps/Godeps.json")
+	path := filepath.Join(dir, "Godeps", "Godeps.json")
 	_, err := os.Stat(path)
 	return err == nil, nil
 }
@@ -54,7 +54,7 @@ func ParseGodepGodeps(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.I
 	return parseGodepGodeps(dir)
 }
 func parseGodepGodeps(dir string) ([]*cfg.Dependency, error) {
-	path := filepath.Join(dir, "Godeps/Godeps.json")
+	path := filepath.Join(dir, "Godeps", "Godeps.json")
 	if _, err := os.Stat(path); err != nil {
 		return []*cfg.Dependency{}, nil
 	}

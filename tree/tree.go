@@ -98,10 +98,20 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		abs = cwd
 	}
 	if abs != "." {
-		for wd := abs; wd != "/"; wd = filepath.Dir(wd) {
+		// Previously there was a check on the loop that wd := "/". The path
+		// "/" is a POSIX path so this fails on Windows. Now the check is to
+		// make sure the same wd isn't seen twice. When the same wd happens
+		// more than once it's the beginning of looping on the same location
+		// which is the top level.
+		pwd := ""
+		for wd := abs; wd != pwd; wd = filepath.Dir(wd) {
+			pwd = wd
 
 			// Don't look for packages outside the GOPATH
-			if wd == b.GOPATH {
+			// Note, the GOPATH may or may not end with the path separator.
+			// The output of filepath.Dir does not the the path separator on the
+			// end so we need to test both.
+			if wd == b.GOPATH || wd+string(os.PathSeparator) == b.GOPATH {
 				break
 			}
 			p = filepath.Join(wd, "vendor", name)

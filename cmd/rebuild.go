@@ -62,11 +62,11 @@ func buildDep(c cookoo.Context, dep *cfg.Dependency, vpath string) error {
 
 func resolvePackages(vpath, pkg, subpkg string) ([]string, error) {
 	sdir, _ := os.Getwd()
-	if err := os.Chdir(filepath.Join(vpath, pkg, subpkg)); err != nil {
+	if err := os.Chdir(filepath.Join(vpath, filepath.FromSlash(pkg), filepath.FromSlash(subpkg))); err != nil {
 		return []string{}, err
 	}
 	defer os.Chdir(sdir)
-	p, err := filepath.Glob(path.Join(vpath, pkg, subpkg))
+	p, err := filepath.Glob(filepath.Join(vpath, filepath.FromSlash(pkg), filepath.FromSlash(subpkg)))
 	if err != nil {
 		return []string{}, err
 	}
@@ -90,7 +90,7 @@ func buildPaths(c cookoo.Context, paths []string) error {
 func buildPath(c cookoo.Context, path string) error {
 	Info("Running go build %s\n", path)
 	// . in a filepath.Join is removed so it needs to be prepended separately.
-	p := "." + string(filepath.Separator) + filepath.Join("vendor", path)
+	p := "." + string(filepath.Separator) + filepath.Join("vendor", filepath.FromSlash(path))
 	out, err := exec.Command("go", "install", p).CombinedOutput()
 	if err != nil {
 		Warn("Failed to run 'go install' for %s: %s", path, string(out))
