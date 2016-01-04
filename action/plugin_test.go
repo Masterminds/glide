@@ -10,7 +10,7 @@ import (
 func TestPlugin(t *testing.T) {
 	wd, _ := os.Getwd()
 	os.Chdir("../testdata/plugin")
-	msg.PanicOnDie = true
+	msg.Default.PanicOnDie = true
 	cmd := "hello"
 	args := []string{"a", "b"}
 	// FIXME: Trapping the panic is the nice thing to do.

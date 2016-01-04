@@ -9,13 +9,13 @@ import (
 
 func TestList(t *testing.T) {
 	var buf bytes.Buffer
-	old := msg.Stdout
-	msg.PanicOnDie = true
-	msg.Stdout = &buf
+	old := msg.Default.Stdout
+	msg.Default.PanicOnDie = true
+	msg.Default.Stdout = &buf
 	List("../", false)
 	if buf.Len() < 5 {
 		t.Error("Expected some data to be found.")
 	}
 	// TODO: We should capture and test output.
-	msg.Stdout = old
+	msg.Default.Stdout = old
 }

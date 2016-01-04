@@ -275,7 +275,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 					db := defaultBranch(repo, home)
 					if db != "" {
 						err = repo.UpdateVersion(db)
-						if err != nil && msg.IsDebugging {
+						if err != nil && msg.Default.IsDebugging {
 							msg.Debug("Attempting to set the version on %s to %s failed. Error %s", dep.Name, db, err)
 						}
 					}
@@ -315,7 +315,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 						msg.Debug("Saving default branch for %s", repo.Remote())
 						c := cacheRepoInfo{DefaultBranch: branch}
 						err = saveCacheRepoData(key, c, home)
-						if msg.IsDebugging && err == errCacheDisabled {
+						if msg.Default.IsDebugging && err == errCacheDisabled {
 							msg.Debug("Unable to cache default branch because caching is disabled")
 						}
 					}

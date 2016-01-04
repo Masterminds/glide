@@ -7,6 +7,6 @@ import (
 )
 
 func TestNoVendor(t *testing.T) {
-	msg.PanicOnDie = true
+	msg.Default.PanicOnDie = true
 	NoVendor("../testdata/nv", false, false)
 }

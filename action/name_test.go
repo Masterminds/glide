@@ -10,9 +10,9 @@ import (
 
 func TestName(t *testing.T) {
 	var buf bytes.Buffer
-	msg.PanicOnDie = true
-	ostdout := msg.Stdout
-	msg.Stdout = &buf
+	msg.Default.PanicOnDie = true
+	ostdout := msg.Default.Stdout
+	msg.Default.Stdout = &buf
 	wd, _ := os.Getwd()
 	if err := os.Chdir("../testdata/name"); err != nil {
 		t.Errorf("Failed to change directory: %s", err)
@@ -21,6 +21,6 @@ func TestName(t *testing.T) {
 	if buf.String() != "technosophos.com/x/foo\n" {
 		t.Errorf("Unexpectedly got name %q", buf.String())
 	}
-	msg.Stdout = ostdout
+	msg.Default.Stdout = ostdout
 	os.Chdir(wd)
 }

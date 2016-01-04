@@ -9,13 +9,13 @@ import (
 
 func TestAbout(t *testing.T) {
 	var buf bytes.Buffer
-	old := msg.Stdout
-	msg.Stdout = &buf
+	old := msg.Default.Stdout
+	msg.Default.Stdout = &buf
 	About()
 
 	if buf.Len() < len(aboutMessage) {
 		t.Errorf("expected this to match aboutMessage: %q", buf.String())
 	}
 
-	msg.Stdout = old
+	msg.Default.Stdout = old
 }

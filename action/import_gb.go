@@ -45,6 +45,6 @@ func writeConfigToFileOrStdout(config *cfg.Config, dest string) {
 		if err != nil {
 			msg.Die("Error encoding config: %s", err)
 		}
-		msg.Stdout.Write(o)
+		msg.Default.Stdout.Write(o)
 	}
 }
