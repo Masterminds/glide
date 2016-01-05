@@ -1,5 +1,5 @@
-hash: foo
-updated: 2015-12-21T09:29:33.170992254-05:00
+hash: 1fdfb16656a1b4a1664afdc9e2a5fc8040165bc5b6e85812df2affceacb7fbc8
+updated: 2016-01-05T09:44:31.212260684-05:00
 imports:
 - name: github.com/codegangsta/cli
   version: b5232bb2934f606f9f27a1305f1eea224e8e8b88
