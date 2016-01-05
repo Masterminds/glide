@@ -3,7 +3,7 @@ package action
 import "github.com/Masterminds/glide/msg"
 
 const aboutMessage = `
-Glide: The Lightweight Vendor Package Manager. Manage your vendor and vendored
+Glide: Vendor Package Management for Go. Manage your vendor and vendored
 packages with ease.
 
 Name:
