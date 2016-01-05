@@ -1,7 +1,6 @@
 package action
 
 import (
-	"errors"
 	"io/ioutil"
 	"path/filepath"
 
@@ -77,7 +76,7 @@ func LoadLockfile(base string, conf *cfg.Config) (*cfg.Lockfile, error) {
 	}
 
 	if hash != lock.Hash {
-		return nil, errors.New("Lock file does not match YAML configuration. Consider running 'update'")
+		msg.Warn("Lock file may be out of date. Hash check of YAML failed. You may need to run 'update'")
 	}
 
 	return lock, nil
