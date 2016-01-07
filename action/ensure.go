@@ -18,7 +18,7 @@ func EnsureConfig() *cfg.Config {
 	yamlpath, err := gpath.Glide()
 	if err != nil {
 		msg.ExitCode(2)
-		msg.Die("Failed to find %s: %s", yamlpath, err)
+		msg.Die("Failed to find %s file in directory tree: %s", gpath.GlideFile, err)
 	}
 
 	yml, err := ioutil.ReadFile(yamlpath)
