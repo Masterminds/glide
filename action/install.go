@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
@@ -35,7 +36,7 @@ func Install(installer *repo.Installer) {
 		// It's unclear whether this should operate off of the lock, or off
 		// of the glide.yaml file. I'd think that doing this based on the
 		// lock would be much more reliable.
-		cfg.DeleteUnusedPackages(conf)
+		dependency.DeleteUnused(conf)
 	}
 
 	// Install

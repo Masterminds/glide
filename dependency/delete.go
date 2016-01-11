@@ -1,4 +1,4 @@
-package cfg
+package dependency
 
 import (
 	"errors"
@@ -6,15 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 )
 
-// DeleteUnusedPackages removes packages from vendor/ that are no longer used.
+// DeleteUnused removes packages from vendor/ that are no longer used.
 //
-// TODO: This should be moved to a more fitting package.
 // TODO: This should work off of a Lock file, not glide.yaml.
-func DeleteUnusedPackages(conf *Config) error {
+func DeleteUnused(conf *cfg.Config) error {
 	vpath, err := gpath.Vendor()
 	if err != nil {
 		return err

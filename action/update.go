@@ -3,7 +3,7 @@ package action
 import (
 	"path/filepath"
 
-	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
@@ -18,7 +18,7 @@ func Update(installer *repo.Installer) {
 
 	// Delete unused packages
 	if installer.DeleteUnused {
-		cfg.DeleteUnusedPackages(conf)
+		dependency.DeleteUnused(conf)
 	}
 
 	// Get all repos and update them.
