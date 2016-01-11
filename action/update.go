@@ -59,6 +59,9 @@ func Update(installer *repo.Installer) {
 	// change anything important. It will just generate information about
 	// transative dependencies, all of which belongs exclusively in the lock
 	// file, not the glide.yaml file.
+	// TODO(mattfarina): Detect when a new dependency has been added or removed
+	// from the project. A removed dependency should warn and an added dependency
+	// should be added to the glide.yaml file. See issue #193.
 
 	// Write lock
 	if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
