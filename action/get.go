@@ -26,7 +26,7 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 	}
 
 	// Add the packages to the config.
-	if _, err := addPkgsToConfig(conf, names, insecure); err != nil {
+	if err := addPkgsToConfig(conf, names, insecure); err != nil {
 		msg.Die("Failed to get new packages: %s", err)
 	}
 
@@ -77,11 +77,10 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 // - seperates repo from packages
 // - sets up insecure repo URLs where necessary
 // - generates a list of subpackages
-func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) ([]*cfg.Dependency, error) {
+func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {
 
 	msg.Info("Preparing to install %d package.", len(names))
 
-	deps := []*cfg.Dependency{}
 	for _, name := range names {
 		var version string
 		parts := strings.Split(name, "#")
@@ -92,11 +91,32 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) ([]*cfg.De
 
 		root := util.GetRootFromPackage(name)
 		if len(root) == 0 {
-			return nil, fmt.Errorf("Package name is required for %q.", name)
+			return fmt.Errorf("Package name is required for %q.", name)
 		}
 
 		if conf.HasDependency(root) {
-			msg.Warn("Package %q is already in glide.yaml. Skipping", root)
+
+			// Check if the subpackage is present.
+			subpkg := strings.TrimPrefix(name, root)
+			subpkg = strings.TrimPrefix(subpkg, "/")
+			if subpkg != "" {
+				found := false
+				dep := conf.Imports.Get(root)
+				for _, s := range dep.Subpackages {
+					if s == subpkg {
+						found = true
+						break
+					}
+				}
+				if found {
+					msg.Warn("Package %q is already in glide.yaml. Skipping", name)
+				} else {
+					dep.Subpackages = append(dep.Subpackages, subpkg)
+					msg.Info("Adding sub-package %s to existing import %s", subpkg, root)
+				}
+			} else {
+				msg.Warn("Package %q is already in glide.yaml. Skipping", root)
+			}
 			continue
 		}
 
@@ -121,7 +141,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) ([]*cfg.De
 
 		subpkg := strings.TrimPrefix(name, root)
 		if len(subpkg) > 0 && subpkg != "/" {
-			dep.Subpackages = []string{subpkg}
+			dep.Subpackages = []string{strings.TrimPrefix(subpkg, "/")}
 		}
 
 		if dep.Reference != "" {
@@ -130,10 +150,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) ([]*cfg.De
 			msg.Info("Importing %s", dep.Name)
 		}
 
-		// FIXME: I don't think we need to do this anymore. I think we only
-		// need to manage the `deps` list.
 		conf.Imports = append(conf.Imports, dep)
-		deps = append(deps, dep)
 	}
-	return deps, nil
+	return nil
 }
