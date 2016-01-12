@@ -1,0 +1,33 @@
+language: go
+
+go:
+  - 1.3
+
+notifications:
+  irc: "irc.freenode.net#masterminds"
+
+before_script:
+  - go get code.google.com/p/go.tools/cmd/cover
+  - go get github.com/hailiang/goveralls
+
+# Doing the test coverage piece part until Go supports it natively. See
+# http://code.google.com/p/go/issues/detail?id=6909 for more details.
+# script:
+#   - go test -v -covermode=count -coverprofile=profile.cov ./...
+#   - ~/gopath/bin/goveralls -coverprofile=profile.cov -service=travis-ci -repotoken=$COVERALLS_TOKEN
+script:
+  - go test -v -covermode=count -coverprofile=cookoo.part .
+  - go test -v -covermode=count -coverprofile=cli.part ./cli
+  - go test -v -covermode=count -coverprofile=convert.part ./convert
+  - go test -v -covermode=count -coverprofile=databaseactive.part ./database/active
+  - go test -v -covermode=count -coverprofile=databasesql.part ./database/sql
+  - go test -v -covermode=count -coverprofile=io.part ./io
+  - go test -v -covermode=count -coverprofile=web.part ./web
+  - go test -v -covermode=count -coverprofile=webauth.part ./web/auth
+  - 'echo "mode: count" >coverage.out'
+  - 'grep -h -v "mode: count" *.part >>coverage.out'
+  - ~/gopath/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken=$COVERALLS_TOKEN
+
+env:
+  global:
+    secure: "ZlEeo3TEMbtU+YtdKY22wDykRlXYzm27pdZzmyCaqv0kZcMdS0+8rjoy+H3kHBlGOjbdFFMPimuFOGCZ1+Z9934RwPzkVMN7TIAhZfb40xG5m+qU8cugBoW2hc1RT5wniPJkDz+9SF4EMWslNgLfOJtcuAdDuC0Spqhb9yuJRQQ="
