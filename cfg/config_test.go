@@ -8,6 +8,7 @@ import (
 
 var yml = `
 package: fake/testing
+license: MIT
 import:
   - package: github.com/kylelemons/go-gypsy
     subpackages:
@@ -43,6 +44,10 @@ func TestManualConfigFromYaml(t *testing.T) {
 
 	if cfg.Name != "fake/testing" {
 		t.Errorf("Inaccurate name found %s", cfg.Name)
+	}
+
+	if cfg.License != "MIT" {
+		t.Errorf("Inaccurate license found %s", cfg.License)
 	}
 
 	found := false
@@ -81,6 +86,9 @@ func TestClone(t *testing.T) {
 	cfg2 := cfg.Clone()
 	if cfg2.Name != "fake/testing" {
 		t.Error("Config cloning failed")
+	}
+	if cfg2.License != "MIT" {
+		t.Error("Config cloning failed to copy License")
 	}
 	cfg.Name = "foo"
 

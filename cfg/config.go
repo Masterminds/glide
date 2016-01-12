@@ -13,7 +13,12 @@ import (
 
 // Config is the top-level configuration object.
 type Config struct {
-	Name       string       `yaml:"package"`
+	Name string `yaml:"package"`
+
+	// License provides either a SPDX license or a path to a file containing
+	// the license. For more information on SPDX see http://spdx.org/licenses/.
+	// When more than one license an SPDX expression can be used.
+	License    string       `yaml:"license,omitempty"`
 	Ignore     []string     `yaml:"ignore,omitempty"`
 	Imports    Dependencies `yaml:"import"`
 	DevImports Dependencies `yaml:"devimport,omitempty"`
@@ -22,6 +27,7 @@ type Config struct {
 // A transitive representation of a dependency for importing and exploting to yaml.
 type cf struct {
 	Name       string       `yaml:"package"`
+	License    string       `yaml:"license,omitempty"`
 	Ignore     []string     `yaml:"ignore,omitempty"`
 	Imports    Dependencies `yaml:"import"`
 	DevImports Dependencies `yaml:"devimport,omitempty"`
@@ -50,6 +56,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	c.Name = newConfig.Name
+	c.License = newConfig.License
 	c.Ignore = newConfig.Ignore
 	c.Imports = newConfig.Imports
 	c.DevImports = newConfig.DevImports
@@ -63,8 +70,9 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name:   c.Name,
-		Ignore: c.Ignore,
+		Name:    c.Name,
+		License: c.License,
+		Ignore:  c.Ignore,
 	}
 	i, err := c.Imports.Clone().DeDupe()
 	if err != nil {
@@ -112,6 +120,7 @@ func (c *Config) HasIgnore(name string) bool {
 func (c *Config) Clone() *Config {
 	n := &Config{}
 	n.Name = c.Name
+	n.License = c.License
 	n.Ignore = c.Ignore
 	n.Imports = c.Imports.Clone()
 	n.DevImports = c.DevImports.Clone()
