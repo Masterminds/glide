@@ -18,7 +18,13 @@ type Config struct {
 	// License provides either a SPDX license or a path to a file containing
 	// the license. For more information on SPDX see http://spdx.org/licenses/.
 	// When more than one license an SPDX expression can be used.
-	License    string       `yaml:"license,omitempty"`
+	License string `yaml:"license,omitempty"`
+
+	// Owners is an array of owners for a project. See the Owner type for
+	// more detail. These can be one or more people, companies, or other
+	// organizations.
+	Owners Owners `json:"owners,omitempty"`
+
 	Ignore     []string     `yaml:"ignore,omitempty"`
 	Imports    Dependencies `yaml:"import"`
 	DevImports Dependencies `yaml:"devimport,omitempty"`
@@ -28,6 +34,7 @@ type Config struct {
 type cf struct {
 	Name       string       `yaml:"package"`
 	License    string       `yaml:"license,omitempty"`
+	Owners     Owners       `json:"owners,omitempty"`
 	Ignore     []string     `yaml:"ignore,omitempty"`
 	Imports    Dependencies `yaml:"import"`
 	DevImports Dependencies `yaml:"devimport,omitempty"`
@@ -57,6 +64,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	c.Name = newConfig.Name
 	c.License = newConfig.License
+	c.Owners = newConfig.Owners
 	c.Ignore = newConfig.Ignore
 	c.Imports = newConfig.Imports
 	c.DevImports = newConfig.DevImports
@@ -72,6 +80,7 @@ func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
 		Name:    c.Name,
 		License: c.License,
+		Owners:  c.Owners,
 		Ignore:  c.Ignore,
 	}
 	i, err := c.Imports.Clone().DeDupe()
@@ -121,6 +130,7 @@ func (c *Config) Clone() *Config {
 	n := &Config{}
 	n.Name = c.Name
 	n.License = c.License
+	n.Owners = c.Owners.Clone()
 	n.Ignore = c.Ignore
 	n.Imports = c.Imports.Clone()
 	n.DevImports = c.DevImports.Clone()
@@ -374,6 +384,42 @@ func (d *Dependency) Clone() *Dependency {
 		Arch:             d.Arch,
 		Os:               d.Os,
 		UpdateAsVendored: d.UpdateAsVendored,
+	}
+}
+
+// Owners is a list of owners for a project.
+type Owners []*Owner
+
+// Clone performs a deep clone of Owners
+func (o Owners) Clone() Owners {
+	n := make(Owners, 0, 1)
+	for _, v := range o {
+		n = append(n, v.Clone())
+	}
+	return n
+}
+
+// Owner describes an owner of a package. This can be a person, company, or
+// other organization. This is useful if someone needs to contact the
+// owner of a package to address things like a security issue.
+type Owner struct {
+
+	// Name describes the name of an organization.
+	Name string `yaml:"name,omitempty"`
+
+	// Email is an email address to reach the owner at.
+	Email string `yaml:"email,omitempty"`
+
+	// Home is a url to a website for the owner.
+	Home string `yaml:"homepage,omitempty"`
+}
+
+// Clone creates a clone of a Dependency
+func (o *Owner) Clone() *Owner {
+	return &Owner{
+		Name:  o.Name,
+		Email: o.Email,
+		Home:  o.Home,
 	}
 }
 
