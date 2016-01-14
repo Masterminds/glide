@@ -13,11 +13,13 @@ import (
 
 // Config is the top-level configuration object.
 type Config struct {
+
+	// Name is the name of the package or application.
 	Name string `yaml:"package"`
 
-	// Description is a short description for a package. This description is
-	// similar but different to a Go package description as it is for
-	// marketing and presentation purposes rather than technical ones.
+	// Description is a short description for a package, application, or library.
+	// This description is similar but different to a Go package description as
+	// it is for marketing and presentation purposes rather than technical ones.
 	Description string `json:"description,omitempty"`
 
 	// Home is a url to a website for the package.
@@ -33,8 +35,17 @@ type Config struct {
 	// organizations.
 	Owners Owners `yaml:"owners,omitempty"`
 
-	Ignore     []string     `yaml:"ignore,omitempty"`
-	Imports    Dependencies `yaml:"import"`
+	// Ignore contains a list of packages to ignore fetching. This is useful
+	// when walking the package tree (including packages of packages) to list
+	// those to skip.
+	Ignore []string `yaml:"ignore,omitempty"`
+
+	// Imports contains a list of all non-development imports for a project. For
+	// more detail on how these are captured see the Dependency type.
+	Imports Dependencies `yaml:"import"`
+
+	// DevImports contains the test or other development imports for a project.
+	// See the Dependency type for more details on how this is recorded.
 	DevImports Dependencies `yaml:"devimport,omitempty"`
 }
 
