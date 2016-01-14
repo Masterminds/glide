@@ -2,6 +2,7 @@ package repo
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -87,6 +88,45 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 	return newConf, nil
 }
 
+// Checkout reads the config file and checks out all dependencies mentioned there.
+//
+// This is used when initializing an empty vendor directory, or when updating a
+// vendor directory based on changed config.
+func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
+
+	// FIXME: This should not be hard-coded.
+	dest := "./vendor"
+
+	if err := i.checkoutImports(conf.Imports, dest); err != nil {
+		return err
+	}
+
+	if useDev {
+		return i.checkoutImports(conf.DevImports, dest)
+	}
+
+	return nil
+}
+
+func (i *Installer) checkoutImports(deps []*cfg.Dependency, dest string) error {
+	for _, c := range deps {
+		if _, err := os.Stat(filepath.Join(dest, c.Name)); err == nil {
+			msg.Debug("Package %s already found.", c.Name)
+			continue
+		}
+
+		target := filepath.Join(dest, c.Name)
+
+		msg.Info("Fetching %s into %s", c.Name, dest)
+		if err := VcsGet(c, target, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath); err != nil {
+			// Should we try to get as many as we can and delay errors until the
+			// end?
+			return err
+		}
+	}
+	return nil
+}
+
 // Update updates all dependencies.
 //
 // It begins with the dependencies in the config file, but also resolves
@@ -97,11 +137,23 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 func (i *Installer) Update(conf *cfg.Config) (*cfg.Lockfile, error) {
 	base := "."
 
+	m := &MissingPackageHandler{
+
+		// FIXME: Where do we get the right path for this?
+		destination: filepath.Join(base, "vendor"),
+
+		cache:       i.UseCache,
+		cacheGopath: i.UseCacheGopath,
+		useGopath:   i.UseGopath,
+		home:        i.Home,
+	}
+
 	// Update imports
 	res, err := dependency.NewResolver(base)
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
+	res.Handler = m
 	msg.Info("Resolving imports")
 	packages, err := allPackages(conf.Imports, res)
 	if err != nil {
@@ -223,4 +275,30 @@ func depsFromPackages(pkgs []string) []*cfg.Dependency {
 		}
 	}
 	return deps
+}
+
+// MissingPackageHandler is a dependency.MissingPackageHandler.
+//
+// When a package is not found, this attempts to resolve and fetch.
+//
+// When a package is found on the GOPATH, this notifies the user.
+type MissingPackageHandler struct {
+	destination                   string
+	home                          string
+	cache, cacheGopath, useGopath bool
+}
+
+func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
+	msg.Info("Fetching %s into %s", pkg, m.destination)
+	d := &cfg.Dependency{Name: pkg}
+	dest := filepath.Join(m.destination, pkg)
+	if err := VcsGet(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
+	msg.Info("OnGopath: Package %s is on the GOPATH.", pkg)
+	return false, nil
 }

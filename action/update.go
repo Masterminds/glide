@@ -21,6 +21,11 @@ func Update(installer *repo.Installer) {
 		dependency.DeleteUnused(conf)
 	}
 
+	// Try to check out the initial dependencies.
+	if err := installer.Checkout(conf, false); err != nil {
+		msg.Die("Failed to do initial checkout of config: %s", err)
+	}
+
 	// Get all repos and update them.
 	lock, err := installer.Update(conf)
 	if err != nil {
