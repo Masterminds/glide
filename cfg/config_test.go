@@ -8,6 +8,8 @@ import (
 
 var yml = `
 package: fake/testing
+description: foo bar baz
+homepage: https://example.com
 license: MIT
 owners:
 - name: foo
@@ -48,6 +50,14 @@ func TestManualConfigFromYaml(t *testing.T) {
 
 	if cfg.Name != "fake/testing" {
 		t.Errorf("Inaccurate name found %s", cfg.Name)
+	}
+
+	if cfg.Description != "foo bar baz" {
+		t.Errorf("Inaccurate description found %s", cfg.Description)
+	}
+
+	if cfg.Home != "https://example.com" {
+		t.Errorf("Inaccurate homepage found %s", cfg.Home)
 	}
 
 	if cfg.License != "MIT" {

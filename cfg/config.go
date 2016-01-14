@@ -15,6 +15,14 @@ import (
 type Config struct {
 	Name string `yaml:"package"`
 
+	// Description is a short description for a package. This description is
+	// similar but different to a Go package description as it is for
+	// marketing and presentation purposes rather than technical ones.
+	Description string `json:"description,omitempty"`
+
+	// Home is a url to a website for the package.
+	Home string `yaml:"homepage,omitempty"`
+
 	// License provides either a SPDX license or a path to a file containing
 	// the license. For more information on SPDX see http://spdx.org/licenses/.
 	// When more than one license an SPDX expression can be used.
@@ -23,7 +31,7 @@ type Config struct {
 	// Owners is an array of owners for a project. See the Owner type for
 	// more detail. These can be one or more people, companies, or other
 	// organizations.
-	Owners Owners `json:"owners,omitempty"`
+	Owners Owners `yaml:"owners,omitempty"`
 
 	Ignore     []string     `yaml:"ignore,omitempty"`
 	Imports    Dependencies `yaml:"import"`
@@ -32,12 +40,14 @@ type Config struct {
 
 // A transitive representation of a dependency for importing and exploting to yaml.
 type cf struct {
-	Name       string       `yaml:"package"`
-	License    string       `yaml:"license,omitempty"`
-	Owners     Owners       `json:"owners,omitempty"`
-	Ignore     []string     `yaml:"ignore,omitempty"`
-	Imports    Dependencies `yaml:"import"`
-	DevImports Dependencies `yaml:"devimport,omitempty"`
+	Name        string       `yaml:"package"`
+	Description string       `yaml:"description,omitempty"`
+	Home        string       `yaml:"homepage,omitempty"`
+	License     string       `yaml:"license,omitempty"`
+	Owners      Owners       `yaml:"owners,omitempty"`
+	Ignore      []string     `yaml:"ignore,omitempty"`
+	Imports     Dependencies `yaml:"import"`
+	DevImports  Dependencies `yaml:"devimport,omitempty"`
 }
 
 // ConfigFromYaml returns an instance of Config from YAML
@@ -63,6 +73,8 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	c.Name = newConfig.Name
+	c.Description = newConfig.Description
+	c.Home = newConfig.Home
 	c.License = newConfig.License
 	c.Owners = newConfig.Owners
 	c.Ignore = newConfig.Ignore
@@ -78,10 +90,12 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name:    c.Name,
-		License: c.License,
-		Owners:  c.Owners,
-		Ignore:  c.Ignore,
+		Name:        c.Name,
+		Description: c.Description,
+		Home:        c.Home,
+		License:     c.License,
+		Owners:      c.Owners,
+		Ignore:      c.Ignore,
 	}
 	i, err := c.Imports.Clone().DeDupe()
 	if err != nil {
@@ -129,6 +143,8 @@ func (c *Config) HasIgnore(name string) bool {
 func (c *Config) Clone() *Config {
 	n := &Config{}
 	n.Name = c.Name
+	n.Description = c.Description
+	n.Home = c.Home
 	n.License = c.License
 	n.Owners = c.Owners.Clone()
 	n.Ignore = c.Ignore
