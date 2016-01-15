@@ -132,7 +132,7 @@ func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
 // listed, but the version reconciliation has not been done.
 //
 // In other words, all versions in the Lockfile will be empty.
-func (i *Installer) Update(conf *cfg.Config) (*cfg.Lockfile, error) {
+func (i *Installer) Update(conf *cfg.Config) error {
 	base := "."
 	vpath := i.VendorPath()
 
@@ -162,13 +162,9 @@ func (i *Installer) Update(conf *cfg.Config) (*cfg.Lockfile, error) {
 	msg.Warn("devImports not resolved.")
 
 	deps := depsFromPackages(packages)
-	ConcurrentUpdate(deps, vpath, i)
+	err = ConcurrentUpdate(deps, vpath, i)
 
-	hash, err := conf.Hash()
-	if err != nil {
-		return nil, err
-	}
-	return cfg.NewLockfile(deps, hash), nil
+	return err
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.

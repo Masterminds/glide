@@ -3,6 +3,7 @@ package action
 import (
 	"path/filepath"
 
+	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
@@ -32,8 +33,12 @@ func Update(installer *repo.Installer) {
 		msg.Die("Failed to set initial config references: %s", err)
 	}
 
+	// Prior to resolving dependencies we need to start working with a clone
+	// of the conf because we'll be making real changes to it.
+	confcopy := conf.Clone()
+
 	// Get all repos and update them.
-	lock, err := installer.Update(conf)
+	err := installer.Update(confcopy)
 	if err != nil {
 		msg.Die("Could not update packages: %s", err)
 	}
@@ -43,7 +48,7 @@ func Update(installer *repo.Installer) {
 	// roll their version numbers into the config file.
 
 	// Set references
-	msg.Info("Setting references for %d imports", len(conf.Imports))
+	msg.Info("Setting references for %d imports", len(confcopy.Imports))
 	if err := repo.SetReference(conf); err != nil {
 		msg.Error("Failed to set references: %s (Skip to cleanup)", err)
 	}
@@ -62,7 +67,7 @@ func Update(installer *repo.Installer) {
 	// Vendored cleanup
 	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.
 	if installer.UpdateVendored {
-		repo.VendoredCleanup(conf)
+		repo.VendoredCleanup(confcopy)
 	}
 
 	// Write glide.yaml (Why? Godeps/GPM/GB?)
@@ -75,6 +80,11 @@ func Update(installer *repo.Installer) {
 	// should be added to the glide.yaml file. See issue #193.
 
 	// Write lock
+	hash, err := conf.Hash()
+	if err != nil {
+		msg.Die("Failed to generate config hash. Unable to generate lock file.")
+	}
+	lock := cfg.NewLockfile(confcopy.Imports, hash)
 	if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 		msg.Error("Could not write lock file to %s: %s", base, err)
 		return

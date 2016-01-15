@@ -30,6 +30,10 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 		msg.Die("Failed to get new packages: %s", err)
 	}
 
+	// Prior to resolving dependencies we need to start working with a clone
+	// of the conf because we'll be making real changes to it.
+	confcopy := conf.Clone()
+
 	// Get all repos and update them.
 	// TODO: Can we streamline this in any way? The reason that we update all
 	// of the dependencies is that we need to re-negotiate versions. For example,
@@ -38,13 +42,13 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 	// to be betwee 1.0 and 2.0. But changing that dependency may then result
 	// in that dependency's dependencies changing... so we sorta do the whole
 	// thing to be safe.
-	lock, err := installer.Update(conf)
+	err = installer.Update(confcopy)
 	if err != nil {
 		msg.Die("Could not update packages: %s", err)
 	}
 
 	// Set Reference
-	if err := repo.SetReference(conf); err != nil {
+	if err := repo.SetReference(confcopy); err != nil {
 		msg.Error("Failed to set references: %s", err)
 	}
 
@@ -54,7 +58,7 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 
 	// VendoredCleanup
 	if installer.UpdateVendored {
-		repo.VendoredCleanup(conf)
+		repo.VendoredCleanup(confcopy)
 	}
 
 	// Write YAML
@@ -63,6 +67,11 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 	}
 
 	// Write lock
+	hash, err := conf.Hash()
+	if err != nil {
+		msg.Die("Failed to generate config hash. Unable to generate lock file.")
+	}
+	lock := cfg.NewLockfile(confcopy.Imports, hash)
 	if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 		msg.Die("Failed to write glide lock file: %s", err)
 	}
