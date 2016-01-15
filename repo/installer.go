@@ -11,6 +11,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
+	"github.com/codegangsta/cli"
 )
 
 // Installer provides facilities for installing the repos in a config file.
@@ -21,6 +22,9 @@ type Installer struct {
 
 	// Home is the location of cache
 	Home string
+
+	// Vendor contains the path to put the vendor packages
+	Vendor string
 
 	// Use a cache
 	UseCache bool
@@ -35,6 +39,20 @@ type Installer struct {
 
 	// DeleteUnused deletes packages that are unused, but found in the vendor dir.
 	DeleteUnused bool
+}
+
+// VendorPath returns the path to the location to put vendor packages
+func (i *Installer) VendorPath() string {
+	if i.Vendor != "" {
+		return i.Vendor
+	}
+
+	vp, err := gpath.Vendor()
+	if err != nil {
+		return filepath.FromSlash("./vendor")
+	}
+
+	return vp
 }
 
 // Install installs the dependencies from a Lockfile.
@@ -94,36 +112,16 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 // vendor directory based on changed config.
 func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
 
-	// FIXME: This should not be hard-coded.
-	dest := "./vendor"
+	dest := i.VendorPath()
 
-	if err := i.checkoutImports(conf.Imports, dest); err != nil {
+	if err := ConcurrentUpdate(conf.Imports, dest, i); err != nil {
 		return err
 	}
 
 	if useDev {
-		return i.checkoutImports(conf.DevImports, dest)
+		return ConcurrentUpdate(conf.DevImports, dest, i)
 	}
 
-	return nil
-}
-
-func (i *Installer) checkoutImports(deps []*cfg.Dependency, dest string) error {
-	for _, c := range deps {
-		if _, err := os.Stat(filepath.Join(dest, c.Name)); err == nil {
-			msg.Debug("Package %s already found.", c.Name)
-			continue
-		}
-
-		target := filepath.Join(dest, c.Name)
-
-		msg.Info("Fetching %s into %s", c.Name, dest)
-		if err := VcsGet(c, target, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath); err != nil {
-			// Should we try to get as many as we can and delay errors until the
-			// end?
-			return err
-		}
-	}
 	return nil
 }
 
@@ -136,11 +134,12 @@ func (i *Installer) checkoutImports(deps []*cfg.Dependency, dest string) error {
 // In other words, all versions in the Lockfile will be empty.
 func (i *Installer) Update(conf *cfg.Config) (*cfg.Lockfile, error) {
 	base := "."
+	vpath := i.VendorPath()
 
 	m := &MissingPackageHandler{
 
 		// FIXME: Where do we get the right path for this?
-		destination: filepath.Join(base, "vendor"),
+		destination: vpath,
 
 		cache:       i.UseCache,
 		cacheGopath: i.UseCacheGopath,
@@ -163,7 +162,7 @@ func (i *Installer) Update(conf *cfg.Config) (*cfg.Lockfile, error) {
 	msg.Warn("devImports not resolved.")
 
 	deps := depsFromPackages(packages)
-	ConcurrentUpdate(deps, base, i)
+	ConcurrentUpdate(deps, vpath, i)
 
 	hash, err := conf.Hash()
 	if err != nil {
@@ -173,10 +172,12 @@ func (i *Installer) Update(conf *cfg.Config) (*cfg.Lockfile, error) {
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
-func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) {
+func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 	done := make(chan struct{}, concurrentWorkers)
 	in := make(chan *cfg.Dependency, concurrentWorkers)
 	var wg sync.WaitGroup
+	var lock sync.Mutex
+	var returnErr error
 
 	for ii := 0; ii < concurrentWorkers; ii++ {
 		go func(ch <-chan *cfg.Dependency) {
@@ -185,6 +186,16 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) {
 				case dep := <-ch:
 					if err := VcsUpdate(dep, cwd, i); err != nil {
 						msg.Warn("Update failed for %s: %s\n", dep.Name, err)
+
+						// Capture the error while making sure the concurrent
+						// operations don't step on each other.
+						lock.Lock()
+						if returnErr == nil {
+							returnErr = err
+						} else {
+							returnErr = cli.NewMultiError(returnErr, err)
+						}
+						lock.Unlock()
 					}
 					wg.Done()
 				case <-done:
@@ -205,6 +216,8 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) {
 	for ii := 0; ii < concurrentWorkers; ii++ {
 		done <- struct{}{}
 	}
+
+	return returnErr
 }
 
 // allPackages gets a list of all packages required to satisfy the given deps.
