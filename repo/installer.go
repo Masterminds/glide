@@ -308,6 +308,29 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 }
 
 func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
-	msg.Info("OnGopath: Package %s is on the GOPATH.", pkg)
+	// If useGopath is false, we fall back to the strategy of fetching from
+	// remote.
+	if !m.useGopath {
+		return m.NotFound(pkg)
+	}
+
+	msg.Info("Copying package %s from the GOPATH.", pkg)
+	dest := filepath.Join(m.destination, pkg)
+	// Find package on Gopath
+	for _, gp := range gpath.Gopaths() {
+		src := filepath.Join(gp, pkg)
+		// FIXME: Should probably check if src is a dir or symlink.
+		if _, err := os.Stat(src); err == nil {
+			if err := os.MkdirAll(dest, os.ModeDir|0755); err != nil {
+				return false, err
+			}
+			if err := gpath.CopyDir(src, dest); err != nil {
+				return false, err
+			}
+			return true, nil
+		}
+	}
+
+	msg.Error("Could not locate %s on the GOPATH, though it was found before.", pkg)
 	return false, nil
 }
