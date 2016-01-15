@@ -22,6 +22,14 @@ import (
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
 func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
+
+	// If the dependency has already been pinned we can skip it. This is a
+	// faster path so we don't need to resolve it again.
+	if dep.Pin != "" {
+		msg.Debug("Dependency %s has already been pinned. Fetching updates skipped.", dep.Name)
+		return nil
+	}
+
 	msg.Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
@@ -136,6 +144,14 @@ func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
 
 // VcsVersion set the VCS version for a checkout.
 func VcsVersion(dep *cfg.Dependency, vend string) error {
+
+	// If the dependency has already been pinned we can skip it. This is a
+	// faster path so we don't need to resolve it again.
+	if dep.Pin != "" {
+		msg.Debug("Dependency %s has already been pinned. Setting version skipped.", dep.Name)
+		return nil
+	}
+
 	cwd := filepath.Join(vend, dep.Name)
 
 	// If there is no refernece configured there is nothing to set.
