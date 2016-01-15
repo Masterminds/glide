@@ -26,6 +26,12 @@ func Update(installer *repo.Installer) {
 		msg.Die("Failed to do initial checkout of config: %s", err)
 	}
 
+	// Set the versions for the initial dependencies so that resolved dependencies
+	// are rooted in the correct version of the base.
+	if err := repo.SetReference(conf); err != nil {
+		msg.Die("Failed to set initial config references: %s", err)
+	}
+
 	// Get all repos and update them.
 	lock, err := installer.Update(conf)
 	if err != nil {
