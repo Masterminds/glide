@@ -52,10 +52,6 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 		msg.Error("Failed to set references: %s", err)
 	}
 
-	// Flatten
-	// Flatten is not implemented right now because I think Update handles it.
-	msg.Warn("Flatten is not implemented.")
-
 	// VendoredCleanup
 	if installer.UpdateVendored {
 		repo.VendoredCleanup(confcopy)
@@ -67,6 +63,10 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 	}
 
 	// Write lock
+	writeLock(conf, confcopy, base)
+}
+
+func writeLock(conf, confcopy *cfg.Config, base string) {
 	hash, err := conf.Hash()
 	if err != nil {
 		msg.Die("Failed to generate config hash. Unable to generate lock file.")

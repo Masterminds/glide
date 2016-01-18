@@ -68,7 +68,7 @@ look something like this:
 		  subpackages: yaml
 			flatten: true
 
-NOTE: As of Glide 0.5, the commands 'in', 'into', 'gopath', 'status', and 'env'
+NOTE: As of Glide 0.5, the commands 'into', 'gopath', 'status', and 'env'
 no longer exist.
 `
 
@@ -214,6 +214,41 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 					cxt.Put("importGPM", true)
 					cxt.Put("importGb", true)
 				}
+			},
+		},
+		{
+			Name:      "remove",
+			ShortName: "rm",
+			Usage:     "Remove a package from the glide.yaml file, and regenerate the lock file.",
+			Description: `This takes one or more package names, and removes references from the glide.yaml file.
+	This will rebuild the glide lock file with the following constraints:
+
+	- Dependencies are re-negotiated. Any that are no longer used are left out of the lock.
+	- Minor version re-nogotiation is performed on remaining dependencies.
+	- No updates are peformed. You may want to run 'glide up' to accomplish that.
+`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "delete,d",
+					Usage: "Also delete from vendor/ any packages that are no longer used.",
+				},
+			},
+			Action: func(c *cli.Context) {
+				if len(c.Args()) < 1 {
+					fmt.Println("Oops! At least one package name is required.")
+					os.Exit(1)
+				}
+
+				if c.Bool("delete") {
+					// FIXME: Implement this in the installer.
+					fmt.Println("Delete is not currently implemented.")
+				}
+
+				inst := &repo.Installer{
+					Force: c.Bool("force"),
+				}
+				packages := []string(c.Args())
+				action.Remove(packages, inst)
 			},
 		},
 		{

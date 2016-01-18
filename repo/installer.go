@@ -167,6 +167,27 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	return err
 }
 
+func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
+	base := "."
+
+	// Update imports
+	res, err := dependency.NewResolver(base)
+	if err != nil {
+		msg.Die("Failed to create a resolver: %s", err)
+	}
+
+	msg.Info("Resolving imports")
+	packages, err := allPackages(conf.Imports, res)
+	if err != nil {
+		msg.Die("Failed to retrieve a list of dependencies: %s", err)
+	}
+	deps := depsFromPackages(packages)
+
+	msg.Warn("devImports not resolved.")
+
+	return deps
+}
+
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
 func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 	done := make(chan struct{}, concurrentWorkers)
