@@ -17,6 +17,9 @@ func Update(installer *repo.Installer) {
 	EnsureVendorDir()
 	conf := EnsureConfig()
 
+	installer.RootPackage = conf.Name
+	installer.Ignore = conf.Ignore
+
 	// Delete unused packages
 	if installer.DeleteUnused {
 		dependency.DeleteUnused(conf)

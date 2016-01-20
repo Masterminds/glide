@@ -111,6 +111,7 @@ type Resolver struct {
 	VendorDir      string
 	BuildContext   *util.BuildCtxt
 	seen           map[string]bool
+	Ignore         []string
 
 	// Items already in the queue.
 	alreadyQ map[string]bool
@@ -354,6 +355,13 @@ func (r *Resolver) queueUnseen(pkg string, queue *list.List) error {
 // If it cannot resolve the pkg, it will return an error.
 func (r *Resolver) imports(pkg string) ([]string, error) {
 
+	for _, f := range r.Ignore {
+		if f == pkg {
+			msg.Debug("Ignoring %s", pkg)
+			return []string{}, nil
+		}
+	}
+
 	// If this pkg is marked seen, we don't scan it again.
 	if _, ok := r.seen[pkg]; ok {
 		msg.Debug("Already saw %s", pkg)
@@ -381,6 +389,16 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 	// We are only looking for dependencies in vendor. No root, cgo, etc.
 	buf := []string{}
 	for _, imp := range p.Imports {
+		ignoring := false
+		for _, f := range r.Ignore {
+			if f == imp {
+				msg.Debug("Ignoring %s", imp)
+				ignoring = true
+			}
+		}
+		if ignoring {
+			continue
+		}
 		info := r.FindPkg(imp)
 		switch info.Loc {
 		case LocUnknown:

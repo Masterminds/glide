@@ -40,6 +40,14 @@ type Installer struct {
 
 	// DeleteUnused deletes packages that are unused, but found in the vendor dir.
 	DeleteUnused bool
+
+	// RootPackage is the top level package importing other packages. If an
+	// imported pacakgage references this pacakage it does not need to be
+	// downloaded and searched out again.
+	RootPackage string
+
+	// Ignore contains a list of package names to skip
+	Ignore []string
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -155,6 +163,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 	// Update imports
 	res, err := dependency.NewResolver(base)
+	res.Ignore = i.Ignore
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
@@ -331,12 +340,34 @@ type MissingPackageHandler struct {
 	destination                   string
 	home                          string
 	cache, cacheGopath, useGopath bool
+	RootPackage                   string
+	Ignore                        []string
 }
 
 func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
+	root := util.GetRootFromPackage(pkg)
+
+	// Skip any references to the root package.
+	if root == m.RootPackage {
+		return false, nil
+	}
+	for _, v := range m.Ignore {
+		if v == root || v == pkg {
+			return false, nil
+		}
+	}
+
+	dest := filepath.Join(m.destination, root)
+
+	// This package may have been placed on the list to look for when it wasn't
+	// downloaded but it has since been downloaded before coming to this entry.
+	if _, err := os.Stat(dest); err == nil {
+		return true, nil
+	}
+
 	msg.Info("Fetching %s into %s", pkg, m.destination)
-	d := &cfg.Dependency{Name: pkg}
-	dest := filepath.Join(m.destination, pkg)
+
+	d := &cfg.Dependency{Name: root}
 	if err := VcsGet(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath); err != nil {
 		return false, err
 	}
@@ -348,6 +379,18 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	// remote.
 	if !m.useGopath {
 		return m.NotFound(pkg)
+	}
+
+	root := util.GetRootFromPackage(pkg)
+
+	// Skip any references to the root package.
+	if root == m.RootPackage {
+		return false, nil
+	}
+	for _, v := range m.Ignore {
+		if v == root || v == pkg {
+			return false, nil
+		}
 	}
 
 	msg.Info("Copying package %s from the GOPATH.", pkg)
@@ -386,6 +429,9 @@ type VersionHandler struct {
 
 	// Where the packages exist to set the version on.
 	Destination string
+
+	RootPackage string
+	Ignore      []string
 }
 
 // SetVersion sets the version for a package. If that package version is already
@@ -394,6 +440,16 @@ type VersionHandler struct {
 // - proviting messaging about the version conflict
 func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	root := util.GetRootFromPackage(pkg)
+
+	// Skip any references to the root package.
+	if root == d.RootPackage {
+		return nil
+	}
+	for _, v := range d.Ignore {
+		if v == root || v == pkg {
+			return nil
+		}
+	}
 
 	v, found := d.Deps[root]
 
