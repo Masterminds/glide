@@ -69,6 +69,32 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	return false, nil
 }
 
+// VersionHandler sets the version for a package when found while scanning.
+//
+// When a package if found it needs to be on the correct version before
+// scanning its contents to be sure to pick up the right elements for that
+// version.
+type VersionHandler interface {
+
+	// SetVersion sets the version for a package. An error is returned if there
+	// was a problem setting the version.
+	SetVersion(pkg string) error
+}
+
+// DefaultVersionHandler is the default handler for setting the version.
+//
+// The default handler leaves the current version and skips setting a version.
+// For a handler that alters the version see the handler included in the repo
+// package as part of the installer.
+type DefaultVersionHandler struct{}
+
+// SetVersion here sends a message when a package is found noting that it
+// did not set the version.
+func (d *DefaultVersionHandler) SetVersion(pkg string) error {
+	msg.Warn("Version not set for package %s", pkg)
+	return nil
+}
+
 // Resolver resolves a dependency tree.
 //
 // It operates in two modes:
@@ -79,11 +105,12 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 // Local resolution is for guessing initial dependencies. Vendor resolution is
 // for determining vendored dependencies.
 type Resolver struct {
-	Handler      MissingPackageHandler
-	basedir      string
-	VendorDir    string
-	BuildContext *util.BuildCtxt
-	seen         map[string]bool
+	Handler        MissingPackageHandler
+	VersionHandler VersionHandler
+	basedir        string
+	VendorDir      string
+	BuildContext   *util.BuildCtxt
+	seen           map[string]bool
 
 	// Items already in the queue.
 	alreadyQ map[string]bool
@@ -114,13 +141,14 @@ func NewResolver(basedir string) (*Resolver, error) {
 	}
 
 	r := &Resolver{
-		Handler:      &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}},
-		basedir:      basedir,
-		VendorDir:    vdir,
-		BuildContext: buildContext,
-		seen:         map[string]bool{},
-		alreadyQ:     map[string]bool{},
-		findCache:    map[string]*PkgInfo{},
+		Handler:        &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}},
+		VersionHandler: &DefaultVersionHandler{},
+		basedir:        basedir,
+		VendorDir:      vdir,
+		BuildContext:   buildContext,
+		seen:           map[string]bool{},
+		alreadyQ:       map[string]bool{},
+		findCache:      map[string]*PkgInfo{},
 	}
 
 	// TODO: Make sure the build context is correctly set up. Especially in
@@ -363,12 +391,14 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 			}
 			if found {
 				buf = append(buf, filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
+				r.VersionHandler.SetVersion(imp)
 				continue
 			}
 			r.seen[info.Path] = true
 		case LocVendor:
 			//msg.Debug("Vendored: %s", imp)
 			buf = append(buf, info.Path)
+			r.VersionHandler.SetVersion(imp)
 		case LocGopath:
 			found, err := r.Handler.OnGopath(imp)
 			if err != nil {
@@ -379,6 +409,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 			// in a less-than-perfect, but functional, situation.
 			if found {
 				buf = append(buf, filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
+				r.VersionHandler.SetVersion(imp)
 				continue
 			}
 			msg.Warn("Package %s is on GOPATH, but not vendored. Ignoring.", imp)

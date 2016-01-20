@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
+	"github.com/Masterminds/glide/importer"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
@@ -137,8 +138,6 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	vpath := i.VendorPath()
 
 	m := &MissingPackageHandler{
-
-		// FIXME: Where do we get the right path for this?
 		destination: vpath,
 
 		cache:       i.UseCache,
@@ -147,12 +146,20 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		home:        i.Home,
 	}
 
+	v := &VersionHandler{
+		Destination: vpath,
+		Deps:        make(map[string]*cfg.Dependency),
+		Use:         make(map[string]*cfg.Dependency),
+		Imported:    make(map[string]bool),
+	}
+
 	// Update imports
 	res, err := dependency.NewResolver(base)
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
 	res.Handler = m
+	res.VersionHandler = v
 	msg.Info("Resolving imports")
 	packages, err := allPackages(conf.Imports, res)
 	if err != nil {
@@ -163,6 +170,14 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 	deps := depsFromPackages(packages)
 	err = ConcurrentUpdate(deps, vpath, i)
+
+	// Placed the pinned versions onto the Dependency instances
+	for _, d := range deps {
+		d2, found := v.Deps[d.Name]
+		if found {
+			d.Pin = d2.Pin
+		}
+	}
 
 	return err
 }
@@ -354,4 +369,81 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 
 	msg.Error("Could not locate %s on the GOPATH, though it was found before.", pkg)
 	return false, nil
+}
+
+// VersionHandler handles setting the proper version in the VCS.
+type VersionHandler struct {
+
+	// Deps provides a map of packages and their dependency instances.
+	Deps map[string]*cfg.Dependency
+
+	// If Try to use the version here if we have one. This is a cache and will
+	// change over the course of setting versions.
+	Use map[string]*cfg.Dependency
+
+	// Cache if importing scan has already occured here.
+	Imported map[string]bool
+
+	// Where the packages exist to set the version on.
+	Destination string
+}
+
+// SetVersion sets the version for a package. If that package version is already
+// set it handles the case by:
+// - keeping the already set version
+// - proviting messaging about the version conflict
+func (d *VersionHandler) SetVersion(pkg string) (e error) {
+	root := util.GetRootFromPackage(pkg)
+
+	v, found := d.Deps[root]
+
+	// We have not tried to import, yet.
+	// Should we look in places other than the root of the project?
+	if d.Imported[root] == false {
+		d.Imported[root] = true
+		f, deps, err := importer.Import(root)
+		if f && err != nil {
+
+			// Store the imported version information. This will overwrite
+			// previous entries. The latest imported is the version to use when
+			// something is not pinned already. Once a version is set and pinned
+			// it will not be changed later. So, the first to set the version
+			// wins.
+			for _, dep := range deps {
+				if dep.Reference != "" {
+					d.Use[dep.Name] = dep
+				}
+			}
+		} else if err != nil {
+			msg.Error("Unable to import from %s. Err: %s", root, err)
+			e = err
+		}
+	}
+
+	// If we are already pinned provide some useful messaging.
+	if found {
+		msg.Debug("Package %s is already pinned to %q", pkg, v.Pin)
+
+		// Catch requested version conflicts here.
+		if d.Use[root].Reference != "" && d.Use[root].Reference != d.Deps[root].Pin &&
+			d.Use[root].Reference != d.Deps[root].Reference {
+			msg.Warn("Conflict: %s version is %s, but also asked for %s\n", root, d.Deps[root].Pin, d.Use[root].Reference)
+		}
+
+		return
+	}
+
+	// The first time we've encountered this so try to set the version.
+	dep, found := d.Use[root]
+	if !found {
+		msg.Debug("Unable to set version on %s, version to set unknown", root)
+		return
+	}
+	err := VcsVersion(dep, d.Destination)
+	if err != nil {
+		msg.Warn("Unable to set verion on %s to %s. Err: ", root, dep.Reference, err)
+		e = err
+	}
+	d.Deps[root] = dep
+	return
 }
