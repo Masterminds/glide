@@ -457,8 +457,9 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	// Should we look in places other than the root of the project?
 	if d.Imported[root] == false {
 		d.Imported[root] = true
-		f, deps, err := importer.Import(root)
-		if f && err != nil {
+		p := filepath.Join(d.Destination, root)
+		f, deps, err := importer.Import(p)
+		if f && err == nil {
 
 			// Store the imported version information. This will overwrite
 			// previous entries. The latest imported is the version to use when
