@@ -50,9 +50,11 @@ func Update(installer *repo.Installer) {
 	// I think that all we really need to do now is hunt for these files, and then
 	// roll their version numbers into the config file.
 
-	// Set references
-	msg.Info("Setting references for %d imports", len(confcopy.Imports))
-	if err := repo.SetReference(conf); err != nil {
+	// Set references. There may be no remaining references to set since the
+	// installer set them as it went to make sure it parsed the right imports
+	// from the right version of the package.
+	msg.Info("Setting references for remaining imports")
+	if err := repo.SetReference(confcopy); err != nil {
 		msg.Error("Failed to set references: %s (Skip to cleanup)", err)
 	}
 

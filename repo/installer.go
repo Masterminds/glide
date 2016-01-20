@@ -180,15 +180,39 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	msg.Warn("devImports not resolved.")
 
 	deps := depsFromPackages(packages)
-	err = ConcurrentUpdate(deps, vpath, i)
 
-	// Placed the pinned versions onto the Dependency instances
+	// TODO(mattfarina): We need to not go back and forth between between
+	// paths and cfg.Dependency instances.
+	// If we have conf.Imports we copy them to the final list to pull up elements
+	// like the VCS information.
+	for k, d := range deps {
+		for _, dep := range conf.Imports {
+			if dep.Name == d.Name {
+				deps[k] = dep
+			}
+		}
+	}
+
+	// Copy over the dependency information from the version system which contains
+	// pinned information, VCS info, etc.
 	for _, d := range deps {
 		d2, found := v.Deps[d.Name]
 		if found {
 			d.Pin = d2.Pin
+			if d.Repository == "" {
+				d.Repository = d2.Repository
+			}
+			if d.VcsType == "" {
+				d.VcsType = d2.VcsType
+			}
+			if d.Reference == "" {
+				d.Reference = d2.Reference
+			}
 		}
 	}
+
+	err = ConcurrentUpdate(deps, vpath, i)
+	conf.Imports = deps
 
 	return err
 }
@@ -229,7 +253,6 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 				case dep := <-ch:
 					if err := VcsUpdate(dep, cwd, i); err != nil {
 						msg.Warn("Update failed for %s: %s\n", dep.Name, err)
-
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
 						lock.Lock()
