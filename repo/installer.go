@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -159,6 +160,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		Deps:        make(map[string]*cfg.Dependency),
 		Use:         make(map[string]*cfg.Dependency),
 		Imported:    make(map[string]bool),
+		Conflicts:   make(map[string]bool),
 	}
 
 	// Update imports
@@ -432,6 +434,12 @@ type VersionHandler struct {
 
 	RootPackage string
 	Ignore      []string
+
+	// There's a problem where many sub-packages have been asked to set a version
+	// and you can end up with numerous conflict messages that are exactly the
+	// same. We are keeping track to only display them once.
+	// the parent pac
+	Conflicts map[string]bool
 }
 
 // SetVersion sets the version for a package. If that package version is already
@@ -484,7 +492,11 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		// Catch requested version conflicts here.
 		if d.Use[root].Reference != "" && d.Use[root].Reference != d.Deps[root].Pin &&
 			d.Use[root].Reference != d.Deps[root].Reference {
-			msg.Warn("Conflict: %s version is %s, but also asked for %s\n", root, d.Deps[root].Pin, d.Use[root].Reference)
+			s := fmt.Sprintf("Conflict: %s version is %s, but also asked for %s\n", root, d.Deps[root].Pin, d.Use[root].Reference)
+			if !d.Conflicts[s] {
+				d.Conflicts[s] = true
+				msg.Warn(s)
+			}
 		}
 
 		return
