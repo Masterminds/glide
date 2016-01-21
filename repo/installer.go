@@ -168,10 +168,10 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 	// Update imports
 	res, err := dependency.NewResolver(base)
-	res.Config = conf
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
+	res.Config = conf
 	res.Handler = m
 	res.VersionHandler = v
 	msg.Info("Resolving imports")
@@ -222,12 +222,24 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	base := "."
+	vpath := i.VendorPath()
+
+	v := &VersionHandler{
+		Destination: vpath,
+		Deps:        make(map[string]*cfg.Dependency),
+		Use:         make(map[string]*cfg.Dependency),
+		Imported:    make(map[string]bool),
+		Conflicts:   make(map[string]bool),
+		Config:      conf,
+	}
 
 	// Update imports
 	res, err := dependency.NewResolver(base)
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
+	res.Config = conf
+	res.VersionHandler = v
 
 	msg.Info("Resolving imports")
 	packages, err := allPackages(conf.Imports, res)
@@ -235,6 +247,37 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 	deps := depsFromPackages(packages)
+
+	// TODO(mattfarina): We need to not go back and forth between between
+	// paths and cfg.Dependency instances.
+	// If we have conf.Imports we copy them to the final list to pull up elements
+	// like the VCS information.
+	for k, d := range deps {
+		for _, dep := range conf.Imports {
+			if dep.Name == d.Name {
+				deps[k] = dep
+			}
+		}
+	}
+
+	// Copy over the dependency information from the version system which contains
+	// pinned information, VCS info, etc.
+	for _, d := range deps {
+		d2, found := v.Deps[d.Name]
+		if found {
+			d.Pin = d2.Pin
+			if d.Repository == "" {
+				d.Repository = d2.Repository
+			}
+			if d.VcsType == "" {
+				d.VcsType = d2.VcsType
+			}
+			if d.Reference == "" {
+				d.Reference = d2.Reference
+			}
+		}
+	}
+	conf.Imports = deps
 
 	msg.Warn("devImports not resolved.")
 

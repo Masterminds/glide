@@ -16,11 +16,14 @@ func Remove(packages []string, inst *repo.Installer) {
 	if err != nil {
 		msg.Die("Could not find Glide file: %s", err)
 	}
+
+	msg.Info("Preparing to remove %d packages.", len(packages))
 	conf.Imports = rmDeps(packages, conf.Imports)
 	conf.DevImports = rmDeps(packages, conf.DevImports)
 
 	// Copy used to generate locks.
 	confcopy := conf.Clone()
+	inst.Config = confcopy
 
 	confcopy.Imports = inst.List(confcopy)
 
