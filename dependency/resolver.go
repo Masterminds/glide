@@ -150,6 +150,9 @@ func NewResolver(basedir string) (*Resolver, error) {
 		seen:           map[string]bool{},
 		alreadyQ:       map[string]bool{},
 		findCache:      map[string]*PkgInfo{},
+
+		// The config instance here should really be replaced with a real one.
+		Config: &cfg.Config{},
 	}
 
 	// TODO: Make sure the build context is correctly set up. Especially in

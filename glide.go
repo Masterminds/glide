@@ -43,7 +43,6 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
 
-	"github.com/Masterminds/cookoo"
 	"github.com/codegangsta/cli"
 
 	"fmt"
@@ -76,8 +75,6 @@ no longer exist.
 var VendorDir = "vendor"
 
 func main() {
-	_, router, cxt := cookoo.Cookoo()
-
 	app := cli.NewApp()
 	app.Name = "glide"
 	app.Usage = usage
@@ -112,12 +109,12 @@ func main() {
 		action.Plugin(command, os.Args)
 	}
 	app.Before = startup
-	app.Commands = commands(cxt, router)
+	app.Commands = commands()
 
 	app.Run(os.Args)
 }
 
-func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
+func commands() []cli.Command {
 	return []cli.Command{
 		{
 			Name:      "create",
@@ -206,14 +203,6 @@ func commands(cxt cookoo.Context, router *cookoo.Router) []cli.Command {
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
 				action.Get(packages, inst, insecure)
-
-				cxt.Put("skipFlatten", !c.Bool("no-recursive"))
-				// FIXME: Are these used anywhere?
-				if c.Bool("import") {
-					cxt.Put("importGodeps", true)
-					cxt.Put("importGPM", true)
-					cxt.Put("importGb", true)
-				}
 			},
 		},
 		{
@@ -395,27 +384,6 @@ Example:
 				}
 
 				action.Install(installer)
-
-				// Was used by nested update.
-				cxt.Put("skipFlatten", c.Bool("no-recursive"))
-				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
-
-				// Not sure what this is for
-				cxt.Put("toPath", c.String("file"))
-
-				// This is never used here, but was used by Update.
-				cxt.Put("toStdout", false)
-
-				// This is never set to true, apparently.
-				if c.Bool("import") {
-					cxt.Put("importGodeps", true)
-					cxt.Put("importGPM", true)
-					cxt.Put("importGb", true)
-				}
-
-				// This is a bug. Install should never limit which packages are
-				// installed.
-				cxt.Put("packages", []string(c.Args()))
 			},
 		},
 		{
@@ -493,25 +461,6 @@ Example:
 				}
 
 				action.Update(installer)
-
-				cxt.Put("deleteOptIn", c.Bool("delete"))
-				cxt.Put("forceUpdate", c.Bool("force"))
-				cxt.Put("skipFlatten", c.Bool("no-recursive"))
-				cxt.Put("deleteFlatten", c.Bool("delete-flatten"))
-				cxt.Put("toPath", c.String("file"))
-				cxt.Put("toStdout", false)
-				cxt.Put("useCache", c.Bool("cache"))
-				cxt.Put("cacheGopath", c.Bool("cache-gopath"))
-				cxt.Put("useGopath", c.Bool("use-gopath"))
-				if c.Bool("import") {
-					cxt.Put("importGodeps", true)
-					cxt.Put("importGPM", true)
-					cxt.Put("importGb", true)
-				}
-				cxt.Put("updateVendoredDeps", c.Bool("update-vendored"))
-
-				cxt.Put("packages", []string(c.Args()))
-				//setupHandler(c, "update", cxt, router)
 			},
 		},
 		{
