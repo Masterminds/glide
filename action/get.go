@@ -30,9 +30,15 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 		msg.Die("Failed to get new packages: %s", err)
 	}
 
+	// Fetch the new packages. Can't resolve versions via installer.Update if
+	// get is called while the vendor/ directory is empty so we checkout
+	// everything.
+	installer.Checkout(conf, false)
+
 	// Prior to resolving dependencies we need to start working with a clone
 	// of the conf because we'll be making real changes to it.
 	confcopy := conf.Clone()
+	installer.Config = confcopy
 
 	// Get all repos and update them.
 	// TODO: Can we streamline this in any way? The reason that we update all
