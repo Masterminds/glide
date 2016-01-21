@@ -95,6 +95,8 @@ func Update(installer *repo.Installer) {
 		return
 	}
 
+	msg.Info("Project relies on %d dependencies.", len(confcopy.Imports))
+
 	/*
 		Does(cmd.VendoredSetup, "cfg").
 		Using("conf").From("cxt:cfg").
