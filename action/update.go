@@ -18,7 +18,6 @@ func Update(installer *repo.Installer) {
 	conf := EnsureConfig()
 
 	installer.RootPackage = conf.Name
-	installer.Ignore = conf.Ignore
 
 	// Delete unused packages
 	if installer.DeleteUnused {
@@ -39,6 +38,7 @@ func Update(installer *repo.Installer) {
 	// Prior to resolving dependencies we need to start working with a clone
 	// of the conf because we'll be making real changes to it.
 	confcopy := conf.Clone()
+	installer.Config = confcopy
 
 	// Get all repos and update them.
 	err := installer.Update(confcopy)

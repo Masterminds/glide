@@ -47,8 +47,9 @@ type Installer struct {
 	// downloaded and searched out again.
 	RootPackage string
 
-	// Ignore contains a list of package names to skip
-	Ignore []string
+	// An instance of *cfg.Config that's safe to modify. This should be a deep
+	// clone of the Config instance holding the config of record.
+	Config *cfg.Config
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -153,6 +154,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		cacheGopath: i.UseCacheGopath,
 		useGopath:   i.UseGopath,
 		home:        i.Home,
+		Config:      conf,
 	}
 
 	v := &VersionHandler{
@@ -161,11 +163,12 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		Use:         make(map[string]*cfg.Dependency),
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
+		Config:      conf,
 	}
 
 	// Update imports
 	res, err := dependency.NewResolver(base)
-	res.Ignore = i.Ignore
+	res.Config = conf
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
@@ -366,7 +369,7 @@ type MissingPackageHandler struct {
 	home                          string
 	cache, cacheGopath, useGopath bool
 	RootPackage                   string
-	Ignore                        []string
+	Config                        *cfg.Config
 }
 
 func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
@@ -376,10 +379,8 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	if root == m.RootPackage {
 		return false, nil
 	}
-	for _, v := range m.Ignore {
-		if v == root || v == pkg {
-			return false, nil
-		}
+	if m.Config.HasIgnore(root) || m.Config.HasIgnore(pkg) {
+		return false, nil
 	}
 
 	dest := filepath.Join(m.destination, root)
@@ -412,10 +413,8 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	if root == m.RootPackage {
 		return false, nil
 	}
-	for _, v := range m.Ignore {
-		if v == root || v == pkg {
-			return false, nil
-		}
+	if m.Config.HasIgnore(root) || m.Config.HasIgnore(pkg) {
+		return false, nil
 	}
 
 	msg.Info("Copying package %s from the GOPATH.", pkg)
@@ -456,7 +455,7 @@ type VersionHandler struct {
 	Destination string
 
 	RootPackage string
-	Ignore      []string
+	Config      *cfg.Config
 
 	// There's a problem where many sub-packages have been asked to set a version
 	// and you can end up with numerous conflict messages that are exactly the
@@ -476,10 +475,8 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	if root == d.RootPackage {
 		return nil
 	}
-	for _, v := range d.Ignore {
-		if v == root || v == pkg {
-			return nil
-		}
+	if d.Config.HasIgnore(root) || d.Config.HasIgnore(pkg) {
+		return nil
 	}
 
 	v, found := d.Deps[root]
