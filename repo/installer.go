@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -469,8 +470,8 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 	repo, err := v.GetRepo(dest)
 	if err != nil {
-		msg.Warn("Unable to access repo for %s\n", v.Name)
-		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		singleWarn("Unable to access repo for %s\n", v.Name)
+		singleInfo("Keeping %s %s", v.Name, v.Reference)
 		return v
 	}
 
@@ -479,56 +480,56 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 
 	// Both are references and they are different ones.
 	if vIsRef && depIsRef {
-		msg.Warn("Conflict: %s ref is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
-		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		singleWarn("Conflict: %s ref is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+		singleInfo("Keeping %s %s", v.Name, v.Reference)
 		return v
 	} else if vIsRef {
 		// The current one is a reference and the suggestion is a SemVer constraint.
 		con, err := semver.NewConstraint(dep.Reference)
 		if err != nil {
-			msg.Warn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", dep.Name, dep.Reference)
-			msg.Info("Keeping %s %s", v.Name, v.Reference)
+			singleWarn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", dep.Name, dep.Reference)
+			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
 
 		ver, err := semver.NewVersion(v.Reference)
 		if err != nil {
 			// The existing version is not a semantic version.
-			msg.Warn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
-			msg.Info("Keeping %s %s", v.Name, v.Reference)
+			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
 
 		if con.Check(ver) {
-			msg.Info("Keeping %s %s because it fits constraint '%s'", v.Name, v.Reference, dep.Reference)
+			singleInfo("Keeping %s %s because it fits constraint '%s'", v.Name, v.Reference, dep.Reference)
 			return v
 		}
-		msg.Warn("Conflict: %s version is %s but does not meet constraint '%s'\n", v.Name, v.Reference, dep.Reference)
-		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		singleWarn("Conflict: %s version is %s but does not meet constraint '%s'\n", v.Name, v.Reference, dep.Reference)
+		singleInfo("Keeping %s %s", v.Name, v.Reference)
 		return v
 	} else if depIsRef {
 
 		con, err := semver.NewConstraint(v.Reference)
 		if err != nil {
-			msg.Warn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", v.Name, v.Reference)
-			msg.Info("Keeping %s %s", v.Name, v.Reference)
+			singleWarn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", v.Name, v.Reference)
+			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
 
 		ver, err := semver.NewVersion(dep.Reference)
 		if err != nil {
-			msg.Warn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
-			msg.Info("Keeping %s %s", v.Name, v.Reference)
+			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
 
 		if con.Check(ver) {
 			v.Reference = dep.Reference
-			msg.Info("Using %s %s because it fits constraint '%s'", v.Name, v.Reference, v.Reference)
+			singleInfo("Using %s %s because it fits constraint '%s'", v.Name, v.Reference, v.Reference)
 			return v
 		}
-		msg.Warn("Conflict: %s semantic version constraint is %s but '%s' does not meet the constraint\n", v.Name, v.Reference, v.Reference)
-		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		singleWarn("Conflict: %s semantic version constraint is %s but '%s' does not meet the constraint\n", v.Name, v.Reference, v.Reference)
+		singleInfo("Keeping %s %s", v.Name, v.Reference)
 		return v
 	}
 	// Neither is a vcs reference and both could be semantic version
@@ -537,8 +538,8 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 	_, err = semver.NewConstraint(dep.Reference)
 	if err != nil {
 		// dd.Reference is not a reference or a valid constraint.
-		msg.Warn("Version %s %s is not a reference or valid semantic version constraint\n", dep.Name, dep.Reference)
-		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		singleWarn("Version %s %s is not a reference or valid semantic version constraint\n", dep.Name, dep.Reference)
+		singleInfo("Keeping %s %s", v.Name, v.Reference)
 		return v
 	}
 
@@ -546,11 +547,11 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 	if err != nil {
 		// existing.Reference is not a reference or a valid constraint.
 		// We really should never end up here.
-		msg.Warn("Version %s %s is not a reference or valid semantic version constraint\n", v.Name, v.Reference)
+		singleWarn("Version %s %s is not a reference or valid semantic version constraint\n", v.Name, v.Reference)
 
 		v.Reference = dep.Reference
 		v.Pin = ""
-		msg.Info("Using %s %s because it is a valid version", v.Name, v.Reference)
+		singleInfo("Using %s %s because it is a valid version", v.Name, v.Reference)
 		return v
 	}
 
@@ -563,10 +564,31 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 		newRef := v.Reference + ", " + dep.Reference
 		v.Reference = newRef
 		v.Pin = ""
-		msg.Info("Combining %s semantic version constraints %s and %s", v.Name, v.Reference, dep.Reference)
+		singleInfo("Combining %s semantic version constraints %s and %s", v.Name, v.Reference, dep.Reference)
 		return v
 	}
-	msg.Warn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
-	msg.Info("Keeping %s %s", v.Name, v.Reference)
+	singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+	singleInfo("Keeping %s %s", v.Name, v.Reference)
 	return v
+}
+
+var warningMessage = make(map[string]bool)
+var infoMessage = make(map[string]bool)
+
+func singleWarn(ft string, v ...interface{}) {
+	m := fmt.Sprintf(ft, v...)
+	_, f := warningMessage[m]
+	if !f {
+		msg.Warn(m)
+		warningMessage[m] = true
+	}
+}
+
+func singleInfo(ft string, v ...interface{}) {
+	m := fmt.Sprintf(ft, v...)
+	_, f := infoMessage[m]
+	if !f {
+		msg.Info(m)
+		infoMessage[m] = true
+	}
 }
