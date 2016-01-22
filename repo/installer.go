@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
+	"github.com/Masterminds/semver"
 	"github.com/codegangsta/cli"
 )
 
@@ -46,10 +46,6 @@ type Installer struct {
 	// imported pacakgage references this pacakage it does not need to be
 	// downloaded and searched out again.
 	RootPackage string
-
-	// An instance of *cfg.Config that's safe to modify. This should be a deep
-	// clone of the Config instance holding the config of record.
-	Config *cfg.Config
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -159,7 +155,6 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 	v := &VersionHandler{
 		Destination: vpath,
-		Deps:        make(map[string]*cfg.Dependency),
 		Use:         make(map[string]*cfg.Dependency),
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
@@ -175,47 +170,14 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	res.Handler = m
 	res.VersionHandler = v
 	msg.Info("Resolving imports")
-	packages, err := allPackages(conf.Imports, res)
+	_, err = allPackages(conf.Imports, res)
 	if err != nil {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 
 	msg.Warn("devImports not resolved.")
 
-	deps := depsFromPackages(packages)
-
-	// TODO(mattfarina): We need to not go back and forth between between
-	// paths and cfg.Dependency instances.
-	// If we have conf.Imports we copy them to the final list to pull up elements
-	// like the VCS information.
-	for k, d := range deps {
-		for _, dep := range conf.Imports {
-			if dep.Name == d.Name {
-				deps[k] = dep
-			}
-		}
-	}
-
-	// Copy over the dependency information from the version system which contains
-	// pinned information, VCS info, etc.
-	for _, d := range deps {
-		d2, found := v.Deps[d.Name]
-		if found {
-			d.Pin = d2.Pin
-			if d.Repository == "" {
-				d.Repository = d2.Repository
-			}
-			if d.VcsType == "" {
-				d.VcsType = d2.VcsType
-			}
-			if d.Reference == "" {
-				d.Reference = d2.Reference
-			}
-		}
-	}
-
-	err = ConcurrentUpdate(deps, vpath, i)
-	conf.Imports = deps
+	err = ConcurrentUpdate(conf.Imports, vpath, i)
 
 	return err
 }
@@ -226,7 +188,6 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 
 	v := &VersionHandler{
 		Destination: vpath,
-		Deps:        make(map[string]*cfg.Dependency),
 		Use:         make(map[string]*cfg.Dependency),
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
@@ -242,46 +203,14 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	res.VersionHandler = v
 
 	msg.Info("Resolving imports")
-	packages, err := allPackages(conf.Imports, res)
+	_, err = allPackages(conf.Imports, res)
 	if err != nil {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
-	deps := depsFromPackages(packages)
-
-	// TODO(mattfarina): We need to not go back and forth between between
-	// paths and cfg.Dependency instances.
-	// If we have conf.Imports we copy them to the final list to pull up elements
-	// like the VCS information.
-	for k, d := range deps {
-		for _, dep := range conf.Imports {
-			if dep.Name == d.Name {
-				deps[k] = dep
-			}
-		}
-	}
-
-	// Copy over the dependency information from the version system which contains
-	// pinned information, VCS info, etc.
-	for _, d := range deps {
-		d2, found := v.Deps[d.Name]
-		if found {
-			d.Pin = d2.Pin
-			if d.Repository == "" {
-				d.Repository = d2.Repository
-			}
-			if d.VcsType == "" {
-				d.VcsType = d2.VcsType
-			}
-			if d.Reference == "" {
-				d.Reference = d2.Reference
-			}
-		}
-	}
-	conf.Imports = deps
 
 	msg.Warn("devImports not resolved.")
 
-	return deps
+	return conf.Imports
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
@@ -352,54 +281,6 @@ func allPackages(deps []*cfg.Dependency, res *dependency.Resolver) ([]string, er
 		ll[i] = strings.TrimPrefix(ll[i], vdir)
 	}
 	return ll, nil
-}
-
-/* unused
-func reposFromPackages(pkgs []string) []string {
-	// Make sure we don't have to resize this.
-	seen := make(map[string]bool, len(pkgs))
-
-	// Order is important.
-	repos := []string{}
-
-	for _, p := range pkgs {
-		rr, _ := util.NormalizeName(p)
-		if !seen[rr] {
-			seen[rr] = true
-			repos = append(repos, rr)
-		}
-	}
-	return repos
-}
-*/
-
-func depsFromPackages(pkgs []string) []*cfg.Dependency {
-	// Make sure we don't have to resize this.
-	seen := make(map[string]*cfg.Dependency, len(pkgs))
-
-	// Order is important.
-	deps := []*cfg.Dependency{}
-
-	for _, p := range pkgs {
-		rr, sp := util.NormalizeName(p)
-		if _, ok := seen[rr]; !ok {
-			subpkg := []string{}
-			if sp != "" {
-				subpkg = append(subpkg, sp)
-			}
-
-			dd := &cfg.Dependency{
-				Name:        rr,
-				Subpackages: subpkg,
-			}
-
-			deps = append(deps, dd)
-			seen[rr] = dd
-		} else if sp != "" {
-			seen[rr].Subpackages = append(seen[rr].Subpackages, sp)
-		}
-	}
-	return deps
 }
 
 // MissingPackageHandler is a dependency.MissingPackageHandler.
@@ -484,9 +365,6 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 // VersionHandler handles setting the proper version in the VCS.
 type VersionHandler struct {
 
-	// Deps provides a map of packages and their dependency instances.
-	Deps map[string]*cfg.Dependency
-
 	// If Try to use the version here if we have one. This is a cache and will
 	// change over the course of setting versions.
 	Use map[string]*cfg.Dependency
@@ -511,6 +389,7 @@ type VersionHandler struct {
 // set it handles the case by:
 // - keeping the already set version
 // - proviting messaging about the version conflict
+// TODO(mattfarina): The way version setting happens can be improved. Currently not optimal.
 func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
@@ -522,7 +401,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		return nil
 	}
 
-	v, found := d.Deps[root]
+	v := d.Config.Imports.Get(root)
 
 	// We have not tried to import, yet.
 	// Should we look in places other than the root of the project?
@@ -548,34 +427,146 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		}
 	}
 
-	// If we are already pinned provide some useful messaging.
-	if found {
-		msg.Debug("Package %s is already pinned to %q", pkg, v.Pin)
-
-		// Catch requested version conflicts here.
-		if d.Use[root].Reference != "" && d.Use[root].Reference != d.Deps[root].Pin &&
-			d.Use[root].Reference != d.Deps[root].Reference {
-			s := fmt.Sprintf("Conflict: %s version is %s, but also asked for %s\n", root, d.Deps[root].Pin, d.Use[root].Reference)
-			if !d.Conflicts[s] {
-				d.Conflicts[s] = true
-				msg.Warn(s)
-			}
+	dep, found := d.Use[root]
+	if found && v != nil {
+		if v.Reference == "" && dep.Reference != "" {
+			v.Reference = dep.Reference
+			// Clear the pin, if set, so the new version can be used.
+			v.Pin = ""
+			dep = v
+		} else if v.Reference != "" && dep.Reference != "" && v.Reference != dep.Reference {
+			dest := filepath.Join(d.Destination, filepath.FromSlash(v.Name))
+			dep = determineDependency(v, dep, dest)
 		}
 
-		return
+	} else if found {
+		// We've got an imported dependency to use and don't already have a
+		// record of it. Append it to the Imports.
+		d.Config.Imports = append(d.Config.Imports, dep)
+	} else if v != nil {
+		dep = v
+	} else {
+		// If we've gotten here we don't have any depenency objects.
+		r, sp := util.NormalizeName(pkg)
+		dep = &cfg.Dependency{
+			Name: r,
+		}
+		if sp != "" {
+			dep.Subpackages = []string{sp}
+		}
+		d.Config.Imports = append(d.Config.Imports, dep)
 	}
 
-	// The first time we've encountered this so try to set the version.
-	dep, found := d.Use[root]
-	if !found {
-		msg.Debug("Unable to set version on %s, version to set unknown", root)
-		return
-	}
 	err := VcsVersion(dep, d.Destination)
 	if err != nil {
 		msg.Warn("Unable to set verion on %s to %s. Err: ", root, dep.Reference, err)
 		e = err
 	}
-	d.Deps[root] = dep
+
 	return
+}
+
+func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
+	repo, err := v.GetRepo(dest)
+	if err != nil {
+		msg.Warn("Unable to access repo for %s\n", v.Name)
+		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		return v
+	}
+
+	vIsRef := repo.IsReference(v.Reference)
+	depIsRef := repo.IsReference(dep.Reference)
+
+	// Both are references and they are different ones.
+	if vIsRef && depIsRef {
+		msg.Warn("Conflict: %s ref is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		return v
+	} else if vIsRef {
+		// The current one is a reference and the suggestion is a SemVer constraint.
+		con, err := semver.NewConstraint(dep.Reference)
+		if err != nil {
+			msg.Warn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", dep.Name, dep.Reference)
+			msg.Info("Keeping %s %s", v.Name, v.Reference)
+			return v
+		}
+
+		ver, err := semver.NewVersion(v.Reference)
+		if err != nil {
+			// The existing version is not a semantic version.
+			msg.Warn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			msg.Info("Keeping %s %s", v.Name, v.Reference)
+			return v
+		}
+
+		if con.Check(ver) {
+			msg.Info("Keeping %s %s because it fits constraint '%s'", v.Name, v.Reference, dep.Reference)
+			return v
+		}
+		msg.Warn("Conflict: %s version is %s but does not meet constraint '%s'\n", v.Name, v.Reference, dep.Reference)
+		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		return v
+	} else if depIsRef {
+
+		con, err := semver.NewConstraint(v.Reference)
+		if err != nil {
+			msg.Warn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", v.Name, v.Reference)
+			msg.Info("Keeping %s %s", v.Name, v.Reference)
+			return v
+		}
+
+		ver, err := semver.NewVersion(dep.Reference)
+		if err != nil {
+			msg.Warn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			msg.Info("Keeping %s %s", v.Name, v.Reference)
+			return v
+		}
+
+		if con.Check(ver) {
+			v.Reference = dep.Reference
+			msg.Info("Using %s %s because it fits constraint '%s'", v.Name, v.Reference, v.Reference)
+			return v
+		}
+		msg.Warn("Conflict: %s semantic version constraint is %s but '%s' does not meet the constraint\n", v.Name, v.Reference, v.Reference)
+		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		return v
+	}
+	// Neither is a vcs reference and both could be semantic version
+	// constraints that are different.
+
+	_, err = semver.NewConstraint(dep.Reference)
+	if err != nil {
+		// dd.Reference is not a reference or a valid constraint.
+		msg.Warn("Version %s %s is not a reference or valid semantic version constraint\n", dep.Name, dep.Reference)
+		msg.Info("Keeping %s %s", v.Name, v.Reference)
+		return v
+	}
+
+	_, err = semver.NewConstraint(v.Reference)
+	if err != nil {
+		// existing.Reference is not a reference or a valid constraint.
+		// We really should never end up here.
+		msg.Warn("Version %s %s is not a reference or valid semantic version constraint\n", v.Name, v.Reference)
+
+		v.Reference = dep.Reference
+		v.Pin = ""
+		msg.Info("Using %s %s because it is a valid version", v.Name, v.Reference)
+		return v
+	}
+
+	// Both versions are constraints. Try to merge them.
+	// If either comparison has an || skip merging. That's complicated.
+	ddor := strings.Index(dep.Reference, "||")
+	eor := strings.Index(v.Reference, "||")
+	if ddor == -1 && eor == -1 {
+		// Add the comparisons together.
+		newRef := v.Reference + ", " + dep.Reference
+		v.Reference = newRef
+		v.Pin = ""
+		msg.Info("Combining %s semantic version constraints %s and %s", v.Name, v.Reference, dep.Reference)
+		return v
+	}
+	msg.Warn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+	msg.Info("Keeping %s %s", v.Name, v.Reference)
+	return v
 }

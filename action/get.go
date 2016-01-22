@@ -40,8 +40,6 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool
 	confcopy := conf.Clone()
 
 	if !skipRecursive {
-		installer.Config = confcopy
-
 		// Get all repos and update them.
 		// TODO: Can we streamline this in any way? The reason that we update all
 		// of the dependencies is that we need to re-negotiate versions. For example,

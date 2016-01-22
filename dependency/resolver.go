@@ -314,7 +314,28 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 	}
 
 	res := make([]string, 0, queue.Len())
+
+	// In addition to generating a list
 	for e := queue.Front(); e != nil; e = e.Next() {
+		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		root, sp := util.NormalizeName(t)
+
+		// TODO(mattfarina): Need to eventually support devImport
+		existing := r.Config.Imports.Get(root)
+		if existing != nil {
+			if sp != "" && !existing.HasSubpackage(sp) {
+				existing.Subpackages = append(existing.Subpackages, sp)
+			}
+		} else {
+			newDep := &cfg.Dependency{
+				Name: root,
+			}
+			if sp != "" {
+				newDep.Subpackages = []string{sp}
+			}
+
+			r.Config.Imports = append(r.Config.Imports, newDep)
+		}
 		res = append(res, e.Value.(string))
 	}
 

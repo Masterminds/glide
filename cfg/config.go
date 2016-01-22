@@ -393,6 +393,18 @@ func (d *Dependency) Clone() *Dependency {
 	}
 }
 
+// HasSubpackage returns if the subpackage is present on the dependency
+func (d *Dependency) HasSubpackage(sub string) bool {
+
+	for _, v := range d.Subpackages {
+		if sub == v {
+			return true
+		}
+	}
+
+	return false
+}
+
 func stringArrayDeDupe(s []string, items ...string) []string {
 	for _, item := range items {
 		exists := false

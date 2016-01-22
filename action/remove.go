@@ -23,7 +23,6 @@ func Remove(packages []string, inst *repo.Installer) {
 
 	// Copy used to generate locks.
 	confcopy := conf.Clone()
-	inst.Config = confcopy
 
 	confcopy.Imports = inst.List(confcopy)
 

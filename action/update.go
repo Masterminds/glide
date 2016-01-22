@@ -35,13 +35,11 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		msg.Die("Failed to set initial config references: %s", err)
 	}
 
+	// Prior to resolving dependencies we need to start working with a clone
+	// of the conf because we'll be making real changes to it.
 	confcopy := conf.Clone()
 
 	if !skipRecursive {
-		// Prior to resolving dependencies we need to start working with a clone
-		// of the conf because we'll be making real changes to it.
-		installer.Config = confcopy
-
 		// Get all repos and update them.
 		err := installer.Update(confcopy)
 		if err != nil {
