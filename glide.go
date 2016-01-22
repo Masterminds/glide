@@ -202,7 +202,7 @@ func commands() []cli.Command {
 				}
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure)
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"))
 			},
 		},
 		{
@@ -344,10 +344,6 @@ Example:
 					Usage: "Delete vendor packages not specified in config.",
 				},
 				cli.BoolFlag{
-					Name:  "no-recursive, quick",
-					Usage: "Disable updating dependencies' dependencies. Only update things in glide.yaml. (DEPRECATED: This no longer has any effect.)",
-				},
-				cli.BoolFlag{
 					Name:  "force",
 					Usage: "If there was a change in the repo or VCS switch to new one. Warning: changes will be lost.",
 				},
@@ -460,7 +456,7 @@ Example:
 					Home:           gpath.Home(),
 				}
 
-				action.Update(installer)
+				action.Update(installer, c.Bool("no-recursive"))
 			},
 		},
 		{

@@ -15,7 +15,7 @@ import (
 // Get fetches one or more dependencies and installs.
 //
 // This includes resolving dependency resolution and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure bool) {
+func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool) {
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
@@ -38,19 +38,22 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 	// Prior to resolving dependencies we need to start working with a clone
 	// of the conf because we'll be making real changes to it.
 	confcopy := conf.Clone()
-	installer.Config = confcopy
 
-	// Get all repos and update them.
-	// TODO: Can we streamline this in any way? The reason that we update all
-	// of the dependencies is that we need to re-negotiate versions. For example,
-	// if an existing dependency has the constraint >1.0 and this new package
-	// adds the constraint <2.0, then this may re-resolve the existing dependency
-	// to be betwee 1.0 and 2.0. But changing that dependency may then result
-	// in that dependency's dependencies changing... so we sorta do the whole
-	// thing to be safe.
-	err = installer.Update(confcopy)
-	if err != nil {
-		msg.Die("Could not update packages: %s", err)
+	if !skipRecursive {
+		installer.Config = confcopy
+
+		// Get all repos and update them.
+		// TODO: Can we streamline this in any way? The reason that we update all
+		// of the dependencies is that we need to re-negotiate versions. For example,
+		// if an existing dependency has the constraint >1.0 and this new package
+		// adds the constraint <2.0, then this may re-resolve the existing dependency
+		// to be betwee 1.0 and 2.0. But changing that dependency may then result
+		// in that dependency's dependencies changing... so we sorta do the whole
+		// thing to be safe.
+		err = installer.Update(confcopy)
+		if err != nil {
+			msg.Die("Could not update packages: %s", err)
+		}
 	}
 
 	// Set Reference
@@ -67,9 +70,12 @@ func Get(names []string, installer *repo.Installer, insecure bool) {
 	if err := conf.WriteFile(glidefile); err != nil {
 		msg.Die("Failed to write glide YAML file: %s", err)
 	}
-
-	// Write lock
-	writeLock(conf, confcopy, base)
+	if !skipRecursive {
+		// Write lock
+		writeLock(conf, confcopy, base)
+	} else {
+		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
+	}
 }
 
 func writeLock(conf, confcopy *cfg.Config, base string) {
