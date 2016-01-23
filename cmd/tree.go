@@ -205,11 +205,11 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *pinfo {
 		for wd := abs; wd != pwd; wd = filepath.Dir(wd) {
 			pwd = wd
 
-			// Don't look for packages outside the GOPATH
+			// Don't look for packages outside the GOPATH, but do look
+			// inside the GOPATH so the GOPATH/vendor is looked at.
 			// Note, the GOPATH may or may not end with the path separator.
-			// The output of filepath.Dir does not the the path separator on the
-			// end so we need to test both.
-			if wd == b.GOPATH || wd+string(os.PathSeparator) == b.GOPATH {
+			// The output of filepath.Clean will address any issues.
+			if wd == filepath.Dir(filepath.Clean(b.GOPATH)) {
 				break
 			}
 			p = filepath.Join(wd, "vendor", filepath.FromSlash(name))
