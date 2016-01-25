@@ -144,6 +144,8 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	base := "."
 	vpath := i.VendorPath()
 
+	ic := newImportCache()
+
 	m := &MissingPackageHandler{
 		destination: vpath,
 
@@ -152,14 +154,34 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		useGopath:   i.UseGopath,
 		home:        i.Home,
 		Config:      conf,
+		Use:         ic,
 	}
 
 	v := &VersionHandler{
 		Destination: vpath,
-		Use:         make(map[string]*cfg.Dependency),
+		Use:         ic,
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
 		Config:      conf,
+	}
+
+	// Prepopulate the import cache with imports from the top level dependencies
+	// we are assuming are present.
+	for _, d := range conf.Imports {
+		v.Imported[d.Name] = true
+		p := filepath.Join(i.VendorPath(), d.Name)
+		f, deps, err := importer.Import(p)
+		if f && err == nil {
+
+			for _, dep := range deps {
+				exists := ic.Get(dep.Name)
+				if exists == nil && (dep.Reference != "" || dep.Repository != "") {
+					ic.Add(dep.Name, dep)
+				}
+			}
+		} else if err != nil {
+			msg.Error("Unable to import from %s. Err: %s", d.Name, err)
+		}
 	}
 
 	// Update imports
@@ -187,9 +209,11 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	base := "."
 	vpath := i.VendorPath()
 
+	ic := newImportCache()
+
 	v := &VersionHandler{
 		Destination: vpath,
-		Use:         make(map[string]*cfg.Dependency),
+		Use:         ic,
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
 		Config:      conf,
@@ -295,6 +319,7 @@ type MissingPackageHandler struct {
 	cache, cacheGopath, useGopath bool
 	RootPackage                   string
 	Config                        *cfg.Config
+	Use                           *importCache
 }
 
 func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
@@ -318,7 +343,17 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 
 	msg.Info("Fetching %s into %s", pkg, m.destination)
 
-	d := &cfg.Dependency{Name: root}
+	d := m.Config.Imports.Get(root)
+	// If the dependency is nil it means the Config doesn't yet know about it.
+	if d == nil {
+		d = m.Use.Get(root)
+		// We don't know about this dependency so we create a basic instance.
+		if d == nil {
+			d = &cfg.Dependency{Name: root}
+		}
+
+		m.Config.Imports = append(m.Config.Imports, d)
+	}
 	if err := VcsGet(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath); err != nil {
 		return false, err
 	}
@@ -368,7 +403,7 @@ type VersionHandler struct {
 
 	// If Try to use the version here if we have one. This is a cache and will
 	// change over the course of setting versions.
-	Use map[string]*cfg.Dependency
+	Use *importCache
 
 	// Cache if importing scan has already occured here.
 	Imported map[string]bool
@@ -411,15 +446,12 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		p := filepath.Join(d.Destination, root)
 		f, deps, err := importer.Import(p)
 		if f && err == nil {
-
-			// Store the imported version information. This will overwrite
-			// previous entries. The latest imported is the version to use when
-			// something is not pinned already. Once a version is set and pinned
-			// it will not be changed later. So, the first to set the version
-			// wins.
 			for _, dep := range deps {
-				if dep.Reference != "" {
-					d.Use[dep.Name] = dep
+
+				// The fist one wins. Would something smater than this be better?
+				exists := d.Use.Get(dep.Name)
+				if exists == nil && (dep.Reference != "" || dep.Repository != "") {
+					d.Use.Add(dep.Name, dep)
 				}
 			}
 		} else if err != nil {
@@ -428,8 +460,8 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		}
 	}
 
-	dep, found := d.Use[root]
-	if found && v != nil {
+	dep := d.Use.Get(root)
+	if dep != nil && v != nil {
 		if v.Reference == "" && dep.Reference != "" {
 			v.Reference = dep.Reference
 			// Clear the pin, if set, so the new version can be used.
@@ -440,7 +472,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 			dep = determineDependency(v, dep, dest)
 		}
 
-	} else if found {
+	} else if dep != nil {
 		// We've got an imported dependency to use and don't already have a
 		// record of it. Append it to the Imports.
 		d.Config.Imports = append(d.Config.Imports, dep)
@@ -460,7 +492,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 
 	err := VcsVersion(dep, d.Destination)
 	if err != nil {
-		msg.Warn("Unable to set verion on %s to %s. Err: ", root, dep.Reference, err)
+		msg.Warn("Unable to set verion on %s to %s. Err: %s", root, dep.Reference, err)
 		e = err
 	}
 
@@ -591,4 +623,27 @@ func singleInfo(ft string, v ...interface{}) {
 		msg.Info(m)
 		infoMessage[m] = true
 	}
+}
+
+type importCache struct {
+	cache map[string]*cfg.Dependency
+}
+
+func newImportCache() *importCache {
+	return &importCache{
+		cache: make(map[string]*cfg.Dependency),
+	}
+}
+
+func (i *importCache) Get(name string) *cfg.Dependency {
+	d, f := i.cache[name]
+	if f {
+		return d
+	}
+
+	return nil
+}
+
+func (i *importCache) Add(name string, dep *cfg.Dependency) {
+	i.cache[name] = dep
 }
