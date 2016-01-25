@@ -57,17 +57,6 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		if err := repo.SetReference(confcopy); err != nil {
 			msg.Error("Failed to set references: %s (Skip to cleanup)", err)
 		}
-
-		// Flatten
-		// I don't think we need flatten anymore. The installer.Update logic should
-		// find and install all of the necessary dependencies. And then the version
-		// setting logic should correctly set versions.
-		//
-		// The edge case, which exist today (but innoculously) is where an older
-		// version requires dependencies that a newer repo checkout does not
-		// have. In that case, it seems that we may get to the point where we'd
-		// have to run Update twice.
-		msg.Warn("Flatten not implemented.")
 	}
 	// Vendored cleanup
 	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.
