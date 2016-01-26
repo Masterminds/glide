@@ -310,9 +310,6 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	if root == m.RootPackage {
 		return false, nil
 	}
-	if m.Config.HasIgnore(root) || m.Config.HasIgnore(pkg) {
-		return false, nil
-	}
 
 	dest := filepath.Join(m.destination, root)
 
@@ -352,9 +349,6 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 
 	// Skip any references to the root package.
 	if root == m.RootPackage {
-		return false, nil
-	}
-	if m.Config.HasIgnore(root) || m.Config.HasIgnore(pkg) {
 		return false, nil
 	}
 
@@ -410,9 +404,6 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 	if root == d.RootPackage {
 		return nil
 	}
-	if d.Config.HasIgnore(root) || d.Config.HasIgnore(pkg) {
-		return nil
-	}
 
 	// We have not tried to import, yet.
 	// Should we look in places other than the root of the project?
@@ -448,9 +439,6 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 
 	// Skip any references to the root package.
 	if root == d.RootPackage {
-		return nil
-	}
-	if d.Config.HasIgnore(root) || d.Config.HasIgnore(pkg) {
 		return nil
 	}
 

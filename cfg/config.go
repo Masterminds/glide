@@ -101,7 +101,10 @@ func (c *Config) HasDependency(name string) bool {
 // HasIgnore returns true if the given name is listed on the ignore list.
 func (c *Config) HasIgnore(name string) bool {
 	for _, v := range c.Ignore {
-		if v == name {
+
+		// Check for both a name and to make sure sub-packages are ignored as
+		// well.
+		if v == name || strings.HasPrefix(name, v+"/") {
 			return true
 		}
 	}

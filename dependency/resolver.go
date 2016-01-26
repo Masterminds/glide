@@ -287,6 +287,10 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 	for e := queue.Front(); e != nil; e = e.Next() {
 		dep := e.Value.(string)
 		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		if r.Config.HasIgnore(t) {
+			msg.Info("Ignoring: %s", t)
+			continue
+		}
 		r.VersionHandler.Process(t)
 		//msg.Warn("#### %s ####", dep)
 		//msg.Info("Seen Count: %d", len(r.seen))
