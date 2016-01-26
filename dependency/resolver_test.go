@@ -21,7 +21,6 @@ func TestResolveLocalShallow(t *testing.T) {
 	}
 
 	expect := []string{
-		"github.com/Masterminds/cookoo",
 		"github.com/Masterminds/semver",
 		"github.com/Masterminds/vcs",
 		"gopkg.in/yaml.v2",
@@ -53,8 +52,8 @@ func TestResolveLocalDeep(t *testing.T) {
 		t.Fatalf("Failed to resolve: %s", err)
 	}
 
-	if len(l) < 8 {
-		t.Errorf("Expected at least 8 deps, got %d: %s", len(l))
+	if len(l) < 4 {
+		t.Errorf("Expected at least 4 deps, got %d: %s", len(l))
 	}
 }
 
@@ -79,8 +78,8 @@ func TestResolveAll(t *testing.T) {
 	// These are build dependencies of Glide, so we know they are here.
 	deps := []*cfg.Dependency{
 		&cfg.Dependency{Name: "github.com/codegangsta/cli"},
-		&cfg.Dependency{Name: "github.com/Masterminds/cookoo"},
 		&cfg.Dependency{Name: "github.com/Masterminds/semver"},
+		&cfg.Dependency{Name: "github.com/Masterminds/vcs"},
 		&cfg.Dependency{Name: "gopkg.in/yaml.v2"},
 	}
 

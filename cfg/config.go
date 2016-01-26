@@ -3,6 +3,7 @@ package cfg
 import (
 	"crypto/sha256"
 	"fmt"
+	"io/ioutil"
 	"reflect"
 	"strings"
 
@@ -19,7 +20,7 @@ type Config struct {
 	DevImports Dependencies `yaml:"devimport,omitempty"`
 }
 
-// A transitive representation of a dependency for importing and exploting to yaml.
+// A transitive representation of a dependency for importing and exporting to yaml.
 type cf struct {
 	Name       string       `yaml:"package"`
 	Ignore     []string     `yaml:"ignore,omitempty"`
@@ -100,7 +101,10 @@ func (c *Config) HasDependency(name string) bool {
 // HasIgnore returns true if the given name is listed on the ignore list.
 func (c *Config) HasIgnore(name string) bool {
 	for _, v := range c.Ignore {
-		if v == name {
+
+		// Check for both a name and to make sure sub-packages are ignored as
+		// well.
+		if v == name || strings.HasPrefix(name, v+"/") {
 			return true
 		}
 	}
@@ -116,6 +120,18 @@ func (c *Config) Clone() *Config {
 	n.Imports = c.Imports.Clone()
 	n.DevImports = c.DevImports.Clone()
 	return n
+}
+
+// WriteFile writes a Glide YAML file.
+//
+// This is a convenience function that marshals the YAML and then writes it to
+// the given file. If the file exists, it will be clobbered.
+func (c *Config) WriteFile(glidepath string) error {
+	o, err := c.Marshal()
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(glidepath, o, 0666)
 }
 
 // DeDupe consolidates duplicate dependencies on a Config instance
@@ -179,6 +195,18 @@ func (c *Config) DeDupe() error {
 	return nil
 }
 
+// AddImport appends dependencies to the import list, deduplicating as we go.
+func (c *Config) AddImport(deps ...*Dependency) error {
+	t := c.Imports
+	t = append(t, deps...)
+	t, err := t.DeDupe()
+	if err != nil {
+		return err
+	}
+	c.Imports = t
+	return nil
+}
+
 // Hash generates a sha256 hash for a given Config
 func (c *Config) Hash() (string, error) {
 	yml, err := c.Marshal()
@@ -206,7 +234,7 @@ func (d Dependencies) Get(name string) *Dependency {
 
 // Clone performs a deep clone of Dependencies
 func (d Dependencies) Clone() Dependencies {
-	n := make(Dependencies, 0, 1)
+	n := make(Dependencies, 0, len(d))
 	for _, v := range d {
 		n = append(n, v.Clone())
 	}
@@ -366,6 +394,18 @@ func (d *Dependency) Clone() *Dependency {
 		Os:               d.Os,
 		UpdateAsVendored: d.UpdateAsVendored,
 	}
+}
+
+// HasSubpackage returns if the subpackage is present on the dependency
+func (d *Dependency) HasSubpackage(sub string) bool {
+
+	for _, v := range d.Subpackages {
+		if sub == v {
+			return true
+		}
+	}
+
+	return false
 }
 
 func stringArrayDeDupe(s []string, items ...string) []string {

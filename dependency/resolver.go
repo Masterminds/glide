@@ -69,6 +69,40 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	return false, nil
 }
 
+// VersionHandler sets the version for a package when found while scanning.
+//
+// When a package if found it needs to be on the correct version before
+// scanning its contents to be sure to pick up the right elements for that
+// version.
+type VersionHandler interface {
+
+	// Process provides an opportunity to process the codebase for version setting.
+	Process(pkg string) error
+
+	// SetVersion sets the version for a package. An error is returned if there
+	// was a problem setting the version.
+	SetVersion(pkg string) error
+}
+
+// DefaultVersionHandler is the default handler for setting the version.
+//
+// The default handler leaves the current version and skips setting a version.
+// For a handler that alters the version see the handler included in the repo
+// package as part of the installer.
+type DefaultVersionHandler struct{}
+
+// Process a package to aide in version setting.
+func (d *DefaultVersionHandler) Process(pkg string) error {
+	return nil
+}
+
+// SetVersion here sends a message when a package is found noting that it
+// did not set the version.
+func (d *DefaultVersionHandler) SetVersion(pkg string) error {
+	msg.Warn("Version not set for package %s", pkg)
+	return nil
+}
+
 // Resolver resolves a dependency tree.
 //
 // It operates in two modes:
@@ -79,11 +113,13 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 // Local resolution is for guessing initial dependencies. Vendor resolution is
 // for determining vendored dependencies.
 type Resolver struct {
-	Handler      MissingPackageHandler
-	basedir      string
-	VendorDir    string
-	BuildContext *util.BuildCtxt
-	seen         map[string]bool
+	Handler        MissingPackageHandler
+	VersionHandler VersionHandler
+	basedir        string
+	VendorDir      string
+	BuildContext   *util.BuildCtxt
+	seen           map[string]bool
+	Config         *cfg.Config
 
 	// Items already in the queue.
 	alreadyQ map[string]bool
@@ -114,13 +150,17 @@ func NewResolver(basedir string) (*Resolver, error) {
 	}
 
 	r := &Resolver{
-		Handler:      &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}},
-		basedir:      basedir,
-		VendorDir:    vdir,
-		BuildContext: buildContext,
-		seen:         map[string]bool{},
-		alreadyQ:     map[string]bool{},
-		findCache:    map[string]*PkgInfo{},
+		Handler:        &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}},
+		VersionHandler: &DefaultVersionHandler{},
+		basedir:        basedir,
+		VendorDir:      vdir,
+		BuildContext:   buildContext,
+		seen:           map[string]bool{},
+		alreadyQ:       map[string]bool{},
+		findCache:      map[string]*PkgInfo{},
+
+		// The config instance here should really be replaced with a real one.
+		Config: &cfg.Config{},
 	}
 
 	// TODO: Make sure the build context is correctly set up. Especially in
@@ -246,6 +286,12 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 	var failedDep string
 	for e := queue.Front(); e != nil; e = e.Next() {
 		dep := e.Value.(string)
+		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		if r.Config.HasIgnore(t) {
+			msg.Info("Ignoring: %s", t)
+			continue
+		}
+		r.VersionHandler.Process(t)
 		//msg.Warn("#### %s ####", dep)
 		//msg.Info("Seen Count: %d", len(r.seen))
 		// Catch the outtermost dependency.
@@ -282,7 +328,28 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 	}
 
 	res := make([]string, 0, queue.Len())
+
+	// In addition to generating a list
 	for e := queue.Front(); e != nil; e = e.Next() {
+		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		root, sp := util.NormalizeName(t)
+
+		// TODO(mattfarina): Need to eventually support devImport
+		existing := r.Config.Imports.Get(root)
+		if existing != nil {
+			if sp != "" && !existing.HasSubpackage(sp) {
+				existing.Subpackages = append(existing.Subpackages, sp)
+			}
+		} else {
+			newDep := &cfg.Dependency{
+				Name: root,
+			}
+			if sp != "" {
+				newDep.Subpackages = []string{sp}
+			}
+
+			r.Config.Imports = append(r.Config.Imports, newDep)
+		}
 		res = append(res, e.Value.(string))
 	}
 
@@ -326,6 +393,11 @@ func (r *Resolver) queueUnseen(pkg string, queue *list.List) error {
 // If it cannot resolve the pkg, it will return an error.
 func (r *Resolver) imports(pkg string) ([]string, error) {
 
+	if r.Config.HasIgnore(pkg) {
+		msg.Debug("Ignoring %s", pkg)
+		return []string{}, nil
+	}
+
 	// If this pkg is marked seen, we don't scan it again.
 	if _, ok := r.seen[pkg]; ok {
 		msg.Debug("Already saw %s", pkg)
@@ -353,6 +425,10 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 	// We are only looking for dependencies in vendor. No root, cgo, etc.
 	buf := []string{}
 	for _, imp := range p.Imports {
+		if r.Config.HasIgnore(imp) {
+			msg.Debug("Ignoring %s", imp)
+			continue
+		}
 		info := r.FindPkg(imp)
 		switch info.Loc {
 		case LocUnknown:
@@ -363,12 +439,14 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 			}
 			if found {
 				buf = append(buf, filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
+				r.VersionHandler.SetVersion(imp)
 				continue
 			}
 			r.seen[info.Path] = true
 		case LocVendor:
 			//msg.Debug("Vendored: %s", imp)
 			buf = append(buf, info.Path)
+			r.VersionHandler.SetVersion(imp)
 		case LocGopath:
 			found, err := r.Handler.OnGopath(imp)
 			if err != nil {
@@ -379,6 +457,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 			// in a less-than-perfect, but functional, situation.
 			if found {
 				buf = append(buf, filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
+				r.VersionHandler.SetVersion(imp)
 				continue
 			}
 			msg.Warn("Package %s is on GOPATH, but not vendored. Ignoring.", imp)
@@ -514,6 +593,13 @@ func pkgExists(path string) bool {
 // isLink returns true if the given FileInfo is a symbolic link.
 func isLink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
+}
+
+// Returns true if this is a directory that could have source code, false otherwise.
+//
+// Directories with _ or . prefixes are skipped, as are testdata and vendor.
+func IsSrcDir(fi os.FileInfo) bool {
+	return srcDir(fi)
 }
 
 func srcDir(fi os.FileInfo) bool {
