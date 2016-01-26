@@ -76,6 +76,9 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 // version.
 type VersionHandler interface {
 
+	// Process provides an opportunity to process the codebase for version setting.
+	Process(pkg string) error
+
 	// SetVersion sets the version for a package. An error is returned if there
 	// was a problem setting the version.
 	SetVersion(pkg string) error
@@ -87,6 +90,11 @@ type VersionHandler interface {
 // For a handler that alters the version see the handler included in the repo
 // package as part of the installer.
 type DefaultVersionHandler struct{}
+
+// Process a package to aide in version setting.
+func (d *DefaultVersionHandler) Process(pkg string) error {
+	return nil
+}
 
 // SetVersion here sends a message when a package is found noting that it
 // did not set the version.
@@ -278,6 +286,8 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 	var failedDep string
 	for e := queue.Front(); e != nil; e = e.Next() {
 		dep := e.Value.(string)
+		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		r.VersionHandler.Process(t)
 		//msg.Warn("#### %s ####", dep)
 		//msg.Info("Seen Count: %d", len(r.seen))
 		// Catch the outtermost dependency.

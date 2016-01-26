@@ -165,25 +165,6 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		Config:      conf,
 	}
 
-	// Prepopulate the import cache with imports from the top level dependencies
-	// we are assuming are present.
-	for _, d := range conf.Imports {
-		v.Imported[d.Name] = true
-		p := filepath.Join(i.VendorPath(), d.Name)
-		f, deps, err := importer.Import(p)
-		if f && err == nil {
-
-			for _, dep := range deps {
-				exists := ic.Get(dep.Name)
-				if exists == nil && (dep.Reference != "" || dep.Repository != "") {
-					ic.Add(dep.Name, dep)
-				}
-			}
-		} else if err != nil {
-			msg.Error("Unable to import from %s. Err: %s", d.Name, err)
-		}
-	}
-
 	// Update imports
 	res, err := dependency.NewResolver(base)
 	if err != nil {
@@ -421,12 +402,8 @@ type VersionHandler struct {
 	Conflicts map[string]bool
 }
 
-// SetVersion sets the version for a package. If that package version is already
-// set it handles the case by:
-// - keeping the already set version
-// - proviting messaging about the version conflict
-// TODO(mattfarina): The way version setting happens can be improved. Currently not optimal.
-func (d *VersionHandler) SetVersion(pkg string) (e error) {
+// Process imports dependencies for a package
+func (d *VersionHandler) Process(pkg string) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
@@ -436,8 +413,6 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	if d.Config.HasIgnore(root) || d.Config.HasIgnore(pkg) {
 		return nil
 	}
-
-	v := d.Config.Imports.Get(root)
 
 	// We have not tried to import, yet.
 	// Should we look in places other than the root of the project?
@@ -459,6 +434,27 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 			e = err
 		}
 	}
+
+	return
+}
+
+// SetVersion sets the version for a package. If that package version is already
+// set it handles the case by:
+// - keeping the already set version
+// - proviting messaging about the version conflict
+// TODO(mattfarina): The way version setting happens can be improved. Currently not optimal.
+func (d *VersionHandler) SetVersion(pkg string) (e error) {
+	root := util.GetRootFromPackage(pkg)
+
+	// Skip any references to the root package.
+	if root == d.RootPackage {
+		return nil
+	}
+	if d.Config.HasIgnore(root) || d.Config.HasIgnore(pkg) {
+		return nil
+	}
+
+	v := d.Config.Imports.Get(root)
 
 	dep := d.Use.Get(root)
 	if dep != nil && v != nil {
