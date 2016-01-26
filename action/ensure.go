@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
@@ -83,15 +84,22 @@ func EnsureVendorDir() {
 //
 // Otherwise it returns the value of GOPATH.
 func EnsureGopath() string {
-	gp := os.Getenv("GOPATH")
-	if gp == "" {
+	gps := gpath.Gopaths()
+	if len(gps) == 0 {
 		msg.Die("$GOPATH is not set.")
 	}
-	_, err := os.Stat(path.Join(gp, "src"))
-	if err != nil {
-		msg.Error("Could not find %s/src.\n", gp)
-		msg.Info("As of Glide 0.5/Go 1.5, this is required.\n")
-		msg.Die("Wihtout src, cannot continue. %s", err)
+
+	for _, gp := range gps {
+		_, err := os.Stat(path.Join(gp, "src"))
+		if err != nil {
+			msg.Warn("%s", err)
+			continue
+		}
+		return gp
 	}
-	return gp
+
+	msg.Error("Could not find any of %s/src.\n", strings.Join(gps, "/src, "))
+	msg.Info("As of Glide 0.5/Go 1.5, this is required.\n")
+	msg.Die("Wihtout src, cannot continue.")
+	return ""
 }
