@@ -45,7 +45,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool
 		// of the dependencies is that we need to re-negotiate versions. For example,
 		// if an existing dependency has the constraint >1.0 and this new package
 		// adds the constraint <2.0, then this may re-resolve the existing dependency
-		// to be betwee 1.0 and 2.0. But changing that dependency may then result
+		// to be between 1.0 and 2.0. But changing that dependency may then result
 		// in that dependency's dependencies changing... so we sorta do the whole
 		// thing to be safe.
 		err = installer.Update(confcopy)
