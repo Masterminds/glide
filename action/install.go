@@ -22,8 +22,8 @@ func Install(installer *repo.Installer) {
 	// Lockfile exists
 	if !gpath.HasLock(base) {
 		msg.Info("Lock file (glide.lock) does not exist. Performing update.")
-		msg.Die("No update performed. FIXME.")
-		// Update(installer)
+		Update(installer, false)
+		return
 	}
 	// Load lockfile
 	lock, err := LoadLockfile(base, conf)
