@@ -113,13 +113,14 @@ func (d *DefaultVersionHandler) SetVersion(pkg string) error {
 // Local resolution is for guessing initial dependencies. Vendor resolution is
 // for determining vendored dependencies.
 type Resolver struct {
-	Handler        MissingPackageHandler
-	VersionHandler VersionHandler
-	basedir        string
-	VendorDir      string
-	BuildContext   *util.BuildCtxt
-	seen           map[string]bool
-	Config         *cfg.Config
+	Handler             MissingPackageHandler
+	VersionHandler      VersionHandler
+	basedir             string
+	VendorDir           string
+	BuildContext        *util.BuildCtxt
+	seen                map[string]bool
+	Config              *cfg.Config
+	SpecificSubpackages bool
 
 	// Items already in the queue.
 	alreadyQ map[string]bool
@@ -290,21 +291,23 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 		dep := e.Value.(string)
 		importPath := r.vendorToImportPath(dep)
 
-		// If subpackages are specified, process only them, not the root
-		existing := r.Config.Imports.Get(importPath)
-		if existing != nil && len(existing.Subpackages) > 0 {
-			// Build the list of subpackages
-			sublist := list.New()
-			for _, subPkg := range existing.Subpackages {
-				sublist.PushBack(filepath.Join(dep, filepath.FromSlash(subPkg)))
+		if r.SpecificSubpackages {
+			// If subpackages are specified, process only them, not the root
+			existing := r.Config.Imports.Get(importPath)
+			if existing != nil && len(existing.Subpackages) > 0 {
+				// Build the list of subpackages
+				sublist := list.New()
+				for _, subPkg := range existing.Subpackages {
+					sublist.PushBack(filepath.Join(dep, filepath.FromSlash(subPkg)))
+				}
+				// Process it
+				subRes, err := r.resolveList(sublist)
+				if err != nil {
+					return []string{}, err
+				}
+				res = append(res, subRes...)
+				continue
 			}
-			// Process it
-			subRes, err := r.resolveList(sublist)
-			if err != nil {
-				return []string{}, err
-			}
-			res = append(res, subRes...)
-			continue
 		}
 
 		if r.Config.HasIgnore(importPath) {
@@ -331,11 +334,13 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 				return filepath.SkipDir
 			}
 
-			// Skip subdirs of specified subpackages
-			root, subPkg := util.NormalizeName(r.vendorToImportPath(path))
-			existing := r.Config.Imports.Get(root)
-			if existing != nil && existing.HasSubpackage(subPkg) {
-				return filepath.SkipDir
+			if r.SpecificSubpackages {
+				// Skip subdirs of specified subpackages
+				root, subPkg := util.NormalizeName(r.vendorToImportPath(path))
+				existing := r.Config.Imports.Get(root)
+				if existing != nil && existing.HasSubpackage(subPkg) {
+					return filepath.SkipDir
+				}
 			}
 
 			// Anything that comes through here has already been through

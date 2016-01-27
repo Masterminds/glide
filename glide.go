@@ -186,6 +186,10 @@ func commands() []cli.Command {
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "specific-subpackages",
+					Usage: "When subpackages are specified, scan only for their dependencies instead of those of the full project.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
@@ -194,11 +198,12 @@ func commands() []cli.Command {
 				}
 
 				inst := &repo.Installer{
-					Force:          c.Bool("force"),
-					UseCache:       c.Bool("cache"),
-					UseGopath:      c.Bool("use-gopath"),
-					UseCacheGopath: c.Bool("cache-gopath"),
-					UpdateVendored: c.Bool("update-vendored"),
+					Force:               c.Bool("force"),
+					UseCache:            c.Bool("cache"),
+					UseGopath:           c.Bool("use-gopath"),
+					UseCacheGopath:      c.Bool("cache-gopath"),
+					UpdateVendored:      c.Bool("update-vendored"),
+					SpecificSubpackages: c.Bool("specific-subpackages"),
 				}
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
@@ -444,16 +449,21 @@ Example:
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "specific-subpackages",
+					Usage: "When subpackages are specified, scan only for their dependencies instead of those of the full project.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				installer := &repo.Installer{
-					DeleteUnused:   c.Bool("deleteOptIn"),
-					UpdateVendored: c.Bool("update-vendored"),
-					Force:          c.Bool("force"),
-					UseCache:       c.Bool("cache"),
-					UseCacheGopath: c.Bool("cache-gopath"),
-					UseGopath:      c.Bool("use-gopath"),
-					Home:           gpath.Home(),
+					DeleteUnused:        c.Bool("deleteOptIn"),
+					UpdateVendored:      c.Bool("update-vendored"),
+					Force:               c.Bool("force"),
+					UseCache:            c.Bool("cache"),
+					UseCacheGopath:      c.Bool("cache-gopath"),
+					UseGopath:           c.Bool("use-gopath"),
+					Home:                gpath.Home(),
+					SpecificSubpackages: c.Bool("specific-subpackages"),
 				}
 
 				action.Update(installer, c.Bool("no-recursive"))
