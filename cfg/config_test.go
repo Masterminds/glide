@@ -8,6 +8,13 @@ import (
 
 var yml = `
 package: fake/testing
+description: foo bar baz
+homepage: https://example.com
+license: MIT
+owners:
+- name: foo
+  email: bar@example.com
+  homepage: https://example.com
 import:
   - package: github.com/kylelemons/go-gypsy
     subpackages:
@@ -43,6 +50,18 @@ func TestManualConfigFromYaml(t *testing.T) {
 
 	if cfg.Name != "fake/testing" {
 		t.Errorf("Inaccurate name found %s", cfg.Name)
+	}
+
+	if cfg.Description != "foo bar baz" {
+		t.Errorf("Inaccurate description found %s", cfg.Description)
+	}
+
+	if cfg.Home != "https://example.com" {
+		t.Errorf("Inaccurate homepage found %s", cfg.Home)
+	}
+
+	if cfg.License != "MIT" {
+		t.Errorf("Inaccurate license found %s", cfg.License)
 	}
 
 	found := false
@@ -82,6 +101,9 @@ func TestClone(t *testing.T) {
 	if cfg2.Name != "fake/testing" {
 		t.Error("Config cloning failed")
 	}
+	if cfg2.License != "MIT" {
+		t.Error("Config cloning failed to copy License")
+	}
 	cfg.Name = "foo"
 
 	if cfg.Name == cfg2.Name {
@@ -112,5 +134,45 @@ func TestHasDependency(t *testing.T) {
 
 	if c.HasDependency("foo/bar/bar") != false {
 		t.Error("HasDependency picking up dependency it shouldn't")
+	}
+}
+
+func TestOwners(t *testing.T) {
+	o := new(Owner)
+	o.Name = "foo"
+	o.Email = "foo@example.com"
+	o.Home = "https://foo.example.com"
+
+	o2 := o.Clone()
+	if o2.Name != o.Name || o2.Email != o.Email || o2.Home != o.Home {
+		t.Error("Unable to clone Owner")
+	}
+
+	o.Name = "Bar"
+	if o.Name == o2.Name {
+		t.Error("Owner clone is a pointer instead of a clone")
+	}
+
+	s := make(Owners, 0, 1)
+	s = append(s, o)
+	s2 := s.Clone()
+	o3 := s2[0]
+
+	o3.Name = "Qux"
+
+	if o3.Name == o.Name {
+		t.Error("Owners cloning isn't deep")
+	}
+
+	cfg := &Config{}
+	err := yaml.Unmarshal([]byte(yml), &cfg)
+	if err != nil {
+		t.Errorf("Unable to Unmarshal config yaml")
+	}
+
+	if cfg.Owners[0].Name != "foo" ||
+		cfg.Owners[0].Email != "bar@example.com" ||
+		cfg.Owners[0].Home != "https://example.com" {
+		t.Error("Unable to parse owners from yaml")
 	}
 }

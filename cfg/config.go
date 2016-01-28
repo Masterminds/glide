@@ -14,18 +14,52 @@ import (
 
 // Config is the top-level configuration object.
 type Config struct {
-	Name       string       `yaml:"package"`
-	Ignore     []string     `yaml:"ignore,omitempty"`
-	Imports    Dependencies `yaml:"import"`
+
+	// Name is the name of the package or application.
+	Name string `yaml:"package"`
+
+	// Description is a short description for a package, application, or library.
+	// This description is similar but different to a Go package description as
+	// it is for marketing and presentation purposes rather than technical ones.
+	Description string `json:"description,omitempty"`
+
+	// Home is a url to a website for the package.
+	Home string `yaml:"homepage,omitempty"`
+
+	// License provides either a SPDX license or a path to a file containing
+	// the license. For more information on SPDX see http://spdx.org/licenses/.
+	// When more than one license an SPDX expression can be used.
+	License string `yaml:"license,omitempty"`
+
+	// Owners is an array of owners for a project. See the Owner type for
+	// more detail. These can be one or more people, companies, or other
+	// organizations.
+	Owners Owners `yaml:"owners,omitempty"`
+
+	// Ignore contains a list of packages to ignore fetching. This is useful
+	// when walking the package tree (including packages of packages) to list
+	// those to skip.
+	Ignore []string `yaml:"ignore,omitempty"`
+
+	// Imports contains a list of all non-development imports for a project. For
+	// more detail on how these are captured see the Dependency type.
+	Imports Dependencies `yaml:"import"`
+
+	// DevImports contains the test or other development imports for a project.
+	// See the Dependency type for more details on how this is recorded.
 	DevImports Dependencies `yaml:"devimport,omitempty"`
 }
 
 // A transitive representation of a dependency for importing and exporting to yaml.
 type cf struct {
-	Name       string       `yaml:"package"`
-	Ignore     []string     `yaml:"ignore,omitempty"`
-	Imports    Dependencies `yaml:"import"`
-	DevImports Dependencies `yaml:"devimport,omitempty"`
+	Name        string       `yaml:"package"`
+	Description string       `yaml:"description,omitempty"`
+	Home        string       `yaml:"homepage,omitempty"`
+	License     string       `yaml:"license,omitempty"`
+	Owners      Owners       `yaml:"owners,omitempty"`
+	Ignore      []string     `yaml:"ignore,omitempty"`
+	Imports     Dependencies `yaml:"import"`
+	DevImports  Dependencies `yaml:"devimport,omitempty"`
 }
 
 // ConfigFromYaml returns an instance of Config from YAML
@@ -51,6 +85,10 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	c.Name = newConfig.Name
+	c.Description = newConfig.Description
+	c.Home = newConfig.Home
+	c.License = newConfig.License
+	c.Owners = newConfig.Owners
 	c.Ignore = newConfig.Ignore
 	c.Imports = newConfig.Imports
 	c.DevImports = newConfig.DevImports
@@ -64,8 +102,12 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name:   c.Name,
-		Ignore: c.Ignore,
+		Name:        c.Name,
+		Description: c.Description,
+		Home:        c.Home,
+		License:     c.License,
+		Owners:      c.Owners,
+		Ignore:      c.Ignore,
 	}
 	i, err := c.Imports.Clone().DeDupe()
 	if err != nil {
@@ -116,6 +158,10 @@ func (c *Config) HasIgnore(name string) bool {
 func (c *Config) Clone() *Config {
 	n := &Config{}
 	n.Name = c.Name
+	n.Description = c.Description
+	n.Home = c.Home
+	n.License = c.License
+	n.Owners = c.Owners.Clone()
 	n.Ignore = c.Ignore
 	n.Imports = c.Imports.Clone()
 	n.DevImports = c.DevImports.Clone()
@@ -406,6 +452,42 @@ func (d *Dependency) HasSubpackage(sub string) bool {
 	}
 
 	return false
+}
+
+// Owners is a list of owners for a project.
+type Owners []*Owner
+
+// Clone performs a deep clone of Owners
+func (o Owners) Clone() Owners {
+	n := make(Owners, 0, 1)
+	for _, v := range o {
+		n = append(n, v.Clone())
+	}
+	return n
+}
+
+// Owner describes an owner of a package. This can be a person, company, or
+// other organization. This is useful if someone needs to contact the
+// owner of a package to address things like a security issue.
+type Owner struct {
+
+	// Name describes the name of an organization.
+	Name string `yaml:"name,omitempty"`
+
+	// Email is an email address to reach the owner at.
+	Email string `yaml:"email,omitempty"`
+
+	// Home is a url to a website for the owner.
+	Home string `yaml:"homepage,omitempty"`
+}
+
+// Clone creates a clone of a Dependency
+func (o *Owner) Clone() *Owner {
+	return &Owner{
+		Name:  o.Name,
+		Email: o.Email,
+		Home:  o.Home,
+	}
 }
 
 func stringArrayDeDupe(s []string, items ...string) []string {
