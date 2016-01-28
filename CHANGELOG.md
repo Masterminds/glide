@@ -1,3 +1,12 @@
+# Release 0.9.0 (xxxx-xx-xx)
+
+- Refactored Glide
+  - Many features broken out into packages. All but `action/` can be
+    used as libraries.
+  - Support for GPM Godeps-Git has been removed
+  - Cookoo is not used anymore
+  - The `action/` package replaces `cmd/`
+
 # Release 0.8.3 (2015-12-30)
 
 - Issue #198: Instead of stopping `glide install` for a hash failures providing
@@ -19,10 +28,10 @@
 - Fixed #169: cookoo git url has auth info. Makes glide unbuildable for
   environments not setup for GitHub.
 - Fixed #180: the hash in the glide.lock file was not being properly calculated.
-- Fixed #174: glide get was causing an error when the flad --updated-vendored
+- Fixed #174: glide get was causing an error when the flag --updated-vendored
   was being used.
 - Fixed #175: glide get when the GOPATH isn't setup properly could end up in
-  an infinate loop.
+  an infinite loop.
 
 # Release 0.8.1 (2015-12-15)
 

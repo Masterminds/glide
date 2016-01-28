@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -228,9 +229,33 @@ type BuildCtxt struct {
 	build.Context
 }
 
+// PackageName attempts to determine the name of the base package.
+//
+// If resolution fails, this will return "main".
+func (b *BuildCtxt) PackageName(base string) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "main"
+	}
+
+	pkg, err := b.Import(base, cwd, 0)
+	if err != nil {
+		// There may not be any top level Go source files but the project may
+		// still be within the GOPATH.
+		if strings.HasPrefix(base, b.GOPATH) {
+			p := strings.TrimPrefix(base, b.GOPATH)
+			return strings.Trim(p, string(os.PathSeparator))
+		}
+	}
+
+	return pkg.ImportPath
+}
+
 // GetBuildContext returns a build context from go/build. When the $GOROOT
 // variable is not set in the users environment it sets the context's root
 // path to the path returned by 'go env GOROOT'.
+//
+// TODO: This should be moved to the `dependency` package.
 func GetBuildContext() (*BuildCtxt, error) {
 	buildContext := &BuildCtxt{build.Default}
 	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
@@ -242,4 +267,34 @@ func GetBuildContext() (*BuildCtxt, error) {
 		buildContext.GOROOT = goRoot
 	}
 	return buildContext, nil
+}
+
+// NormalizeName takes a package name and normalizes it to the top level package.
+//
+// For example, golang.org/x/crypto/ssh becomes golang.org/x/crypto. 'ssh' is
+// returned as extra data.
+//
+// FIXME: Is this deprecated?
+func NormalizeName(name string) (string, string) {
+	// Fastpath check if a name in the GOROOT. There is an issue when a pkg
+	// is in the GOROOT and GetRootFromPackage tries to look it up because it
+	// expects remote names.
+	b, err := GetBuildContext()
+	if err == nil {
+		p := filepath.Join(b.GOROOT, "src", name)
+		if _, err := os.Stat(p); err == nil {
+			return name, ""
+		}
+	}
+
+	root := GetRootFromPackage(name)
+	extra := strings.TrimPrefix(name, root)
+	if len(extra) > 0 && extra != "/" {
+		extra = strings.TrimPrefix(extra, "/")
+	} else {
+		// If extra is / (which is what it would be here) we want to return ""
+		extra = ""
+	}
+
+	return root, extra
 }

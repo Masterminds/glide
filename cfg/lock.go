@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"io/ioutil"
 	"sort"
 	"strings"
 	"time"
@@ -30,6 +31,18 @@ func (lf *Lockfile) Marshal() ([]byte, error) {
 		return []byte{}, err
 	}
 	return yml, nil
+}
+
+// WriteFile writes a Glide lock file.
+//
+// This is a convenience function that marshals the YAML and then writes it to
+// the given file. If the file exists, it will be clobbered.
+func (lf *Lockfile) WriteFile(lockpath string) error {
+	o, err := lf.Marshal()
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(lockpath, o, 0666)
 }
 
 type Locks []*Lock

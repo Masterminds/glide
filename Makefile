@@ -9,7 +9,7 @@ install: build
 	install -m 755 ./glide ${DESTDIR}/usr/local/bin/glide
 
 test:
-	go test . ./cmd ./gb
+	go test . ./gb ./path ./action ./tree ./util ./godep ./gpm ./cfg ./dependency ./importer ./msg ./repo
 
 clean:
 	rm -f ./glide.test
@@ -18,7 +18,6 @@ clean:
 
 bootstrap:
 	mkdir ./vendor
-	git clone https://github.com/Masterminds/cookoo vendor/github.com/Masterminds/cookoo
 	git clone https://github.com/Masterminds/vcs vendor/github.com/Masterminds/vcs
 	git clone https://gopkg.in/yaml.v2 vendor/gopkg.in/yaml.v2
 	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli

@@ -1,14 +1,10 @@
-hash: foo
-updated: 2015-12-21T09:29:33.170992254-05:00
+hash: 4cf59f8e61ae7034d3296c0c7528aaf8784800008814fb02410cbb3ea9b34175
+updated: 2016-01-21T11:19:37.465408253-05:00
 imports:
 - name: github.com/codegangsta/cli
-  version: b5232bb2934f606f9f27a1305f1eea224e8e8b88
-- name: github.com/Masterminds/cookoo
-  version: 78aa11ce75e257c51be7ea945edb84cf19c4a6de
-  subpackages:
-  - .
+  version: c31a7975863e7810c92e2e288a9ab074f9a88f29
 - name: github.com/Masterminds/semver
-  version: 6333b7bd29aad1d79898ff568fd90a8aa533ae82
+  version: 513f3dcb3ecfb1248831fb5cb06a23a3cd5935dc
 - name: github.com/Masterminds/vcs
   version: eaee272c8fa4514e1572e182faecff5be20e792a
 - name: gopkg.in/yaml.v2
