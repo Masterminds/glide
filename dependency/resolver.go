@@ -299,7 +299,10 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		// Here, we want to import the package and see what imports it has.
 		pkg, err := r.BuildContext.ImportDir(dep, 0)
 		if err != nil {
-			msg.Error("Failed to import %s: %s", dep, err)
+			msg.Error("Not Found %s (1)", dep)
+
+			// FIXME: respond to NotFound
+			r.Handler.NotFound(t)
 			continue
 			//return nil, err
 		}
@@ -309,10 +312,16 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			switch pi.Loc {
 			case LocVendor:
 				msg.Info("Already vendored: %s", imp)
+				queue.PushBack(imp)
 			case LocUnknown:
-				msg.Info("Not found: %s", imp)
+				msg.Info("Not found: %s (2)", imp)
+				// FIXME: respond to NotFound
+				r.Handler.NotFound(imp)
 			case LocGopath:
 				msg.Info("Found on GOPATH, not vendor: %s", imp)
+				// FIXME: respond to NotFound
+				r.Handler.OnGopath(imp)
+				queue.PushBack(imp)
 			}
 		}
 

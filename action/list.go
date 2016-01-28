@@ -32,13 +32,14 @@ func List(basedir string, deep bool) {
 		msg.Die("Error listing dependencies: %s", err)
 	}
 
+	msg.Info("Sorting...")
 	sort.Strings(sortable)
 
 	msg.Puts("INSTALLED packages:")
 	for _, k := range sortable {
 		v, err := filepath.Rel(basedir, k)
 		if err != nil {
-			msg.Warn("Failed to Rel path: %s", err)
+			//msg.Warn("Failed to Rel path: %s", err)
 			v = k
 		}
 		msg.Puts("\t%s", v)
