@@ -288,6 +288,8 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 	for e := queue.Front(); e != nil; e = e.Next() {
 		dep := e.Value.(string)
 
+		r.alreadyQ[dep] = true
+
 		// Skip ignored packages
 		t := strings.TrimPrefix(dep, r.VendorDir+string(os.PathSeparator))
 		if r.Config.HasIgnore(t) {
@@ -312,7 +314,10 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			switch pi.Loc {
 			case LocVendor:
 				msg.Info("Already vendored: %s", imp)
-				queue.PushBack(imp)
+				if _, ok := r.alreadyQ[imp]; !ok {
+					r.alreadyQ[imp] = true
+					queue.PushBack(imp)
+				}
 			case LocUnknown:
 				msg.Info("Not found: %s (2)", imp)
 				// FIXME: respond to NotFound
@@ -321,7 +326,10 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				msg.Info("Found on GOPATH, not vendor: %s", imp)
 				// FIXME: respond to NotFound
 				r.Handler.OnGopath(imp)
-				queue.PushBack(imp)
+				if _, ok := r.alreadyQ[imp]; !ok {
+					r.alreadyQ[imp] = true
+					queue.PushBack(imp)
+				}
 			}
 		}
 
