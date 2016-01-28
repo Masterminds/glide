@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"container/list"
+	//"go/build"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,7 +186,8 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	//msg.Debug("Scanning %s", target)
 	l := list.New()
 	l.PushBack(target)
-	return r.resolveList(l)
+	//return r.resolveList(l)
+	return r.resolveImports(l)
 }
 
 // ResolveLocal resolves dependencies for the current project.
@@ -251,7 +253,8 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 	}
 
 	if deep {
-		return r.resolveList(l)
+		//return r.resolveList(l)
+		return r.resolveImports(l)
 	}
 
 	// If we're not doing a deep scan, we just convert the list into an
@@ -280,13 +283,78 @@ func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 	return r.resolveList(queue)
 }
 
+// resolveImports takes a list of existing packages and resolves their imports.
+func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
+	for e := queue.Front(); e != nil; e = e.Next() {
+		dep := e.Value.(string)
+
+		// Skip ignored packages
+		t := strings.TrimPrefix(dep, r.VendorDir+string(os.PathSeparator))
+		if r.Config.HasIgnore(t) {
+			msg.Info("Ignoring: %s", t)
+			continue
+		}
+		r.VersionHandler.Process(t)
+
+		// Here, we want to import the package and see what imports it has.
+		pkg, err := r.BuildContext.ImportDir(dep, 0)
+		if err != nil {
+			msg.Error("Failed to import %s: %s", dep, err)
+			continue
+			//return nil, err
+		}
+
+		for _, imp := range pkg.Imports {
+			pi := r.FindPkg(imp)
+			switch pi.Loc {
+			case LocVendor:
+				msg.Info("Already vendored: %s", imp)
+			case LocUnknown:
+				msg.Info("Not found: %s", imp)
+			case LocGopath:
+				msg.Info("Found on GOPATH, not vendor: %s", imp)
+			}
+		}
+
+	}
+
+	// FIXME: From here to the end is a straight copy of the resolveList() func.
+	res := make([]string, 0, queue.Len())
+
+	// In addition to generating a list
+	for e := queue.Front(); e != nil; e = e.Next() {
+		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		root, sp := util.NormalizeName(t)
+
+		// TODO(mattfarina): Need to eventually support devImport
+		existing := r.Config.Imports.Get(root)
+		if existing != nil {
+			if sp != "" && !existing.HasSubpackage(sp) {
+				existing.Subpackages = append(existing.Subpackages, sp)
+			}
+		} else {
+			newDep := &cfg.Dependency{
+				Name: root,
+			}
+			if sp != "" {
+				newDep.Subpackages = []string{sp}
+			}
+
+			r.Config.Imports = append(r.Config.Imports, newDep)
+		}
+		res = append(res, e.Value.(string))
+	}
+
+	return res, nil
+}
+
 // resolveList takes a list and resolves it.
 func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 
 	var failedDep string
 	for e := queue.Front(); e != nil; e = e.Next() {
 		dep := e.Value.(string)
-		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		t := strings.TrimPrefix(dep, r.VendorDir+string(os.PathSeparator))
 		if r.Config.HasIgnore(t) {
 			msg.Info("Ignoring: %s", t)
 			continue
