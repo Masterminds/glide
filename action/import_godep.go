@@ -5,7 +5,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 )
 
-// ImportGodep imports a GPM file.
+// ImportGodep imports a Godep file.
 func ImportGodep(dest string) {
 	base := "."
 	config := EnsureConfig()
