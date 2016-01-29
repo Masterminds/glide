@@ -283,48 +283,68 @@ func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 	return r.resolveList(queue)
 }
 
+// stripv strips the vendor/ prefix from vendored packages.
+func (r *Resolver) stripv(str string) string {
+	return strings.TrimPrefix(str, r.VendorDir+string(os.PathSeparator))
+}
+
 // resolveImports takes a list of existing packages and resolves their imports.
 func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 	for e := queue.Front(); e != nil; e = e.Next() {
-		dep := e.Value.(string)
+		vdep := e.Value.(string)
+		dep := r.stripv(vdep)
 
 		r.alreadyQ[dep] = true
 
 		// Skip ignored packages
-		t := strings.TrimPrefix(dep, r.VendorDir+string(os.PathSeparator))
-		if r.Config.HasIgnore(t) {
-			msg.Info("Ignoring: %s", t)
+		if r.Config.HasIgnore(dep) {
+			msg.Info("Ignoring: %s", dep)
 			continue
 		}
-		r.VersionHandler.Process(t)
+		r.VersionHandler.Process(dep)
 
 		// Here, we want to import the package and see what imports it has.
-		pkg, err := r.BuildContext.ImportDir(dep, 0)
+		msg.Info("Trying to open %s", vdep)
+		pkg, err := r.BuildContext.ImportDir(vdep, 0)
 		if err != nil {
-			msg.Error("Not Found %s (1)", dep)
-
-			// FIXME: respond to NotFound
-			r.Handler.NotFound(t)
+			msg.Warn("ImportDir error on %s: %s", vdep, err)
+			if ok, err := r.Handler.NotFound(dep); ok {
+				r.alreadyQ[dep] = true
+				queue.PushBack(dep)
+			} else if err != nil {
+				msg.Warn("Error looking for %s: %s", dep, err)
+			} else {
+				msg.Info("Not found in vendor/: %s (1)", dep)
+			}
 			continue
-			//return nil, err
 		}
 
 		for _, imp := range pkg.Imports {
 			pi := r.FindPkg(imp)
+			if msg.Default.IsDebugging && pi.Loc != LocCgo && pi.Loc != LocGoroot {
+				msg.Debug("Package %s imports %s", dep, imp)
+			}
 			switch pi.Loc {
 			case LocVendor:
-				msg.Info("Already vendored: %s", imp)
+				msg.Info("In vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					r.alreadyQ[imp] = true
 					queue.PushBack(imp)
 				}
 			case LocUnknown:
-				msg.Info("Not found: %s (2)", imp)
-				// FIXME: respond to NotFound
-				r.Handler.NotFound(imp)
+				msg.Debug("Missing %s. Trying to resolve.", imp)
+				if ok, err := r.Handler.NotFound(imp); ok {
+					r.alreadyQ[imp] = true
+					queue.PushBack(imp)
+				} else if err != nil {
+					msg.Warn("Error looking for %s: %s", imp, err)
+				} else {
+					msg.Info("Not found: %s (2)", imp)
+				}
 			case LocGopath:
 				msg.Info("Found on GOPATH, not vendor: %s", imp)
-				// FIXME: respond to NotFound
+				// FIXME: This is not right. We need to get the result of
+				// OnGopath and decide what to do.
 				r.Handler.OnGopath(imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					r.alreadyQ[imp] = true
@@ -340,7 +360,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 	// In addition to generating a list
 	for e := queue.Front(); e != nil; e = e.Next() {
-		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		t := r.stripv(e.Value.(string))
 		root, sp := util.NormalizeName(t)
 
 		// TODO(mattfarina): Need to eventually support devImport
@@ -359,7 +379,8 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 			r.Config.Imports = append(r.Config.Imports, newDep)
 		}
-		res = append(res, e.Value.(string))
+		//res = append(res, e.Value.(string))
+		res = append(res, t)
 	}
 
 	return res, nil
