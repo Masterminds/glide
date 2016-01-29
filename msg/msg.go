@@ -33,6 +33,9 @@ type Messanger struct {
 
 	// The default exit code to use when dyping
 	ecode int
+
+	// If an error was been sent.
+	hasErrored bool
 }
 
 // NewMessanger creates a default Messanger to display output.
@@ -96,6 +99,7 @@ func Warn(msg string, args ...interface{}) {
 func (m *Messanger) Error(msg string, args ...interface{}) {
 	prefix := m.Color(Red, "[ERROR] ")
 	m.Msg(prefix+msg, args...)
+	m.hasErrored = true
 }
 
 // Error logs and error using the Default Messanger
@@ -211,4 +215,26 @@ func (m *Messanger) Print(msg string) {
 // It prints to Stdout.
 func Print(msg string) {
 	Default.Print(msg)
+}
+
+// HasErrored returns if Error has been called.
+//
+// This is useful if you want to known if Error was called to exit with a
+// non-zero exit code.
+func (m *Messanger) HasErrored() bool {
+	return m.hasErrored
+}
+
+// HasErrored returns if Error has been called on the Default Messanger.
+//
+// This is useful if you want to known if Error was called to exit with a
+// non-zero exit code.
+func HasErrored() bool {
+	return Default.HasErrored()
+}
+
+// Color returns a string in a certain color if colors are enabled and
+// available on that platform.
+func Color(code, msg string) string {
+	return Default.Color(code, msg)
 }

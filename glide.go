@@ -40,6 +40,7 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/glide/action"
+	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
 
@@ -111,7 +112,18 @@ func main() {
 	app.Before = startup
 	app.Commands = commands()
 
-	app.Run(os.Args)
+	// Detect errors from the Before and After calls and exit on them.
+	if err := app.Run(os.Args); err != nil {
+		msg.Error(err.Error())
+		os.Exit(1)
+	}
+
+	// If there was a Error message exit non-zero.
+	if msg.HasErrored() {
+		m := msg.Color(msg.Red, "An Error has occured")
+		msg.Msg(m)
+		os.Exit(2)
+	}
 }
 
 func commands() []cli.Command {
