@@ -1,0 +1,4 @@
+site_name: Glide Documentation
+pages:
+ - Home: index.md
+theme: readthedocs
