@@ -280,7 +280,8 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 // an error is returned.
 func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 	queue := sliceToQueue(deps, r.VendorDir)
-	return r.resolveList(queue)
+	//return r.resolveList(queue)
+	return r.resolveImports(queue)
 }
 
 // stripv strips the vendor/ prefix from vendored packages.
@@ -288,7 +289,23 @@ func (r *Resolver) stripv(str string) string {
 	return strings.TrimPrefix(str, r.VendorDir+string(os.PathSeparator))
 }
 
+// vpath adds an absolute vendor path.
+func (r *Resolver) vpath(str string) string {
+	return filepath.Join(r.basedir, "vendor", str)
+}
+
 // resolveImports takes a list of existing packages and resolves their imports.
+//
+// It returns a list of all of the packages that it can determine are required
+// for the given code to function.
+//
+// The expectation is that each item in the queue is an absolute path to a
+// vendored package. This attempts to read that package, and then find
+// its referenced packages. Those packages are then added to the list
+// to be scanned next.
+//
+// The resolver's handler is used in the cases where a package cannot be
+// located.
 func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 	for e := queue.Front(); e != nil; e = e.Next() {
 		vdep := e.Value.(string)
@@ -303,8 +320,11 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		}
 		r.VersionHandler.Process(dep)
 
+		// FIXME: mattfarina, where do we need to put the VersionHandler.SetVersion
+		// call in this particular pattern?
+
 		// Here, we want to import the package and see what imports it has.
-		msg.Info("Trying to open %s", vdep)
+		msg.Debug("Trying to open %s", vdep)
 		pkg, err := r.BuildContext.ImportDir(vdep, 0)
 		if err != nil {
 			msg.Warn("ImportDir error on %s: %s", vdep, err)
@@ -314,14 +334,18 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			} else if err != nil {
 				msg.Warn("Error looking for %s: %s", dep, err)
 			} else {
+				// TODO (mpb): Should we toss this into a Handler to
+				// see if this is on GOPATH and copy it?
 				msg.Info("Not found in vendor/: %s (1)", dep)
 			}
 			continue
 		}
 
+		// Range over all of the identified imports and see which ones we
+		// can locate.
 		for _, imp := range pkg.Imports {
 			pi := r.FindPkg(imp)
-			if msg.Default.IsDebugging && pi.Loc != LocCgo && pi.Loc != LocGoroot {
+			if pi.Loc != LocCgo && pi.Loc != LocGoroot {
 				msg.Debug("Package %s imports %s", dep, imp)
 			}
 			switch pi.Loc {
@@ -329,13 +353,13 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				msg.Info("In vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					r.alreadyQ[imp] = true
-					queue.PushBack(imp)
+					queue.PushBack(r.vpath(imp))
 				}
 			case LocUnknown:
 				msg.Debug("Missing %s. Trying to resolve.", imp)
 				if ok, err := r.Handler.NotFound(imp); ok {
 					r.alreadyQ[imp] = true
-					queue.PushBack(imp)
+					queue.PushBack(r.vpath(imp))
 				} else if err != nil {
 					msg.Warn("Error looking for %s: %s", imp, err)
 				} else {
