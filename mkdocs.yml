@@ -1,0 +1,5 @@
+site_name: Glide Documentation
+pages:
+- Home: index.md
+- Getting Started: getting-started.md
+theme: readthedocs
