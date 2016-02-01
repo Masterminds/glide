@@ -283,11 +283,11 @@ func NormalizeName(name string) (string, string) {
 	if err == nil {
 		p := filepath.Join(b.GOROOT, "src", name)
 		if _, err := os.Stat(p); err == nil {
-			return name, ""
+			return filepath.ToSlash(name), ""
 		}
 	}
 
-	root := GetRootFromPackage(name)
+	root := GetRootFromPackage(filepath.ToSlash(name))
 	extra := strings.TrimPrefix(name, root)
 	if len(extra) > 0 && extra != "/" {
 		extra = strings.TrimPrefix(extra, "/")
