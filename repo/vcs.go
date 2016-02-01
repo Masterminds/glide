@@ -268,6 +268,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 				}
 
 				// Having found a repo we copy it to vendor and update it.
+				msg.Info("Copying package %s from the GOPATH.", dep.Name)
 				msg.Debug("Found %s in GOPATH at %s. Copying to %s", dep.Name, d, dest)
 				err = gpath.CopyDir(d, dest)
 				if err != nil {
