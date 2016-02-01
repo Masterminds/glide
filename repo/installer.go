@@ -316,6 +316,7 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	// This package may have been placed on the list to look for when it wasn't
 	// downloaded but it has since been downloaded before coming to this entry.
 	if _, err := os.Stat(dest); err == nil {
+		msg.Debug("Found %s", dest)
 		return true, nil
 	}
 

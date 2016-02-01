@@ -328,9 +328,18 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		pkg, err := r.BuildContext.ImportDir(vdep, 0)
 		if err != nil {
 			msg.Warn("ImportDir error on %s: %s", vdep, err)
+			if strings.HasPrefix(err.Error(), "no buildable Go source") {
+				msg.Info("No subpackages declared. Skipping %s.", dep)
+				continue
+			}
 			if ok, err := r.Handler.NotFound(dep); ok {
+				//if _, ok := r.alreadyQ[dep]; ok {
+				//// This was already processed, possibly by another
+				//// concurrent iteration.
+				//continue
+				//}
 				r.alreadyQ[dep] = true
-				queue.PushBack(dep)
+				queue.PushBack(r.vpath(dep))
 			} else if err != nil {
 				msg.Warn("Error looking for %s: %s", dep, err)
 			} else {
@@ -370,10 +379,12 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			case LocGopath:
 				msg.Info("Found on GOPATH, not vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
-					r.Handler.OnGopath(imp)
-					r.alreadyQ[imp] = true
-					queue.PushBack(imp)
-					r.VersionHandler.SetVersion(imp)
+					// Only scan it if it gets moved into vendor/
+					if ok, _ := r.Handler.OnGopath(imp); ok {
+						r.alreadyQ[imp] = true
+						queue.PushBack(r.vpath(imp))
+						r.VersionHandler.SetVersion(imp)
+					}
 				}
 			}
 		}
