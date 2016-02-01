@@ -354,12 +354,14 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				if _, ok := r.alreadyQ[imp]; !ok {
 					r.alreadyQ[imp] = true
 					queue.PushBack(r.vpath(imp))
+					r.VersionHandler.SetVersion(imp)
 				}
 			case LocUnknown:
 				msg.Debug("Missing %s. Trying to resolve.", imp)
 				if ok, err := r.Handler.NotFound(imp); ok {
 					r.alreadyQ[imp] = true
 					queue.PushBack(r.vpath(imp))
+					r.VersionHandler.SetVersion(imp)
 				} else if err != nil {
 					msg.Warn("Error looking for %s: %s", imp, err)
 				} else {
@@ -367,12 +369,11 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				}
 			case LocGopath:
 				msg.Info("Found on GOPATH, not vendor: %s", imp)
-				// FIXME: This is not right. We need to get the result of
-				// OnGopath and decide what to do.
-				r.Handler.OnGopath(imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
+					r.Handler.OnGopath(imp)
 					r.alreadyQ[imp] = true
 					queue.PushBack(imp)
+					r.VersionHandler.SetVersion(imp)
 				}
 			}
 		}
