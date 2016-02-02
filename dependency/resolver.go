@@ -280,6 +280,16 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 // an error is returned.
 func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 	queue := sliceToQueue(deps, r.VendorDir)
+
+	loc, err := r.ResolveLocal(false)
+	if err != nil {
+		return []string{}, err
+	}
+	for _, l := range loc {
+		msg.Debug("Adding local mport %s to queue", l)
+		queue.PushBack(l)
+	}
+
 	//return r.resolveList(queue)
 	return r.resolveImports(queue)
 }
@@ -361,6 +371,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			case LocVendor:
 				msg.Info("In vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
+					msg.Debug("Marking %s to be scanned.", imp)
 					r.alreadyQ[imp] = true
 					queue.PushBack(r.vpath(imp))
 					r.VersionHandler.SetVersion(imp)
