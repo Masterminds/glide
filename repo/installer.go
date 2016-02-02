@@ -454,14 +454,16 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		} else if v.Reference != "" && dep.Reference != "" && v.Reference != dep.Reference {
 			dest := filepath.Join(d.Destination, filepath.FromSlash(v.Name))
 			dep = determineDependency(v, dep, dest)
+		} else {
+			dep = v
 		}
 
+	} else if v != nil {
+		dep = v
 	} else if dep != nil {
 		// We've got an imported dependency to use and don't already have a
 		// record of it. Append it to the Imports.
 		d.Config.Imports = append(d.Config.Imports, dep)
-	} else if v != nil {
-		dep = v
 	} else {
 		// If we've gotten here we don't have any depenency objects.
 		r, sp := util.NormalizeName(pkg)

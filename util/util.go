@@ -287,7 +287,8 @@ func NormalizeName(name string) (string, string) {
 		}
 	}
 
-	root := GetRootFromPackage(filepath.ToSlash(name))
+	name = filepath.ToSlash(name)
+	root := GetRootFromPackage(name)
 	extra := strings.TrimPrefix(name, root)
 	if len(extra) > 0 && extra != "/" {
 		extra = strings.TrimPrefix(extra, "/")

@@ -121,30 +121,22 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 
 	for _, pa := range sortable {
 		n := strings.TrimPrefix(pa, vpath)
-		root := util.GetRootFromPackage(n)
+		root, subpkg := util.NormalizeName(n)
 
 		if !config.HasDependency(root) {
 			msg.Info("Found reference to %s\n", n)
 			d := &cfg.Dependency{
 				Name: root,
 			}
-			subpkg := strings.TrimPrefix(n, root)
-			if len(subpkg) > 0 && subpkg != "/" {
+			if len(subpkg) > 0 {
 				d.Subpackages = []string{subpkg}
 			}
 			config.Imports = append(config.Imports, d)
 		} else {
-			subpkg := strings.TrimPrefix(n, root)
-			if len(subpkg) > 0 && subpkg != "/" {
+			if len(subpkg) > 0 {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
-				f := false
-				for _, v := range d.Subpackages {
-					if v == subpkg {
-						f = true
-					}
-				}
-				if !f {
+				if !d.HasSubpackage(subpkg) {
 					msg.Info("Adding sub-package %s to %s\n", subpkg, root)
 					d.Subpackages = append(d.Subpackages, subpkg)
 				}

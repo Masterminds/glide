@@ -108,7 +108,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {
 			version = parts[1]
 		}
 
-		root := util.GetRootFromPackage(name)
+		root, subpkg := util.NormalizeName(name)
 		if len(root) == 0 {
 			return fmt.Errorf("Package name is required for %q.", name)
 		}
@@ -116,18 +116,9 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {
 		if conf.HasDependency(root) {
 
 			// Check if the subpackage is present.
-			subpkg := strings.TrimPrefix(name, root)
-			subpkg = strings.TrimPrefix(subpkg, "/")
 			if subpkg != "" {
-				found := false
 				dep := conf.Imports.Get(root)
-				for _, s := range dep.Subpackages {
-					if s == subpkg {
-						found = true
-						break
-					}
-				}
-				if found {
+				if dep.HasSubpackage(subpkg) {
 					msg.Warn("Package %q is already in glide.yaml. Skipping", name)
 				} else {
 					dep.Subpackages = append(dep.Subpackages, subpkg)
@@ -158,9 +149,8 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {
 			dep.Repository = "http://" + root
 		}
 
-		subpkg := strings.TrimPrefix(name, root)
-		if len(subpkg) > 0 && subpkg != "/" {
-			dep.Subpackages = []string{strings.TrimPrefix(subpkg, "/")}
+		if len(subpkg) > 0 {
+			dep.Subpackages = []string{subpkg}
 		}
 
 		if dep.Reference != "" {

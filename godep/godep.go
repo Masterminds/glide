@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
@@ -74,9 +73,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 
 	seen := map[string]bool{}
 	for _, d := range godeps.Deps {
-		pkg := util.GetRootFromPackage(d.ImportPath)
-		sub := strings.TrimPrefix(d.ImportPath, pkg)
-		sub = strings.TrimPrefix(sub, "/")
+		pkg, sub := util.NormalizeName(d.ImportPath)
 		if _, ok := seen[pkg]; ok {
 			if len(sub) == 0 {
 				continue
@@ -90,7 +87,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		} else {
 			seen[pkg] = true
 			dep := &cfg.Dependency{Name: pkg, Reference: d.Rev}
-			if len(sub) > 0 {
+			if sub != "" {
 				dep.Subpackages = []string{sub}
 			}
 			buf = append(buf, dep)

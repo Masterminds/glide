@@ -366,11 +366,10 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	d.VcsType = filterVcsType(d.VcsType)
 
 	// Get the root name for the package
-	o := d.Name
-	d.Name = util.GetRootFromPackage(d.Name)
-	subpkg := strings.TrimPrefix(o, d.Name)
-	if len(subpkg) > 0 && subpkg != "/" {
-		d.Subpackages = append(d.Subpackages, strings.TrimPrefix(subpkg, "/"))
+	tn, subpkg := util.NormalizeName(d.Name)
+	d.Name = tn
+	if subpkg != "" {
+		d.Subpackages = append(d.Subpackages, subpkg)
 	}
 
 	return nil
