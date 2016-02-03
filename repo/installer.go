@@ -47,6 +47,10 @@ type Installer struct {
 	// imported pacakgage references this pacakage it does not need to be
 	// downloaded and searched out again.
 	RootPackage string
+
+	// When subpackages are specified, scan only for their dependencies instead
+	// of those of the full project.
+	SpecificSubpackages bool
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -170,6 +174,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
+	res.SpecificSubpackages = i.SpecificSubpackages
 	res.Config = conf
 	res.Handler = m
 	res.VersionHandler = v
