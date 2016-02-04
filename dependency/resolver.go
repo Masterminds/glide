@@ -116,14 +116,20 @@ func (d *DefaultVersionHandler) SetVersion(pkg string) error {
 type Resolver struct {
 	Handler        MissingPackageHandler
 	VersionHandler VersionHandler
-	basedir        string
 	VendorDir      string
 	BuildContext   *util.BuildCtxt
-	seen           map[string]bool
 	Config         *cfg.Config
+
+	// ResolveAllFiles toggles deep scanning.
+	// If this is true, resolve by scanning all files, not by walking the
+	// import tree.
+	ResolveAllFiles bool
 
 	// Items already in the queue.
 	alreadyQ map[string]bool
+
+	basedir string
+	seen    map[string]bool
 
 	// findCache caches hits from Find. This reduces the number of filesystem
 	// touches that have to be done for dependency resolution.
@@ -186,7 +192,11 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	//msg.Debug("Scanning %s", target)
 	l := list.New()
 	l.PushBack(target)
-	//return r.resolveList(l)
+
+	// In this mode, walk the entire tree.
+	if r.ResolveAllFiles {
+		return r.resolveList(l)
+	}
 	return r.resolveImports(l)
 }
 
@@ -253,7 +263,9 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 	}
 
 	if deep {
-		//return r.resolveList(l)
+		if r.ResolveAllFiles {
+			return r.resolveList(l)
+		}
 		return r.resolveImports(l)
 	}
 
@@ -290,7 +302,9 @@ func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 		queue.PushBack(l)
 	}
 
-	//return r.resolveList(queue)
+	if r.ResolveAllFiles {
+		return r.resolveList(queue)
+	}
 	return r.resolveImports(queue)
 }
 
@@ -330,9 +344,6 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		}
 		r.VersionHandler.Process(dep)
 
-		// FIXME: mattfarina, where do we need to put the VersionHandler.SetVersion
-		// call in this particular pattern?
-
 		// Here, we want to import the package and see what imports it has.
 		msg.Debug("Trying to open %s", vdep)
 		pkg, err := r.BuildContext.ImportDir(vdep, 0)
@@ -343,11 +354,6 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				continue
 			}
 			if ok, err := r.Handler.NotFound(dep); ok {
-				//if _, ok := r.alreadyQ[dep]; ok {
-				//// This was already processed, possibly by another
-				//// concurrent iteration.
-				//continue
-				//}
 				r.alreadyQ[dep] = true
 				queue.PushBack(r.vpath(dep))
 			} else if err != nil {
@@ -369,7 +375,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			}
 			switch pi.Loc {
 			case LocVendor:
-				msg.Info("In vendor: %s", imp)
+				msg.Debug("In vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					msg.Debug("Marking %s to be scanned.", imp)
 					r.alreadyQ[imp] = true
@@ -426,7 +432,6 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 			r.Config.Imports = append(r.Config.Imports, newDep)
 		}
-		//res = append(res, e.Value.(string))
 		res = append(res, t)
 	}
 
@@ -434,6 +439,10 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 }
 
 // resolveList takes a list and resolves it.
+//
+// This walks the entire file tree for the given dependencies, not just the
+// parts that are imported directly. Using this will discover dependencies
+// regardless of OS, and arch.
 func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 
 	var failedDep string

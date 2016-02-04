@@ -171,6 +171,10 @@ func commands() []cli.Command {
 					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
 				},
 				cli.BoolFlag{
+					Name:  "all-dependencies",
+					Usage: "This will resolve all dependencies for all packages, not just those directly used.",
+				},
+				cli.BoolFlag{
 					Name:  "update-vendored, u",
 					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
 				},
@@ -194,11 +198,12 @@ func commands() []cli.Command {
 				}
 
 				inst := &repo.Installer{
-					Force:          c.Bool("force"),
-					UseCache:       c.Bool("cache"),
-					UseGopath:      c.Bool("use-gopath"),
-					UseCacheGopath: c.Bool("cache-gopath"),
-					UpdateVendored: c.Bool("update-vendored"),
+					Force:           c.Bool("force"),
+					UseCache:        c.Bool("cache"),
+					UseGopath:       c.Bool("use-gopath"),
+					UseCacheGopath:  c.Bool("cache-gopath"),
+					UpdateVendored:  c.Bool("update-vendored"),
+					ResolveAllFiles: c.Bool("all-dependencies"),
 				}
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
@@ -425,6 +430,10 @@ Example:
 					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
 				},
 				cli.BoolFlag{
+					Name:  "all-dependencies",
+					Usage: "This will resolve all dependencies for all packages, not just those directly used.",
+				},
+				cli.BoolFlag{
 					Name:  "update-vendored, u",
 					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
 				},
@@ -447,13 +456,14 @@ Example:
 			},
 			Action: func(c *cli.Context) {
 				installer := &repo.Installer{
-					DeleteUnused:   c.Bool("deleteOptIn"),
-					UpdateVendored: c.Bool("update-vendored"),
-					Force:          c.Bool("force"),
-					UseCache:       c.Bool("cache"),
-					UseCacheGopath: c.Bool("cache-gopath"),
-					UseGopath:      c.Bool("use-gopath"),
-					Home:           gpath.Home(),
+					DeleteUnused:    c.Bool("deleteOptIn"),
+					UpdateVendored:  c.Bool("update-vendored"),
+					ResolveAllFiles: c.Bool("all-dependencies"),
+					Force:           c.Bool("force"),
+					UseCache:        c.Bool("cache"),
+					UseCacheGopath:  c.Bool("cache-gopath"),
+					UseGopath:       c.Bool("use-gopath"),
+					Home:            gpath.Home(),
 				}
 
 				action.Update(installer, c.Bool("no-recursive"))
@@ -474,7 +484,7 @@ Example:
 		},
 		{
 			Name:  "list",
-			Usage: "List prints all dependencies that Glide could discover.",
+			Usage: "List prints all dependencies that the present code references.",
 			Description: `List scans your code and lists all of the packages that are used.
 
 			It does not use the glide.yaml. Instead, it inspects the code to determine what packages are
