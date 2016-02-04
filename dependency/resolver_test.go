@@ -72,6 +72,10 @@ func TestResolve(t *testing.T) {
 	if len(l) != 1 {
 		t.Errorf("Expected 1 dep, got %d: %s", len(l), l[0])
 	}
+
+	if !strings.HasSuffix("github.com/codegangsta/cli", l[0]) {
+		t.Errorf("Unexpected package name: %s", l[0])
+	}
 }
 
 func TestResolveAll(t *testing.T) {

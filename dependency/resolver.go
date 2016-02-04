@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"container/list"
+	//"go/build"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,14 +116,20 @@ func (d *DefaultVersionHandler) SetVersion(pkg string) error {
 type Resolver struct {
 	Handler        MissingPackageHandler
 	VersionHandler VersionHandler
-	basedir        string
 	VendorDir      string
 	BuildContext   *util.BuildCtxt
-	seen           map[string]bool
 	Config         *cfg.Config
+
+	// ResolveAllFiles toggles deep scanning.
+	// If this is true, resolve by scanning all files, not by walking the
+	// import tree.
+	ResolveAllFiles bool
 
 	// Items already in the queue.
 	alreadyQ map[string]bool
+
+	basedir string
+	seen    map[string]bool
 
 	// findCache caches hits from Find. This reduces the number of filesystem
 	// touches that have to be done for dependency resolution.
@@ -185,7 +192,12 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	//msg.Debug("Scanning %s", target)
 	l := list.New()
 	l.PushBack(target)
-	return r.resolveList(l)
+
+	// In this mode, walk the entire tree.
+	if r.ResolveAllFiles {
+		return r.resolveList(l)
+	}
+	return r.resolveImports(l)
 }
 
 // ResolveLocal resolves dependencies for the current project.
@@ -251,7 +263,10 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 	}
 
 	if deep {
-		return r.resolveList(l)
+		if r.ResolveAllFiles {
+			return r.resolveList(l)
+		}
+		return r.resolveImports(l)
 	}
 
 	// If we're not doing a deep scan, we just convert the list into an
@@ -277,16 +292,164 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 // an error is returned.
 func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 	queue := sliceToQueue(deps, r.VendorDir)
-	return r.resolveList(queue)
+
+	loc, err := r.ResolveLocal(false)
+	if err != nil {
+		return []string{}, err
+	}
+	for _, l := range loc {
+		msg.Debug("Adding local mport %s to queue", l)
+		queue.PushBack(l)
+	}
+
+	if r.ResolveAllFiles {
+		return r.resolveList(queue)
+	}
+	return r.resolveImports(queue)
+}
+
+// stripv strips the vendor/ prefix from vendored packages.
+func (r *Resolver) stripv(str string) string {
+	return strings.TrimPrefix(str, r.VendorDir+string(os.PathSeparator))
+}
+
+// vpath adds an absolute vendor path.
+func (r *Resolver) vpath(str string) string {
+	return filepath.Join(r.basedir, "vendor", str)
+}
+
+// resolveImports takes a list of existing packages and resolves their imports.
+//
+// It returns a list of all of the packages that it can determine are required
+// for the given code to function.
+//
+// The expectation is that each item in the queue is an absolute path to a
+// vendored package. This attempts to read that package, and then find
+// its referenced packages. Those packages are then added to the list
+// to be scanned next.
+//
+// The resolver's handler is used in the cases where a package cannot be
+// located.
+func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
+	for e := queue.Front(); e != nil; e = e.Next() {
+		vdep := e.Value.(string)
+		dep := r.stripv(vdep)
+
+		r.alreadyQ[dep] = true
+
+		// Skip ignored packages
+		if r.Config.HasIgnore(dep) {
+			msg.Info("Ignoring: %s", dep)
+			continue
+		}
+		r.VersionHandler.Process(dep)
+
+		// Here, we want to import the package and see what imports it has.
+		msg.Debug("Trying to open %s", vdep)
+		pkg, err := r.BuildContext.ImportDir(vdep, 0)
+		if err != nil {
+			msg.Warn("ImportDir error on %s: %s", vdep, err)
+			if strings.HasPrefix(err.Error(), "no buildable Go source") {
+				msg.Info("No subpackages declared. Skipping %s.", dep)
+				continue
+			}
+			if ok, err := r.Handler.NotFound(dep); ok {
+				r.alreadyQ[dep] = true
+				queue.PushBack(r.vpath(dep))
+				r.VersionHandler.SetVersion(dep)
+			} else if err != nil {
+				msg.Warn("Error looking for %s: %s", dep, err)
+			} else {
+				// TODO (mpb): Should we toss this into a Handler to
+				// see if this is on GOPATH and copy it?
+				msg.Info("Not found in vendor/: %s (1)", dep)
+			}
+			continue
+		}
+
+		// Range over all of the identified imports and see which ones we
+		// can locate.
+		for _, imp := range pkg.Imports {
+			pi := r.FindPkg(imp)
+			if pi.Loc != LocCgo && pi.Loc != LocGoroot {
+				msg.Debug("Package %s imports %s", dep, imp)
+			}
+			switch pi.Loc {
+			case LocVendor:
+				msg.Debug("In vendor: %s", imp)
+				if _, ok := r.alreadyQ[imp]; !ok {
+					msg.Debug("Marking %s to be scanned.", imp)
+					r.alreadyQ[imp] = true
+					queue.PushBack(r.vpath(imp))
+					r.VersionHandler.SetVersion(imp)
+				}
+			case LocUnknown:
+				msg.Debug("Missing %s. Trying to resolve.", imp)
+				if ok, err := r.Handler.NotFound(imp); ok {
+					r.alreadyQ[imp] = true
+					queue.PushBack(r.vpath(imp))
+					r.VersionHandler.SetVersion(imp)
+				} else if err != nil {
+					msg.Warn("Error looking for %s: %s", imp, err)
+				} else {
+					msg.Info("Not found: %s (2)", imp)
+				}
+			case LocGopath:
+				msg.Info("Found on GOPATH, not vendor: %s", imp)
+				if _, ok := r.alreadyQ[imp]; !ok {
+					// Only scan it if it gets moved into vendor/
+					if ok, _ := r.Handler.OnGopath(imp); ok {
+						r.alreadyQ[imp] = true
+						queue.PushBack(r.vpath(imp))
+						r.VersionHandler.SetVersion(imp)
+					}
+				}
+			}
+		}
+
+	}
+
+	// FIXME: From here to the end is a straight copy of the resolveList() func.
+	res := make([]string, 0, queue.Len())
+
+	// In addition to generating a list
+	for e := queue.Front(); e != nil; e = e.Next() {
+		t := r.stripv(e.Value.(string))
+		root, sp := util.NormalizeName(t)
+
+		// TODO(mattfarina): Need to eventually support devImport
+		existing := r.Config.Imports.Get(root)
+		if existing != nil {
+			if sp != "" && !existing.HasSubpackage(sp) {
+				existing.Subpackages = append(existing.Subpackages, sp)
+			}
+		} else {
+			newDep := &cfg.Dependency{
+				Name: root,
+			}
+			if sp != "" {
+				newDep.Subpackages = []string{sp}
+			}
+
+			r.Config.Imports = append(r.Config.Imports, newDep)
+		}
+		res = append(res, t)
+	}
+
+	return res, nil
 }
 
 // resolveList takes a list and resolves it.
+//
+// This walks the entire file tree for the given dependencies, not just the
+// parts that are imported directly. Using this will discover dependencies
+// regardless of OS, and arch.
 func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 
 	var failedDep string
 	for e := queue.Front(); e != nil; e = e.Next() {
 		dep := e.Value.(string)
-		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
+		t := strings.TrimPrefix(dep, r.VendorDir+string(os.PathSeparator))
 		if r.Config.HasIgnore(t) {
 			msg.Info("Ignoring: %s", t)
 			continue

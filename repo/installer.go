@@ -47,6 +47,11 @@ type Installer struct {
 	// imported pacakgage references this pacakage it does not need to be
 	// downloaded and searched out again.
 	RootPackage string
+
+	// ResolveAllFiles enables a resolver that will examine the dependencies
+	// of every file of every package, rather than only following imported
+	// packages.
+	ResolveAllFiles bool
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -173,13 +178,16 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	res.Config = conf
 	res.Handler = m
 	res.VersionHandler = v
+	res.ResolveAllFiles = i.ResolveAllFiles
 	msg.Info("Resolving imports")
 	_, err = allPackages(conf.Imports, res)
 	if err != nil {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 
-	msg.Warn("devImports not resolved.")
+	if len(conf.DevImports) > 0 {
+		msg.Warn("dev imports not resolved.")
+	}
 
 	err = ConcurrentUpdate(conf.Imports, vpath, i)
 
@@ -207,6 +215,7 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	}
 	res.Config = conf
 	res.VersionHandler = v
+	res.ResolveAllFiles = i.ResolveAllFiles
 
 	msg.Info("Resolving imports")
 	_, err = allPackages(conf.Imports, res)
@@ -214,7 +223,9 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 
-	msg.Warn("devImports not resolved.")
+	if len(conf.DevImports) > 0 {
+		msg.Warn("dev imports not resolved.")
+	}
 
 	return conf.Imports
 }
@@ -226,6 +237,8 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 	var wg sync.WaitGroup
 	var lock sync.Mutex
 	var returnErr error
+
+	msg.Info("Downloading dependencies. Please wait...")
 
 	for ii := 0; ii < concurrentWorkers; ii++ {
 		go func(ch <-chan *cfg.Dependency) {
@@ -316,10 +329,11 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	// This package may have been placed on the list to look for when it wasn't
 	// downloaded but it has since been downloaded before coming to this entry.
 	if _, err := os.Stat(dest); err == nil {
+		msg.Debug("Found %s", dest)
 		return true, nil
 	}
 
-	msg.Info("Fetching %s into %s", pkg, m.destination)
+	msg.Info("- Fetching %s into %s", pkg, m.destination)
 
 	d := m.Config.Imports.Get(root)
 	// If the dependency is nil it means the Config doesn't yet know about it.
