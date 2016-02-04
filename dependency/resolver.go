@@ -356,6 +356,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			if ok, err := r.Handler.NotFound(dep); ok {
 				r.alreadyQ[dep] = true
 				queue.PushBack(r.vpath(dep))
+				r.VersionHandler.SetVersion(dep)
 			} else if err != nil {
 				msg.Warn("Error looking for %s: %s", dep, err)
 			} else {
