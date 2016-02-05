@@ -30,7 +30,7 @@ func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
 		return nil
 	}
 
-	msg.Info("- Fetching updates for %s.\n", dep.Name)
+	msg.Info("Fetching updates for %s.\n", dep.Name)
 
 	if filterArchOs(dep) {
 		msg.Info("%s is not used for %s/%s.\n", dep.Name, runtime.GOOS, runtime.GOARCH)

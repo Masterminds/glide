@@ -333,7 +333,7 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 		return true, nil
 	}
 
-	msg.Info("- Fetching %s into %s", pkg, m.destination)
+	msg.Info("Fetching %s into %s", pkg, m.destination)
 
 	d := m.Config.Imports.Get(root)
 	// If the dependency is nil it means the Config doesn't yet know about it.

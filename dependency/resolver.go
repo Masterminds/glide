@@ -348,17 +348,20 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		msg.Debug("Trying to open %s", vdep)
 		pkg, err := r.BuildContext.ImportDir(vdep, 0)
 		if err != nil {
-			msg.Warn("ImportDir error on %s: %s", vdep, err)
+			msg.Debug("ImportDir error on %s: %s", vdep, err)
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Info("No subpackages declared. Skipping %s.", dep)
 				continue
 			}
 			if ok, err := r.Handler.NotFound(dep); ok {
 				r.alreadyQ[dep] = true
+
+				// By adding to the queue it will get reprocessed now that
+				// it exists.
 				queue.PushBack(r.vpath(dep))
 				r.VersionHandler.SetVersion(dep)
 			} else if err != nil {
-				msg.Warn("Error looking for %s: %s", dep, err)
+				msg.Error("Error looking for %s: %s", dep, err)
 			} else {
 				// TODO (mpb): Should we toss this into a Handler to
 				// see if this is on GOPATH and copy it?
@@ -395,7 +398,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 					msg.Info("Not found: %s (2)", imp)
 				}
 			case LocGopath:
-				msg.Info("Found on GOPATH, not vendor: %s", imp)
+				msg.Debug("Found on GOPATH, not vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					// Only scan it if it gets moved into vendor/
 					if ok, _ := r.Handler.OnGopath(imp); ok {
