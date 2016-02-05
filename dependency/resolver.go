@@ -44,6 +44,11 @@ type MissingPackageHandler interface {
 	// An error indicates that OnGopath cannot complete its intended operation.
 	// Not all false results are errors.
 	OnGopath(pkg string) (bool, error)
+
+	// InVendor is called when the Resolver finds a dependency in the vendor/ directory.
+	//
+	// This can be used update a project found in the vendor/ folder.
+	InVendor(pkg string) error
 }
 
 // DefaultMissingPackageHandler is the default handler for missing packages.
@@ -68,6 +73,11 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	msg.Warn("Package %s is only on GOPATH.", pkg)
 	d.Gopath = append(d.Gopath, pkg)
 	return false, nil
+}
+
+func (d *DefaultMissingPackageHandler) InVendor(pkg string) error {
+	msg.Warn("Package %s found in vendor/ folder")
+	return nil
 }
 
 // VersionHandler sets the version for a package when found while scanning.
@@ -384,6 +394,11 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 					msg.Debug("Marking %s to be scanned.", imp)
 					r.alreadyQ[imp] = true
 					queue.PushBack(r.vpath(imp))
+					if err := r.Handler.InVendor(imp); err == nil {
+						r.VersionHandler.SetVersion(imp)
+					} else {
+						msg.Warn("Error updating %s: %s", imp, err)
+					}
 					r.VersionHandler.SetVersion(imp)
 				}
 			case LocUnknown:
@@ -612,7 +627,11 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 		case LocVendor:
 			//msg.Debug("Vendored: %s", imp)
 			buf = append(buf, info.Path)
-			r.VersionHandler.SetVersion(imp)
+			if err := r.Handler.InVendor(imp); err == nil {
+				r.VersionHandler.SetVersion(imp)
+			} else {
+				msg.Warn("Error updating %s: %s", imp, err)
+			}
 		case LocGopath:
 			found, err := r.Handler.OnGopath(imp)
 			if err != nil {

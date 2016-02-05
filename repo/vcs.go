@@ -21,7 +21,7 @@ import (
 )
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
+func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath, force, updateVendored bool) error {
 
 	// If the dependency has already been pinned we can skip it. This is a
 	// faster path so we don't need to resolve it again.
@@ -37,10 +37,9 @@ func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
 		return nil
 	}
 
-	dest := filepath.Join(vend, dep.Name)
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		if err = VcsGet(dep, dest, inst.Home, inst.UseCache, inst.UseCacheGopath, inst.UseGopath); err != nil {
+		if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
 			msg.Warn("Unable to checkout %s\n", dep.Name)
 			return err
 		}
@@ -54,11 +53,11 @@ func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
 			return err
 		}
 		_, err = v.DetectVcsFromFS(dest)
-		if inst.UpdateVendored == false && empty == false && err == v.ErrCannotDetectVCS {
+		if updateVendored == false && empty == false && err == v.ErrCannotDetectVCS {
 			msg.Warn("%s appears to be a vendored package. Unable to update. Consider the '--update-vendored' flag.\n", dep.Name)
 		} else {
 
-			if inst.UpdateVendored == true && empty == false && err == v.ErrCannotDetectVCS {
+			if updateVendored == true && empty == false && err == v.ErrCannotDetectVCS {
 				// A vendored package, no repo, and updating the vendored packages
 				// has been opted into.
 				msg.Info("%s is a vendored package. Updating.", dep.Name)
@@ -70,7 +69,7 @@ func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
 					dep.UpdateAsVendored = true
 				}
 
-				if err = VcsGet(dep, dest, inst.Home, inst.UseCache, inst.UseCacheGopath, inst.UseGopath); err != nil {
+				if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
 					msg.Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
@@ -85,7 +84,7 @@ func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
 			// location can be removed and replaced with the new one.
 			// Warning, any changes in the old location will be deleted.
 			// TODO: Put dirty checking in on the existing local checkout.
-			if (err == v.ErrWrongVCS || err == v.ErrWrongRemote) && inst.Force == true {
+			if (err == v.ErrWrongVCS || err == v.ErrWrongRemote) && force == true {
 				var newRemote string
 				if len(dep.Repository) > 0 {
 					newRemote = dep.Repository
@@ -98,7 +97,7 @@ func VcsUpdate(dep *cfg.Dependency, vend string, inst *Installer) error {
 				if rerr != nil {
 					return rerr
 				}
-				if err = VcsGet(dep, dest, inst.Home, inst.UseCache, inst.UseCacheGopath, inst.UseGopath); err != nil {
+				if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
 					msg.Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}

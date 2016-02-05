@@ -154,12 +154,14 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	m := &MissingPackageHandler{
 		destination: vpath,
 
-		cache:       i.UseCache,
-		cacheGopath: i.UseCacheGopath,
-		useGopath:   i.UseGopath,
-		home:        i.Home,
-		Config:      conf,
-		Use:         ic,
+		cache:          i.UseCache,
+		cacheGopath:    i.UseCacheGopath,
+		useGopath:      i.UseGopath,
+		home:           i.Home,
+		force:          i.Force,
+		updateVendored: i.UpdateVendored,
+		Config:         conf,
+		Use:            ic,
 	}
 
 	v := &VersionHandler{
@@ -245,7 +247,8 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 			for {
 				select {
 				case dep := <-ch:
-					if err := VcsUpdate(dep, cwd, i); err != nil {
+					dest := filepath.Join(i.VendorPath(), dep.Name)
+					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored); err != nil {
 						msg.Warn("Update failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
@@ -308,12 +311,12 @@ func allPackages(deps []*cfg.Dependency, res *dependency.Resolver) ([]string, er
 //
 // When a package is found on the GOPATH, this notifies the user.
 type MissingPackageHandler struct {
-	destination                   string
-	home                          string
-	cache, cacheGopath, useGopath bool
-	RootPackage                   string
-	Config                        *cfg.Config
-	Use                           *importCache
+	destination                                          string
+	home                                                 string
+	cache, cacheGopath, useGopath, force, updateVendored bool
+	RootPackage                                          string
+	Config                                               *cfg.Config
+	Use                                                  *importCache
 }
 
 func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
@@ -385,6 +388,37 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 
 	msg.Error("Could not locate %s on the GOPATH, though it was found before.", pkg)
 	return false, nil
+}
+
+// InVendor updates a package in the vendor/ directory to make sure the latest
+// is available.
+func (m *MissingPackageHandler) InVendor(pkg string) error {
+	root := util.GetRootFromPackage(pkg)
+
+	// Skip any references to the root package.
+	if root == m.RootPackage {
+		return nil
+	}
+
+	dest := filepath.Join(m.destination, root)
+
+	d := m.Config.Imports.Get(root)
+	// If the dependency is nil it means the Config doesn't yet know about it.
+	if d == nil {
+		d = m.Use.Get(root)
+		// We don't know about this dependency so we create a basic instance.
+		if d == nil {
+			d = &cfg.Dependency{Name: root}
+		}
+
+		m.Config.Imports = append(m.Config.Imports, d)
+	}
+
+	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // VersionHandler handles setting the proper version in the VCS.
