@@ -360,7 +360,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		if err != nil {
 			msg.Debug("ImportDir error on %s: %s", vdep, err)
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
-				msg.Info("No subpackages declared. Skipping %s.", dep)
+				msg.Debug("No subpackages declared. Skipping %s.", dep)
 				continue
 			}
 			if ok, err := r.Handler.NotFound(dep); ok {
