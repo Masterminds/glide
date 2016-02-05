@@ -43,11 +43,6 @@ type Installer struct {
 	// DeleteUnused deletes packages that are unused, but found in the vendor dir.
 	DeleteUnused bool
 
-	// RootPackage is the top level package importing other packages. If an
-	// imported pacakgage references this pacakage it does not need to be
-	// downloaded and searched out again.
-	RootPackage string
-
 	// ResolveAllFiles enables a resolver that will examine the dependencies
 	// of every file of every package, rather than only following imported
 	// packages.
@@ -314,7 +309,6 @@ type MissingPackageHandler struct {
 	destination                                          string
 	home                                                 string
 	cache, cacheGopath, useGopath, force, updateVendored bool
-	RootPackage                                          string
 	Config                                               *cfg.Config
 	Use                                                  *importCache
 }
@@ -323,7 +317,7 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == m.RootPackage {
+	if root == m.Config.Name {
 		return false, nil
 	}
 
@@ -365,7 +359,7 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == m.RootPackage {
+	if root == m.Config.Name {
 		return false, nil
 	}
 
@@ -396,7 +390,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == m.RootPackage {
+	if root == m.Config.Name {
 		return nil
 	}
 
@@ -434,8 +428,7 @@ type VersionHandler struct {
 	// Where the packages exist to set the version on.
 	Destination string
 
-	RootPackage string
-	Config      *cfg.Config
+	Config *cfg.Config
 
 	// There's a problem where many sub-packages have been asked to set a version
 	// and you can end up with numerous conflict messages that are exactly the
@@ -449,7 +442,7 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == d.RootPackage {
+	if root == d.Config.Name {
 		return nil
 	}
 
@@ -486,7 +479,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == d.RootPackage {
+	if root == d.Config.Name {
 		return nil
 	}
 

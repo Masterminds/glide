@@ -17,8 +17,6 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 	EnsureVendorDir()
 	conf := EnsureConfig()
 
-	installer.RootPackage = conf.Name
-
 	// Delete unused packages
 	if installer.DeleteUnused {
 		dependency.DeleteUnused(conf)
