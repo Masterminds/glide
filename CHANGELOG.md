@@ -1,9 +1,20 @@
 # Release 0.9.0 (xxxx-xx-xx)
 
+- Issue #218: Added `glide rm` command.
+- Fixed #215: Under some error conditions the package resolver could get into
+  an infinite loop.
+- Issue #234: Adding more options to the glide.yaml file including license,
+  owners, homepage, etc. See the docs for more detail.
+- Issue #237: Added Read The Docs support and initial docs. http://glide.readthedocs.org
+- Issue #248: Uses go env to get value of GO15VENDOREXPERIMENT due to 1.6 enabling
+  by default.
+- Issue #240: Glide only scans used imports rather than all paths in the tree.
+  The previous behavior is available via a flag.
+- Fixed #235: Glide on windows writing incorrect slashes to files.
+- Fixed #227: Fixed ensure when multiple gopaths.
 - Refactored Glide
   - Many features broken out into packages. All but `action/` can be
     used as libraries.
-  - Support for GPM Godeps-Git has been removed
   - Cookoo is not used anymore
   - The `action/` package replaces `cmd/`
 
