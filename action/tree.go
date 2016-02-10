@@ -11,6 +11,7 @@ import (
 
 // Tree prints a tree representing dependencies.
 func Tree(basedir string, showcore bool) {
+	msg.Warn("The tree command is deprecated and will be removed in a future version")
 	buildContext, err := util.GetBuildContext()
 	if err != nil {
 		msg.Die("Failed to get a build context: %s", err)

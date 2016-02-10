@@ -18,6 +18,8 @@ import (
 // It remains to be seen whether this is tremendously beneficial to modern Go
 // programs.
 func Rebuild() {
+	msg.Warn("The rebuild command is deprecated and will be removed in a future version")
+	msg.Warn("Use the go install command instead")
 	conf := EnsureConfig()
 	vpath, err := gpath.Vendor()
 	if err != nil {
