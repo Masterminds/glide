@@ -48,7 +48,13 @@ func EnsureGoVendor() {
 		msg.Warn("You must install the Go 1.5 or greater toolchain to work with Glide.\n")
 		os.Exit(1)
 	}
-	if os.Getenv("GO15VENDOREXPERIMENT") != "1" {
+
+	// This works with 1.5 and >=1.6.
+	cmd = exec.Command("go", "env", "GO15VENDOREXPERIMENT")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		msg.Error("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
+		os.Exit(1)
+	} else if strings.TrimSpace(string(out)) != "1" {
 		msg.Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1\n")
 		os.Exit(1)
 	}
