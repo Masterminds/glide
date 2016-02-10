@@ -138,6 +138,9 @@ type Resolver struct {
 	// Items already in the queue.
 	alreadyQ map[string]bool
 
+	// Attempts to scan that had unrecoverable error.
+	hadError map[string]bool
+
 	basedir string
 	seen    map[string]bool
 
@@ -174,6 +177,7 @@ func NewResolver(basedir string) (*Resolver, error) {
 		BuildContext:   buildContext,
 		seen:           map[string]bool{},
 		alreadyQ:       map[string]bool{},
+		hadError:       map[string]bool{},
 		findCache:      map[string]*PkgInfo{},
 
 		// The config instance here should really be replaced with a real one.
@@ -347,6 +351,13 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 		r.alreadyQ[dep] = true
 
+		// If we've already encountered an error processing this dependency
+		// skip it.
+		_, foundErr := r.hadError[dep]
+		if foundErr {
+			continue
+		}
+
 		// Skip ignored packages
 		if r.Config.HasIgnore(dep) {
 			msg.Info("Ignoring: %s", dep)
@@ -359,23 +370,37 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		pkg, err := r.BuildContext.ImportDir(vdep, 0)
 		if err != nil {
 			msg.Debug("ImportDir error on %s: %s", vdep, err)
+			_, foundQ := r.alreadyQ[dep]
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Debug("No subpackages declared. Skipping %s.", dep)
 				continue
-			}
-			if ok, err := r.Handler.NotFound(dep); ok {
-				r.alreadyQ[dep] = true
+			} else if os.IsNotExist(err) && !foundErr && !foundQ {
+				// If the location doesn't exist, there hasn't already been an
+				// error, it's not already been in the Q then try to fetch it.
+				// When there's an error or it's already in the Q (it should be
+				// fetched if it's marked in r.alreadyQ) we skip to make sure
+				// not to get stuck in a recursion.
 
-				// By adding to the queue it will get reprocessed now that
-				// it exists.
-				queue.PushBack(r.vpath(dep))
-				r.VersionHandler.SetVersion(dep)
-			} else if err != nil {
-				msg.Error("Error looking for %s: %s", dep, err)
+				// If the location doesn't exist try to fetch it.
+				if ok, err2 := r.Handler.NotFound(dep); ok {
+					r.alreadyQ[dep] = true
+
+					// By adding to the queue it will get reprocessed now that
+					// it exists.
+					queue.PushBack(r.vpath(dep))
+					r.VersionHandler.SetVersion(dep)
+				} else if err2 != nil {
+					r.hadError[dep] = true
+					msg.Error("Error looking for %s: %s", dep, err2)
+				} else {
+					r.hadError[dep] = true
+					// TODO (mpb): Should we toss this into a Handler to
+					// see if this is on GOPATH and copy it?
+					msg.Info("Not found in vendor/: %s (1)", dep)
+				}
 			} else {
-				// TODO (mpb): Should we toss this into a Handler to
-				// see if this is on GOPATH and copy it?
-				msg.Info("Not found in vendor/: %s (1)", dep)
+				r.hadError[dep] = true
+				msg.Error("Error scanning %s: %s", dep, err)
 			}
 			continue
 		}
@@ -408,8 +433,10 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 					queue.PushBack(r.vpath(imp))
 					r.VersionHandler.SetVersion(imp)
 				} else if err != nil {
+					r.hadError[dep] = true
 					msg.Warn("Error looking for %s: %s", imp, err)
 				} else {
+					r.hadError[dep] = true
 					msg.Info("Not found: %s (2)", imp)
 				}
 			case LocGopath:
