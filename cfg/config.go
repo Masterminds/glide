@@ -372,6 +372,12 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		d.Subpackages = append(d.Subpackages, subpkg)
 	}
 
+	// Older versions of Glide had a / prefix on subpackages in some cases.
+	// Here that's cleaned up. Someday we should be able to remove this.
+	for k, v := range d.Subpackages {
+		d.Subpackages[k] = strings.TrimPrefix(v, "/")
+	}
+
 	return nil
 }
 
