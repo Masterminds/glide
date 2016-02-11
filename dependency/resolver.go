@@ -349,6 +349,9 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		vdep := e.Value.(string)
 		dep := r.stripv(vdep)
 
+		// Check if marked in the Q and then explicitly mark it. We want to know
+		// if it had previously been marked and ensure it for the future.
+		_, foundQ := r.alreadyQ[dep]
 		r.alreadyQ[dep] = true
 
 		// If we've already encountered an error processing this dependency
@@ -370,7 +373,6 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		pkg, err := r.BuildContext.ImportDir(vdep, 0)
 		if err != nil {
 			msg.Debug("ImportDir error on %s: %s", vdep, err)
-			_, foundQ := r.alreadyQ[dep]
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Debug("No subpackages declared. Skipping %s.", dep)
 				continue
