@@ -312,7 +312,7 @@ func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 		return []string{}, err
 	}
 	for _, l := range loc {
-		msg.Debug("Adding local mport %s to queue", l)
+		msg.Debug("Adding local Import %s to queue", l)
 		queue.PushBack(l)
 	}
 
