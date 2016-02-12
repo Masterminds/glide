@@ -76,7 +76,7 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 }
 
 func (d *DefaultMissingPackageHandler) InVendor(pkg string) error {
-	msg.Warn("Package %s found in vendor/ folder")
+	msg.Warn("Package %s found in vendor/ folder", pkg)
 	return nil
 }
 
