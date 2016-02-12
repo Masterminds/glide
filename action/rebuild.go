@@ -24,10 +24,10 @@ func Rebuild() {
 		msg.Die("Could not get vendor path: %s", err)
 	}
 
-	msg.Info("Building dependencies.\n")
+	msg.Info("Building dependencies.")
 
 	if len(conf.Imports) == 0 {
-		msg.Info("No dependencies found. Nothing built.\n")
+		msg.Info("No dependencies found. Nothing built.")
 		return
 	}
 
@@ -87,7 +87,7 @@ func buildPaths(paths []string) error {
 }
 
 func buildPath(path string) error {
-	msg.Info("Running go build %s\n", path)
+	msg.Info("Running go build %s", path)
 	// . in a filepath.Join is removed so it needs to be prepended separately.
 	p := "." + string(filepath.Separator) + filepath.Join("vendor", path)
 	out, err := exec.Command("go", "install", p).CombinedOutput()

@@ -1,8 +1,12 @@
-hash: 1d4d06656329894abc78c0ac256169337c947260b784fee7ed02a0e405c0f63b
-updated: 2016-01-28T11:15:09.190330904-05:00
+hash: 45950a5c234a3741dbbb86a8f0fb4bd2757e3d19e571a8fe6e9372cbb878517c
+updated: 2016-02-11T22:12:03.12669949-07:00
 imports:
 - name: github.com/codegangsta/cli
-  version: c31a7975863e7810c92e2e288a9ab074f9a88f29
+  version: 0ab42fd482c27cf2c95e7794ad3bb2082c2ab2d7
+- name: github.com/Masterminds/kitt
+  version: 7e843d5f21a5f009f5119a91ea3868eabb19b20f
+  subpackages:
+  - progress
 - name: github.com/Masterminds/semver
   version: 513f3dcb3ecfb1248831fb5cb06a23a3cd5935dc
 - name: github.com/Masterminds/vcs

@@ -53,7 +53,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	if _, err := os.Stat(path); err != nil {
 		return []*cfg.Dependency{}, nil
 	}
-	msg.Info("Found Godeps.json file.\n")
+	msg.Info("Found Godeps.json file.")
 
 	buf := []*cfg.Dependency{}
 

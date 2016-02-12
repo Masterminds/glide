@@ -93,7 +93,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		}
 
 		for _, i := range deps {
-			msg.Info("Found imported reference to %s\n", i.Name)
+			msg.Info("Found imported reference to %s", i.Name)
 			config.Imports = append(config.Imports, i)
 		}
 	}
@@ -124,7 +124,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		root, subpkg := util.NormalizeName(n)
 
 		if !config.HasDependency(root) {
-			msg.Info("Found reference to %s\n", n)
+			msg.Info("Found reference to %s", n)
 			d := &cfg.Dependency{
 				Name: root,
 			}
@@ -137,7 +137,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
 				if !d.HasSubpackage(subpkg) {
-					msg.Info("Adding sub-package %s to %s\n", subpkg, root)
+					msg.Info("Adding sub-package %s to %s", subpkg, root)
 					d.Subpackages = append(d.Subpackages, subpkg)
 				}
 			}

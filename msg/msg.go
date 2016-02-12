@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/Masterminds/kitt/progress"
 )
 
 // Messanger provides the underlying implementation that displays output to
@@ -31,15 +33,30 @@ type Messanger struct {
 	// PanicOnDie if true Die() will panic instead of exiting.
 	PanicOnDie bool
 
+	// InProgress indicates whether the Messanger is currently in a progress meter.
+	InProgress bool
+
 	// The default exit code to use when dyping
 	ecode int
 
 	// If an error was been sent.
 	hasErrored bool
+
+	meter ProgressMeter
+}
+
+type ProgressMeter interface {
+	Start(string)
+	Message(string)
+	Done(string)
 }
 
 // NewMessanger creates a default Messanger to display output.
 func NewMessanger() *Messanger {
+	//var mtr ProgressMeter = (nilMeter)(0)
+	mtr := progress.NewIndicator()
+	mtr.Frames = Cylon
+	mtr.Interval = CylonInterval
 	m := &Messanger{
 		Quiet:       false,
 		IsDebugging: false,
@@ -48,6 +65,8 @@ func NewMessanger() *Messanger {
 		Stderr:      os.Stderr,
 		PanicOnDie:  false,
 		ecode:       1,
+		meter:       mtr,
+		InProgress:  false,
 	}
 
 	return m
@@ -67,6 +86,10 @@ func (m *Messanger) Info(msg string, args ...interface{}) {
 
 // Info logs information using the Default Messanger
 func Info(msg string, args ...interface{}) {
+	if Default.InProgress {
+		Default.meter.Message(fmt.Sprintf(msg, args...))
+		return
+	}
 	Default.Info(msg, args...)
 }
 

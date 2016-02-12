@@ -24,7 +24,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		return []*cfg.Dependency{}, nil
 	}
 
-	msg.Info("Found GB manifest file.\n")
+	msg.Info("Found GB manifest file.")
 	buf := []*cfg.Dependency{}
 	file, err := os.Open(path)
 	if err != nil {

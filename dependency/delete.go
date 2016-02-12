@@ -92,7 +92,7 @@ func DeleteUnused(conf *cfg.Config) error {
 	// Perform the actual delete.
 	for _, path := range markForDelete {
 		localPath := strings.TrimPrefix(path, searchPath)
-		msg.Info("Removing unused package: %s\n", localPath)
+		msg.Info("Removing unused package: %s", localPath)
 		rerr := os.RemoveAll(path)
 		if rerr != nil {
 			return rerr

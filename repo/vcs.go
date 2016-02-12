@@ -30,17 +30,17 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 		return nil
 	}
 
-	msg.Info("Fetching updates for %s.\n", dep.Name)
+	msg.Info("Fetching updates for %s.", dep.Name)
 
 	if filterArchOs(dep) {
-		msg.Info("%s is not used for %s/%s.\n", dep.Name, runtime.GOOS, runtime.GOARCH)
+		msg.Info("%s is not used for %s/%s.", dep.Name, runtime.GOOS, runtime.GOARCH)
 		return nil
 	}
 
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
 		if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
-			msg.Warn("Unable to checkout %s\n", dep.Name)
+			msg.Warn("Unable to checkout %s", dep.Name)
 			return err
 		}
 	} else {
@@ -187,7 +187,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 		// If there is a ^ prefix we assume it's a semver constraint rather than
 		// part of the git/VCS commit id.
 		if repo.IsReference(ver) && !strings.HasPrefix(ver, "^") {
-			msg.Info("Setting version for %s to %s.\n", dep.Name, ver)
+			msg.Info("Setting version for %s to %s.", dep.Name, ver)
 		} else {
 
 			// Create the constraing first to make sure it's valid before
@@ -222,7 +222,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 				}
 			}
 			if found {
-				msg.Info("Detected semantic version. Setting version for %s to %s.\n", dep.Name, ver)
+				msg.Info("Detected semantic version. Setting version for %s to %s.", dep.Name, ver)
 			} else {
 				msg.Warn("Unable to find semantic version for constraint %s %s\n", dep.Name, ver)
 			}

@@ -17,6 +17,9 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 	EnsureVendorDir()
 	conf := EnsureConfig()
 
+	msg.StartProgress("Updating dependencies...")
+	defer msg.StopProgress("Update complete")
+
 	// Delete unused packages
 	if installer.DeleteUnused {
 		dependency.DeleteUnused(conf)

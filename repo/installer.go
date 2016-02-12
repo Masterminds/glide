@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -235,8 +236,6 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 	var lock sync.Mutex
 	var returnErr error
 
-	msg.Info("Downloading dependencies. Please wait...")
-
 	for ii := 0; ii < concurrentWorkers; ii++ {
 		go func(ch <-chan *cfg.Dependency) {
 			for {
@@ -268,6 +267,8 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 		in <- dep
 	}
 
+	runtime.Gosched()
+	msg.Info("Fetching %d dependencies", len(deps))
 	wg.Wait()
 
 	// Close goroutines setting the version

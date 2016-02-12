@@ -18,7 +18,7 @@ func SetReference(conf *cfg.Config) error {
 	}
 
 	if len(conf.Imports) == 0 {
-		msg.Info("No references set.\n")
+		msg.Info("No references set.")
 		return nil
 	}
 
