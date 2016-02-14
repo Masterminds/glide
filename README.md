@@ -98,7 +98,7 @@ manage itself, too.
 ## Usage
 
 ```
-$ glide create                            # Start a new workspaces
+$ glide create                            # Start a new workspace
 $ open glide.yaml                         # and edit away!
 $ glide get github.com/Masterminds/cookoo # Get a package and add to glide.yaml
 $ glide install                           # Install packages and dependencies
