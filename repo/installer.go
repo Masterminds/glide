@@ -244,7 +244,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 				case dep := <-ch:
 					dest := filepath.Join(i.VendorPath(), dep.Name)
 					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored); err != nil {
-						msg.Warn("Update failed for %s: %s\n", dep.Name, err)
+						msg.Error("Update failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
 						lock.Lock()
