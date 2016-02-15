@@ -11,6 +11,8 @@ func TestGetRootFromPackage(t *testing.T) {
 		"launchpad.net/~mattfarina/+junk/mygovcstestbzrrepo/trunk": "launchpad.net/~mattfarina/+junk/mygovcstestbzrrepo",
 		"git.launchpad.net/govcstestgitrepo":                       "git.launchpad.net/govcstestgitrepo",
 		"git.launchpad.net/~mattfarina/+git/mygovcstestgitrepo":    "git.launchpad.net/~mattfarina/+git/mygovcstestgitrepo",
+		"hub.jazz.net/git/user/pkgname":                            "hub.jazz.net/git/user/pkgname",
+		"hub.jazz.net/git/user/pkgname/subpkg/subpkg/subpkg":       "hub.jazz.net/git/user/pkgname",
 		"farbtastic.googlecode.com/svn/":                           "farbtastic.googlecode.com/svn/",
 		"farbtastic.googlecode.com/svn/trunk":                      "farbtastic.googlecode.com/svn/trunk",
 		"code.google.com/p/farbtastic":                             "code.google.com/p/farbtastic",

@@ -1,5 +1,6 @@
 # Release 0.9.0 (xxxx-xx-xx)
 
+- Adding support for IBM JazzHub.
 - Fixes #250: When unable to retrieve or set version on a dependency now erroring
   and exiting with non-0 exit code.
 - Issue #218: Added `glide rm` command.
