@@ -72,6 +72,19 @@ func (lf *Lockfile) Fingerprint() ([32]byte, error) {
 	return sha256.Sum256(yml), nil
 }
 
+// ReadLockFile loads the contents of a glide.lock file.
+func ReadLockFile(lockpath string) (*Lockfile, error) {
+	yml, err := ioutil.ReadFile(lockpath)
+	if err != nil {
+		return nil, err
+	}
+	lock, err := LockfileFromYaml(yml)
+	if err != nil {
+		return nil, err
+	}
+	return lock, nil
+}
+
 // Locks is a slice of locked dependencies.
 type Locks []*Lock
 
