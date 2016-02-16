@@ -81,10 +81,10 @@ func TestResolve(t *testing.T) {
 func TestResolveAll(t *testing.T) {
 	// These are build dependencies of Glide, so we know they are here.
 	deps := []*cfg.Dependency{
-		&cfg.Dependency{Name: "github.com/codegangsta/cli"},
-		&cfg.Dependency{Name: "github.com/Masterminds/semver"},
-		&cfg.Dependency{Name: "github.com/Masterminds/vcs"},
-		&cfg.Dependency{Name: "gopkg.in/yaml.v2"},
+		{Name: "github.com/codegangsta/cli"},
+		{Name: "github.com/Masterminds/semver"},
+		{Name: "github.com/Masterminds/vcs"},
+		{Name: "gopkg.in/yaml.v2"},
 	}
 
 	r, err := NewResolver("../")
