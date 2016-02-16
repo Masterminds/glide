@@ -1,7 +1,6 @@
-/* Package gpm reads GPM's Godeps files.
-
-It is not a complete implementaton of GPM.
-*/
+// Package gpm reads GPM's Godeps files.
+//
+// It is not a complete implementaton of GPM.
 package gpm
 
 import (

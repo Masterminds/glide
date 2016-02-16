@@ -1,7 +1,6 @@
-/* Package godep provides basic importing of Godep dependencies.
-
-This is not a complete implementation of Godep.
-*/
+// Package godep provides basic importing of Godep dependencies.
+//
+// This is not a complete implementation of Godep.
 package godep
 
 import (
@@ -25,14 +24,14 @@ type Godeps struct {
 	ImportPath string
 	GoVersion  string
 	Packages   []string `json:",omitempty"` // Arguments to save, if any.
-	Deps       []GodepDependency
+	Deps       []Dependency
 
 	outerRoot string
 }
 
-// GodepDependency is a modified version of Godep's Dependency struct.
+// Dependency is a modified version of Godep's Dependency struct.
 // It drops all of the unexported fields.
-type GodepDependency struct {
+type Dependency struct {
 	ImportPath string
 	Comment    string `json:",omitempty"` // Description of commit, if present.
 	Rev        string // VCS-specific commit ID.

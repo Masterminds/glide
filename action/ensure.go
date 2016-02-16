@@ -36,6 +36,7 @@ func EnsureConfig() *cfg.Config {
 	return conf
 }
 
+// EnsureCacheDir ensures the existance of the cache directory
 func EnsureCacheDir() {
 	msg.Warn("ensure.go: ensureCacheDir is not implemented.")
 }

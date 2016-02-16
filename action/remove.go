@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/glide/repo"
 )
 
+// Remove removes a dependncy from the configuration.
 func Remove(packages []string, inst *repo.Installer) {
 	base := gpath.Basepath()
 	EnsureGopath()

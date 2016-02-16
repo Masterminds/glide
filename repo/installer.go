@@ -191,6 +191,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	return err
 }
 
+// List resolves the complete dependency tree and returns a list of dependencies.
 func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	base := "."
 	vpath := i.VendorPath()
@@ -313,6 +314,8 @@ type MissingPackageHandler struct {
 	Use                                                  *importCache
 }
 
+// NotFound attempts to retrieve a package when not found in the local vendor/
+// folder. It will attempt to get it from the remote location info.
 func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	root := util.GetRootFromPackage(pkg)
 
@@ -349,6 +352,9 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	return true, nil
 }
 
+// OnGopath will either copy a package, already found in the GOPATH, to the
+// vendor/ directory or download it from the internet. This is dependent if
+// useGopath on the installer is set to true to copy from the GOPATH.
 func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	// If useGopath is false, we fall back to the strategy of fetching from
 	// remote.

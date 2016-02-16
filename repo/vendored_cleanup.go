@@ -9,7 +9,7 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 )
 
-// VendoredCleanUp cleans up vendored codebases after an update.
+// VendoredCleanup cleans up vendored codebases after an update.
 //
 // This should _only_ be run for installations that do not want VCS repos inside
 // of the vendor/ directory.

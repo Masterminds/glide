@@ -10,7 +10,7 @@ import (
 	"github.com/Masterminds/glide/util"
 )
 
-// Returns true if this dir has a GB-flavored manifest file.
+// Has returns true if this dir has a GB-flavored manifest file.
 func Has(dir string) bool {
 	path := filepath.Join(dir, "vendor/manifest")
 	_, err := os.Stat(path)

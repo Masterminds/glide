@@ -5,11 +5,13 @@ package gb
 //
 // gb's license is MIT-style.
 
+// Manifest represents the GB manifest file
 type Manifest struct {
 	Version      int          `json:"version"`
 	Dependencies []Dependency `json:"dependencies"`
 }
 
+// Dependency represents an individual dependency in the GB manifest file
 type Dependency struct {
 	Importpath string `json:"importpath"`
 	Repository string `json:"repository"`

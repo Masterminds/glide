@@ -1,8 +1,7 @@
-/* package Repo provides tools for working with VCS repositories.
-
-Glide manages repositories in the vendor directory by using the native VCS
-systems of each repository upon which the code relies.
-*/
+// Package repo provides tools for working with VCS repositories.
+//
+// Glide manages repositories in the vendor directory by using the native VCS
+// systems of each repository upon which the code relies.
 package repo
 
 // concurrentWorkers is the number of workers to be used in concurrent operations.

@@ -65,9 +65,8 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 				if err != nil {
 					msg.Error("Unable to update vendored dependency %s.\n", dep.Name)
 					return err
-				} else {
-					dep.UpdateAsVendored = true
 				}
+				dep.UpdateAsVendored = true
 
 				if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
 					msg.Warn("Unable to checkout %s\n", dep.Name)
@@ -105,35 +104,34 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 				return err
 			} else if repo.IsDirty() {
 				return fmt.Errorf("%s contains uncommited changes. Skipping update", dep.Name)
-			} else {
+			}
 
-				// Check if the current version is a tag or commit id. If it is
-				// and that version is already checked out we can skip updating
-				// which is faster than going out to the Internet to perform
-				// an update.
-				if dep.Reference != "" {
-					version, err := repo.Version()
-					if err != nil {
-						return err
-					}
-					ib, err := isBranch(dep.Reference, repo)
-					if err != nil {
-						return err
-					}
-
-					// If the current version equals the ref and it's not a
-					// branch it's a tag or commit id so we can skip
-					// performing an update.
-					if version == dep.Reference && !ib {
-						msg.Info("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
-						return nil
-					}
-				}
-
-				if err := repo.Update(); err != nil {
-					msg.Warn("Download failed.\n")
+			// Check if the current version is a tag or commit id. If it is
+			// and that version is already checked out we can skip updating
+			// which is faster than going out to the Internet to perform
+			// an update.
+			if dep.Reference != "" {
+				version, err := repo.Version()
+				if err != nil {
 					return err
 				}
+				ib, err := isBranch(dep.Reference, repo)
+				if err != nil {
+					return err
+				}
+
+				// If the current version equals the ref and it's not a
+				// branch it's a tag or commit id so we can skip
+				// performing an update.
+				if version == dep.Reference && !ib {
+					msg.Info("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
+					return nil
+				}
+			}
+
+			if err := repo.Update(); err != nil {
+				msg.Warn("Download failed.\n")
+				return err
 			}
 		}
 	}
@@ -409,9 +407,9 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 			}
 
 			return nil
-		} else {
-			msg.Warn("Cache key generation error: %s", err)
 		}
+
+		msg.Warn("Cache key generation error: %s", err)
 	}
 
 	// If unable to cache pull directly into the vendor/ directory.

@@ -1,9 +1,8 @@
-/* Package path contains path and environment utilities for Glide.
-
-This includes tools to find and manipulate Go path variables, as well as
-tools for copying from one path to another.
-*/
-package action
+// Package path contains path and environment utilities for Glide.
+//
+//This includes tools to find and manipulate Go path variables, as well as
+//tools for copying from one path to another.
+package path
 
 import (
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	"strings"
 )
 
+// DefaultGlideFile is the default name for the glide.yaml file.
 const DefaultGlideFile = "glide.yaml"
 
 // VendorDir is the name of the directory that holds vendored dependencies.
@@ -31,6 +31,7 @@ var HomeDir = "$HOME/.glide"
 // only be set once, at startup, or not at all.
 var GlideFile = DefaultGlideFile
 
+// LockFile is the default name for the lock file.
 const LockFile = "glide.lock"
 
 // Home returns the Glide home directory ($GLIDE_HOME or ~/.glide, typically).
@@ -45,7 +46,7 @@ func Home() string {
 	return h
 }
 
-// VendorPath calculates the path to the vendor directory.
+// Vendor calculates the path to the vendor directory.
 //
 // Based on working directory, VendorDir and GlideFile, this attempts to
 // guess the location of the vendor directory.

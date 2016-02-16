@@ -69,12 +69,14 @@ func (d *DefaultMissingPackageHandler) NotFound(pkg string) (bool, error) {
 	return false, nil
 }
 
+// OnGopath is run when a package is missing from vendor/ but found in the GOPATH
 func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	msg.Warn("Package %s is only on GOPATH.", pkg)
 	d.Gopath = append(d.Gopath, pkg)
 	return false, nil
 }
 
+// InVendor is run when a package is found in the vendor/ folder
 func (d *DefaultMissingPackageHandler) InVendor(pkg string) error {
 	msg.Info("Package %s found in vendor/ folder", pkg)
 	return nil
@@ -713,6 +715,7 @@ const (
 	LocCgo
 )
 
+// PkgInfo represents metadata about a package found by the resolver.
 type PkgInfo struct {
 	Name, Path string
 	Vendored   bool
@@ -809,7 +812,8 @@ func isLink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink == os.ModeSymlink
 }
 
-// Returns true if this is a directory that could have source code, false otherwise.
+// IsSrcDir returns true if this is a directory that could have source code,
+// false otherwise.
 //
 // Directories with _ or . prefixes are skipped, as are testdata and vendor.
 func IsSrcDir(fi os.FileInfo) bool {

@@ -45,6 +45,7 @@ func (lf *Lockfile) WriteFile(lockpath string) error {
 	return ioutil.WriteFile(lockpath, o, 0666)
 }
 
+// Locks is a slice of locked dependencies.
 type Locks []*Lock
 
 // Len returns the length of the Locks. This is needed for sorting with
@@ -69,6 +70,7 @@ func (l Locks) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
+// Lock represents an individual locked dependency.
 type Lock struct {
 	Name        string   `yaml:"name"`
 	Version     string   `yaml:"version"`
@@ -79,6 +81,7 @@ type Lock struct {
 	Os          []string `yaml:"os,omitempty"`
 }
 
+// NewLockfile is used to create an instance of Lockfile.
 func NewLockfile(ds Dependencies, hash string) *Lockfile {
 	lf := &Lockfile{
 		Hash:    hash,
@@ -103,6 +106,7 @@ func NewLockfile(ds Dependencies, hash string) *Lockfile {
 	return lf
 }
 
+// LockfileFromMap takes a map of dependencies and generates a lock Lockfile instance.
 func LockfileFromMap(ds map[string]*Dependency, hash string) *Lockfile {
 	lf := &Lockfile{
 		Hash:    hash,
