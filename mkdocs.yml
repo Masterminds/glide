@@ -2,4 +2,7 @@ site_name: Glide Documentation
 pages:
 - Home: index.md
 - Getting Started: getting-started.md
+- The glide.yaml File: glide.yaml.md
+- Versions and Ranges: versions.md
+- F.A.Q.: faq.md
 theme: readthedocs

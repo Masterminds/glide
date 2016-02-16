@@ -55,5 +55,5 @@
 //          ending in .git or on GitHub can be detected to be Git. For a repo on
 //          Bitbucket we can contact the API to discover the type.
 //    - devImport: A list of development packages. Each package has the same details
-//      as those lised under import.
+//      as those listed under import.
 package cfg
