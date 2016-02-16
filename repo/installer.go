@@ -93,28 +93,12 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 
 	newConf.Imports = make(cfg.Dependencies, len(lock.Imports))
 	for k, v := range lock.Imports {
-		newConf.Imports[k] = &cfg.Dependency{
-			Name:        v.Name,
-			Reference:   v.Version,
-			Repository:  v.Repository,
-			VcsType:     v.VcsType,
-			Subpackages: v.Subpackages,
-			Arch:        v.Arch,
-			Os:          v.Os,
-		}
+		newConf.Imports[k] = cfg.DependencyFromLock(v)
 	}
 
 	newConf.DevImports = make(cfg.Dependencies, len(lock.DevImports))
 	for k, v := range lock.DevImports {
-		newConf.DevImports[k] = &cfg.Dependency{
-			Name:        v.Name,
-			Reference:   v.Version,
-			Repository:  v.Repository,
-			VcsType:     v.VcsType,
-			Subpackages: v.Subpackages,
-			Arch:        v.Arch,
-			Os:          v.Os,
-		}
+		newConf.DevImports[k] = cfg.DependencyFromLock(v)
 	}
 
 	newConf.DeDupe()
