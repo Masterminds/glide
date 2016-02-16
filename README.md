@@ -176,11 +176,11 @@ When you want to install the specific versions from the `glide.lock` file use
 $ glide install
 ```
 
-This will read the `glide.lock` file, making sure it's tied to the `glide.yaml`
-file, and install the commit id specific versions there.
+This will read the `glide.lock` file and install the commit id specific versions
+there.
 
 When the `glide.lock` file doesn't tie to the `glide.yaml` file, such as there
-being a change, it will provide an error. Running `glide up` will recreate the
+being a change, it will provide a warning. Running `glide up` will recreate the
 `glide.lock` file when updating the dependency tree.
 
 If no `glide.lock` file is present `glide install` will perform an `update` and

@@ -4,5 +4,6 @@ pages:
 - Getting Started: getting-started.md
 - The glide.yaml File: glide.yaml.md
 - Versions and Ranges: versions.md
+- Commands: commands.md
 - F.A.Q.: faq.md
 theme: readthedocs
