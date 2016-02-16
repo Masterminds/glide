@@ -56,7 +56,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool
 
 	// Set Reference
 	if err := repo.SetReference(confcopy); err != nil {
-		msg.Error("Failed to set references: %s", err)
+		msg.Err("Failed to set references: %s", err)
 	}
 
 	// VendoredCleanup

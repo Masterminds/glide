@@ -17,7 +17,7 @@ func NoVendor(path string, onlyGo, suffix bool) {
 	// This is responsible for printing the results of noVend.
 	paths, err := noVend(path, onlyGo, suffix)
 	if err != nil {
-		msg.Error("Failed to walk file tree: %s", err)
+		msg.Err("Failed to walk file tree: %s", err)
 		msg.Warn("FIXME: NoVendor should exit with non-zero exit code.")
 		return
 	}

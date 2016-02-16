@@ -53,7 +53,7 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		// from the right version of the package.
 		msg.Info("Setting references for remaining imports")
 		if err := repo.SetReference(confcopy); err != nil {
-			msg.Error("Failed to set references: %s (Skip to cleanup)", err)
+			msg.Err("Failed to set references: %s (Skip to cleanup)", err)
 		}
 	}
 	// Vendored cleanup
@@ -79,7 +79,7 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		}
 		lock := cfg.NewLockfile(confcopy.Imports, hash)
 		if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
-			msg.Error("Could not write lock file to %s: %s", base, err)
+			msg.Err("Could not write lock file to %s: %s", base, err)
 			return
 		}
 

@@ -63,7 +63,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 				msg.Info("%s is a vendored package. Updating.", dep.Name)
 				err = os.RemoveAll(dest)
 				if err != nil {
-					msg.Error("Unable to update vendored dependency %s.\n", dep.Name)
+					msg.Err("Unable to update vendored dependency %s.\n", dep.Name)
 					return err
 				}
 				dep.UpdateAsVendored = true
@@ -226,7 +226,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 			}
 		}
 		if err := repo.UpdateVersion(ver); err != nil {
-			msg.Error("Failed to set version to %s: %s\n", dep.Reference, err)
+			msg.Err("Failed to set version to %s: %s\n", dep.Reference, err)
 			return err
 		}
 		dep.Pin, err = repo.Version()

@@ -49,7 +49,7 @@ func Install(installer *repo.Installer) {
 
 	// Set reference
 	if err := repo.SetReference(newConf); err != nil {
-		msg.Error("Failed to set references: %s (Skip to cleanup)", err)
+		msg.Err("Failed to set references: %s (Skip to cleanup)", err)
 	}
 
 	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.

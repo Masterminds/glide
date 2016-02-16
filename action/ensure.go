@@ -36,7 +36,7 @@ func EnsureConfig() *cfg.Config {
 	return conf
 }
 
-// EnsureCacheDir ensures the existance of the cache directory
+// EnsureCacheDir ensures the existence of the cache directory
 func EnsureCacheDir() {
 	msg.Warn("ensure.go: ensureCacheDir is not implemented.")
 }
@@ -53,7 +53,7 @@ func EnsureGoVendor() {
 	// This works with 1.5 and >=1.6.
 	cmd = exec.Command("go", "env", "GO15VENDOREXPERIMENT")
 	if out, err := cmd.CombinedOutput(); err != nil {
-		msg.Error("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
+		msg.Err("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
 		os.Exit(1)
 	} else if strings.TrimSpace(string(out)) != "1" {
 		msg.Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1\n")
@@ -105,7 +105,7 @@ func EnsureGopath() string {
 		return gp
 	}
 
-	msg.Error("Could not find any of %s/src.\n", strings.Join(gps, "/src, "))
+	msg.Err("Could not find any of %s/src.\n", strings.Join(gps, "/src, "))
 	msg.Info("As of Glide 0.5/Go 1.5, this is required.\n")
 	msg.Die("Wihtout src, cannot continue.")
 	return ""

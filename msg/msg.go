@@ -95,23 +95,23 @@ func Warn(msg string, args ...interface{}) {
 	Default.Warn(msg, args...)
 }
 
-// Error logs and error.
-func (m *Messenger) Error(msg string, args ...interface{}) {
+// Err logs an error.
+func (m *Messenger) Err(msg string, args ...interface{}) {
 	prefix := m.Color(Red, "[ERROR] ")
 	m.Msg(prefix+msg, args...)
 	m.hasErrored = true
 }
 
-// Error logs and error using the Default Messenger
-func Error(msg string, args ...interface{}) {
-	Default.Error(msg, args...)
+// Err logs anderror using the Default Messenger
+func Err(msg string, args ...interface{}) {
+	Default.Err(msg, args...)
 }
 
 // Die prints an error message and immediately exits the application.
 // If PanicOnDie is set to true a panic will occur instead of os.Exit being
 // called.
 func (m *Messenger) Die(msg string, args ...interface{}) {
-	m.Error(msg, args...)
+	m.Err(msg, args...)
 	if m.PanicOnDie {
 		panic("trapped a Die() call")
 	}

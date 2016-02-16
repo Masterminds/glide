@@ -114,7 +114,7 @@ func main() {
 
 	// Detect errors from the Before and After calls and exit on them.
 	if err := app.Run(os.Args); err != nil {
-		msg.Error(err.Error())
+		msg.Err(err.Error())
 		os.Exit(1)
 	}
 

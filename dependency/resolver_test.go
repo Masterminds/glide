@@ -53,7 +53,7 @@ func TestResolveLocalDeep(t *testing.T) {
 	}
 
 	if len(l) < 4 {
-		t.Errorf("Expected at least 4 deps, got %d: %s", len(l))
+		t.Errorf("Expected at least 4 deps, got %d", len(l))
 	}
 }
 

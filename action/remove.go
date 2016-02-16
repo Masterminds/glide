@@ -28,7 +28,7 @@ func Remove(packages []string, inst *repo.Installer) {
 	confcopy.Imports = inst.List(confcopy)
 
 	if err := repo.SetReference(confcopy); err != nil {
-		msg.Error("Failed to set references: %s", err)
+		msg.Err("Failed to set references: %s", err)
 	}
 
 	// TODO: Right now, there is no flag to enable this, so this will never be

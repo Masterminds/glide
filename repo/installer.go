@@ -245,7 +245,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 				case dep := <-ch:
 					dest := filepath.Join(i.VendorPath(), dep.Name)
 					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored); err != nil {
-						msg.Error("Update failed for %s: %s\n", dep.Name, err)
+						msg.Err("Update failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
 						lock.Lock()
@@ -386,7 +386,7 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 		}
 	}
 
-	msg.Error("Could not locate %s on the GOPATH, though it was found before.", pkg)
+	msg.Err("Could not locate %s on the GOPATH, though it was found before.", pkg)
 	return false, nil
 }
 
@@ -468,7 +468,7 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 				}
 			}
 		} else if err != nil {
-			msg.Error("Unable to import from %s. Err: %s", root, err)
+			msg.Err("Unable to import from %s. Err: %s", root, err)
 			e = err
 		}
 	}

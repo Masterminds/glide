@@ -274,7 +274,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 	})
 
 	if err != nil {
-		msg.Error("Failed to build an initial list of packages to scan: %s", err)
+		msg.Err("Failed to build an initial list of packages to scan: %s", err)
 		return []string{}, err
 	}
 
@@ -395,7 +395,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 					r.VersionHandler.SetVersion(dep)
 				} else if err2 != nil {
 					r.hadError[dep] = true
-					msg.Error("Error looking for %s: %s", dep, err2)
+					msg.Err("Error looking for %s: %s", dep, err2)
 				} else {
 					r.hadError[dep] = true
 					// TODO (mpb): Should we toss this into a Handler to
@@ -404,7 +404,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				}
 			} else {
 				r.hadError[dep] = true
-				msg.Error("Error scanning %s: %s", dep, err)
+				msg.Err("Error scanning %s: %s", dep, err)
 			}
 			continue
 		}
@@ -529,12 +529,12 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 			e := r.queueUnseen(path, queue)
 			if err != nil {
 				failedDep = path
-				//msg.Error("Failed to fetch dependency %s: %s", path, err)
+				//msg.Err("Failed to fetch dependency %s: %s", path, err)
 			}
 			return e
 		})
 		if err != nil && err != filepath.SkipDir {
-			msg.Error("Dependency %s failed to resolve: %s.", failedDep, err)
+			msg.Err("Dependency %s failed to resolve: %s.", failedDep, err)
 			return []string{}, err
 		}
 	}
@@ -580,7 +580,7 @@ func (r *Resolver) queueUnseen(pkg string, queue *list.List) error {
 
 	deps, err := r.imports(pkg)
 	if err != nil && !strings.HasPrefix(err.Error(), "no buildable Go source") {
-		msg.Error("Could not find %s: %s", pkg, err)
+		msg.Err("Could not find %s: %s", pkg, err)
 		return err
 		// NOTE: If we uncomment this, we get lots of "no buildable Go source" errors,
 		// which don't ever seem to be helpful. They don't actually indicate an error
@@ -647,7 +647,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 			// Do we resolve here?
 			found, err := r.Handler.NotFound(imp)
 			if err != nil {
-				msg.Error("Failed to fetch %s: %s", imp, err)
+				msg.Err("Failed to fetch %s: %s", imp, err)
 			}
 			if found {
 				buf = append(buf, filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
@@ -666,7 +666,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 		case LocGopath:
 			found, err := r.Handler.OnGopath(imp)
 			if err != nil {
-				msg.Error("Failed to fetch %s: %s", imp, err)
+				msg.Err("Failed to fetch %s: %s", imp, err)
 			}
 			// If the Handler marks this as found, we drop it into the buffer
 			// for subsequent processing. Otherwise, we assume that we're

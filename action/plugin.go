@@ -48,12 +48,12 @@ func Plugin(command string, args []string) {
 
 	proc, err := os.StartProcess(fullcmd, args, &pa)
 	if err != nil {
-		msg.Error("Failed to execute %s: %s", cmd, err)
+		msg.Err("Failed to execute %s: %s", cmd, err)
 		os.Exit(98)
 	}
 
 	if _, err := proc.Wait(); err != nil {
-		msg.Error(err.Error())
+		msg.Err(err.Error())
 		os.Exit(1)
 	}
 }
