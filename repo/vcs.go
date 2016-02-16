@@ -153,7 +153,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 
 	cwd := filepath.Join(vend, dep.Name)
 
-	// If there is no refernece configured there is nothing to set.
+	// If there is no reference configured there is nothing to set.
 	if dep.Reference == "" {
 		// Before exiting update the pinned version
 		repo, err := dep.GetRepo(cwd)
@@ -261,7 +261,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 					continue
 				}
 
-				// Dirty repos have uncomitted changes.
+				// Dirty repos have uncommitted changes.
 				if repo.IsDirty() {
 					continue
 				}

@@ -8,9 +8,9 @@ import (
 	"sync"
 )
 
-// Messanger provides the underlying implementation that displays output to
+// Messenger provides the underlying implementation that displays output to
 // users.
-type Messanger struct {
+type Messenger struct {
 	sync.Mutex
 
 	// Quiet, if true, suppresses chatty levels, like Info.
@@ -38,9 +38,9 @@ type Messanger struct {
 	hasErrored bool
 }
 
-// NewMessanger creates a default Messanger to display output.
-func NewMessanger() *Messanger {
-	m := &Messanger{
+// NewMessenger creates a default Messenger to display output.
+func NewMessenger() *Messenger {
+	m := &Messenger{
 		Quiet:       false,
 		IsDebugging: false,
 		NoColor:     false,
@@ -53,11 +53,11 @@ func NewMessanger() *Messanger {
 	return m
 }
 
-// Default contains a default messanger used by package level functions
-var Default = NewMessanger()
+// Default contains a default Messenger used by package level functions
+var Default = NewMessenger()
 
 // Info logs information
-func (m *Messanger) Info(msg string, args ...interface{}) {
+func (m *Messenger) Info(msg string, args ...interface{}) {
 	if m.Quiet {
 		return
 	}
@@ -65,13 +65,13 @@ func (m *Messanger) Info(msg string, args ...interface{}) {
 	m.Msg(prefix+msg, args...)
 }
 
-// Info logs information using the Default Messanger
+// Info logs information using the Default Messenger
 func Info(msg string, args ...interface{}) {
 	Default.Info(msg, args...)
 }
 
 // Debug logs debug information
-func (m *Messanger) Debug(msg string, args ...interface{}) {
+func (m *Messenger) Debug(msg string, args ...interface{}) {
 	if m.Quiet || !m.IsDebugging {
 		return
 	}
@@ -79,30 +79,30 @@ func (m *Messanger) Debug(msg string, args ...interface{}) {
 	Msg(prefix+msg, args...)
 }
 
-// Debug logs debug information using the Default Messanger
+// Debug logs debug information using the Default Messenger
 func Debug(msg string, args ...interface{}) {
 	Default.Debug(msg, args...)
 }
 
 // Warn logs a warning
-func (m *Messanger) Warn(msg string, args ...interface{}) {
+func (m *Messenger) Warn(msg string, args ...interface{}) {
 	prefix := m.Color(Yellow, "[WARN] ")
 	m.Msg(prefix+msg, args...)
 }
 
-// Warn logs a warning using the Default Messanger
+// Warn logs a warning using the Default Messenger
 func Warn(msg string, args ...interface{}) {
 	Default.Warn(msg, args...)
 }
 
 // Error logs and error.
-func (m *Messanger) Error(msg string, args ...interface{}) {
+func (m *Messenger) Error(msg string, args ...interface{}) {
 	prefix := m.Color(Red, "[ERROR] ")
 	m.Msg(prefix+msg, args...)
 	m.hasErrored = true
 }
 
-// Error logs and error using the Default Messanger
+// Error logs and error using the Default Messenger
 func Error(msg string, args ...interface{}) {
 	Default.Error(msg, args...)
 }
@@ -110,7 +110,7 @@ func Error(msg string, args ...interface{}) {
 // Die prints an error message and immediately exits the application.
 // If PanicOnDie is set to true a panic will occur instead of os.Exit being
 // called.
-func (m *Messanger) Die(msg string, args ...interface{}) {
+func (m *Messenger) Die(msg string, args ...interface{}) {
 	m.Error(msg, args...)
 	if m.PanicOnDie {
 		panic("trapped a Die() call")
@@ -119,7 +119,7 @@ func (m *Messanger) Die(msg string, args ...interface{}) {
 }
 
 // Die prints an error message and immediately exits the application using the
-// Default Messanger. If PanicOnDie is set to true a panic will occur instead of
+// Default Messenger. If PanicOnDie is set to true a panic will occur instead of
 // os.Exit being called.
 func Die(msg string, args ...interface{}) {
 	Default.Die(msg, args...)
@@ -130,7 +130,7 @@ func Die(msg string, args ...interface{}) {
 // The default is 1.
 //
 // Returns the old error code.
-func (m *Messanger) ExitCode(e int) int {
+func (m *Messenger) ExitCode(e int) int {
 	m.Lock()
 	old := m.ecode
 	m.ecode = e
@@ -138,7 +138,7 @@ func (m *Messanger) ExitCode(e int) int {
 	return old
 }
 
-// ExitCode sets the exit code used by Die using the Default Messanger.
+// ExitCode sets the exit code used by Die using the Default Messenger.
 //
 // The default is 1.
 //
@@ -149,7 +149,7 @@ func ExitCode(e int) int {
 
 // Msg prints a message with optional arguments, that can be printed, of
 // varying types.
-func (m *Messanger) Msg(msg string, args ...interface{}) {
+func (m *Messenger) Msg(msg string, args ...interface{}) {
 	// When operations in Glide are happening concurrently messaging needs to be
 	// locked to avoid displaying one message in the middle of another one.
 	m.Lock()
@@ -169,7 +169,7 @@ func (m *Messanger) Msg(msg string, args ...interface{}) {
 }
 
 // Msg prints a message with optional arguments, that can be printed, of
-// varying types using the Default Messanger.
+// varying types using the Default Messenger.
 func Msg(msg string, args ...interface{}) {
 	Default.Msg(msg, args...)
 }
@@ -179,7 +179,7 @@ func Msg(msg string, args ...interface{}) {
 // It does not prefix the message, does not color it, or otherwise decorate it.
 //
 // It does add a line feed.
-func (m *Messanger) Puts(msg string, args ...interface{}) {
+func (m *Messenger) Puts(msg string, args ...interface{}) {
 	// When operations in Glide are happening concurrently messaging needs to be
 	// locked to avoid displaying one message in the middle of another one.
 	m.Lock()
@@ -189,7 +189,7 @@ func (m *Messanger) Puts(msg string, args ...interface{}) {
 	fmt.Fprintln(m.Stdout)
 }
 
-// Puts formats a message and then prints to Stdout using the Default Messanger.
+// Puts formats a message and then prints to Stdout using the Default Messenger.
 //
 // It does not prefix the message, does not color it, or otherwise decorate it.
 //
@@ -201,7 +201,7 @@ func Puts(msg string, args ...interface{}) {
 // Print prints exactly the string given.
 //
 // It prints to Stdout.
-func (m *Messanger) Print(msg string) {
+func (m *Messenger) Print(msg string) {
 	// When operations in Glide are happening concurrently messaging needs to be
 	// locked to avoid displaying one message in the middle of another one.
 	m.Lock()
@@ -210,7 +210,7 @@ func (m *Messanger) Print(msg string) {
 	fmt.Fprint(m.Stdout, msg)
 }
 
-// Print prints exactly the string given using the Default Messanger.
+// Print prints exactly the string given using the Default Messenger.
 //
 // It prints to Stdout.
 func Print(msg string) {
@@ -221,11 +221,11 @@ func Print(msg string) {
 //
 // This is useful if you want to known if Error was called to exit with a
 // non-zero exit code.
-func (m *Messanger) HasErrored() bool {
+func (m *Messenger) HasErrored() bool {
 	return m.hasErrored
 }
 
-// HasErrored returns if Error has been called on the Default Messanger.
+// HasErrored returns if Error has been called on the Default Messenger.
 //
 // This is useful if you want to known if Error was called to exit with a
 // non-zero exit code.

@@ -93,7 +93,7 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 // - ensures that this package is not in the ignore list
 // - checks to see if this is already in the dependency list.
 // - splits version of of package name and adds the version attribute
-// - seperates repo from packages
+// - separates repo from packages
 // - sets up insecure repo URLs where necessary
 // - generates a list of subpackages
 func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {

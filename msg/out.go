@@ -20,7 +20,7 @@ const (
 //
 // The following will print the string "Foo" in yellow:
 //     fmt.Print(Color(Yellow, "Foo"))
-func (m *Messanger) Color(code, msg string) string {
+func (m *Messenger) Color(code, msg string) string {
 	if m.NoColor {
 		return msg
 	}

@@ -422,7 +422,7 @@ type VersionHandler struct {
 	// change over the course of setting versions.
 	Use *importCache
 
-	// Cache if importing scan has already occured here.
+	// Cache if importing scan has already occurred here.
 	Imported map[string]bool
 
 	// Where the packages exist to set the version on.

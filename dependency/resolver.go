@@ -728,7 +728,7 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 	// like GOPATH, can be modified while we're running an operation, and
 	// render the cache inaccurate.
 	//
-	// Unfound items (LocUnkown) are never cached because we assume that as
+	// Unfound items (LocUnknown) are never cached because we assume that as
 	// part of the response, the Resolver may fetch that dependency.
 	if i, ok := r.findCache[name]; ok {
 		//msg.Info("Cache hit on %s", name)
