@@ -45,6 +45,19 @@ func (lf *Lockfile) WriteFile(lockpath string) error {
 	return ioutil.WriteFile(lockpath, o, 0666)
 }
 
+// ReadLockFile loads the contents of a glide.lock file.
+func ReadLockFile(lockpath string) (*Lockfile, error) {
+	yml, err := ioutil.ReadFile(lockpath)
+	if err != nil {
+		return nil, err
+	}
+	lock, err := LockfileFromYaml(yml)
+	if err != nil {
+		return nil, err
+	}
+	return lock, nil
+}
+
 // Locks is a slice of locked dependencies.
 type Locks []*Lock
 
