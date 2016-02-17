@@ -4,6 +4,8 @@ pages:
 - Getting Started: getting-started.md
 - The glide.yaml File: glide.yaml.md
 - Versions and Ranges: versions.md
+- Lock file: glide.lock.md
 - Commands: commands.md
+- Vendor Directories: vendor.md
 - F.A.Q.: faq.md
 theme: readthedocs

@@ -1,5 +1,5 @@
 package: github.com/Masterminds/glide
-homepage: https://github.com/Masterminds/glide
+homepage: https://glide.sh
 license: MIT
 owners:
 - name: Matt Butcher
