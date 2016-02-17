@@ -70,7 +70,7 @@ func getRootFromGoGet(pkg string) string {
 	if u.RawQuery == "" {
 		u.RawQuery = "go-get=1"
 	} else {
-		u.RawQuery = u.RawQuery + "+go-get=1"
+		u.RawQuery = u.RawQuery + "&go-get=1"
 	}
 	checkURL := u.String()
 	resp, err := http.Get(checkURL)
