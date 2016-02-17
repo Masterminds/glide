@@ -510,6 +510,18 @@ Example:
 			},
 		},
 		{
+			Name:  "brew",
+			Usage: "Brew prints dependencies converted to Homebrew resources.",
+			Description: `Brew converts dependencies from glides format to Homebrew's resource format and
+			prints them, for inclusion in a Homebrew formula.
+
+			It uses the glide.lock file, so all sub dependencies are also included.
+			`,
+			Action: func(c *cli.Context) {
+				action.Brew()
+			},
+		},
+		{
 			Name:  "about",
 			Usage: "Learn about Glide",
 			Action: func(c *cli.Context) {

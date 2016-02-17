@@ -1,0 +1,10 @@
+hash: 8c11b6eb9430a06acee21ff6d05558656bad03f303785c6c43f2f4e19f7ce088
+updated: 2016-02-17T17:55:50.599339531-05:00
+imports:
+- name: a/different/path
+  version: 6333b7bd29aad1d79898ff568fd90a8aa533ae82
+  repo: https://github.com/Masterminds/semver.git
+  vcs: git
+- name: github.com/Masterminds/semver
+  version: c4f7ef0702f269161a60489ccbbc9f1241ad1265
+devImports: []
