@@ -421,24 +421,25 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 	gerr := repo.Get()
 
 	// Attempt to cache the default branch
-	branch := findCurrentBranch(repo)
-	if branch != "" {
-		// we know the default branch so we can store it in the cache
-		var loc string
-		if dep.Repository != "" {
-			loc = dep.Repository
-		} else {
-			loc = "https://" + dep.Name
-		}
-		key, err := cacheCreateKey(loc)
-		if err == nil {
-			msg.Debug("Saving default branch for %s", repo.Remote())
-			c := cacheRepoInfo{DefaultBranch: branch}
-			err = saveCacheRepoData(key, c, home)
-			if err == errCacheDisabled {
-				msg.Debug("Unable to cache default branch because caching is disabled")
-			} else if err != nil {
-				msg.Debug("Error saving %s to cache - Error: %s", repo.Remote(), err)
+	if cache {
+		if branch := findCurrentBranch(repo); branch != "" {
+			// we know the default branch so we can store it in the cache
+			var loc string
+			if dep.Repository != "" {
+				loc = dep.Repository
+			} else {
+				loc = "https://" + dep.Name
+			}
+			key, err := cacheCreateKey(loc)
+			if err == nil {
+				msg.Debug("Saving default branch for %s", repo.Remote())
+				c := cacheRepoInfo{DefaultBranch: branch}
+				err = saveCacheRepoData(key, c, home)
+				if err == errCacheDisabled {
+					msg.Debug("Unable to cache default branch because caching is disabled")
+				} else if err != nil {
+					msg.Debug("Error saving %s to cache - Error: %s", repo.Remote(), err)
+				}
 			}
 		}
 	}
