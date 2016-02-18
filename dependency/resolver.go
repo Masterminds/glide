@@ -688,11 +688,18 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 }
 
 // sliceToQueue is a special-purpose function for unwrapping a slice of
-// dependencies into a queue of fully qualified paths.
+// dependencies into a queue of fully qualified paths.  If subpackages
+// are present, each subpackage is resolved into its own full path.
 func sliceToQueue(deps []*cfg.Dependency, basepath string) *list.List {
 	l := list.New()
 	for _, e := range deps {
-		l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name)))
+		if len(e.Subpackages) == 0 {
+			l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name)))
+		} else {
+			for _, spkg := range e.Subpackages {
+				l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name), spkg))
+			}
+		}
 	}
 	return l
 }
