@@ -56,6 +56,8 @@ func Install(installer *repo.Installer) {
 	if installer.UpdateVendored {
 		repo.VendoredCleanup(newConf)
 	}
+
+	installer.Cleanup()
 }
 
 // LoadLockfile loads the contents of a glide.lock file.

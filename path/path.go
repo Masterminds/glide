@@ -15,6 +15,10 @@ import (
 // DefaultGlideFile is the default name for the glide.yaml file.
 const DefaultGlideFile = "glide.yaml"
 
+var UseGoVendor = true
+
+var GoPathVendorDir string
+
 // VendorDir is the name of the directory that holds vendored dependencies.
 //
 // As of Go 1.5, this is always vendor.

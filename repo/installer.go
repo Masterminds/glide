@@ -47,6 +47,9 @@ type Installer struct {
 	// of every file of every package, rather than only following imported
 	// packages.
 	ResolveAllFiles bool
+
+	// KeepVendorSymlink when gpath.UseGoVendor == false
+	KeepVendorSymlink bool
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -189,6 +192,16 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	err = ConcurrentUpdate(conf.Imports, vpath, i)
 
 	return err
+}
+
+// do some cleanup things after install/update/get command.
+func (i *Installer) Cleanup() {
+	if !gpath.UseGoVendor && !i.KeepVendorSymlink {
+		msg.Debug("Remove symlink %s", gpath.VendorDir)
+		if err := os.Remove(gpath.VendorDir); err != nil {
+			msg.Err("Could not remove symlink %s: %s", gpath.VendorDir, err)
+		}
+	}
 }
 
 // List resolves the complete dependency tree and returns a list of dependencies.

@@ -74,6 +74,8 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool
 	} else {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
 	}
+
+	installer.Cleanup()
 }
 
 func writeLock(conf, confcopy *cfg.Config, base string) {
