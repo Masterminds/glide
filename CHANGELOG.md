@@ -1,5 +1,7 @@
-# Release 0.9.0 (xxxx-xx-xx)
+# Release 0.9.0 (2016-02-17)
 
+- Fixed #262: Using correct query string merging for go-get queries (thanks gdm85).
+- Fixed #251: Fixed warning message (thanks james-lawrence).
 - Adding support for IBM JazzHub.
 - Fixes #250: When unable to retrieve or set version on a dependency now erroring
   and exiting with non-0 exit code.
