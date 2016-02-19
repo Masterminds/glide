@@ -1,5 +1,6 @@
 # Release 0.9.1 (xxxx-xx-xx)
 
+- Issue #267: Added `os` and `arch` import properties to the documentation.
 - Fixed #267: Glide was only walking the import tree based on build flags for
   the current OS and Arch. This is a problem for systems like docker that have
   variation built in.
