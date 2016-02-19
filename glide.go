@@ -43,6 +43,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
+	"github.com/Masterminds/glide/util"
 
 	"github.com/codegangsta/cli"
 
@@ -202,11 +203,20 @@ func commands() []cli.Command {
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "resolve-current",
+					Usage: "Resolve dependencies for only the current system rather than all build modes.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
+				}
+
+				if c.Bool("resolve-current") {
+					util.ResolveCurrent = true
+					msg.Warn("Only resolving dependencies for the current OS/Arch")
 				}
 
 				inst := &repo.Installer{
@@ -465,8 +475,18 @@ Example:
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "resolve-current",
+					Usage: "Resolve dependencies for only the current system rather than all build modes.",
+				},
 			},
 			Action: func(c *cli.Context) {
+
+				if c.Bool("resolve-current") {
+					util.ResolveCurrent = true
+					msg.Warn("Only resolving dependencies for the current OS/Arch")
+				}
+
 				installer := &repo.Installer{
 					DeleteUnused:    c.Bool("deleteOptIn"),
 					UpdateVendored:  c.Bool("update-vendored"),

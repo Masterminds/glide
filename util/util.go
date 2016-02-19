@@ -16,6 +16,12 @@ import (
 	"github.com/Masterminds/vcs"
 )
 
+// ResolveCurrent selects whether the package should only the dependencies for
+// the current OS/ARCH instead of all possible permutations.
+// This is not concurrently safe which is ok for the current application. If
+// other needs arise it may need to be re-written.
+var ResolveCurrent = false
+
 func init() {
 	// Precompile the regular expressions used to check VCS locations.
 	for _, v := range vcsList {
@@ -263,9 +269,13 @@ func (b *BuildCtxt) PackageName(base string) string {
 func GetBuildContext() (*BuildCtxt, error) {
 	buildContext := &BuildCtxt{build.Default}
 
-	// This tells the context scanning to skip filtering on +build flags or
-	// file names.
-	buildContext.UseAllFiles = true
+	// If we aren't resolving for the current system set to look at all
+	// build modes.
+	if !ResolveCurrent {
+		// This tells the context scanning to skip filtering on +build flags or
+		// file names.
+		buildContext.UseAllFiles = true
+	}
 
 	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
 		out, err := exec.Command("go", "env", "GOROOT").Output()
