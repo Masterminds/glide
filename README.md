@@ -1,5 +1,7 @@
 # Glide: Vendor Package Management for Golang
 
+![glide logo](https://glide.sh/assets/logo-small.png)
+
 Are you used to tools such as Cargo, npm, Composer, Nuget, Pip, Maven, Bundler,
 or other modern package managers? If so, Glide is the comparable Go tool.
 
