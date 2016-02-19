@@ -262,6 +262,11 @@ func (b *BuildCtxt) PackageName(base string) string {
 // TODO: This should be moved to the `dependency` package.
 func GetBuildContext() (*BuildCtxt, error) {
 	buildContext := &BuildCtxt{build.Default}
+
+	// This tells the context scanning to skip filtering on +build flags or
+	// file names.
+	buildContext.UseAllFiles = true
+
 	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
 		out, err := exec.Command("go", "env", "GOROOT").Output()
 		if goRoot = strings.TrimSpace(string(out)); len(goRoot) == 0 || err != nil {

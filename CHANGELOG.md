@@ -1,3 +1,9 @@
+# Release 0.9.1 (xxxx-xx-xx)
+
+- Fixed #267: Glide was only walking the import tree based on build flags for
+  the current OS and Arch. This is a problem for systems like docker that have
+  variation built in.
+
 # Release 0.9.0 (2016-02-17)
 
 - Fixed #262: Using correct query string merging for go-get queries (thanks gdm85).
