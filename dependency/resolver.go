@@ -802,7 +802,9 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 	if name == "C" {
 		info.Loc = LocCgo
 		r.findCache[name] = info
-	} else if name == "appengine" || strings.HasPrefix(name, "appengine/") {
+	} else if name == "appengine" || name == "appengine_internal" ||
+		strings.HasPrefix(name, "appengine/") ||
+		strings.HasPrefix(name, "appengine_internal/") {
 		// Appengine is a special case when it comes to Go builds. It is a local
 		// looking package only available within appengine. It's a special case
 		// where Google products are playing with each other.
