@@ -143,9 +143,15 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		}
 	}
 
-	// Finally, if this is "C", we're dealing with cgo
+	// If this is "C", we're dealing with cgo
 	if name == "C" {
 		info.Loc = dependency.LocCgo
+	} else if name == "appengine" || strings.HasPrefix(name, "appengine/") {
+		// Appengine is a special case when it comes to Go builds. It is a local
+		// looking package only available within appengine. It's a special case
+		// where Google products are playing with each other.
+		// https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
+		info.Loc = dependency.LocAppengine
 	}
 
 	return info

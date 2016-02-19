@@ -413,7 +413,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		// can locate.
 		for _, imp := range pkg.Imports {
 			pi := r.FindPkg(imp)
-			if pi.Loc != LocCgo && pi.Loc != LocGoroot {
+			if pi.Loc != LocCgo && pi.Loc != LocGoroot && pi.Loc != LocAppengine {
 				msg.Debug("Package %s imports %s", dep, imp)
 			}
 			switch pi.Loc {
@@ -713,6 +713,11 @@ const (
 	LocGoroot
 	// LocCgo indicates that the package is a a CGO package
 	LocCgo
+	// LocAppengine indicates the package is part of the appengine SDK. It's a
+	// special build mode. https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
+	// Why does a Google product get a special case build mode with a local
+	// package?
+	LocAppengine
 )
 
 // PkgInfo represents metadata about a package found by the resolver.
@@ -793,9 +798,16 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 		}
 	}
 
-	// Finally, if this is "C", we're dealing with cgo
+	// If this is "C", we're dealing with cgo
 	if name == "C" {
 		info.Loc = LocCgo
+		r.findCache[name] = info
+	} else if name == "appengine" || strings.HasPrefix(name, "appengine/") {
+		// Appengine is a special case when it comes to Go builds. It is a local
+		// looking package only available within appengine. It's a special case
+		// where Google products are playing with each other.
+		// https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
+		info.Loc = LocAppengine
 		r.findCache[name] = info
 	}
 
