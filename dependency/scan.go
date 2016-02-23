@@ -97,7 +97,16 @@ func IterativeScan(path string) ([]string, error) {
 		msg.Debug("Scanning with Arch(%s), OS(%s), and Build Tags(%v)", arch, ops, ttgs)
 
 		pk, err := b.ImportDir(path, 0)
+
+		// If there are no buildable souce with this permutation we skip it.
 		if err != nil && strings.HasPrefix(err.Error(), "no buildable Go source files in") {
+			continue
+		} else if err != nil && strings.HasPrefix(err.Error(), "found packages archive ") {
+			// A permutation may cause multiple packages to appear. For example,
+			// an example file with an ignore build tag. If this happens we
+			// ignore it.
+			// TODO(mattfarina): Find a better way.
+			msg.Debug("Found multiple packages while scanning %s: %s", path, err)
 			continue
 		} else if err != nil {
 			msg.Debug("Problem parsing package at %s for %s %s", path, ops, arch)
