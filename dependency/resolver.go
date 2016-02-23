@@ -307,7 +307,12 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 // If one of the passed in packages does not exist in the vendor directory,
 // an error is returned.
 func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
-	queue := sliceToQueue(deps, r.VendorDir)
+	var queue *list.List
+	if r.ResolveAllFiles {
+		queue = sliceToQueue(deps, r.VendorDir)
+	} else {
+		queue = list.New()
+	}
 
 	loc, err := r.ResolveLocal(false)
 	if err != nil {
