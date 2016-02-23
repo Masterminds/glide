@@ -4,6 +4,8 @@ language: go
 # against tip which has the features.
 go:
   - 1.5
+  - 1.6
+  - tip
 
 # Setting sudo access to false will let Travis CI use containers rather than
 # VMs to run the tests. For more details see:
