@@ -100,3 +100,59 @@ func TestResolveAll(t *testing.T) {
 		t.Errorf("Expected at least %d deps, got %d", len(deps), len(l))
 	}
 }
+
+func TestSliceToQueueNoSubpackages(t *testing.T) {
+	basepath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/Masterminds/glide/vendor")
+	pkg := "github.com/codegangsta/cli"
+	fullpath := filepath.Join(basepath, pkg)
+	deps := []*cfg.Dependency{
+		{Name: pkg},
+	}
+	l := sliceToQueue(deps, basepath)
+	if l.Len() != len(deps) {
+		t.Fatalf("Wrong number of queue items: want %d, got %d", len(deps), l.Len())
+	}
+	if s := l.Front().Value.(string); s != fullpath {
+		t.Errorf("Wrong value as queue head: want %s, got [%s]", fullpath, s)
+	}
+}
+
+func TestSliceToQueueWithSubpackages(t *testing.T) {
+	basepath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/Masterminds/glide/vendor")
+	pkg := "golang.org/x/crypto"
+	subpkg := "ssh"
+	fullpath := filepath.Join(basepath, pkg, subpkg)
+	deps := []*cfg.Dependency{
+		{Name: pkg, Subpackages: []string{subpkg}},
+	}
+	l := sliceToQueue(deps, basepath)
+	if l.Len() != len(deps) {
+		t.Fatalf("Wrong number of queue items: want %d, got %d", len(deps), l.Len())
+	}
+	if s := l.Front().Value.(string); s != fullpath {
+		t.Errorf("Wrong value as queue head: want %s, got %s", fullpath, s)
+	}
+}
+
+func TestSliceToQueueWithMultSubpackages(t *testing.T) {
+	// verify that pkg with multiple subpackages gets expanded into multiple queue entries
+	basepath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/Masterminds/glide/vendor")
+	pkg := "golang.org/x/crypto"
+	subpkgs := []string{"bcrypt", "ssh"}
+	fullpath := []string{filepath.Join(basepath, pkg, subpkgs[0]),
+		filepath.Join(basepath, pkg, subpkgs[1])}
+	deps := []*cfg.Dependency{
+		{Name: pkg, Subpackages: subpkgs},
+	}
+	l := sliceToQueue(deps, basepath)
+	if l.Len() != len(deps)+1 {
+		t.Fatalf("Wrong number of queue items: want %d, got %d", len(deps)+1, l.Len())
+	}
+	var cnt int
+	for e := l.Front(); e != nil; e = e.Next() {
+		if s := e.Value.(string); s != fullpath[cnt] {
+			t.Errorf("Wrong value as queue element #%d: want %s, got %s", cnt, fullpath[cnt], s)
+		}
+		cnt++
+	}
+}
