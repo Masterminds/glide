@@ -52,20 +52,33 @@ func walkDeps(b *util.BuildCtxt, base, myName string) []string {
 			return nil
 		}
 
+		var imps []string
 		pkg, err := b.ImportDir(path, 0)
-		if err != nil {
+		if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
+			// If we got here it's because a package and multiple packages
+			// declared. This is often because of an example with a package
+			// or main but +build ignore as a build tag. In that case we
+			// try to brute force the packages with a slower scan.
+			imps, err = dependency.IterativeScan(path)
+			if err != nil {
+				msg.Err("Error walking dependencies for %s: %s", path, err)
+				return err
+			}
+		} else if err != nil {
 			if !strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Warn("Error: %s (%s)", err, path)
 				// Not sure if we should return here.
 				//return err
 			}
+		} else {
+			imps = pkg.Imports
 		}
 
 		if pkg.Goroot {
 			return nil
 		}
 
-		for _, imp := range pkg.Imports {
+		for _, imp := range imps {
 			//if strings.HasPrefix(imp, myName) {
 			////Info("Skipping %s because it is a subpackage of %s", imp, myName)
 			//continue
