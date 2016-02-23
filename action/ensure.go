@@ -50,13 +50,27 @@ func EnsureGoVendor() {
 		os.Exit(1)
 	}
 
-	// This works with 1.5 and >=1.6.
-	cmd = exec.Command("go", "env", "GO15VENDOREXPERIMENT")
+	// Check if this is go15, which requires GO15VENDOREXPERIMENT
+	// Any release after go15 does not require that env var.
+	cmd = exec.Command("go", "version")
 	if out, err := cmd.CombinedOutput(); err != nil {
-		msg.Err("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
+		msg.Err("Error getting version: %s.\n", err)
 		os.Exit(1)
-	} else if strings.TrimSpace(string(out)) != "1" {
-		msg.Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1\n")
+	} else if strings.HasPrefix(string(out), "go version 1.5") {
+		// This works with 1.5 and 1.6.
+		cmd = exec.Command("go", "env", "GO15VENDOREXPERIMENT")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			msg.Err("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
+			os.Exit(1)
+		} else if strings.TrimSpace(string(out)) != "1" {
+			msg.Err("To use Glide, you must set GO15VENDOREXPERIMENT=1")
+			os.Exit(1)
+		}
+	}
+
+	// In the case where vendoring is explicitly disabled, balk.
+	if os.Getenv("GO15VENDOREXPERIMENT") == "0" {
+		msg.Err("To use Glide, you must set GO15VENDOREXPERIMENT=1")
 		os.Exit(1)
 	}
 
