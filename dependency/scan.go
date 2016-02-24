@@ -101,7 +101,7 @@ func IterativeScan(path string) ([]string, error) {
 		// If there are no buildable souce with this permutation we skip it.
 		if err != nil && strings.HasPrefix(err.Error(), "no buildable Go source files in") {
 			continue
-		} else if err != nil && strings.HasPrefix(err.Error(), "found packages archive ") {
+		} else if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
 			// A permutation may cause multiple packages to appear. For example,
 			// an example file with an ignore build tag. If this happens we
 			// ignore it.
