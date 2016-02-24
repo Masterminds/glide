@@ -1,5 +1,12 @@
-# Release 0.9.1 (xxxx-xx-xx)
+# Release 0.9.1 (2016-02-24)
 
+- Fixed #272: Handling appengine special package case.
+- Fixed #273: Handle multiple packages in the same directory but handling
+  build tags used in those packages.
+- Added documentation explaining how import resolution works.
+- Fixed #275 and #285: Empty directories as package locations reporting errors.
+  Improved the UX and handle the errors.
+- Fixed #279: Added Go 1.7 support that no longer has GO15VENDOREXPERIMENT.
 - Issue #267: Added `os` and `arch` import properties to the documentation.
 - Fixed #267: Glide was only walking the import tree based on build flags for
   the current OS and Arch. This is a problem for systems like docker that have
