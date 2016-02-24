@@ -55,6 +55,17 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 		_, err = v.DetectVcsFromFS(dest)
 		if updateVendored == false && empty == false && err == v.ErrCannotDetectVCS {
 			msg.Warn("%s appears to be a vendored package. Unable to update. Consider the '--update-vendored' flag.\n", dep.Name)
+		} else if updateVendored == false && empty == true && err == v.ErrCannotDetectVCS {
+			msg.Warn("%s is an empty directory. Fetching a new copy of the dependency.", dep.Name)
+			msg.Debug("Removing empty directory %s", dest)
+			err := os.RemoveAll(dest)
+			if err != nil {
+				return err
+			}
+			if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
+				msg.Warn("Unable to checkout %s\n", dep.Name)
+				return err
+			}
 		} else {
 
 			if updateVendored == true && empty == false && err == v.ErrCannotDetectVCS {

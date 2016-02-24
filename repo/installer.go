@@ -329,8 +329,23 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	// This package may have been placed on the list to look for when it wasn't
 	// downloaded but it has since been downloaded before coming to this entry.
 	if _, err := os.Stat(dest); err == nil {
-		msg.Debug("Found %s", dest)
-		return true, nil
+		// Make sure the location contains files. It may be an empty directory.
+		empty, err := gpath.IsDirectoryEmpty(dest)
+		if err != nil {
+			return false, err
+		}
+		if empty {
+			msg.Warn("%s is an existing location with no files. Fetching a new copy of the dependency.", dest)
+			msg.Debug("Removing empty directory %s", dest)
+			err := os.RemoveAll(dest)
+			if err != nil {
+				msg.Debug("Installer error removing directory %s: %s", dest, err)
+				return false, err
+			}
+		} else {
+			msg.Debug("Found %s", dest)
+			return true, nil
+		}
 	}
 
 	msg.Info("Fetching %s into %s", pkg, m.destination)

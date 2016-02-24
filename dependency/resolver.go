@@ -400,7 +400,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			msg.Debug("Using Iterative Scanning for %s", dep)
 			imps, err = IterativeScan(vdep)
 			if err != nil {
-				msg.Err("Error scanning %s: %s", dep, err)
+				msg.Err("Iterative scanning error %s: %s", dep, err)
 				continue
 			}
 		} else if err != nil {
