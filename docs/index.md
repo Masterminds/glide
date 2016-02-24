@@ -1,6 +1,6 @@
 # Glide: Vendor Package Management for Go
 
-Glide is a package manager for [Go](https://golang.org) that is conceptually similar to package managers for other languages such as Cargo for Rust, NPM for Node.js, Pip for Python, Bundler for Ruby, and so forth.
+[Glide](https://glide.sh) is a package manager for [Go](https://golang.org) that is conceptually similar to package managers for other languages such as Cargo for Rust, NPM for Node.js, Pip for Python, Bundler for Ruby, and so forth.
 
 Glide provides the following functionality:
 

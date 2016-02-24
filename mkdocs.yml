@@ -6,6 +6,7 @@ pages:
 - Versions and Ranges: versions.md
 - Lock file: glide.lock.md
 - Commands: commands.md
+- Resolving Imports: resolving-imports.md
 - Vendor Directories: vendor.md
 - F.A.Q.: faq.md
 theme: readthedocs
