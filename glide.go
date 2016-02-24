@@ -121,7 +121,7 @@ func main() {
 
 	// If there was a Error message exit non-zero.
 	if msg.HasErrored() {
-		m := msg.Color(msg.Red, "An Error has occured")
+		m := msg.Color(msg.Red, "An Error has occurred")
 		msg.Msg(m)
 		os.Exit(2)
 	}
