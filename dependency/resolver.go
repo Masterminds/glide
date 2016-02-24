@@ -241,16 +241,29 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 
 		// Scan for dependencies, and anything that's not part of the local
 		// package gets added to the scan list.
+		var imps []string
 		p, err := r.BuildContext.ImportDir(path, 0)
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				return nil
+			} else if strings.HasPrefix(err.Error(), "found packages ") {
+				// If we got here it's because a package and multiple packages
+				// declared. This is often because of an example with a package
+				// or main but +build ignore as a build tag. In that case we
+				// try to brute force the packages with a slower scan.
+				imps, err = IterativeScan(path)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
 			}
-			return err
+		} else {
+			imps = p.Imports
 		}
 
 		// We are only looking for dependencies in vendor. No root, cgo, etc.
-		for _, imp := range p.Imports {
+		for _, imp := range imps {
 			if alreadySeen[imp] {
 				continue
 			}
@@ -377,8 +390,20 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 		// Here, we want to import the package and see what imports it has.
 		msg.Debug("Trying to open %s", vdep)
+		var imps []string
 		pkg, err := r.BuildContext.ImportDir(vdep, 0)
-		if err != nil {
+		if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
+			// If we got here it's because a package and multiple packages
+			// declared. This is often because of an example with a package
+			// or main but +build ignore as a build tag. In that case we
+			// try to brute force the packages with a slower scan.
+			msg.Debug("Using Iterative Scanning for %s", dep)
+			imps, err = IterativeScan(vdep)
+			if err != nil {
+				msg.Err("Error scanning %s: %s", dep, err)
+				continue
+			}
+		} else if err != nil {
 			msg.Debug("ImportDir error on %s: %s", vdep, err)
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Debug("No subpackages declared. Skipping %s.", dep)
@@ -412,11 +437,13 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				msg.Err("Error scanning %s: %s", dep, err)
 			}
 			continue
+		} else {
+			imps = pkg.Imports
 		}
 
 		// Range over all of the identified imports and see which ones we
 		// can locate.
-		for _, imp := range pkg.Imports {
+		for _, imp := range imps {
 			pi := r.FindPkg(imp)
 			if pi.Loc != LocCgo && pi.Loc != LocGoroot && pi.Loc != LocAppengine {
 				msg.Debug("Package %s imports %s", dep, imp)
@@ -623,9 +650,21 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 
 	// FIXME: On error this should try to NotFound to the dependency, and then import
 	// it again.
+	var imps []string
 	p, err := r.BuildContext.ImportDir(pkg, 0)
-	if err != nil {
+	if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
+		// If we got here it's because a package and multiple packages
+		// declared. This is often because of an example with a package
+		// or main but +build ignore as a build tag. In that case we
+		// try to brute force the packages with a slower scan.
+		imps, err = IterativeScan(pkg)
+		if err != nil {
+			return []string{}, err
+		}
+	} else if err != nil {
 		return []string{}, err
+	} else {
+		imps = p.Imports
 	}
 
 	// It is okay to scan a package more than once. In some cases, this is
@@ -641,7 +680,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 
 	// We are only looking for dependencies in vendor. No root, cgo, etc.
 	buf := []string{}
-	for _, imp := range p.Imports {
+	for _, imp := range imps {
 		if r.Config.HasIgnore(imp) {
 			msg.Debug("Ignoring %s", imp)
 			continue
