@@ -408,13 +408,13 @@ That's up to you. It's not necessary, but it may also cause you extra
 work and lots of extra space in your VCS. There may also be unforeseen errors
 ([see an example](https://github.com/mattfarina/golang-broken-vendor)).
 
-#### Q: How do I import settings from GPM, Godep, or gb?
+#### Q: How do I import settings from GPM, Godep, gom or gb?
 
 There are two parts to importing.
 
-1. If a package you import has configuration for GPM, Godep, or gb Glide will
+1. If a package you import has configuration for GPM, Godep, gom or gb Glide will
    recursively install the dependencies automatically.
-2. If you would like to import configuration from GPM, Godep, or gb to Glide see
+2. If you would like to import configuration from GPM, Godep, gom or gb to Glide see
    the `glide import` command. For example, you can run `glide import godep` for
    Glide to detect the projects Godep configuration and generate a `glide.yaml`
    file for you.

@@ -310,6 +310,19 @@ func commands() []cli.Command {
 						action.ImportGB(c.String("file"))
 					},
 				},
+				{
+					Name:  "gom",
+					Usage: "Import Gomfile and display the would-be yaml file",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "file, f",
+							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+						},
+					},
+					Action: func(c *cli.Context) {
+						action.ImportGom(c.String("file"))
+					},
+				},
 			},
 		},
 		{
