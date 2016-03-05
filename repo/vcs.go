@@ -111,6 +111,11 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 					msg.Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
+
+				repo, err = dep.GetRepo(dest)
+				if err != nil {
+					return err
+				}
 			} else if err != nil {
 				return err
 			} else if repo.IsDirty() {
