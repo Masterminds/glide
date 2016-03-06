@@ -140,7 +140,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 				// branch it's a tag or commit id so we can skip
 				// performing an update.
 				if version == dep.Reference && !ib {
-					msg.Info("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
+					msg.Debug("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
 					return nil
 				}
 			}
