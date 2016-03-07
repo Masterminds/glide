@@ -242,7 +242,6 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 			}
 		}
 		if err := repo.UpdateVersion(ver); err != nil {
-			msg.Err("Failed to set version to %s: %s\n", dep.Reference, err)
 			return err
 		}
 		dep.Pin, err = repo.Version()
