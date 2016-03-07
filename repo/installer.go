@@ -109,8 +109,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 		return newConf, nil
 	}
 
-	ConcurrentUpdate(newConf.Imports, cwd, i)
-	ConcurrentUpdate(newConf.DevImports, cwd, i)
+	ConcurrentUpdate(newConf.Imports, cwd, i, conf.Updated)
+	ConcurrentUpdate(newConf.DevImports, cwd, i, conf.Updated)
 	return newConf, nil
 }
 
@@ -122,12 +122,12 @@ func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
 
 	dest := i.VendorPath()
 
-	if err := ConcurrentUpdate(conf.Imports, dest, i); err != nil {
+	if err := ConcurrentUpdate(conf.Imports, dest, i, conf.Updated); err != nil {
 		return err
 	}
 
 	if useDev {
-		return ConcurrentUpdate(conf.DevImports, dest, i)
+		return ConcurrentUpdate(conf.DevImports, dest, i, conf.Updated)
 	}
 
 	return nil
@@ -186,7 +186,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		msg.Warn("dev imports not resolved.")
 	}
 
-	err = ConcurrentUpdate(conf.Imports, vpath, i)
+	err = ConcurrentUpdate(conf.Imports, vpath, i, conf.Updated)
 
 	return err
 }
@@ -229,7 +229,7 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
-func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
+func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, updated map[string]bool) error {
 	done := make(chan struct{}, concurrentWorkers)
 	in := make(chan *cfg.Dependency, concurrentWorkers)
 	var wg sync.WaitGroup
@@ -244,7 +244,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 				select {
 				case dep := <-ch:
 					dest := filepath.Join(i.VendorPath(), dep.Name)
-					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored); err != nil {
+					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored, updated); err != nil {
 						msg.Err("Update failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
@@ -429,7 +429,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 		m.Config.Imports = append(m.Config.Imports, d)
 	}
 
-	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored); err != nil {
+	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored, m.Config.Updated); err != nil {
 		return err
 	}
 
