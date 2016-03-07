@@ -48,17 +48,6 @@ type Config struct {
 	// DevImports contains the test or other development imports for a project.
 	// See the Dependency type for more details on how this is recorded.
 	DevImports Dependencies `yaml:"devimport,omitempty"`
-
-	// Updated tracks which packages have already been updated, so we don't
-	// duplicate work.
-	Updated map[string]bool `yaml:"-"`
-}
-
-// NewConfig allocates a Config structure with all fields properly initialized.
-func NewConfig() *Config {
-	cfg := &Config{}
-	cfg.Updated = map[string]bool{}
-	return cfg
 }
 
 // A transitive representation of a dependency for importing and exporting to yaml.
@@ -75,7 +64,7 @@ type cf struct {
 
 // ConfigFromYaml returns an instance of Config from YAML
 func ConfigFromYaml(yml []byte) (*Config, error) {
-	cfg := NewConfig()
+	cfg := &Config{}
 	err := yaml.Unmarshal([]byte(yml), &cfg)
 	return cfg, err
 }
@@ -167,7 +156,7 @@ func (c *Config) HasIgnore(name string) bool {
 
 // Clone performs a deep clone of the Config instance
 func (c *Config) Clone() *Config {
-	n := NewConfig()
+	n := &Config{}
 	n.Name = c.Name
 	n.Description = c.Description
 	n.Home = c.Home
@@ -176,9 +165,6 @@ func (c *Config) Clone() *Config {
 	n.Ignore = c.Ignore
 	n.Imports = c.Imports.Clone()
 	n.DevImports = c.DevImports.Clone()
-	for k, v := range c.Updated {
-		n.Updated[k] = v
-	}
 	return n
 }
 

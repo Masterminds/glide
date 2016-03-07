@@ -21,7 +21,7 @@ import (
 )
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath, force, updateVendored bool, updated map[string]bool) error {
+func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath, force, updateVendored bool, updated *UpdateTracker) error {
 
 	// If the dependency has already been pinned we can skip it. This is a
 	// faster path so we don't need to resolve it again.
@@ -30,11 +30,11 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 		return nil
 	}
 
-	if updated[dep.Name] {
-		msg.Debug("%s was already updated, skipping.\n", dep.Name)
+	if updated.Check(dep.Name) {
+		msg.Debug("%s was already updated, skipping.", dep.Name)
 		return nil
 	}
-	updated[dep.Name] = true
+	updated.Add(dep.Name)
 
 	msg.Info("Fetching updates for %s.\n", dep.Name)
 
