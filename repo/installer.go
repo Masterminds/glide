@@ -47,6 +47,15 @@ type Installer struct {
 	// of every file of every package, rather than only following imported
 	// packages.
 	ResolveAllFiles bool
+
+	// Updated tracks the packages that have been remotely fetched.
+	Updated *UpdateTracker
+}
+
+func NewInstaller() *Installer {
+	i := &Installer{}
+	i.Updated = NewUpdateTracker()
+	return i
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -157,6 +166,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		updateVendored: i.UpdateVendored,
 		Config:         conf,
 		Use:            ic,
+		updated:        i.Updated,
 	}
 
 	v := &VersionHandler{
@@ -244,7 +254,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 				select {
 				case dep := <-ch:
 					dest := filepath.Join(i.VendorPath(), dep.Name)
-					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored); err != nil {
+					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored, i.Updated); err != nil {
 						msg.Err("Update failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
@@ -312,6 +322,7 @@ type MissingPackageHandler struct {
 	cache, cacheGopath, useGopath, force, updateVendored bool
 	Config                                               *cfg.Config
 	Use                                                  *importCache
+	updated                                              *UpdateTracker
 }
 
 // NotFound attempts to retrieve a package when not found in the local vendor/
@@ -429,7 +440,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 		m.Config.Imports = append(m.Config.Imports, d)
 	}
 
-	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored); err != nil {
+	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored, m.updated); err != nil {
 		return err
 	}
 
