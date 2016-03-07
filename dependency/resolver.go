@@ -496,6 +496,9 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 	for e := queue.Front(); e != nil; e = e.Next() {
 		t := r.stripv(e.Value.(string))
 		root, sp := util.NormalizeName(t)
+		if sp == "" {
+			sp = "."
+		}
 
 		// Skip ignored packages
 		if r.Config.HasIgnore(e.Value.(string)) {
@@ -506,16 +509,14 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		// TODO(mattfarina): Need to eventually support devImport
 		existing := r.Config.Imports.Get(root)
 		if existing != nil {
-			if sp != "" && !existing.HasSubpackage(sp) {
+			if !existing.HasSubpackage(sp) {
 				existing.Subpackages = append(existing.Subpackages, sp)
 			}
 		} else {
 			newDep := &cfg.Dependency{
 				Name: root,
 			}
-			if sp != "" {
-				newDep.Subpackages = []string{sp}
-			}
+			newDep.Subpackages = []string{sp}
 
 			r.Config.Imports = append(r.Config.Imports, newDep)
 		}
@@ -582,20 +583,21 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 	for e := queue.Front(); e != nil; e = e.Next() {
 		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
 		root, sp := util.NormalizeName(t)
+		if sp == "" {
+			sp = "."
+		}
 
 		// TODO(mattfarina): Need to eventually support devImport
 		existing := r.Config.Imports.Get(root)
 		if existing != nil {
-			if sp != "" && !existing.HasSubpackage(sp) {
+			if !existing.HasSubpackage(sp) {
 				existing.Subpackages = append(existing.Subpackages, sp)
 			}
 		} else {
 			newDep := &cfg.Dependency{
 				Name: root,
 			}
-			if sp != "" {
-				newDep.Subpackages = []string{sp}
-			}
+			newDep.Subpackages = []string{sp}
 
 			r.Config.Imports = append(r.Config.Imports, newDep)
 		}
