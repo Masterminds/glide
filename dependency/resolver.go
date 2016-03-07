@@ -460,7 +460,6 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 					} else {
 						msg.Warn("Error updating %s: %s", imp, err)
 					}
-					r.VersionHandler.SetVersion(imp)
 				}
 			case LocUnknown:
 				msg.Debug("Missing %s. Trying to resolve.", imp)
