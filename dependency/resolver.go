@@ -498,6 +498,12 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		t := r.stripv(e.Value.(string))
 		root, sp := util.NormalizeName(t)
 
+		// Skip ignored packages
+		if r.Config.HasIgnore(e.Value.(string)) {
+			msg.Info("Ignoring: %s", e.Value.(string))
+			continue
+		}
+
 		// TODO(mattfarina): Need to eventually support devImport
 		existing := r.Config.Imports.Get(root)
 		if existing != nil {
