@@ -26,8 +26,11 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool
 	}
 
 	// Add the packages to the config.
-	if err := addPkgsToConfig(conf, names, insecure); err != nil {
+	if count, err := addPkgsToConfig(conf, names, insecure); err != nil {
 		msg.Die("Failed to get new packages: %s", err)
+	} else if count == 0 {
+		msg.Warn("Nothing to do")
+		return
 	}
 
 	// Fetch the new packages. Can't resolve versions via installer.Update if
@@ -96,10 +99,11 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 // - separates repo from packages
 // - sets up insecure repo URLs where necessary
 // - generates a list of subpackages
-func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {
+func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) (int, error) {
 
 	msg.Info("Preparing to install %d package.", len(names))
 
+	numAdded := 0
 	for _, name := range names {
 		var version string
 		parts := strings.Split(name, "#")
@@ -110,7 +114,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {
 
 		root, subpkg := util.NormalizeName(name)
 		if len(root) == 0 {
-			return fmt.Errorf("Package name is required for %q.", name)
+			return 0, fmt.Errorf("Package name is required for %q.", name)
 		}
 
 		if conf.HasDependency(root) {
@@ -123,6 +127,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {
 				} else {
 					dep.Subpackages = append(dep.Subpackages, subpkg)
 					msg.Info("Adding sub-package %s to existing import %s", subpkg, root)
+					numAdded++
 				}
 			} else {
 				msg.Warn("Package %q is already in glide.yaml. Skipping", root)
@@ -160,6 +165,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) error {
 		}
 
 		conf.Imports = append(conf.Imports, dep)
+		numAdded++
 	}
-	return nil
+	return numAdded, nil
 }
