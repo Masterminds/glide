@@ -35,6 +35,7 @@ func init() {
 // the package github.com/Masterminds/cookoo/io has a root repo
 // at github.com/Masterminds/cookoo
 func GetRootFromPackage(pkg string) string {
+	pkg = filepath.ToSlash(pkg)
 	for _, v := range vcsList {
 		m := v.regex.FindStringSubmatch(pkg)
 		if m == nil {
@@ -306,7 +307,6 @@ func NormalizeName(name string) (string, string) {
 		}
 	}
 
-	name = filepath.ToSlash(name)
 	root := GetRootFromPackage(name)
 	extra := strings.TrimPrefix(name, root)
 	if len(extra) > 0 && extra != "/" {
