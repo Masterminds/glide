@@ -1,3 +1,17 @@
+# Release 0.9.2 (2016-03-08)
+
+- Fixed issue on #317: Some windows calls had the improper path separator.
+- Issue #315: Track updated packages to avoid duplicated work (in part by
+  thockin, thanks).
+- Fixed #312: Don't double-print SetVersion() failure (thanks thockin).
+- Fixed #311: Don't process deps if 'get' was a non-operation (thanks thockin).
+- Issue #307: Moving 'already set' to a debug message to cleanup output
+  (thanks thockin).
+- Fixed #306: Don't call SetVersion twice. There was a place where it was called
+  twice in a logical row (thanks thockin).
+- Fixed #304: Glide tries to update ignored packages.
+- Fixed #302: Force update can cause a panic.
+
 # Release 0.9.1 (2016-02-24)
 
 - Fixed #272: Handling appengine special package case.
