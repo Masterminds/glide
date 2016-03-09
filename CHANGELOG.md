@@ -1,3 +1,7 @@
+# Release 0.9.3 (2016-03-09)
+
+- Fixed #324: Glide tries to update ignored package
+
 # Release 0.9.2 (2016-03-08)
 
 - Fixed issue on #317: Some windows calls had the improper path separator.
