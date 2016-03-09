@@ -118,8 +118,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 		return newConf, nil
 	}
 
-	ConcurrentUpdate(newConf.Imports, cwd, i)
-	ConcurrentUpdate(newConf.DevImports, cwd, i)
+	ConcurrentUpdate(newConf.Imports, cwd, i, newConf)
+	ConcurrentUpdate(newConf.DevImports, cwd, i, newConf)
 	return newConf, nil
 }
 
@@ -131,12 +131,12 @@ func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
 
 	dest := i.VendorPath()
 
-	if err := ConcurrentUpdate(conf.Imports, dest, i); err != nil {
+	if err := ConcurrentUpdate(conf.Imports, dest, i, conf); err != nil {
 		return err
 	}
 
 	if useDev {
-		return ConcurrentUpdate(conf.DevImports, dest, i)
+		return ConcurrentUpdate(conf.DevImports, dest, i, conf)
 	}
 
 	return nil
@@ -196,7 +196,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		msg.Warn("dev imports not resolved.")
 	}
 
-	err = ConcurrentUpdate(conf.Imports, vpath, i)
+	err = ConcurrentUpdate(conf.Imports, vpath, i, conf)
 
 	return err
 }
@@ -239,7 +239,7 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
-func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
+func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.Config) error {
 	done := make(chan struct{}, concurrentWorkers)
 	in := make(chan *cfg.Dependency, concurrentWorkers)
 	var wg sync.WaitGroup
@@ -275,8 +275,10 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 	}
 
 	for _, dep := range deps {
-		wg.Add(1)
-		in <- dep
+		if !c.HasIgnore(dep.Name) {
+			wg.Add(1)
+			in <- dep
+		}
 	}
 
 	wg.Wait()
