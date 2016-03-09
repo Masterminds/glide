@@ -32,9 +32,9 @@ These elements are:
 - `owners`: The owners is a list of one or more owners for the project. This can be a person or organization and is useful for things like notifying the owners of a security issue without filing a public bug.
 - `ignore`: A list of packages for Glide to ignore importing. These are package names to ignore rather than directories.
 - `import`: A list of packages to import. Each package can include:
-  - `package`: The name of the package to import and the only non-optional item. Package names follow the same patterns the `go` tool does. That means:
-    - Package names that map to a VCS remote location end in .git, .bzr, .hg, or .svn. For example, `example.com/foo/pkg.git/subpkg`.
-    - GitHub, BitBucket, Launchpad, IBM Bluemix Services, and Go on Google Source are special cases that don't need the VCS extension.
+    - `package`: The name of the package to import and the only non-optional item. Package names follow the same patterns the `go` tool does. That means:
+        - Package names that map to a VCS remote location end in .git, .bzr, .hg, or .svn. For example, `example.com/foo/pkg.git/subpkg`.
+        - GitHub, BitBucket, Launchpad, IBM Bluemix Services, and Go on Google Source are special cases that don't need the VCS extension.
     - `version`: A semantic version, semantic version range, branch, tag, or commit id to use. For more information see the [versioning documentation](versions.md).
     - `repo`: If the package name isn't the repo location or this is a private repository it can go here. The package will be checked out from the repo and put where the package name specifies. This allows using forks.
     - `vcs`: A VCS to use such as git, hg, bzr, or svn. This is only needed when the type cannot be detected from the name. For example, a repo ending in .git or on GitHub can be detected to be Git. For a repo on Bitbucket we can contact the API to discover the type.
