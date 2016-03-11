@@ -82,11 +82,12 @@ type Lock struct {
 }
 
 // NewLockfile is used to create an instance of Lockfile.
-func NewLockfile(ds Dependencies, hash string) *Lockfile {
+func NewLockfile(ds Dependencies, devs Dependencies, hash string) *Lockfile {
 	lf := &Lockfile{
-		Hash:    hash,
-		Updated: time.Now(),
-		Imports: make([]*Lock, len(ds)),
+		Hash:       hash,
+		Updated:    time.Now(),
+		Imports:    make([]*Lock, len(ds)),
+		DevImports: make([]*Lock, len(devs)),
 	}
 
 	for i := 0; i < len(ds); i++ {
@@ -101,7 +102,20 @@ func NewLockfile(ds Dependencies, hash string) *Lockfile {
 		}
 	}
 
+	for i := 0; i < len(devs); i++ {
+		lf.DevImports[i] = &Lock{
+			Name:        devs[i].Name,
+			Version:     devs[i].Pin,
+			Repository:  devs[i].Repository,
+			VcsType:     devs[i].VcsType,
+			Subpackages: devs[i].Subpackages,
+			Arch:        devs[i].Arch,
+			Os:          devs[i].Os,
+		}
+	}
+
 	sort.Sort(lf.Imports)
+	sort.Sort(lf.DevImports)
 
 	return lf
 }

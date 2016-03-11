@@ -25,9 +25,9 @@ func Remove(packages []string, inst *repo.Installer) {
 	// Copy used to generate locks.
 	confcopy := conf.Clone()
 
-	confcopy.Imports = inst.List(confcopy)
+	confcopy.Imports, confcopy.DevImports = inst.List(confcopy)
 
-	if err := repo.SetReference(confcopy); err != nil {
+	if err := repo.SetReference(confcopy, inst); err != nil {
 		msg.Err("Failed to set references: %s", err)
 	}
 
