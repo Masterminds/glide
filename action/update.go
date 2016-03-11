@@ -77,6 +77,10 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		if err != nil {
 			msg.Die("Failed to generate config hash. Unable to generate lock file.")
 		}
+
+		// Remove ignored dependencies
+		removeIgnoredImports(confcopy)
+
 		lock := cfg.NewLockfile(confcopy.Imports, hash)
 		if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 			msg.Err("Could not write lock file to %s: %s", base, err)
@@ -87,4 +91,18 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 	} else {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
 	}
+}
+
+// Remove dependencies from the config if they are explicitly ignored
+func removeIgnoredImports(conf *cfg.Config) {
+	for _, ignored := range conf.Ignore {
+		for i, pkg := range conf.Imports {
+			if ignored == pkg.Name {
+				msg.Info("Ignoring: %s", ignored)
+				conf.Imports = append(conf.Imports[:i], conf.Imports[i+1:]...)
+				removeIgnoredImports(conf)
+			}
+		}
+	}
+	return
 }
