@@ -104,5 +104,4 @@ func removeIgnoredImports(conf *cfg.Config) {
 			}
 		}
 	}
-	return
 }
