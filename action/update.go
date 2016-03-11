@@ -29,7 +29,7 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 
 	// Set the versions for the initial dependencies so that resolved dependencies
 	// are rooted in the correct version of the base.
-	if err := repo.SetReference(conf); err != nil {
+	if err := repo.SetReference(conf, installer); err != nil {
 		msg.Die("Failed to set initial config references: %s", err)
 	}
 
@@ -52,7 +52,7 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		// installer set them as it went to make sure it parsed the right imports
 		// from the right version of the package.
 		msg.Info("Setting references for remaining imports")
-		if err := repo.SetReference(confcopy); err != nil {
+		if err := repo.SetReference(confcopy, installer); err != nil {
 			msg.Err("Failed to set references: %s (Skip to cleanup)", err)
 		}
 	}
@@ -77,7 +77,7 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		if err != nil {
 			msg.Die("Failed to generate config hash. Unable to generate lock file.")
 		}
-		lock := cfg.NewLockfile(confcopy.Imports, hash)
+		lock := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
 		if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 			msg.Err("Could not write lock file to %s: %s", base, err)
 			return

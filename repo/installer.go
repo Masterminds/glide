@@ -48,6 +48,9 @@ type Installer struct {
 	// packages.
 	ResolveAllFiles bool
 
+	// WithoutDev is used to not install any DevImports
+	WithoutDev bool
+
 	// Updated tracks the packages that have been remotely fetched.
 	Updated *UpdateTracker
 }
@@ -119,7 +122,9 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 	}
 
 	ConcurrentUpdate(newConf.Imports, cwd, i, newConf)
-	ConcurrentUpdate(newConf.DevImports, cwd, i, newConf)
+	if i.WithoutDev == false {
+		ConcurrentUpdate(newConf.DevImports, cwd, i, newConf)
+	}
 	return newConf, nil
 }
 
@@ -193,16 +198,27 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	}
 
 	if len(conf.DevImports) > 0 {
-		msg.Warn("dev imports not resolved.")
+
 	}
 
 	err = ConcurrentUpdate(conf.Imports, vpath, i, conf)
+	if err != nil {
+		msg.Warn("imports not resolved.")
+		msg.Debug("%s", err.Error())
+	}
+
+	if i.WithoutDev == false {
+		if err := ConcurrentUpdate(conf.DevImports, vpath, i, conf); err != nil {
+			msg.Warn("dev imports not resolved.")
+			msg.Debug("%s", err.Error())
+		}
+	}
 
 	return err
 }
 
 // List resolves the complete dependency tree and returns a list of dependencies.
-func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
+func (i *Installer) List(conf *cfg.Config) ([]*cfg.Dependency, []*cfg.Dependency) {
 	base := "."
 	vpath := i.VendorPath()
 
@@ -231,11 +247,13 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 
-	if len(conf.DevImports) > 0 {
-		msg.Warn("dev imports not resolved.")
+	msg.Info("Resolving dev imports")
+	_, err = allPackages(conf.DevImports, res)
+	if err != nil {
+		msg.Die("Failed to retrieve a list of development dependencies: %s", err)
 	}
 
-	return conf.Imports
+	return conf.Imports, conf.DevImports
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.

@@ -58,7 +58,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool
 	}
 
 	// Set Reference
-	if err := repo.SetReference(confcopy); err != nil {
+	if err := repo.SetReference(confcopy, installer); err != nil {
 		msg.Err("Failed to set references: %s", err)
 	}
 
@@ -84,7 +84,7 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 	if err != nil {
 		msg.Die("Failed to generate config hash. Unable to generate lock file.")
 	}
-	lock := cfg.NewLockfile(confcopy.Imports, hash)
+	lock := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
 	if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 		msg.Die("Failed to write glide lock file: %s", err)
 	}

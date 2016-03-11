@@ -404,6 +404,10 @@ Example:
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "without-dev",
+					Usage: "Don't install development imports",
+				},
 			},
 			Action: func(c *cli.Context) {
 				installer := repo.NewInstaller()
@@ -414,6 +418,7 @@ Example:
 				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
+				installer.WithoutDev = c.Bool("without-dev")
 
 				action.Install(installer)
 			},
@@ -488,6 +493,10 @@ Example:
 					Name:  "resolve-current",
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
+				cli.BoolFlag{
+					Name:  "without-dev",
+					Usage: "Don't install development imports",
+				},
 			},
 			Action: func(c *cli.Context) {
 
@@ -505,6 +514,7 @@ Example:
 				installer.ResolveAllFiles = c.Bool("all-dependencies")
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
+				installer.WithoutDev = c.Bool("without-dev")
 
 				action.Update(installer, c.Bool("no-recursive"))
 			},
