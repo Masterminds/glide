@@ -29,7 +29,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		msg.Info("Godeps is a directory. This is probably a Godep project.\n")
 		return []*cfg.Dependency{}, nil
 	}
-	msg.Info("Found Godeps file.\n")
+	msg.Info("Found Godeps file in %s\n", dir)
 
 	buf := []*cfg.Dependency{}
 

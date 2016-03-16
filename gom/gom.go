@@ -24,7 +24,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		return []*cfg.Dependency{}, nil
 	}
 
-	msg.Info("Found Gomfile.\n")
+	msg.Info("Found Gomfile in %s\n", dir)
 	buf := []*cfg.Dependency{}
 
 	goms, err := parseGomfile(path)
