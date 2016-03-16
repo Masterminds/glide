@@ -163,8 +163,9 @@ func (c *Config) HasIgnore(name string) bool {
 
 // HasExclude returns true if the given name is listed on the exclude list.
 func (c *Config) HasExclude(ex string) bool {
+	ep := normalizeSlash(ex)
 	for _, v := range c.Exclude {
-		if v == ex {
+		if vp := normalizeSlash(v); vp == ep {
 			return true
 		}
 	}
@@ -542,4 +543,8 @@ func filterVcsType(vcs string) string {
 	default:
 		return ""
 	}
+}
+
+func normalizeSlash(k string) string {
+	return strings.Replace(k, "\\", "/", -1)
 }
