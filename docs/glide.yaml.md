@@ -14,7 +14,7 @@ The `glide.yaml` file contains information about the project and the dependent p
         homepage: https://www.mattfarina.com
     ignore:
     - appengine
-    exclude:
+    excludeDirs:
     - node_modules
     import:
     - package: gopkg.in/yaml.v2
@@ -33,7 +33,7 @@ These elements are:
 - license: The license is either an [SPDX license](http://spdx.org/licenses/) string or the filepath to the license. This allows automation and consumers to easily identify the license.
 - `owners`: The owners is a list of one or more owners for the project. This can be a person or organization and is useful for things like notifying the owners of a security issue without filing a public bug.
 - `ignore`: A list of packages for Glide to ignore importing. These are package names to ignore rather than directories.
-- `exclude`: A list of directories in the local codebase to exclude from scanning for dependencies.
+- `excludeDirs`: A list of directories in the local codebase to exclude from scanning for dependencies.
 - `import`: A list of packages to import. Each package can include:
     - `package`: The name of the package to import and the only non-optional item. Package names follow the same patterns the `go` tool does. That means:
         - Package names that map to a VCS remote location end in .git, .bzr, .hg, or .svn. For example, `example.com/foo/pkg.git/subpkg`.

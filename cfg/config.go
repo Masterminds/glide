@@ -43,7 +43,7 @@ type Config struct {
 
 	// Exclude contains a list of directories in the local application to
 	// exclude from scanning for dependencies.
-	Exclude []string `yaml:"exclude,omitempty"`
+	Exclude []string `yaml:"excludeDirs,omitempty"`
 
 	// Imports contains a list of all non-development imports for a project. For
 	// more detail on how these are captured see the Dependency type.
@@ -62,7 +62,7 @@ type cf struct {
 	License     string       `yaml:"license,omitempty"`
 	Owners      Owners       `yaml:"owners,omitempty"`
 	Ignore      []string     `yaml:"ignore,omitempty"`
-	Exclude     []string     `yaml:"exclude,omitempty"`
+	Exclude     []string     `yaml:"excludeDirs,omitempty"`
 	Imports     Dependencies `yaml:"import"`
 	DevImports  Dependencies `yaml:"devimport,omitempty"`
 }

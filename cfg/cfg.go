@@ -19,7 +19,7 @@
 //       homepage: https://www.mattfarina.com
 //     ignore:
 //     - appengine
-//     exclude:
+//     excludeDirs:
 //     - node_modules
 //     import:
 //     - package: gopkg.in/yaml.v2
@@ -45,7 +45,7 @@
 //      owners of a security issue without filing a public bug.
 //    - ignore: A list of packages for Glide to ignore importing. These are package
 //      names to ignore rather than directories.
-//    - exclude: A list of directories in the local codebase to exclude from
+//    - excludeDirs: A list of directories in the local codebase to exclude from
 //      scanning for dependencies.
 //    - import: A list of packages to import. Each package can include:
 //        - package: The name of the package to import and the only non-optional item.
