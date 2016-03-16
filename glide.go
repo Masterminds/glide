@@ -405,7 +405,7 @@ Example:
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
 				cli.BoolFlag{
-					Name:  "strip",
+					Name:  "strip-vcs",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
 			},
@@ -419,7 +419,7 @@ Example:
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Install(installer, c.Bool("strip"))
+				action.Install(installer, c.Bool("strip-vcs"))
 			},
 		},
 		{
@@ -493,7 +493,7 @@ Example:
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
 				cli.BoolFlag{
-					Name:  "strip",
+					Name:  "strip-vcs",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
 			},
@@ -514,7 +514,7 @@ Example:
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip"))
+				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"))
 			},
 		},
 		{
