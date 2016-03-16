@@ -404,6 +404,10 @@ Example:
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vcs",
+					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				installer := repo.NewInstaller()
@@ -415,7 +419,7 @@ Example:
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Install(installer)
+				action.Install(installer, c.Bool("strip-vcs"))
 			},
 		},
 		{
@@ -488,6 +492,10 @@ Example:
 					Name:  "resolve-current",
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vcs",
+					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+				},
 			},
 			Action: func(c *cli.Context) {
 
@@ -506,7 +514,7 @@ Example:
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Update(installer, c.Bool("no-recursive"))
+				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"))
 			},
 		},
 		{

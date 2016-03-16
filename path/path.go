@@ -1,7 +1,7 @@
 // Package path contains path and environment utilities for Glide.
 //
-//This includes tools to find and manipulate Go path variables, as well as
-//tools for copying from one path to another.
+// This includes tools to find and manipulate Go path variables, as well as
+// tools for copying from one path to another.
 package path
 
 import (

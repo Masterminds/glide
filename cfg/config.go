@@ -41,6 +41,10 @@ type Config struct {
 	// those to skip.
 	Ignore []string `yaml:"ignore,omitempty"`
 
+	// Exclude contains a list of directories in the local application to
+	// exclude from scanning for dependencies.
+	Exclude []string `yaml:"excludeDirs,omitempty"`
+
 	// Imports contains a list of all non-development imports for a project. For
 	// more detail on how these are captured see the Dependency type.
 	Imports Dependencies `yaml:"import"`
@@ -58,6 +62,7 @@ type cf struct {
 	License     string       `yaml:"license,omitempty"`
 	Owners      Owners       `yaml:"owners,omitempty"`
 	Ignore      []string     `yaml:"ignore,omitempty"`
+	Exclude     []string     `yaml:"excludeDirs,omitempty"`
 	Imports     Dependencies `yaml:"import"`
 	DevImports  Dependencies `yaml:"devimport,omitempty"`
 }
@@ -90,6 +95,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	c.License = newConfig.License
 	c.Owners = newConfig.Owners
 	c.Ignore = newConfig.Ignore
+	c.Exclude = newConfig.Exclude
 	c.Imports = newConfig.Imports
 	c.DevImports = newConfig.DevImports
 
@@ -108,6 +114,7 @@ func (c *Config) MarshalYAML() (interface{}, error) {
 		License:     c.License,
 		Owners:      c.Owners,
 		Ignore:      c.Ignore,
+		Exclude:     c.Exclude,
 	}
 	i, err := c.Imports.Clone().DeDupe()
 	if err != nil {
@@ -154,6 +161,18 @@ func (c *Config) HasIgnore(name string) bool {
 	return false
 }
 
+// HasExclude returns true if the given name is listed on the exclude list.
+func (c *Config) HasExclude(ex string) bool {
+	ep := normalizeSlash(ex)
+	for _, v := range c.Exclude {
+		if vp := normalizeSlash(v); vp == ep {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Clone performs a deep clone of the Config instance
 func (c *Config) Clone() *Config {
 	n := &Config{}
@@ -163,6 +182,7 @@ func (c *Config) Clone() *Config {
 	n.License = c.License
 	n.Owners = c.Owners.Clone()
 	n.Ignore = c.Ignore
+	n.Exclude = c.Exclude
 	n.Imports = c.Imports.Clone()
 	n.DevImports = c.DevImports.Clone()
 	return n
@@ -523,4 +543,8 @@ func filterVcsType(vcs string) string {
 	default:
 		return ""
 	}
+}
+
+func normalizeSlash(k string) string {
+	return strings.Replace(k, "\\", "/", -1)
 }
