@@ -11,7 +11,7 @@ import (
 )
 
 // Update updates repos and the lock file from the main glide yaml.
-func Update(installer *repo.Installer, skipRecursive bool) {
+func Update(installer *repo.Installer, skipRecursive, strip bool) {
 	base := "."
 	EnsureGopath()
 	EnsureVendorDir()
@@ -58,7 +58,9 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 	}
 	// Vendored cleanup
 	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.
-	if installer.UpdateVendored {
+	// When stripping VCS happens this will happen as well. No need for double
+	// effort.
+	if installer.UpdateVendored && !strip {
 		repo.VendoredCleanup(confcopy)
 	}
 
@@ -86,5 +88,10 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		msg.Info("Project relies on %d dependencies.", len(confcopy.Imports))
 	} else {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
+	}
+
+	if strip {
+		msg.Info("Removing version control data from vendor directory...")
+		gpath.StripVcs()
 	}
 }
