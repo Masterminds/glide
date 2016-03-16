@@ -232,6 +232,12 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 		if err != nil && err != filepath.SkipDir {
 			return err
 		}
+		pt := strings.TrimPrefix(path, r.basedir+string(os.PathSeparator))
+		pt = strings.TrimSuffix(pt, string(os.PathSeparator))
+		if r.Config.HasExclude(pt) {
+			msg.Debug("Excluding %s", pt)
+			return filepath.SkipDir
+		}
 		if !fi.IsDir() {
 			return nil
 		}
