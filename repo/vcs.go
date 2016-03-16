@@ -125,7 +125,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 			} else if err != nil {
 				return err
 			} else if repo.IsDirty() {
-				return fmt.Errorf("%s contains uncommited changes. Skipping update", dep.Name)
+				return fmt.Errorf("%s contains uncommitted changes. Skipping update", dep.Name)
 			}
 
 			// Check if the current version is a tag or commit id. If it is
