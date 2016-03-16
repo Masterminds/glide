@@ -139,6 +139,12 @@ func Basepath() string {
 	return base
 }
 
+// StripBasepath removes the base directory from a passed in path.
+func StripBasepath(p string) string {
+	bp := Basepath()
+	return strings.TrimPrefix(p, bp+string(os.PathSeparator))
+}
+
 // IsLink returns true if the given FileInfo references a link.
 func IsLink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink == os.ModeSymlink

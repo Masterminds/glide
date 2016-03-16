@@ -10,6 +10,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 )
 
@@ -52,7 +53,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	if _, err := os.Stat(path); err != nil {
 		return []*cfg.Dependency{}, nil
 	}
-	msg.Info("Found Godeps.json file in %s\n", dir)
+	msg.Info("Found Godeps.json file in %s", gpath.StripBasepath(dir))
 
 	buf := []*cfg.Dependency{}
 
