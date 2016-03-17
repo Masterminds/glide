@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
+	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
@@ -73,6 +74,10 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	// from the project. A removed dependency should warn and an added dependency
 	// should be added to the glide.yaml file. See issue #193.
 
+	if stripVendor {
+		confcopy = godep.RemoveGodepSubpackages(confcopy)
+	}
+
 	if !skipRecursive {
 		// Write lock
 		hash, err := conf.Hash()
@@ -97,6 +102,9 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 
 	if stripVendor {
 		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
-		gpath.StripVendor()
+		err := gpath.StripVendor()
+		if err != nil {
+			msg.Err("Unable to strip vendor directories: %s", err)
+		}
 	}
 }

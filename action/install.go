@@ -66,7 +66,10 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 
 	if stripVendor {
 		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
-		gpath.StripVendor()
+		err := gpath.StripVendor()
+		if err != nil {
+			msg.Err("Unable to strip vendor directories: %s", err)
+		}
 	}
 }
 

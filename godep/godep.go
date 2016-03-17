@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
@@ -95,4 +96,30 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	}
 
 	return buf, nil
+}
+
+// RemoveGodepSubpackages strips subpackages from a cfg.Config dependencies that
+// contain "Godeps/_workspace/src" as part of the path.
+func RemoveGodepSubpackages(c *cfg.Config) *cfg.Config {
+	for _, d := range c.Imports {
+		n := []string{}
+		for _, v := range d.Subpackages {
+			if !strings.HasPrefix(v, "Godeps/_workspace/src") {
+				n = append(n, v)
+			}
+		}
+		d.Subpackages = n
+	}
+
+	for _, d := range c.DevImports {
+		n := []string{}
+		for _, v := range d.Subpackages {
+			if !strings.HasPrefix(v, "Godeps/_workspace/src") {
+				n = append(n, v)
+			}
+		}
+		d.Subpackages = n
+	}
+
+	return c
 }
