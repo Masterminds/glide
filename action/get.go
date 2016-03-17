@@ -15,7 +15,7 @@ import (
 // Get fetches one or more dependencies and installs.
 //
 // This includes resolving dependency resolution and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool) {
+func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip bool) {
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
@@ -63,7 +63,9 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool
 	}
 
 	// VendoredCleanup
-	if installer.UpdateVendored {
+	// When stripping VCS happens this will happen as well. No need for double
+	// effort.
+	if installer.UpdateVendored && !strip {
 		repo.VendoredCleanup(confcopy)
 	}
 
@@ -76,6 +78,11 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive bool
 		writeLock(conf, confcopy, base)
 	} else {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
+	}
+
+	if strip {
+		msg.Info("Removing version control data from vendor directory...")
+		gpath.StripVcs()
 	}
 }
 

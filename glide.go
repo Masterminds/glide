@@ -207,6 +207,10 @@ func commands() []cli.Command {
 					Name:  "resolve-current",
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vcs, s",
+					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if len(c.Args()) < 1 {
@@ -228,7 +232,7 @@ func commands() []cli.Command {
 				inst.ResolveAllFiles = c.Bool("all-dependencies")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"))
 			},
 		},
 		{
@@ -405,7 +409,7 @@ Example:
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
 				cli.BoolFlag{
-					Name:  "strip-vcs",
+					Name:  "strip-vcs, s",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
 			},
@@ -493,7 +497,7 @@ Example:
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
 				cli.BoolFlag{
-					Name:  "strip-vcs",
+					Name:  "strip-vcs, s",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
 			},
