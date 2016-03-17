@@ -211,8 +211,16 @@ func commands() []cli.Command {
 					Name:  "strip-vcs, s",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+				}
+
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
@@ -232,7 +240,7 @@ func commands() []cli.Command {
 				inst.ResolveAllFiles = c.Bool("all-dependencies")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -412,8 +420,16 @@ Example:
 					Name:  "strip-vcs, s",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+				}
+
 				installer := repo.NewInstaller()
 				installer.Force = c.Bool("force")
 				installer.UseCache = c.Bool("cache")
@@ -423,7 +439,7 @@ Example:
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Install(installer, c.Bool("strip-vcs"))
+				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -500,8 +516,15 @@ Example:
 					Name:  "strip-vcs, s",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+				}
 
 				if c.Bool("resolve-current") {
 					util.ResolveCurrent = true
@@ -518,7 +541,7 @@ Example:
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"))
+				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{

@@ -11,7 +11,7 @@ import (
 )
 
 // Update updates repos and the lock file from the main glide yaml.
-func Update(installer *repo.Installer, skipRecursive, strip bool) {
+func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	base := "."
 	EnsureGopath()
 	EnsureVendorDir()
@@ -93,5 +93,10 @@ func Update(installer *repo.Installer, skipRecursive, strip bool) {
 	if strip {
 		msg.Info("Removing version control data from vendor directory...")
 		gpath.StripVcs()
+	}
+
+	if stripVendor {
+		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
+		gpath.StripVendor()
 	}
 }

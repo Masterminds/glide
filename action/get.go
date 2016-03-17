@@ -15,7 +15,7 @@ import (
 // Get fetches one or more dependencies and installs.
 //
 // This includes resolving dependency resolution and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip bool) {
+func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor bool) {
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
@@ -83,6 +83,11 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	if strip {
 		msg.Info("Removing version control data from vendor directory...")
 		gpath.StripVcs()
+	}
+
+	if stripVendor {
+		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
+		gpath.StripVendor()
 	}
 }
 
