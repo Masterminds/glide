@@ -9,7 +9,7 @@ install: build
 	install -m 755 ./glide ${DESTDIR}/usr/local/bin/glide
 
 test:
-	go test . ./gb ./path ./action ./tree ./util ./godep ./gpm ./cfg ./dependency ./importer ./msg ./repo
+	go test . ./gb ./path ./action ./tree ./util ./godep ./godep/strip ./gpm ./cfg ./dependency ./importer ./msg ./repo
 
 clean:
 	rm -f ./glide.test
