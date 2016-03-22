@@ -169,7 +169,18 @@ func commands() []cli.Command {
 	When adding a new dependency Glide will perform an update to work out the
 	the versions to use from the dependency tree. This will generate an updated
 	glide.lock file with specific locked versions to use.
-	`,
+
+	If you are storing the outside dependencies in your version control system
+	(VCS), also known as vendoring, there are a few flags that may be useful.
+	The '--update-vendored' flag will cause Glide to update packages when VCS
+	information is unavailable. This can be used with the '--strip-vcs' flag which
+	will strip VCS data found in the vendor directory. This is useful for
+	removing VCS data from transitive dependencies and initial setups. The
+	'--strip-vendor' flag will remove any nested 'vendor' folders and
+	'Godeps/_workspace' folders after an update (along with undoing any Godep
+	import rewriting). Note, The Godeps specific functionality is deprecated and
+	will be removed when most Godeps users have migrated to using the vendor
+	folder.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "insecure",
@@ -462,10 +473,17 @@ Example:
 	It will create a glide.yaml file from the Godeps data, and then update. This
 	has no effect if '--no-recursive' is set.
 
-	If the '--update-vendored' flag (aliased to '-u') is present vendored
-	dependencies, stored in your projects VCS repository, will be updated. This
-	works by removing the old package, checking out an the repo and setting the
-	version, and removing the VCS directory.
+	If you are storing the outside dependencies in your version control system
+	(VCS), also known as vendoring, there are a few flags that may be useful.
+	The '--update-vendored' flag will cause Glide to update packages when VCS
+	information is unavailable. This can be used with the '--strip-vcs' flag which
+	will strip VCS data found in the vendor directory. This is useful for
+	removing VCS data from transitive dependencies and initial setups. The
+	'--strip-vendor' flag will remove any nested 'vendor' folders and
+	'Godeps/_workspace' folders after an update (along with undoing any Godep
+	import rewriting). Note, The Godeps specific functionality is deprecated and
+	will be removed when most Godeps users have migrated to using the vendor
+	folder.
 
 	By default, packages that are discovered are considered transient, and are
 	not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
