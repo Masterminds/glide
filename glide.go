@@ -169,7 +169,18 @@ func commands() []cli.Command {
 	When adding a new dependency Glide will perform an update to work out the
 	the versions to use from the dependency tree. This will generate an updated
 	glide.lock file with specific locked versions to use.
-	`,
+
+	If you are storing the outside dependencies in your version control system
+	(VCS), also known as vendoring, there are a few flags that may be useful.
+	The '--update-vendored' flag will cause Glide to update packages when VCS
+	information is unavailable. This can be used with the '--strip-vcs' flag which
+	will strip VCS data found in the vendor directory. This is useful for
+	removing VCS data from transitive dependencies and initial setups. The
+	'--strip-vendor' flag will remove any nested 'vendor' folders and
+	'Godeps/_workspace' folders after an update (along with undoing any Godep
+	import rewriting). Note, The Godeps specific functionality is deprecated and
+	will be removed when most Godeps users have migrated to using the vendor
+	folder.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "insecure",
@@ -211,8 +222,16 @@ func commands() []cli.Command {
 					Name:  "strip-vcs, s",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+				}
+
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
@@ -232,7 +251,7 @@ func commands() []cli.Command {
 				inst.ResolveAllFiles = c.Bool("all-dependencies")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -412,8 +431,16 @@ Example:
 					Name:  "strip-vcs, s",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+				}
+
 				installer := repo.NewInstaller()
 				installer.Force = c.Bool("force")
 				installer.UseCache = c.Bool("cache")
@@ -423,7 +450,7 @@ Example:
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Install(installer, c.Bool("strip-vcs"))
+				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -446,10 +473,17 @@ Example:
 	It will create a glide.yaml file from the Godeps data, and then update. This
 	has no effect if '--no-recursive' is set.
 
-	If the '--update-vendored' flag (aliased to '-u') is present vendored
-	dependencies, stored in your projects VCS repository, will be updated. This
-	works by removing the old package, checking out an the repo and setting the
-	version, and removing the VCS directory.
+	If you are storing the outside dependencies in your version control system
+	(VCS), also known as vendoring, there are a few flags that may be useful.
+	The '--update-vendored' flag will cause Glide to update packages when VCS
+	information is unavailable. This can be used with the '--strip-vcs' flag which
+	will strip VCS data found in the vendor directory. This is useful for
+	removing VCS data from transitive dependencies and initial setups. The
+	'--strip-vendor' flag will remove any nested 'vendor' folders and
+	'Godeps/_workspace' folders after an update (along with undoing any Godep
+	import rewriting). Note, The Godeps specific functionality is deprecated and
+	will be removed when most Godeps users have migrated to using the vendor
+	folder.
 
 	By default, packages that are discovered are considered transient, and are
 	not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
@@ -500,8 +534,15 @@ Example:
 					Name:  "strip-vcs, s",
 					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+				}
 
 				if c.Bool("resolve-current") {
 					util.ResolveCurrent = true
@@ -518,7 +559,7 @@ Example:
 				installer.Home = gpath.Home()
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"))
+				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{

@@ -12,7 +12,7 @@ import (
 )
 
 // Install installs a vendor directory based on an existing Glide configuration.
-func Install(installer *repo.Installer, strip bool) {
+func Install(installer *repo.Installer, strip, stripVendor bool) {
 	base := "."
 	// Ensure GOPATH
 	EnsureGopath()
@@ -22,7 +22,7 @@ func Install(installer *repo.Installer, strip bool) {
 	// Lockfile exists
 	if !gpath.HasLock(base) {
 		msg.Info("Lock file (glide.lock) does not exist. Performing update.")
-		Update(installer, false, strip)
+		Update(installer, false, strip, stripVendor)
 		return
 	}
 	// Load lockfile
@@ -62,6 +62,14 @@ func Install(installer *repo.Installer, strip bool) {
 	if strip {
 		msg.Info("Removing version control data from vendor directory...")
 		gpath.StripVcs()
+	}
+
+	if stripVendor {
+		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
+		err := gpath.StripVendor()
+		if err != nil {
+			msg.Err("Unable to strip vendor directories: %s", err)
+		}
 	}
 }
 

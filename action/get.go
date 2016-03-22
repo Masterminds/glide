@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
@@ -15,7 +16,7 @@ import (
 // Get fetches one or more dependencies and installs.
 //
 // This includes resolving dependency resolution and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip bool) {
+func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor bool) {
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
@@ -75,6 +76,9 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	}
 	if !skipRecursive {
 		// Write lock
+		if stripVendor {
+			confcopy = godep.RemoveGodepSubpackages(confcopy)
+		}
 		writeLock(conf, confcopy, base)
 	} else {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
@@ -83,6 +87,14 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	if strip {
 		msg.Info("Removing version control data from vendor directory...")
 		gpath.StripVcs()
+	}
+
+	if stripVendor {
+		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
+		err := gpath.StripVendor()
+		if err != nil {
+			msg.Err("Unable to strip vendor directories: %s", err)
+		}
 	}
 }
 
