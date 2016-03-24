@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
@@ -14,6 +15,7 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
+	"github.com/Masterminds/vcs"
 	"github.com/codegangsta/cli"
 )
 
@@ -366,7 +368,7 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	d := m.Config.Imports.Get(root)
 	// If the dependency is nil it means the Config doesn't yet know about it.
 	if d == nil {
-		d = m.Use.Get(root)
+		d, _ = m.Use.Get(root)
 		// We don't know about this dependency so we create a basic instance.
 		if d == nil {
 			d = &cfg.Dependency{Name: root}
@@ -433,7 +435,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 	d := m.Config.Imports.Get(root)
 	// If the dependency is nil it means the Config doesn't yet know about it.
 	if d == nil {
-		d = m.Use.Get(root)
+		d, _ = m.Use.Get(root)
 		// We don't know about this dependency so we create a basic instance.
 		if d == nil {
 			d = &cfg.Dependency{Name: root}
@@ -490,9 +492,9 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 			for _, dep := range deps {
 
 				// The fist one wins. Would something smater than this be better?
-				exists := d.Use.Get(dep.Name)
+				exists, _ := d.Use.Get(dep.Name)
 				if exists == nil && (dep.Reference != "" || dep.Repository != "") {
-					d.Use.Add(dep.Name, dep)
+					d.Use.Add(dep.Name, dep, root)
 				}
 			}
 		} else if err != nil {
@@ -519,7 +521,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 
 	v := d.Config.Imports.Get(root)
 
-	dep := d.Use.Get(root)
+	dep, req := d.Use.Get(root)
 	if dep != nil && v != nil {
 		if v.Reference == "" && dep.Reference != "" {
 			v.Reference = dep.Reference
@@ -528,7 +530,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 			dep = v
 		} else if v.Reference != "" && dep.Reference != "" && v.Reference != dep.Reference {
 			dest := filepath.Join(d.Destination, filepath.FromSlash(v.Name))
-			dep = determineDependency(v, dep, dest)
+			dep = determineDependency(v, dep, dest, req)
 		} else {
 			dep = v
 		}
@@ -560,7 +562,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	return
 }
 
-func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
+func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependency {
 	repo, err := v.GetRepo(dest)
 	if err != nil {
 		singleWarn("Unable to access repo for %s\n", v.Name)
@@ -573,7 +575,11 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 
 	// Both are references and they are different ones.
 	if vIsRef && depIsRef {
-		singleWarn("Conflict: %s ref is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+		singleWarn("Conflict: %s rev is currently %s, but %s wants %s\n", v.Name, v.Reference, req, dep.Reference)
+
+		displayCommitInfo(repo, v)
+		displayCommitInfo(repo, dep)
+
 		singleInfo("Keeping %s %s", v.Name, v.Reference)
 		return v
 	} else if vIsRef {
@@ -589,6 +595,7 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 		if err != nil {
 			// The existing version is not a semantic version.
 			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			displayCommitInfo(repo, v)
 			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
@@ -612,6 +619,7 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 		ver, err := semver.NewVersion(dep.Reference)
 		if err != nil {
 			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			displayCommitInfo(repo, dep)
 			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
@@ -688,23 +696,48 @@ func singleInfo(ft string, v ...interface{}) {
 
 type importCache struct {
 	cache map[string]*cfg.Dependency
+	from  map[string]string
 }
 
 func newImportCache() *importCache {
 	return &importCache{
 		cache: make(map[string]*cfg.Dependency),
+		from:  make(map[string]string),
 	}
 }
 
-func (i *importCache) Get(name string) *cfg.Dependency {
+func (i *importCache) Get(name string) (*cfg.Dependency, string) {
 	d, f := i.cache[name]
 	if f {
-		return d
+		return d, i.from[name]
 	}
 
-	return nil
+	return nil, ""
 }
 
-func (i *importCache) Add(name string, dep *cfg.Dependency) {
+func (i *importCache) Add(name string, dep *cfg.Dependency, root string) {
 	i.cache[name] = dep
+	i.from[name] = root
+}
+
+var displayCommitInfoPrefix = msg.Default.Color(msg.Green, "[INFO] ")
+var displayCommitInfoTemplate = "%s reference %s:\n" +
+	displayCommitInfoPrefix + "- author: %s\n" +
+	displayCommitInfoPrefix + "- commit date: %s\n" +
+	displayCommitInfoPrefix + "- subject (first line): %s\n"
+
+func displayCommitInfo(repo vcs.Repo, dep *cfg.Dependency) {
+	c, err := repo.CommitInfo(dep.Reference)
+	if err == nil {
+		singleInfo(displayCommitInfoTemplate, dep.Name, dep.Reference, c.Author, c.Date.Format(time.RFC1123Z), commitSubjectFirstLine(c.Message))
+	}
+}
+
+func commitSubjectFirstLine(sub string) string {
+	lines := strings.Split(sub, "\n")
+	if len(lines) <= 1 {
+		return sub
+	}
+
+	return lines[0]
 }
