@@ -15,6 +15,7 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
+	"github.com/Masterminds/vcs"
 	"github.com/codegangsta/cli"
 )
 
@@ -576,21 +577,8 @@ func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependen
 	if vIsRef && depIsRef {
 		singleWarn("Conflict: %s rev is currently %s, but %s wants %s\n", v.Name, v.Reference, req, dep.Reference)
 
-		pf := msg.Default.Color(msg.Green, "[INFO] ")
-		fm := "%s reference %s:\n" +
-			pf + "- author: %s\n" +
-			pf + "- commit date: %s\n" +
-			pf + "- subject (first line): %s\n"
-
-		vci, err := repo.CommitInfo(v.Reference)
-		if err == nil {
-			singleInfo(fm, v.Name, v.Reference, vci.Author, vci.Date.Format(time.RFC1123Z), commitSubjectFirstLine(vci.Message))
-		}
-
-		depci, err := repo.CommitInfo(dep.Reference)
-		if err == nil {
-			singleInfo(fm, v.Name, dep.Reference, depci.Author, depci.Date.Format(time.RFC1123Z), commitSubjectFirstLine(depci.Message))
-		}
+		displayCommitInfo(repo, v)
+		displayCommitInfo(repo, dep)
 
 		singleInfo("Keeping %s %s", v.Name, v.Reference)
 		return v
@@ -607,6 +595,7 @@ func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependen
 		if err != nil {
 			// The existing version is not a semantic version.
 			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			displayCommitInfo(repo, v)
 			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
@@ -630,6 +619,7 @@ func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependen
 		ver, err := semver.NewVersion(dep.Reference)
 		if err != nil {
 			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			displayCommitInfo(repo, dep)
 			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
@@ -728,6 +718,19 @@ func (i *importCache) Get(name string) (*cfg.Dependency, string) {
 func (i *importCache) Add(name string, dep *cfg.Dependency, root string) {
 	i.cache[name] = dep
 	i.from[name] = root
+}
+
+var displayCommitInfoPrefix = msg.Default.Color(msg.Green, "[INFO] ")
+var displayCommitInfoTemplate = "%s reference %s:\n" +
+	displayCommitInfoPrefix + "- author: %s\n" +
+	displayCommitInfoPrefix + "- commit date: %s\n" +
+	displayCommitInfoPrefix + "- subject (first line): %s\n"
+
+func displayCommitInfo(repo vcs.Repo, dep *cfg.Dependency) {
+	c, err := repo.CommitInfo(dep.Reference)
+	if err == nil {
+		singleInfo(displayCommitInfoTemplate, dep.Name, dep.Reference, c.Author, c.Date.Format(time.RFC1123Z), commitSubjectFirstLine(c.Message))
+	}
 }
 
 func commitSubjectFirstLine(sub string) string {
