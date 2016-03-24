@@ -1,4 +1,4 @@
-# Release 0.10.0 (2016-03-XX)
+# Release 0.10.0 (2016-03-24)
 
 - Issue #293: Added support for importing from Gomfile's (thanks mcuelenaere).
 - Issue #318: Opt-In to strip VCS metadata from vendor directory.

@@ -52,7 +52,7 @@ import (
 	"os/user"
 )
 
-var version = "dev"
+var version = "0.10.0"
 
 const usage = `The lightweight vendor package manager for your Go projects.
 
