@@ -1,3 +1,20 @@
+# Release 0.10.0 (2016-03-XX)
+
+- Issue #293: Added support for importing from Gomfile's (thanks mcuelenaere).
+- Issue #318: Opt-In to strip VCS metadata from vendor directory.
+- Issue #297: Adds exclude property for directories in local codebase to exclude
+  from scanning.
+- Issue #301: Detect version control type from scp style paths (e.g. git@) and
+  from scheme types (e.g., git://).
+- Issue #339: Add ability to remove nested vendor and Godeps workspaces
+  directories. Note, if Godeps rewriting occured it is undone. The Godeps handling
+  is deprecated from day one and will be removed when most Godeps projects have
+  migrated to vendor folder handling.
+- Issue #350: More detailed conflict information (commit metadata displayed).
+- Issue #351: Move to Gitter for chat.
+- Issue #352: Make Glide installable. The dependencies are checked into the
+  `vendor` folder.
+
 # Release 0.9.3 (2016-03-09)
 
 - Fixed #324: Glide tries to update ignored package

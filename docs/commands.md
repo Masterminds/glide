@@ -49,6 +49,18 @@ This will recurse over the packages looking for other projects managed by Glide,
 
 A `glide.lock` file will be created or updated with the dependencies pinned to specific versions. For example, if in the `glide.yaml` file a version was specified as a range (e.g., `^1.2.3`) it will be set to a specific commit id in the `glide.lock` file. That allows for reproducible installs (see `glide install`).
 
+If you want to use `glide up` to help you managed dependencies that are checked into your version control consider the flags:
+
+* `--update-vendored` (aliased to `-u`) to update the vendored dependencies.
+* `--strip-vcs` (aliased to `-s`) to strip VCS metadata (e.g., `.git` directories) from the `vendor` folder.
+* `--strip-vendor` (aliased to `-v`) to strip nested `vendor/` directories.
+
+For example, you can use the command:
+
+    $ glide up -u -s
+
+This will tell Glide to update the vendored packages and remove any VCS directories from transitive dependencies that were picked up as well.
+
 ## glide install
 
 When you want to install the specific versions from the `glide.lock` file use `glide install`.

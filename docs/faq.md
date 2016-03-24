@@ -10,7 +10,13 @@ These are works in progress, and may need some additional tuning. Please take a 
 
 ## Q: Should I check `vendor/` into version control?
 
-That's up to you. It's not necessary, but it may also cause you extra work and lots of extra space in your VCS. There may also be unforeseen errors ([see an example](https://github.com/mattfarina/golang-broken-vendor)).
+That's up to you. It's a personal or organizational decision. Glide will help you install the outside dependencies on demand or help you manage the dependencies as they are checked into your version control system.
+
+By default, commands such as `glide update` and `glide install` install on-demand. To manage a vendor folder that's checked into version control use the flags:
+
+* `--update-vendored` (aliased to `-u`) to update the vendored dependencies.
+* `--strip-vcs` (aliased to `-s`) to strip VCS metadata (e.g., `.git` directories) from the `vendor` folder.
+* `--strip-vendor` (aliased to `-v`) to strip nested `vendor/` directories.
 
 ## Q: How do I import settings from GPM, Godep, or gb?
 
