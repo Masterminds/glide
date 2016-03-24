@@ -10,7 +10,7 @@ Glide provides the following functionality:
 * Supports Git, Bzr, HG, and SVN. These are the same version control systems supported by `go get`.
 * Utilizes `vendor/` directories, known as the Vendor Experiment, so that different projects can have differing versions of the same dependencies.
 * Allows for aliasing packages which is useful for working with forks.
-* Import configuration from Godep, GPM, and GB.
+* Import configuration from Godep, GPM, Gom, and GB.
 
 ## Installing Glide
 

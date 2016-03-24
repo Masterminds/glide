@@ -18,12 +18,12 @@ By default, commands such as `glide update` and `glide install` install on-deman
 * `--strip-vcs` (aliased to `-s`) to strip VCS metadata (e.g., `.git` directories) from the `vendor` folder.
 * `--strip-vendor` (aliased to `-v`) to strip nested `vendor/` directories.
 
-## Q: How do I import settings from GPM, Godep, or gb?
+## Q: How do I import settings from GPM, Godep, Gom, or GB?
 
 There are two parts to importing.
 
-1. If a package you import has configuration for GPM, Godep, or gb Glide will recursively install the dependencies automatically.
-2. If you would like to import configuration from GPM, Godep, or gb to Glide see the `glide import` command. For example, you can run `glide import godep` for Glide to detect the projects Godep configuration and generate a `glide.yaml` file for you.
+1. If a package you import has configuration for GPM, Godep, Gom, or GB Glide will recursively install the dependencies automatically.
+2. If you would like to import configuration from GPM, Godep, Gom, or GB to Glide see the `glide import` command. For example, you can run `glide import godep` for Glide to detect the projects Godep configuration and generate a `glide.yaml` file for you.
 
 Each of these will merge your existing `glide.yaml` file with the
 dependencies it finds for those managers, and then emit the file as

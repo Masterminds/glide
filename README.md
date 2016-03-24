@@ -41,7 +41,7 @@ The dependencies for a project are listed in a `glide.yaml` file. This can
 include a version, VCS, repository location (that can be different from the
 package name), etc. When `glide up` is run it downloads the packages (or updates)
 to the `vendor` directory. It then recursively walks through the downloaded
-packages looking for those with a `glide.yaml` file (or Godep, gb, or GPM config
+packages looking for those with a `glide.yaml` file (or Godep, gb, gom, or GPM config
 file) that don't already have a `vendor` directory and installing their
 dependencies to their `vendor` directories. Once Glide has downloaded and figured
 out versions to use in the dependency tree it creates a `glide.lock` file
@@ -151,7 +151,7 @@ $ glide get github.com/Masterminds/cookoo
 ```
 
 When `glide get` is used it will introspect the listed package to resolve its
-dependencies including using Godep, GPM, and GB config files.
+dependencies including using Godep, GPM, Gom, and GB config files.
 
 ### glide update (aliased to up)
 
@@ -164,7 +164,7 @@ $ glide up
 ```
 
 This will recurse over the packages looking for other projects managed by Glide,
-Godep, gb, and GPM. When one is found those packages will be installed as needed.
+Godep, gb, gom, and GPM. When one is found those packages will be installed as needed.
 
 A `glide.lock` file will be created or updated with the dependencies pinned to
 specific versions. For example, if in the `glide.yaml` file a version was

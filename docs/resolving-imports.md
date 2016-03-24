@@ -14,7 +14,7 @@ From this it will attempt to figure out the external packages. External packages
 
 Again, this is the same way `go` trying to determine an external location when you use `go get`.
 
-If the project has dependency configuration stored in a Godep, GPM, or GB file that information will be used to populate the version within the `glide.yaml` file.
+If the project has dependency configuration stored in a Godep, GPM, Gom, or GB file that information will be used to populate the version within the `glide.yaml` file.
 
 ## At Update
 
@@ -28,10 +28,10 @@ That means that only imports referenced in the source are fetched.
 
 When a version control repo is fetched it does fetch the complete repo. But, it doesn't scan all the packages in the repo for dependencies. Instead, only the packages referenced in the tree are scanned with the imports being followed.
 
-Along the way configuration stored in Glide, Godep, GPM, and GB files are used to work out the version to set and fetched repos to. The first version found while walking the import tree wins.
+Along the way configuration stored in Glide, Godep, GPM, Gom, and GB files are used to work out the version to set and fetched repos to. The first version found while walking the import tree wins.
 
 ### All Possible Dependencies
 
 Using the `--all-dependencies` flag on `glide update` will change the behavior of the scan. Instead of walking the import tree it walks the filesystem and fetches all possible packages referenced everywhere. This downloads all packages in the tree. Even those not referenced in an applications source or in support of the applications imports.
 
-As in other cases, Glide, Godep, GPM, and GB files are used to set the version of the fetched repo.
+As in other cases, Glide, Godep, GPM, Gom, and GB files are used to set the version of the fetched repo.
