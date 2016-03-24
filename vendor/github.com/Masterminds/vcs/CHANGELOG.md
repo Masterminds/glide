@@ -1,3 +1,7 @@
+# 1.5.1 (2016-03-23)
+
+- Fixing bug parsing some Git commit dates.
+
 # 1.5.0 (2016-03-22)
 
 - Add Travis CI testing for Go 1.6.

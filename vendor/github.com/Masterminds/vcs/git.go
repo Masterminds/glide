@@ -214,7 +214,7 @@ func (s *GitRepo) CommitInfo(id string) (*CommitInfo, error) {
 		return nil, err
 	}
 
-	t, err := time.Parse(time.RFC1123Z, cis.Date)
+	t, err := time.Parse("Mon, _2 Jan 2006 15:04:05 -0700", cis.Date)
 	if err != nil {
 		return nil, err
 	}
