@@ -23,3 +23,10 @@ script:
 
 notifications:
   irc: "irc.freenode.net#masterminds"
+  notifications:
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/67e4b42cbf763625d0b4
+    on_success: change
+    on_failure: always
+    on_start: never
