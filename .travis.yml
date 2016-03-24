@@ -13,8 +13,6 @@ go:
 # - http://docs.travis-ci.com/user/workers/standard-infrastructure/
 sudo: false
 
-install: make bootstrap
-
 # The default script is go test -v ./... which will test everything
 # in the vendor directory. We don't need to test all dependent packages.
 # Only testing this project.

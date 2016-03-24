@@ -86,9 +86,9 @@ To build from source you can:
 
 1. Clone this repository into `$GOPATH/src/github.com/Masterminds/glide` and
    change directory into it
-2. Ensure that the environment variable GO15VENDOREXPERIMENT is set, f.ex. by
-   running `export GO15VENDOREXPERIMENT=1`
-3. Run `make bootstrap`, followed by `make build`
+2. Ensure that the environment variable GO15VENDOREXPERIMENT is set, for
+   example by running `export GO15VENDOREXPERIMENT=1`
+3. Run `make build`
 
 This will leave you with `./glide`, which you can put in your `$PATH` if
 you'd like. (You can also take a look at `make install` to install for
