@@ -226,6 +226,7 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 	// We build a list of local source to walk, then send this list
 	// to resolveList.
+	msg.Debug("Resolving local dependencies")
 	l := list.New()
 	alreadySeen := map[string]bool{}
 	err := filepath.Walk(r.basedir, func(path string, fi os.FileInfo, err error) error {
@@ -371,6 +372,7 @@ func (r *Resolver) vpath(str string) string {
 // The resolver's handler is used in the cases where a package cannot be
 // located.
 func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
+	msg.Debug("Resolving import path")
 	for e := queue.Front(); e != nil; e = e.Next() {
 		vdep := e.Value.(string)
 		dep := r.stripv(vdep)
@@ -389,7 +391,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 		// Skip ignored packages
 		if r.Config.HasIgnore(dep) {
-			msg.Info("Ignoring: %s", dep)
+			msg.Debug("Ignoring: %s", dep)
 			continue
 		}
 		r.VersionHandler.Process(dep)
@@ -450,6 +452,10 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		// Range over all of the identified imports and see which ones we
 		// can locate.
 		for _, imp := range imps {
+			if r.Config.HasIgnore(imp) {
+				msg.Debug("Ignoring: %s", imp)
+				continue
+			}
 			pi := r.FindPkg(imp)
 			if pi.Loc != LocCgo && pi.Loc != LocGoroot && pi.Loc != LocAppengine {
 				msg.Debug("Package %s imports %s", dep, imp)
@@ -505,7 +511,7 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 		// Skip ignored packages
 		if r.Config.HasIgnore(e.Value.(string)) {
-			msg.Info("Ignoring: %s", e.Value.(string))
+			msg.Debug("Ignoring: %s", e.Value.(string))
 			continue
 		}
 
@@ -543,7 +549,7 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 		dep := e.Value.(string)
 		t := strings.TrimPrefix(dep, r.VendorDir+string(os.PathSeparator))
 		if r.Config.HasIgnore(t) {
-			msg.Info("Ignoring: %s", t)
+			msg.Debug("Ignoring: %s", t)
 			continue
 		}
 		r.VersionHandler.Process(t)
