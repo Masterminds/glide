@@ -1,3 +1,8 @@
+# Release 0.10.1 (2016-03-25)
+
+- Fixed #354: Fixed a situation where a dependency could be fetched when
+  set to ignore.
+
 # Release 0.10.0 (2016-03-24)
 
 - Issue #293: Added support for importing from Gomfile's (thanks mcuelenaere).
