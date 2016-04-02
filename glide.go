@@ -37,6 +37,7 @@
 package main
 
 import (
+	"encoding/json"
 	"path/filepath"
 
 	"github.com/Masterminds/glide/action"
@@ -587,7 +588,16 @@ Example:
 			vendor are only included if they are used by the project.
 			`,
 			Action: func(c *cli.Context) {
-				action.List(".", true)
+				outputFormat := c.String("output")
+				pkgList := action.List(".", true)
+				outputList(pkgList, outputFormat)
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "output, o",
+					Usage: "Output format. One of: json|json-pretty|text",
+					Value: "text",
+				},
 			},
 		},
 		{
@@ -638,4 +648,43 @@ func glidefile(c *cli.Context) string {
 		return path
 	}
 	return a
+}
+
+const (
+	textFormat       = "text"
+	jsonFormat       = "json"
+	jsonPrettyFormat = "json-pretty"
+)
+
+func outputList(l action.PackageList, format string) {
+	switch format {
+	case textFormat:
+		msg.Puts("INSTALLED packages:")
+		for _, pkg := range l.Installed {
+			msg.Puts("\t%s", pkg)
+		}
+
+		if len(l.Missing) > 0 {
+			msg.Puts("\nMISSING packages:")
+			for _, pkg := range l.Missing {
+				msg.Puts("\t%s", pkg)
+			}
+		}
+		if len(l.Gopath) > 0 {
+			msg.Puts("\nGOPATH packages:")
+			for _, pkg := range l.Gopath {
+				msg.Puts("\t%s", pkg)
+			}
+		}
+	case jsonFormat:
+		json.NewEncoder(os.Stdout).Encode(l)
+	case jsonPrettyFormat:
+		b, err := json.MarshalIndent(l, "", "  ")
+		if err != nil {
+			msg.Die("could not unmarshal package list: %s", err)
+		}
+		fmt.Println(string(b))
+	default:
+		msg.Die("invalid output format: must be one of: json|json-pretty|text")
+	}
 }

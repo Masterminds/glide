@@ -13,8 +13,7 @@ import (
 // Params:
 //  - dir (string): basedir
 //  - deep (bool): whether to do a deep scan or a shallow scan
-func List(basedir string, deep bool) {
-
+func List(basedir string, deep bool) PackageList {
 	basedir, err := filepath.Abs(basedir)
 	if err != nil {
 		msg.Die("Could not read directory: %s", err)
@@ -27,34 +26,29 @@ func List(basedir string, deep bool) {
 	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}}
 	r.Handler = h
 
-	sortable, err := r.ResolveLocal(deep)
+	localPkgs, err := r.ResolveLocal(deep)
 	if err != nil {
 		msg.Die("Error listing dependencies: %s", err)
 	}
-
-	msg.Info("Sorting...")
-	sort.Strings(sortable)
-
-	msg.Puts("INSTALLED packages:")
-	for _, k := range sortable {
-		v, err := filepath.Rel(basedir, k)
+	sort.Strings(localPkgs)
+	installed := make([]string, len(localPkgs))
+	for i, pkg := range localPkgs {
+		relPkg, err := filepath.Rel(basedir, pkg)
 		if err != nil {
-			//msg.Warn("Failed to Rel path: %s", err)
-			v = k
+			// msg.Warn("Failed to Rel path: %s", err)
+			relPkg = pkg
 		}
-		msg.Puts("\t%s", v)
+		installed[i] = relPkg
 	}
+	return PackageList{
+		Installed: installed,
+		Missing:   h.Missing,
+		Gopath:    h.Gopath,
+	}
+}
 
-	if len(h.Missing) > 0 {
-		msg.Puts("\nMISSING packages:")
-		for _, pkg := range h.Missing {
-			msg.Puts("\t%s", pkg)
-		}
-	}
-	if len(h.Gopath) > 0 {
-		msg.Puts("\nGOPATH packages:")
-		for _, pkg := range h.Gopath {
-			msg.Puts("\t%s", pkg)
-		}
-	}
+type PackageList struct {
+	Installed []string `json:"installed"`
+	Missing   []string `json:"missing"`
+	Gopath    []string `json:"gopath"`
 }
