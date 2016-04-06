@@ -1,3 +1,11 @@
+# Release 0.10.2 (2016-04-06)
+
+- Issue #362: Updated docs on how -update-vendored works to help avoid confusion.
+- Fixed #371: Warn when name/location mismatch.
+- Fixed #290: On windows Glide was sometimes pulls in current project (thanks tzneal).
+- Fixed #361: Handle relative imports (thanks tmm1).
+- Fixed #373: Go 1.7 context package import issues.
+
 # Release 0.10.1 (2016-03-25)
 
 - Fixed #354: Fixed a situation where a dependency could be fetched when
