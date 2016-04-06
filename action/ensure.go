@@ -51,6 +51,8 @@ func EnsureConfig() *cfg.Config {
 			if name != conf.Name {
 				msg.Warn("The name listed in the config file (%s) does not match the current location (%s)", conf.Name, name)
 			}
+		} else {
+			msg.Warn("Problem finding the config file path (%s) relative to the current directory (%s): %s", b, cwd, err)
 		}
 	}
 
