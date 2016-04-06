@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"container/list"
+	"runtime"
 	//"go/build"
 	"os"
 	"path/filepath"
@@ -217,6 +218,14 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	return r.resolveImports(l)
 }
 
+// dirHasPrefix tests whether the directory dir begins with prefix.
+func dirHasPrefix(dir, prefix string) bool {
+	if runtime.GOOS != "windows" {
+		return strings.HasPrefix(dir, prefix)
+	}
+	return len(dir) >= len(prefix) && strings.EqualFold(dir[:len(prefix)], prefix)
+}
+
 // ResolveLocal resolves dependencies for the current project.
 //
 // This begins with the project, builds up a list of external dependencies.
@@ -281,7 +290,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 			case LocUnknown, LocVendor:
 				l.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp))) // Do we need a path on this?
 			case LocGopath:
-				if !strings.HasPrefix(info.Path, r.basedir) {
+				if !dirHasPrefix(info.Path, r.basedir) {
 					// FIXME: This is a package outside of the project we're
 					// scanning. It should really be on vendor. But we don't
 					// want it to reference GOPATH. We want it to be detected
