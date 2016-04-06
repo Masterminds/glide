@@ -485,6 +485,11 @@ Example:
 	will be removed when most Godeps users have migrated to using the vendor
 	folder.
 
+	Note, Glide detects vendored dependencies. With the '--update-vendored' flag
+	Glide will update vendored dependencies leaving them in a vendored state.
+	Tertiary dependencies will not be vendored automatically unless the
+	'--strip-vcs' flag is used along with it.
+
 	By default, packages that are discovered are considered transient, and are
 	not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
 	to save the discovered dependencies to a YAML file.

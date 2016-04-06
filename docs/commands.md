@@ -51,7 +51,7 @@ A `glide.lock` file will be created or updated with the dependencies pinned to s
 
 If you want to use `glide up` to help you managed dependencies that are checked into your version control consider the flags:
 
-* `--update-vendored` (aliased to `-u`) to update the vendored dependencies.
+* `--update-vendored` (aliased to `-u`) to update the vendored dependencies. If Glide detects a vendored dependency it will update it and leave it in a vendored state. Note, any tertiary dependencies will not be automatically vendored with this flag.
 * `--strip-vcs` (aliased to `-s`) to strip VCS metadata (e.g., `.git` directories) from the `vendor` folder.
 * `--strip-vendor` (aliased to `-v`) to strip nested `vendor/` directories.
 
