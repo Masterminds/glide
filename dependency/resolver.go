@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 )
 
@@ -286,6 +287,10 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 					// want it to reference GOPATH. We want it to be detected
 					// and moved.
 					l.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
+				}
+			case LocRelative:
+				if strings.HasPrefix(imp, "./"+gpath.VendorDir) {
+					msg.Warn("Go package resolving will resolve %s without the ./%s/ prefix", imp, gpath.VendorDir)
 				}
 			}
 		}
@@ -779,6 +784,8 @@ const (
 	// Why does a Google product get a special case build mode with a local
 	// package?
 	LocAppengine
+	// LocRelative indicates the packge is a relative directory
+	LocRelative
 )
 
 // PkgInfo represents metadata about a package found by the resolver.
@@ -813,6 +820,12 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 	var p string
 	info := &PkgInfo{
 		Name: name,
+	}
+
+	if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") {
+		info.Loc = LocRelative
+		r.findCache[name] = info
+		return info
 	}
 
 	// Check _only_ if this dep is in the current vendor directory.

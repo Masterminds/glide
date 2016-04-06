@@ -103,6 +103,11 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		Name: name,
 	}
 
+	if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") {
+		info.Loc = dependency.LocRelative
+		return info
+	}
+
 	// Recurse backward to scan other vendor/ directories
 	// If the cwd isn't an absolute path walking upwards looking for vendor/
 	// folders can get into an infinate loop.
