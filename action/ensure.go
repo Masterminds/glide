@@ -5,11 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
+	"github.com/Masterminds/glide/util"
 )
 
 // EnsureConfig loads and returns a config file.
@@ -31,6 +33,27 @@ func EnsureConfig() *cfg.Config {
 	if err != nil {
 		msg.ExitCode(3)
 		msg.Die("Failed to parse %s: %s", yamlpath, err)
+	}
+
+	b := filepath.Dir(yamlpath)
+	buildContext, err := util.GetBuildContext()
+	if err != nil {
+		msg.Die("Failed to build an import context while ensuring config: %s", err)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		msg.Err("Unable to get the current working directory")
+	} else {
+		// Determining a package name requires a relative path
+		b, err = filepath.Rel(b, cwd)
+		if err == nil {
+			name := buildContext.PackageName(b)
+			if name != conf.Name {
+				msg.Warn("The name listed in the config file (%s) does not match the current location (%s)", conf.Name, name)
+			}
+		} else {
+			msg.Warn("Problem finding the config file path (%s) relative to the current directory (%s): %s", b, cwd, err)
+		}
 	}
 
 	return conf

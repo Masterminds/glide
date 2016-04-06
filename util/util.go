@@ -254,7 +254,7 @@ func (b *BuildCtxt) PackageName(base string) string {
 		// There may not be any top level Go source files but the project may
 		// still be within the GOPATH.
 		if strings.HasPrefix(base, b.GOPATH) {
-			p := strings.TrimPrefix(base, b.GOPATH)
+			p := strings.TrimPrefix(base, filepath.Join(b.GOPATH, "src"))
 			return strings.Trim(p, string(os.PathSeparator))
 		}
 	}
