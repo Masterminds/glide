@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 )
 
@@ -286,6 +287,10 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 					// want it to reference GOPATH. We want it to be detected
 					// and moved.
 					l.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
+				}
+			case LocRelative:
+				if strings.HasPrefix(imp, "./"+gpath.VendorDir) {
+					msg.Warn("Go package resolving will resolve %s without the ./%s/ prefix", imp, gpath.VendorDir)
 				}
 			}
 		}
