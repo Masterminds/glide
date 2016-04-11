@@ -37,7 +37,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	// Fetch the new packages. Can't resolve versions via installer.Update if
 	// get is called while the vendor/ directory is empty so we checkout
 	// everything.
-	installer.Checkout(conf, false)
+	installer.Checkout(false)
 
 	// Prior to resolving dependencies we need to start working with a clone
 	// of the conf because we'll be making real changes to it.
@@ -52,14 +52,14 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 		// to be between 1.0 and 2.0. But changing that dependency may then result
 		// in that dependency's dependencies changing... so we sorta do the whole
 		// thing to be safe.
-		err = installer.Update(confcopy)
+		err = installer.Update()
 		if err != nil {
 			msg.Die("Could not update packages: %s", err)
 		}
 	}
 
 	// Set Reference
-	if err := repo.SetReference(confcopy); err != nil {
+	if err := installer.SetReferences(); err != nil {
 		msg.Err("Failed to set references: %s", err)
 	}
 

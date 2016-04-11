@@ -26,7 +26,7 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 		return
 	}
 	// Load lockfile
-	lock, err := LoadLockfile(base, conf)
+	lock, err := LoadLockfile(base, installer.Config)
 	if err != nil {
 		msg.Die("Could not load lockfile.")
 	}
@@ -40,7 +40,7 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 	}
 
 	// Install
-	newConf, err := installer.Install(lock, conf)
+	newConf, err := installer.Install(lock)
 	if err != nil {
 		msg.Die("Failed to install: %s", err)
 	}
@@ -48,7 +48,7 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 	msg.Info("Setting references.")
 
 	// Set reference
-	if err := repo.SetReference(newConf); err != nil {
+	if err := installer.SetReferences(); err != nil {
 		msg.Err("Failed to set references: %s (Skip to cleanup)", err)
 	}
 
