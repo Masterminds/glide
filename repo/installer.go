@@ -26,10 +26,14 @@ type Installer struct {
 	// Updated tracks the packages that have been remotely fetched.
 	Updated *UpdateTracker
 
+	// Vcs performs operations on repositories.
 	Vcs Vcser
 }
 
+// InstallerOptions is a configurations object for an Installer.
 type InstallerOptions struct {
+
+	// Config is a configuration object.
 	Config *cfg.Config
 
 	// Force the install when certain normally stopping conditions occur.
@@ -43,8 +47,10 @@ type InstallerOptions struct {
 
 	// Use a cache
 	UseCache bool
+
 	// Use Gopath to cache
 	UseCacheGopath bool
+
 	// Use Gopath as a source to read from
 	UseGopath bool
 
@@ -61,9 +67,10 @@ type InstallerOptions struct {
 	ResolveAllFiles bool
 }
 
+// NewInstaller returns a new Installer configured with the specified InstallerOptions.
 func NewInstaller(options InstallerOptions) *Installer {
 
-	i := &Installer{
+	return &Installer{
 		InstallerOptions: options,
 		Updated:          NewUpdateTracker(),
 		Vcs: NewVcs(VcsOptions{
@@ -77,7 +84,6 @@ func NewInstaller(options InstallerOptions) *Installer {
 			Config:         options.Config,
 		}),
 	}
-	return i
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -178,8 +184,7 @@ func (i *Installer) Update() error {
 	ic := newImportCache()
 
 	m := &MissingPackageHandler{
-		destination: vpath,
-
+		destination:    vpath,
 		cache:          i.UseCache,
 		cacheGopath:    i.UseCacheGopath,
 		useGopath:      i.UseGopath,

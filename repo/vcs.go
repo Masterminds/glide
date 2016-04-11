@@ -20,12 +20,14 @@ import (
 	v "github.com/Masterminds/vcs"
 )
 
+// Vcser performs operations on repositories.
 type Vcser interface {
 	Update(*cfg.Dependency, string) error
 	Get(*cfg.Dependency, string) error
 	Version(*cfg.Dependency) error
 }
 
+// VcsOptions is a configuration object for a Vcs implementation.
 type VcsOptions struct {
 	Config         *cfg.Config
 	Tracker        *UpdateTracker
@@ -42,6 +44,7 @@ type defaultVcs struct {
 	VcsOptions
 }
 
+// NewVcs returns a new Vcser implementation.
 func NewVcs(options VcsOptions) Vcser {
 	return &defaultVcs{options}
 }
