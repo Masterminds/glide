@@ -12,20 +12,21 @@ func Remove(packages []string, inst *repo.Installer) {
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
-	conf := EnsureConfig()
 	glidefile, err := gpath.Glide()
+
 	if err != nil {
 		msg.Die("Could not find Glide file: %s", err)
 	}
 
 	msg.Info("Preparing to remove %d packages.", len(packages))
-	conf.Imports = rmDeps(packages, conf.Imports)
-	conf.DevImports = rmDeps(packages, conf.DevImports)
+	inst.Config.Imports = rmDeps(packages, inst.Config.Imports)
+	inst.Config.DevImports = rmDeps(packages, inst.Config.DevImports)
 
 	// Copy used to generate locks.
-	confcopy := conf.Clone()
+	conforig := inst.Config
+	inst.Config = inst.Config.Clone()
 
-	confcopy.Imports = inst.List()
+	inst.Config.Imports = inst.List()
 
 	if err := inst.SetReferences(); err != nil {
 		msg.Err("Failed to set references: %s", err)
@@ -34,16 +35,17 @@ func Remove(packages []string, inst *repo.Installer) {
 	// TODO: Right now, there is no flag to enable this, so this will never be
 	// run. I am not sure whether we should allow this in a rm op or not.
 	if inst.UpdateVendored {
-		repo.VendoredCleanup(confcopy)
+		repo.VendoredCleanup(inst.Config)
 	}
 
 	// Write glide.yaml
-	if err := conf.WriteFile(glidefile); err != nil {
+	if err := inst.Config.WriteFile(glidefile); err != nil {
 		msg.Die("Failed to write glide YAML file: %s", err)
 	}
 
 	// Write glide lock
-	writeLock(conf, confcopy, base)
+	writeLock(conforig, inst.Config, base)
+	inst.Config = conforig
 }
 
 // rmDeps returns a list of dependencies that do not contain the given pkgs.
