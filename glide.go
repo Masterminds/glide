@@ -596,6 +596,22 @@ Example:
 			},
 		},
 		{
+			Name:      "release",
+			ShortName: "rl",
+			Usage:     "Release a project by incrementing its version",
+			Description: `This command parses the glide.yaml file and do release
+			operations in the version attribute.`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "version, v",
+					Usage: "Get current package version.",
+				},
+			},
+			Action: func(c *cli.Context) {
+				action.Release()
+			},
+		},
+		{
 			Name:  "about",
 			Usage: "Learn about Glide",
 			Action: func(c *cli.Context) {
