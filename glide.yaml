@@ -2,6 +2,7 @@ package: github.com/Masterminds/glide
 version: 1.0
 homepage: https://glide.sh
 license: MIT
+description: A dependency manager
 owners:
 - name: Matt Butcher
   email: technosophos@gmail.com

@@ -596,24 +596,38 @@ Example:
 			},
 		},
 		{
-			Name:      "project",
-			ShortName: "prj",
-			Usage:     "Project prints some information about this project based on glide.yaml",
+			Name:  "info",
+			Usage: "Info prints some information about this project based on glide.yaml",
 			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "version, v",
-					Usage: "Get the project version.",
-				},
-				cli.BoolFlag{
-					Name:  "name",
-					Usage: "Get the project name.",
+				cli.StringFlag{
+					Name: "format, f",
+					Usage: `Format of the information wanted. Variables:
+                        %n - name
+                        %d - description
+                        %h - homepage
+                        %l - license
+                        %v - version
+
+                        Examples:
+                        Given the project with the following glide.yaml:
+                        package: foo
+                        version: 1.0
+                        homepage: https://foo.io
+                        license: MIT
+                        description: Some foo description
+
+                        Then:
+                        glide info -f %n
+                              prints 'foo'
+                        glide info -f "Version: %v"
+                              prints 'Version: 1.0'
+                        glide info -f "%n - %v - %d - %h - %l"
+                              prints 'foo - 1.0 - Some foo description - https://foo.io - MIT'`,
 				},
 			},
 			Action: func(c *cli.Context) {
-				if c.IsSet("version") {
-					action.Version()
-				} else if c.IsSet("name") {
-					action.Name()
+				if c.IsSet("format") {
+					action.Info(c.String("format"))
 				} else {
 					cli.ShowCommandHelp(c, c.Command.Name)
 				}
