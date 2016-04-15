@@ -10,7 +10,6 @@ owners:
   homepage: https://www.mattfarina.com/
 import:
 - package: gopkg.in/yaml.v2
-- package: github.com/matryer/version
 - package: github.com/Masterminds/vcs
   version: ^1.5.1
 - package: github.com/codegangsta/cli
