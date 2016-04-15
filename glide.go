@@ -596,19 +596,28 @@ Example:
 			},
 		},
 		{
-			Name:      "release",
-			ShortName: "rl",
-			Usage:     "Release a project by incrementing its version",
-			Description: `This command parses the glide.yaml file and do release
-			operations in the version attribute.`,
+			Name:      "project",
+			ShortName: "prj",
+			Usage:     "Project prints some information about this project based on glide.yaml",
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "version, v",
-					Usage: "Get current package version.",
+					Usage: "Get the project version.",
+				},
+				cli.BoolFlag{
+					Name:  "name",
+					Usage: "Get the project name.",
 				},
 			},
 			Action: func(c *cli.Context) {
-				action.Release()
+				c.NArg()
+				if c.IsSet("version") {
+					action.Version()
+				} else if c.IsSet("name") {
+					action.Name()
+				} else {
+					cli.ShowCommandHelp(c, c.Command.Name)
+				}
 			},
 		},
 		{
