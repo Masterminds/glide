@@ -610,7 +610,6 @@ Example:
 				},
 			},
 			Action: func(c *cli.Context) {
-				c.NArg()
 				if c.IsSet("version") {
 					action.Version()
 				} else if c.IsSet("name") {
