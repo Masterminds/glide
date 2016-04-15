@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // The compiled version of the regex created at init() is cached here so it
@@ -18,6 +19,25 @@ var (
 	// being parsed.
 	ErrInvalidSemVer = errors.New("Invalid Semantic Version")
 )
+
+// Error type; lets us defer string interpolation
+type badVersionSegment struct {
+	e error
+}
+
+func (b badVersionSegment) Error() string {
+	return fmt.Sprintf("Error parsing version segment: %s", b.e)
+}
+
+// Controls whether or not parsed constraints are cached
+var CacheVersions = true
+var versionCache = make(map[string]vcache)
+var versionCacheLock sync.RWMutex
+
+type vcache struct {
+	v   *Version
+	err error
+}
 
 // SemVerRegex id the regular expression used to parse a semantic version.
 const SemVerRegex string = `v?([0-9]+)(\.[0-9]+)?(\.[0-9]+)?` +
@@ -39,8 +59,22 @@ func init() {
 // NewVersion parses a given version and returns an instance of Version or
 // an error if unable to parse the version.
 func NewVersion(v string) (*Version, error) {
+	if CacheVersions {
+		versionCacheLock.RLock()
+		if sv, exists := versionCache[v]; exists {
+			versionCacheLock.RUnlock()
+			return sv.v, sv.err
+		}
+		versionCacheLock.RUnlock()
+	}
+
 	m := versionRegex.FindStringSubmatch(v)
 	if m == nil {
+		if CacheVersions {
+			versionCacheLock.Lock()
+			versionCache[v] = vcache{err: ErrInvalidSemVer}
+			versionCacheLock.Unlock()
+		}
 		return nil, ErrInvalidSemVer
 	}
 
@@ -53,14 +87,28 @@ func NewVersion(v string) (*Version, error) {
 	var temp int64
 	temp, err := strconv.ParseInt(m[1], 10, 32)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing version segment: %s", err)
+		bvs := badVersionSegment{e: err}
+		if CacheVersions {
+			versionCacheLock.Lock()
+			versionCache[v] = vcache{err: bvs}
+			versionCacheLock.Unlock()
+		}
+
+		return nil, bvs
 	}
 	sv.major = temp
 
 	if m[2] != "" {
 		temp, err = strconv.ParseInt(strings.TrimPrefix(m[2], "."), 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("Error parsing version segment: %s", err)
+			bvs := badVersionSegment{e: err}
+			if CacheVersions {
+				versionCacheLock.Lock()
+				versionCache[v] = vcache{err: bvs}
+				versionCacheLock.Unlock()
+			}
+
+			return nil, bvs
 		}
 		sv.minor = temp
 	} else {
@@ -70,11 +118,24 @@ func NewVersion(v string) (*Version, error) {
 	if m[3] != "" {
 		temp, err = strconv.ParseInt(strings.TrimPrefix(m[3], "."), 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("Error parsing version segment: %s", err)
+			bvs := badVersionSegment{e: err}
+			if CacheVersions {
+				versionCacheLock.Lock()
+				versionCache[v] = vcache{err: bvs}
+				versionCacheLock.Unlock()
+			}
+
+			return nil, bvs
 		}
 		sv.patch = temp
 	} else {
 		sv.patch = 0
+	}
+
+	if CacheVersions {
+		versionCacheLock.Lock()
+		versionCache[v] = vcache{v: sv}
+		versionCacheLock.Unlock()
 	}
 
 	return sv, nil
@@ -131,11 +192,21 @@ func (v *Version) Metadata() string {
 
 // LessThan tests if one version is less than another one.
 func (v *Version) LessThan(o *Version) bool {
+	// If a nil version was passed, fail and bail out early.
+	if o == nil {
+		return false
+	}
+
 	return v.Compare(o) < 0
 }
 
 // GreaterThan tests if one version is greater than another one.
 func (v *Version) GreaterThan(o *Version) bool {
+	// If a nil version was passed, fail and bail out early.
+	if o == nil {
+		return false
+	}
+
 	return v.Compare(o) > 0
 }
 
@@ -143,6 +214,11 @@ func (v *Version) GreaterThan(o *Version) bool {
 // Note, versions can be equal with different metadata since metadata
 // is not considered part of the comparable version.
 func (v *Version) Equal(o *Version) bool {
+	// If a nil version was passed, fail and bail out early.
+	if o == nil {
+		return false
+	}
+
 	return v.Compare(o) == 0
 }
 
@@ -152,12 +228,6 @@ func (v *Version) Equal(o *Version) bool {
 // Versions are compared by X.Y.Z. Build metadata is ignored. Prerelease is
 // lower than the version without a prerelease.
 func (v *Version) Compare(o *Version) int {
-
-	// Fastpath if both versions are the same.
-	if v.String() == o.String() {
-		return 0
-	}
-
 	// Compare the major, minor, and patch version for differences. If a
 	// difference is found return the comparison.
 	if d := compareSegment(v.Major(), o.Major()); d != 0 {
@@ -186,6 +256,46 @@ func (v *Version) Compare(o *Version) int {
 
 	return comparePrerelease(ps, po)
 }
+
+func (v *Version) Matches(v2 *Version) error {
+	if v.Equal(v2) {
+		return nil
+	}
+
+	return VersionMatchFailure{v: v, other: v2}
+}
+
+func (v *Version) MatchesAny(c Constraint) bool {
+	if v2, ok := c.(*Version); ok {
+		return v.Equal(v2)
+	} else {
+		// The other implementations all have specific handling for this; fall
+		// back on theirs.
+		return c.MatchesAny(v)
+	}
+}
+
+func (v *Version) Intersect(c Constraint) Constraint {
+	if v2, ok := c.(*Version); ok {
+		if v.Equal(v2) {
+			return v
+		}
+		return none{}
+	}
+
+	return c.Intersect(v)
+}
+
+func (v *Version) Union(c Constraint) Constraint {
+	if v2, ok := c.(*Version); ok && v.Equal(v2) {
+		return v
+	} else {
+		return Union(v, c)
+	}
+}
+
+func (Version) _private() {}
+func (Version) _real()    {}
 
 func compareSegment(v, o int64) int {
 	if v < o {

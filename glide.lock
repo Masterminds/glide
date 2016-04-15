@@ -1,12 +1,22 @@
-hash: 83c7c3c86a8d50d46ac2731938195e348f2445e6106325a4f90976563c946bd8
-updated: 2016-03-23T21:38:59.47773549-04:00
+hash: ad45c67435360c4f325456e7ddf29c1717eac0558d137d70ff233d3e47c5192e
+updated: 2016-04-15T22:48:45.227432551-04:00
 imports:
 - name: github.com/codegangsta/cli
-  version: 9fec0fad02befc9209347cc6d620e68e1b45f74d
+  version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/Masterminds/semver
-  version: 808ed7761c233af2de3f9729a041d68c62527f3a
+  version: 0a2c9fc0eee2c4cbb9526877c4a54da047fdcadd
 - name: github.com/Masterminds/vcs
-  version: b22ee1673cdd03ef47bb0b422736a7f17ff0648c
+  version: 591ce246073ea90ca042fc8837a9729680613844
+- name: github.com/sdboyer/vsolver
+  version: d00229995e02f8c05d2cca9030edd0e563cc8b94
+- name: github.com/Sirupsen/logrus
+  version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
+- name: github.com/termie/go-shutil
+  version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
+- name: golang.org/x/sys
+  version: f64b50fbea64174967a8882830d621a18ee1548e
+  subpackages:
+  - unix
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 devImports: []
