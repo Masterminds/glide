@@ -617,7 +617,7 @@ Example:
                         Then:
                         glide info -f %n
                               prints 'foo'
-                        glide info -f "Version: %l"
+                        glide info -f "License: %l"
                               prints 'License: 1.0'
                         glide info -f "%n - %d - %h - %l"
                               prints 'foo - Some foo description - https://foo.io - MIT'`,
