@@ -606,12 +606,10 @@ Example:
                         %d - description
                         %h - homepage
                         %l - license
-                        %v - version
-
+                
                         Examples:
                         Given the project with the following glide.yaml:
                         package: foo
-                        version: 1.0
                         homepage: https://foo.io
                         license: MIT
                         description: Some foo description
@@ -619,10 +617,10 @@ Example:
                         Then:
                         glide info -f %n
                               prints 'foo'
-                        glide info -f "Version: %v"
-                              prints 'Version: 1.0'
-                        glide info -f "%n - %v - %d - %h - %l"
-                              prints 'foo - 1.0 - Some foo description - https://foo.io - MIT'`,
+                        glide info -f "Version: %l"
+                              prints 'License: 1.0'
+                        glide info -f "%n - %d - %h - %l"
+                              prints 'foo - Some foo description - https://foo.io - MIT'`,
 				},
 			},
 			Action: func(c *cli.Context) {

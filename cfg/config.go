@@ -31,9 +31,6 @@ type Config struct {
 	// When more than one license an SPDX expression can be used.
 	License string `yaml:"license,omitempty"`
 
-	// Version provides the package version using semvers (http://semver.org/).
-	Version string `yaml:"version"`
-
 	// Owners is an array of owners for a project. See the Owner type for
 	// more detail. These can be one or more people, companies, or other
 	// organizations.
@@ -63,7 +60,6 @@ type cf struct {
 	Description string       `yaml:"description,omitempty"`
 	Home        string       `yaml:"homepage,omitempty"`
 	License     string       `yaml:"license,omitempty"`
-	Version     string       `yaml:"version"`
 	Owners      Owners       `yaml:"owners,omitempty"`
 	Ignore      []string     `yaml:"ignore,omitempty"`
 	Exclude     []string     `yaml:"excludeDirs,omitempty"`
@@ -96,7 +92,6 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	c.Name = newConfig.Name
 	c.Description = newConfig.Description
 	c.Home = newConfig.Home
-	c.Version = newConfig.Version
 	c.License = newConfig.License
 	c.Owners = newConfig.Owners
 	c.Ignore = newConfig.Ignore

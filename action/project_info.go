@@ -21,8 +21,6 @@ func Info(format string) {
 				buffer.WriteString(conf.Home)
 			case 'l':
 				buffer.WriteString(conf.License)
-			case 'v':
-				buffer.WriteString(conf.Version)
 			default:
 				msg.Die("Invalid format %s", string(var_format))
 			}
