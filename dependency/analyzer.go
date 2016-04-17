@@ -1,0 +1,87 @@
+package dependency
+
+import (
+	"fmt"
+	"go/build"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
+	"github.com/Masterminds/glide/cfg"
+	gpath "github.com/Masterminds/glide/path"
+	"github.com/sdboyer/vsolver"
+)
+
+type notApplicable struct{}
+
+func (notApplicable) Error() string {
+	return ""
+}
+
+// Analyzer implements vsolver.ProjectAnalyzer. We inject the Analyzer into a
+// vsolver.SourceManager, and it reports manifest and lock information to the
+// SourceManager on request.
+type Analyzer struct{}
+
+func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Manifest, vsolver.Lock, error) {
+	// For now, at least, we do not search above the root path provided by
+	// the SourceManager.
+	root := filepath.Join(ctx.GOPATH, string(pn))
+
+	// this check should be unnecessary, but keeping it for now as a canary
+	if _, err := os.Lstat(root); err != nil {
+		return nil, nil, fmt.Errorf("No directory exists at %s; cannot produce ProjectInfo", root)
+	}
+
+	m, l, err := a.lookForGlide(root)
+	if err == nil {
+		// TODO verify project name is same as what SourceManager passed in?
+		return m, l, nil
+	} else if _, ok := err.(notApplicable); !ok {
+		return nil, nil, err
+	}
+
+	// The happy path of finding both a glide manifest and lock file failed.
+	// Now, let us begin our descent into the filth, wherein we attempt to  suss
+	// out just which circle of hell we're in.
+	return nil, nil, fmt.Errorf("No usable project data found")
+}
+
+func (a Analyzer) lookForGlide(root string) (vsolver.Manifest, vsolver.Lock, error) {
+	mpath := filepath.Join(root, gpath.GlideFile)
+	if _, err := os.Lstat(mpath); err != nil {
+		return nil, nil, notApplicable{}
+	}
+	// Manifest found, so from here on, we're locked in - a returned error will
+	// make it back to the SourceManager
+
+	yml, err := ioutil.ReadFile(mpath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error while reading glide manifest data: %s", root)
+	}
+
+	m, err := cfg.ConfigFromYaml(yml)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error while parsing glide manifest data: %s", root)
+	}
+
+	// Manifest found, read, and parsed - we're on the happy path. Whether we
+	// find a lock or not, we will produce a valid result back to the
+	// SourceManager.
+	lpath := filepath.Join(root, gpath.LockFile)
+	if _, err := os.Lstat(lpath); err != nil {
+		return m, nil, nil
+	}
+
+	yml, err = ioutil.ReadFile(mpath)
+	if err != nil {
+		return m, nil, nil
+	}
+
+	l, err := cfg.LockfileFromYaml(yml)
+	if err != nil {
+		return m, nil, nil
+	}
+
+	return m, l, nil
+}
