@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
+	"github.com/sdboyer/vsolver"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -43,6 +46,39 @@ func (lf *Lockfile) WriteFile(lockpath string) error {
 		return err
 	}
 	return ioutil.WriteFile(lockpath, o, 0666)
+}
+
+// InputHash returns the hash of the input arguments that resulted in this lock
+// file.
+func (lf *Lockfile) InputHash() string {
+	return lf.Hash
+}
+
+// Projects returns the list of projects enumerated in the lock file.
+func (lf *Lockfile) Projects() []vsolver.LockedProject {
+	all := append(lf.Imports, lf.DevImports...)
+	lp := make([]vsolver.LockedProject, len(all))
+
+	for k, l := range all {
+		// TODO guess the version type. ugh
+		var v vsolver.Version
+
+		// semver first
+		_, err := semver.NewVersion(l.Version)
+		if err != nil {
+			// Crappy heuristic to cover hg and git, but not bzr. Or (lol) svn
+			if len(l.Version) == 40 {
+				v = vsolver.Revision(l.Version)
+			}
+		} else {
+			// Otherwise, assume it's a branch
+			v = vsolver.NewBranch(l.Version)
+		}
+
+		lp[k] = vsolver.NewLockedProject(vsolver.ProjectName(l.Name), v, l.Repository, l.Name)
+	}
+
+	return lp
 }
 
 // Locks is a slice of locked dependencies.

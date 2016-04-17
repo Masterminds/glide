@@ -48,8 +48,8 @@ func TestManualConfigFromYaml(t *testing.T) {
 		t.Errorf("Unable to Unmarshal config yaml")
 	}
 
-	if cfg.Name != "fake/testing" {
-		t.Errorf("Inaccurate name found %s", cfg.Name)
+	if cfg.ProjectName != "fake/testing" {
+		t.Errorf("Inaccurate name found %s", cfg.ProjectName)
 	}
 
 	if cfg.Description != "foo bar baz" {
@@ -98,15 +98,15 @@ func TestClone(t *testing.T) {
 	}
 
 	cfg2 := cfg.Clone()
-	if cfg2.Name != "fake/testing" {
+	if cfg2.ProjectName != "fake/testing" {
 		t.Error("Config cloning failed")
 	}
 	if cfg2.License != "MIT" {
 		t.Error("Config cloning failed to copy License")
 	}
-	cfg.Name = "foo"
+	cfg.ProjectName = "foo"
 
-	if cfg.Name == cfg2.Name {
+	if cfg.ProjectName == cfg2.ProjectName {
 		t.Error("Cloning Config name failed")
 	}
 }
@@ -117,7 +117,7 @@ func TestConfigFromYaml(t *testing.T) {
 		t.Error("ConfigFromYaml failed to parse yaml")
 	}
 
-	if c.Name != "fake/testing" {
+	if c.ProjectName != "fake/testing" {
 		t.Error("ConfigFromYaml failed to properly parse yaml")
 	}
 }

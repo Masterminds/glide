@@ -85,7 +85,7 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 	// Create a config setup based on the Lockfile data to process with
 	// existing commands.
 	newConf := &cfg.Config{}
-	newConf.Name = conf.Name
+	newConf.ProjectName = conf.ProjectName
 
 	newConf.Imports = make(cfg.Dependencies, len(lock.Imports))
 	for k, v := range lock.Imports {
@@ -335,7 +335,7 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == m.Config.Name {
+	if root == m.Config.ProjectName {
 		return false, nil
 	}
 
@@ -395,7 +395,7 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == m.Config.Name {
+	if root == m.Config.ProjectName {
 		return false, nil
 	}
 
@@ -426,7 +426,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == m.Config.Name {
+	if root == m.Config.ProjectName {
 		return nil
 	}
 
@@ -478,7 +478,7 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == d.Config.Name {
+	if root == d.Config.ProjectName {
 		return nil
 	}
 
@@ -515,7 +515,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == d.Config.Name {
+	if root == d.Config.ProjectName {
 		return nil
 	}
 
@@ -600,7 +600,7 @@ func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependen
 			return v
 		}
 
-		if con.Check(ver) {
+		if con.Matches(ver) == nil {
 			singleInfo("Keeping %s %s because it fits constraint '%s'", v.Name, v.Reference, dep.Reference)
 			return v
 		}
@@ -624,7 +624,7 @@ func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependen
 			return v
 		}
 
-		if con.Check(ver) {
+		if con.Matches(ver) == nil {
 			v.Reference = dep.Reference
 			singleInfo("Using %s %s because it fits constraint '%s'", v.Name, v.Reference, v.Reference)
 			return v

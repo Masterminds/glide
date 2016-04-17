@@ -66,7 +66,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 	config := new(cfg.Config)
 
 	// Get the name of the top level package
-	config.Name = name
+	config.ProjectName = name
 
 	// Import by looking at other package managers and looking over the
 	// entire directory structure.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/vcs"
+	"github.com/sdboyer/vsolver"
 	"gopkg.in/yaml.v2"
 )
 
@@ -16,7 +17,7 @@ import (
 type Config struct {
 
 	// Name is the name of the package or application.
-	Name string `yaml:"package"`
+	ProjectName string `yaml:"package"`
 
 	// Description is a short description for a package, application, or library.
 	// This description is similar but different to a Go package description as
@@ -89,7 +90,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&newConfig); err != nil {
 		return err
 	}
-	c.Name = newConfig.Name
+	c.ProjectName = newConfig.Name
 	c.Description = newConfig.Description
 	c.Home = newConfig.Home
 	c.License = newConfig.License
@@ -108,7 +109,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name:        c.Name,
+		Name:        c.ProjectName,
 		Description: c.Description,
 		Home:        c.Home,
 		License:     c.License,
@@ -147,6 +148,53 @@ func (c *Config) HasDependency(name string) bool {
 	return false
 }
 
+// GetDependencies lists all the normal dependencies described in a glide
+// manifest in a way vsolver will understand.
+func (c *Config) GetDependencies() []vsolver.ProjectDep {
+	return depsToVSolver(c.Imports)
+}
+
+// GetDevDependencies lists all the development dependencies described in a glide
+// manifest in a way vsolver will understand.
+func (c *Config) GetDevDependencies() []vsolver.ProjectDep {
+	return depsToVSolver(c.DevImports)
+}
+
+func depsToVSolver(deps Dependencies) []vsolver.ProjectDep {
+	cp := make([]vsolver.ProjectDep, len(deps))
+	for k, d := range deps {
+		// TODO need to differentiate types of constraints so that we don't have
+		// this ambiguity
+		// Try semver first
+		c, err := vsolver.NewConstraint(d.Reference, vsolver.SemverConstraint)
+		if err != nil {
+			// Not a semver constraint. Super crappy heuristic that'll cover hg
+			// and git revs, but not bzr (svn, you say? lol, madame. lol)
+			if len(d.Reference) == 40 {
+				c, _ = vsolver.NewConstraint(d.Reference, vsolver.RevisionConstraint)
+			} else {
+				// Otherwise, assume a branch. This also sucks, because it could
+				// very well be a shitty, non-semver tag.
+				c, _ = vsolver.NewConstraint(d.Reference, vsolver.BranchConstraint)
+			}
+		}
+
+		cp[k] = vsolver.ProjectDep{
+			// TODO vsolver makes a lot of assumptions about this name - need to
+			// make sure glide is compatible with those
+			Name:       vsolver.ProjectName(d.Name),
+			Constraint: c,
+		}
+	}
+
+	return cp
+}
+
+// Name returns the name of the project given in the manifest.
+func (c *Config) Name() vsolver.ProjectName {
+	return vsolver.ProjectName(c.ProjectName)
+}
+
 // HasIgnore returns true if the given name is listed on the ignore list.
 func (c *Config) HasIgnore(name string) bool {
 	for _, v := range c.Ignore {
@@ -176,7 +224,7 @@ func (c *Config) HasExclude(ex string) bool {
 // Clone performs a deep clone of the Config instance
 func (c *Config) Clone() *Config {
 	n := &Config{}
-	n.Name = c.Name
+	n.ProjectName = c.ProjectName
 	n.Description = c.Description
 	n.Home = c.Home
 	n.License = c.License
@@ -217,7 +265,7 @@ func (c *Config) DeDupe() error {
 	// If the name on the config object is part of the imports remove it.
 	found := -1
 	for i, dep := range c.Imports {
-		if dep.Name == c.Name {
+		if dep.Name == c.ProjectName {
 			found = i
 		}
 	}
@@ -227,7 +275,7 @@ func (c *Config) DeDupe() error {
 
 	found = -1
 	for i, dep := range c.DevImports {
-		if dep.Name == c.Name {
+		if dep.Name == c.ProjectName {
 			found = i
 		}
 	}
