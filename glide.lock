@@ -1,5 +1,5 @@
 hash: ad45c67435360c4f325456e7ddf29c1717eac0558d137d70ff233d3e47c5192e
-updated: 2016-04-15T22:48:45.227432551-04:00
+updated: 2016-04-15T23:24:11.358741125-04:00
 imports:
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
@@ -8,7 +8,7 @@ imports:
 - name: github.com/Masterminds/vcs
   version: 591ce246073ea90ca042fc8837a9729680613844
 - name: github.com/sdboyer/vsolver
-  version: d00229995e02f8c05d2cca9030edd0e563cc8b94
+  version: 2b8876d991fc12d690087ece463c10a07dfe62a9
 - name: github.com/Sirupsen/logrus
   version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
 - name: github.com/termie/go-shutil
