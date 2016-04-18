@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"io/ioutil"
+	"strings"
 	"time"
 	//"log"
 	"os"
@@ -123,6 +124,22 @@ func TestHg(t *testing.T) {
 		t.Error("Hg tags is not reporting the correct version")
 	}
 
+	tags, err = repo.TagsFromCommit("a5494ba2177f")
+	if err != nil {
+		t.Error(err)
+	}
+	if len(tags) != 0 {
+		t.Error("Hg is incorrectly returning tags for a commit")
+	}
+
+	tags, err = repo.TagsFromCommit("d680e82228d2")
+	if err != nil {
+		t.Error(err)
+	}
+	if len(tags) != 1 || tags[0] != "1.0.0" {
+		t.Error("Hg is incorrectly returning tags for a commit")
+	}
+
 	branches, err := repo.Branches()
 	if err != nil {
 		t.Error(err)
@@ -197,5 +214,70 @@ func TestHgCheckLocal(t *testing.T) {
 	_, nrerr := NewRepo("https://bitbucket.org/mattfarina/testhgrepo", tempDir+"/testhgrepo")
 	if nrerr != nil {
 		t.Error(nrerr)
+	}
+}
+
+func TestHgPing(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-vcs-hg-tests")
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	repo, err := NewHgRepo("https://bitbucket.org/mattfarina/testhgrepo", tempDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ping := repo.Ping()
+	if !ping {
+		t.Error("Hg unable to ping working repo")
+	}
+
+	repo, err = NewHgRepo("https://bitbucket.org/mattfarina/ihopethisneverexistsbecauseitshouldnt", tempDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ping = repo.Ping()
+	if ping {
+		t.Error("Hg got a ping response from when it should not have")
+	}
+}
+
+func TestHgInit(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-vcs-hg-tests")
+	repoDir := tempDir + "/repo"
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	repo, err := NewHgRepo(repoDir, repoDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = repo.Init()
+	if err != nil {
+		t.Error(err)
+	}
+
+	v, err := repo.Version()
+	if err != nil {
+		t.Error(err)
+	}
+	if !strings.HasPrefix(v, "000000") {
+		t.Errorf("Hg Init reporting wrong initial version: %s", v)
 	}
 }
