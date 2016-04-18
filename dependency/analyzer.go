@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/godep"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/sdboyer/vsolver"
 )
@@ -42,8 +43,12 @@ func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Ma
 	}
 
 	// The happy path of finding both a glide manifest and lock file failed.
-	// Now, let us begin our descent into the filth, wherein we attempt to  suss
-	// out just which circle of hell we're in.
+	// Now, we begin our descent, in which we attempt to divine exactly *which*
+	// circle of hell we're in.
+
+	// Try godep first
+	m, l, err = a.lookForGodep(root)
+
 	return nil, nil, fmt.Errorf("No usable project data found")
 }
 
@@ -84,4 +89,17 @@ func (a Analyzer) lookForGlide(root string) (vsolver.Manifest, vsolver.Lock, err
 	}
 
 	return m, l, nil
+}
+
+func (a Analyzer) lookForGodep(root string) (vsolver.Manifest, vsolver.Lock, error) {
+	if !godep.Has(root) {
+		return nil, nil, notApplicable{}
+	}
+
+	d, l, err := godep.AsMetadataPair(root)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
 }

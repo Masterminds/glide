@@ -98,6 +98,52 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	return buf, nil
 }
 
+func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
+	path := filepath.Join(dir, "Godeps/Godeps.json")
+	if _, err := os.Stat(path); err != nil {
+		return nil, nil, err
+	}
+
+	m := []*cfg.Dependency{}
+	l := &cfg.Lockfile{}
+	godeps := &Godeps{}
+
+	// Get a handle to the file.
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer file.Close()
+
+	dec := json.NewDecoder(file)
+	if err := dec.Decode(godeps); err != nil {
+		return nil, nil, err
+	}
+
+	seen := map[string]bool{}
+	for _, d := range godeps.Deps {
+		pkg, _ := util.NormalizeName(d.ImportPath)
+		if _, ok := seen[pkg]; !ok {
+			seen[pkg] = true
+
+			// Place no real *actual* constraint on the project; instead, we
+			// rely on vsolver using the 'preferred' version mechanism by
+			// working from the lock file. Without this, users would end up with
+			// the same mind-numbing diamond dep problems as currently exist.
+			// This approach does make for an uncomfortably wide possibility
+			// space where deps aren't getting what they expect, but that's
+			// better than just having the solver give up completely.
+			m = append(m, &cfg.Dependency{Name: pkg, Reference: "*"})
+			l.Imports = append(l.Imports, &cfg.Lock{Name: pkg, Version: d.Rev})
+
+			// TODO this fails to differentiate between dev and non-dev imports;
+			// need static analysis for that
+		}
+	}
+
+	return m, l, nil
+}
+
 // RemoveGodepSubpackages strips subpackages from a cfg.Config dependencies that
 // contain "Godeps/_workspace/src" as part of the path.
 func RemoveGodepSubpackages(c *cfg.Config) *cfg.Config {
