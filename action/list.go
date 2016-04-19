@@ -2,8 +2,6 @@ package action
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 
@@ -87,13 +85,13 @@ func outputList(l PackageList, format string) {
 			}
 		}
 	case jsonFormat:
-		json.NewEncoder(os.Stdout).Encode(l)
+		json.NewEncoder(msg.Default.Stdout).Encode(l)
 	case jsonPrettyFormat:
 		b, err := json.MarshalIndent(l, "", "  ")
 		if err != nil {
 			msg.Die("could not unmarshal package list: %s", err)
 		}
-		fmt.Println(string(b))
+		msg.Puts(string(b))
 	default:
 		msg.Die("invalid output format: must be one of: json|json-pretty|text")
 	}
