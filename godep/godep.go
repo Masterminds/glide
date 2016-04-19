@@ -104,7 +104,7 @@ func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
 		return nil, nil, err
 	}
 
-	m := []*cfg.Dependency{}
+	var m []*cfg.Dependency
 	l := &cfg.Lockfile{}
 	godeps := &Godeps{}
 

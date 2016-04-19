@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/godep"
+	"github.com/Masterminds/glide/gpm"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/sdboyer/vsolver"
 )
@@ -48,6 +49,19 @@ func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Ma
 
 	// Try godep first
 	m, l, err = a.lookForGodep(root)
+	if err == nil {
+		return m, l, nil
+	} else if _, ok := err.(notApplicable); !ok {
+		return nil, nil, err
+	}
+
+	// Next, gpm
+	m, l, err = a.lookForGPM(root)
+	if err == nil {
+		return m, l, nil
+	} else if _, ok := err.(notApplicable); !ok {
+		return nil, nil, err
+	}
 
 	return nil, nil, fmt.Errorf("No usable project data found")
 }
@@ -97,6 +111,19 @@ func (a Analyzer) lookForGodep(root string) (vsolver.Manifest, vsolver.Lock, err
 	}
 
 	d, l, err := godep.AsMetadataPair(root)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
+}
+
+func (a Analyzer) lookForGPM(root string) (vsolver.Manifest, vsolver.Lock, error) {
+	if !gpm.Has(root) {
+		return nil, nil, notApplicable{}
+	}
+
+	d, l, err := gpm.AsMetadataPair(root)
 	if err != nil {
 		return nil, nil, err
 	}

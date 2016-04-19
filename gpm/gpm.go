@@ -5,6 +5,7 @@ package gpm
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,6 +56,41 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	}
 
 	return buf, nil
+}
+
+func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
+	path := filepath.Join(dir, "Godeps")
+	if i, err := os.Stat(path); err != nil {
+		return nil, nil, err
+	} else if i.IsDir() {
+		return nil, nil, fmt.Errorf("Found a Godeps dir, rather than it being a file")
+	}
+
+	var m []*cfg.Dependency
+	l := &cfg.Lockfile{}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		parts, ok := parseGodepsLine(scanner.Text())
+		if ok {
+			// Place no actual constraint on the project; rely instead on
+			// vsolver's 'preferred version' reasoning from deps' lock
+			// files...if we have one at all.
+			if len(parts) > 1 {
+				l.Imports = append(l.Imports, &cfg.Lock{Name: parts[0], Version: parts[1]})
+			}
+			m = append(m, &cfg.Dependency{Name: parts[0], Reference: "*"})
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	return m, l, nil
 }
 
 func parseGodepsLine(line string) ([]string, bool) {
