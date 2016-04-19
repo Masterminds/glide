@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/gb"
 	"github.com/Masterminds/glide/godep"
+	"github.com/Masterminds/glide/gom"
 	"github.com/Masterminds/glide/gpm"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/sdboyer/vsolver"
@@ -62,6 +64,24 @@ func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Ma
 	} else if _, ok := err.(notApplicable); !ok {
 		return nil, nil, err
 	}
+
+	// Next, gb
+	m, l, err = a.lookForGb(root)
+	if err == nil {
+		return m, l, nil
+	} else if _, ok := err.(notApplicable); !ok {
+		return nil, nil, err
+	}
+
+	// Next, gom
+	m, l, err = a.lookForGom(root)
+	if err == nil {
+		return m, l, nil
+	} else if _, ok := err.(notApplicable); !ok {
+		return nil, nil, err
+	}
+
+	// TODO drop in glide's general analysis logic here
 
 	return nil, nil, fmt.Errorf("No usable project data found")
 }
@@ -129,4 +149,25 @@ func (a Analyzer) lookForGPM(root string) (vsolver.Manifest, vsolver.Lock, error
 	}
 
 	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
+}
+
+func (a Analyzer) lookForGb(root string) (vsolver.Manifest, vsolver.Lock, error) {
+	if !gpm.Has(root) {
+		return nil, nil, notApplicable{}
+	}
+
+	d, l, err := gb.AsMetadataPair(root)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
+}
+
+func (a Analyzer) lookForGom(root string) (vsolver.Manifest, vsolver.Lock, error) {
+	if !gpm.Has(root) {
+		return nil, nil, notApplicable{}
+	}
+
+	return gom.AsMetadataPair(root)
 }

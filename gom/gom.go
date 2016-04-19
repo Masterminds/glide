@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
+	"github.com/sdboyer/vsolver"
 )
 
 // Has returns true if this dir has a Gomfile.
@@ -87,6 +88,94 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	}
 
 	return buf, nil
+}
+
+// AsMetadataPair attempts to extract manifest and lock data from gom metadata.
+func AsMetadataPair(dir string) (vsolver.Manifest, vsolver.Lock, error) {
+	path := filepath.Join(dir, "Gomfile")
+	if _, err := os.Stat(path); err != nil {
+		return nil, nil, err
+	}
+
+	goms, err := parseGomfile(path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var l vsolver.SimpleLock
+	m := vsolver.SimpleManifest{
+		N: vsolver.ProjectName(dir),
+	}
+
+	for _, gom := range goms {
+		// Do we need to skip this dependency?
+		if val, ok := gom.options["skipdep"]; ok && val.(string) == "true" {
+			continue
+		}
+
+		// Check for custom cloning command
+		if _, ok := gom.options["command"]; ok {
+			return nil, nil, errors.New("Glide does not support custom Gomfile commands")
+		}
+
+		// Check for groups/environments
+		if val, ok := gom.options["group"]; ok {
+			groups := toStringSlice(val)
+			if !stringsContain(groups, "development") && !stringsContain(groups, "production") {
+				// right now we only support development and production
+				continue
+			}
+		}
+
+		pkg, _ := util.NormalizeName(gom.name)
+
+		dep := vsolver.ProjectDep{
+			Name: vsolver.ProjectName(pkg),
+		}
+
+		// Our order of preference for things to put in the manifest are
+		//   - Semver
+		//   - Version
+		//   - Branch
+		//   - Revision
+
+		var v vsolver.UnpairedVersion
+		if val, ok := gom.options["tag"]; ok {
+			body := val.(string)
+			v = vsolver.NewVersion(body)
+			c, err := vsolver.NewConstraint(body, vsolver.SemverConstraint)
+			if err != nil {
+				c, _ = vsolver.NewConstraint(body, vsolver.VersionConstraint)
+			}
+			dep.Constraint = c
+		} else if val, ok := gom.options["branch"]; ok {
+			body := val.(string)
+			v = vsolver.NewBranch(body)
+			dep.Constraint, _ = vsolver.NewConstraint(body, vsolver.BranchConstraint)
+		}
+
+		if val, ok := gom.options["commit"]; ok {
+			body := val.(string)
+			if v != nil {
+				v.Is(vsolver.Revision(body))
+				l = append(l, vsolver.NewLockedProject(vsolver.ProjectName(dir), v, dir, dir))
+			} else {
+				// As with the other system integrations, we're going to choose
+				// not to put revisions into a manifest, even though gom has a
+				// lot more information than most and the argument could be made
+				// for it.
+				dep.Constraint = vsolver.Any()
+				l = append(l, vsolver.NewLockedProject(vsolver.ProjectName(dir), vsolver.Revision(body), dir, dir))
+			}
+		} else if v != nil {
+			// This is kinda uncomfortable - lock w/no immut - but OK
+			l = append(l, vsolver.NewLockedProject(vsolver.ProjectName(dir), v, dir, dir))
+		}
+
+		// TODO We ignore GOOS, GOARCH for now
+	}
+
+	return m, l, nil
 }
 
 func stringsContain(v []string, key string) bool {

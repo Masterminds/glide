@@ -14,8 +14,8 @@ import (
 // Has returns true if this dir has a GB-flavored manifest file.
 func Has(dir string) bool {
 	path := filepath.Join(dir, "vendor/manifest")
-	_, err := os.Stat(path)
-	return err == nil
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
 }
 
 // Parse parses a GB-flavored manifest file.
@@ -67,4 +67,43 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		}
 	}
 	return buf, nil
+}
+
+// AsMetadataPair attempts to extract manifest and lock data from gb metadata.
+func AsMetadataPair(dir string) (m []*cfg.Dependency, l *cfg.Lockfile, err error) {
+	path := filepath.Join(dir, "vendor/manifest")
+	if _, err = os.Stat(path); err != nil {
+		return
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	man := Manifest{}
+
+	dec := json.NewDecoder(file)
+	if err = dec.Decode(&man); err != nil {
+		return
+	}
+
+	seen := map[string]bool{}
+
+	for _, d := range man.Dependencies {
+		pkg, _ := util.NormalizeName(d.Importpath)
+		if _, ok := seen[pkg]; ok {
+			seen[pkg] = true
+			dep := &cfg.Dependency{
+				Name: pkg,
+				// TODO we have the branch info here - maybe we should use that
+				Reference:  "*",
+				Repository: d.Repository,
+			}
+			m = append(m, dep)
+			l.Imports = append(l.Imports, &cfg.Lock{Name: pkg, Version: d.Revision})
+		}
+	}
+	return
 }
