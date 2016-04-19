@@ -592,7 +592,14 @@ Example:
 			vendor are only included if they are used by the project.
 			`,
 			Action: func(c *cli.Context) {
-				action.List(".", true)
+				action.List(".", true, c.String("output"))
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "output, o",
+					Usage: "Output format. One of: json|json-pretty|text",
+					Value: "text",
+				},
 			},
 		},
 		{
