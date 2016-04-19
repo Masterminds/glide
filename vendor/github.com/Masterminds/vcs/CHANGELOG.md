@@ -1,3 +1,17 @@
+# 1.6.0 (2016-04-18)
+
+- Issue #26: Added Init method to initialize a repo at the local location
+  (thanks tony).
+- Issue #19: Added method to retrieve tags for a commit.
+- Issue #24: Reworked errors returned from common methods. Now differing
+  VCS implementations return the same errors. The original VCS specific error
+  is available on the error. See the docs for more details.
+- Issue #25: Export the function RunFromDir which runs VCS commands from the
+  root of the local directory. This is useful for those that want to build and
+  extend on top of the vcs package (thanks tony).
+- Issue #22: Added Ping command to test if remote location is present and
+  accessible.
+
 # 1.5.1 (2016-03-23)
 
 - Fixing bug parsing some Git commit dates.
