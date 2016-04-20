@@ -279,7 +279,11 @@ func GetBuildContext() (*BuildCtxt, error) {
 	}
 
 	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
-		out, err := exec.Command("go", "env", "GOROOT").Output()
+		goExecutable := os.Getenv("GLIDE_GO_EXECUTABLE")
+		if len(goExecutable) <= 0 {
+			goExecutable = "go"
+		}
+		out, err := exec.Command(goExecutable, "env", "GOROOT").Output()
 		if goRoot = strings.TrimSpace(string(out)); len(goRoot) == 0 || err != nil {
 			return nil, fmt.Errorf("Please set the $GOROOT environment " +
 				"variable to use this command\n")

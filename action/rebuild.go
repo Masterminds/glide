@@ -92,9 +92,10 @@ func buildPath(path string) error {
 	msg.Info("Running go build %s\n", path)
 	// . in a filepath.Join is removed so it needs to be prepended separately.
 	p := "." + string(filepath.Separator) + filepath.Join("vendor", path)
-	out, err := exec.Command("go", "install", p).CombinedOutput()
+	out, err := exec.Command(goExecutable(), "install", p).CombinedOutput()
 	if err != nil {
 		msg.Warn("Failed to run 'go install' for %s: %s", path, string(out))
 	}
 	return err
 }
+
