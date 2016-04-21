@@ -16,6 +16,21 @@ var (
 	}
 )
 
+type Solver interface {
+	Solve(opts SolveOpts) (Result, error)
+}
+
+// SolveOpts holds both options that govern solving behavior, and the actual
+// inputs to the solving process.
+type SolveOpts struct {
+	Root      string
+	N         ProjectName
+	M         Manifest
+	L         Lock
+	ChangeAll bool
+	ToChange  []ProjectName
+}
+
 func NewSolver(sm SourceManager, l *logrus.Logger) Solver {
 	if l == nil {
 		l = logrus.New()
@@ -33,31 +48,51 @@ func NewSolver(sm SourceManager, l *logrus.Logger) Solver {
 // conditions hardcoded to the needs of the Go package management problem space.
 type solver struct {
 	l        *logrus.Logger
+	o        SolveOpts
 	sm       SourceManager
 	latest   map[ProjectName]struct{}
 	sel      *selection
 	unsel    *unselected
 	versions []*versionQueue
-	rp       ProjectInfo
 	rlm      map[ProjectName]LockedProject
 	attempts int
 }
 
 // Solve takes a ProjectInfo describing the root project, and a list of
-// ProjectNames which should be upgraded, and attempts to find a complete
+// ProjectNames which should be allowed to change, typically for an upgrade (or
+// a flag indicating that all can change), and attempts to find a complete
 // solution that satisfies all constraints.
-func (s *solver) Solve(root ProjectInfo, toUpgrade []ProjectName) Result {
+func (s *solver) Solve(opts SolveOpts) (Result, error) {
 	// local overrides would need to be handled first.
 	// TODO local overrides! heh
-	s.rp = root
 
-	if root.Lock != nil {
-		for _, lp := range root.Lock.Projects() {
+	if opts.M == nil {
+		return result{}, BadOptsFailure("Opts must include a manifest.")
+	}
+	if opts.Root == "" {
+		return result{}, BadOptsFailure("Opts must specify a non-empty string for the project root directory.")
+	}
+	if opts.N == "" {
+		return result{}, BadOptsFailure("Opts must include a project name.")
+	}
+
+	// TODO this check needs to go somewhere, but having the solver interact
+	// directly with the filesystem is icky
+	//if fi, err := os.Stat(opts.Root); err != nil {
+	//return Result{}, fmt.Errorf("Project root must exist.")
+	//} else if !fi.IsDir() {
+	//return Result{}, fmt.Errorf("Project root must be a directory.")
+	//}
+
+	s.o = opts
+
+	if s.o.L != nil {
+		for _, lp := range s.o.L.Projects() {
 			s.rlm[lp.n] = lp
 		}
 	}
 
-	for _, v := range toUpgrade {
+	for _, v := range s.o.ToChange {
 		s.latest[v] = struct{}{}
 	}
 
@@ -71,12 +106,36 @@ func (s *solver) Solve(root ProjectInfo, toUpgrade []ProjectName) Result {
 	}
 
 	// Prime the queues with the root project
-	s.selectVersion(s.rp.pa)
+	s.selectVersion(ProjectAtom{
+		Name: s.o.N,
+		// This is a hack so that the root project doesn't have a nil version.
+		// It's sort of OK because the root never makes it out into the results.
+		// We may need a more elegant solution if we discover other side
+		// effects, though.
+		Version: Revision(""),
+	})
 
 	// Prep is done; actually run the solver
-	var r Result
-	r.Projects, r.SolveFailure = s.solve()
-	return r
+	pa, err := s.solve()
+
+	// Solver finished with an err; return that and we're done
+	if err != nil {
+		return nil, err
+	}
+
+	// Solved successfully, create and return a result
+	r := result{
+		att: s.attempts,
+		hd:  opts.HashInputs(),
+	}
+
+	// Convert ProjectAtoms into LockedProjects
+	r.p = make([]LockedProject, len(pa))
+	for k, p := range pa {
+		r.p[k] = pa2lp(p)
+	}
+
+	return r, nil
 }
 
 func (s *solver) solve() ([]ProjectAtom, error) {
@@ -127,7 +186,9 @@ func (s *solver) solve() ([]ProjectAtom, error) {
 
 	// Getting this far means we successfully found a solution
 	var projs []ProjectAtom
-	for _, p := range s.sel.projects {
+	// Skip the first project - it's always the root, and we don't want to
+	// include that in the results.
+	for _, p := range s.sel.projects[1:] {
 		projs = append(projs, p)
 	}
 	return projs, nil
@@ -135,7 +196,7 @@ func (s *solver) solve() ([]ProjectAtom, error) {
 
 func (s *solver) createVersionQueue(ref ProjectName) (*versionQueue, error) {
 	// If on the root package, there's no queue to make
-	if ref == s.rp.Name() {
+	if ref == s.o.M.Name() {
 		return newVersionQueue(ref, nilpa, s.sm)
 	}
 
@@ -166,7 +227,12 @@ func (s *solver) createVersionQueue(ref ProjectName) (*versionQueue, error) {
 		}
 	}
 
-	lockv := s.getLockVersionIfValid(ref)
+	lockv, err := s.getLockVersionIfValid(ref)
+	if err != nil {
+		// Can only get an error here if an upgrade was expressly requested on
+		// code that exists only in vendor
+		return nil, err
+	}
 
 	q, err := newVersionQueue(ref, lockv, s.sm)
 	if err != nil {
@@ -261,22 +327,26 @@ func (s *solver) findValidVersion(q *versionQueue) error {
 	}
 }
 
-func (s *solver) getLockVersionIfValid(ref ProjectName) ProjectAtom {
+func (s *solver) getLockVersionIfValid(ref ProjectName) (ProjectAtom, error) {
 	// If the project is specifically marked for changes, then don't look for a
 	// locked version.
-	if _, has := s.latest[ref]; has {
-		exist, _ := s.sm.RepoExists(ref)
+	if _, explicit := s.latest[ref]; explicit || s.o.ChangeAll {
+		if exist, _ := s.sm.RepoExists(ref); exist {
+			return nilpa, nil
+		}
+
 		// For projects without an upstream or cache repository, we still have
 		// to try to use what they have in the lock, because that's the only
 		// version we'll be able to actually get for them.
 		//
-		// TODO to make this work well, we need to differentiate between
-		// implicit and explicit selection of packages to upgrade (with an 'all'
-		// vs itemized approach). Then, if explicit, we have to error out
-		// completely...somewhere. But if implicit, it's ok to ignore, albeit
-		// with a warning
-		if !exist {
-			return nilpa
+		// However, if a change was expressly requested for something that
+		// exists only in vendor, then that guarantees we don't have enough
+		// information to complete a solution. In that case, error out.
+		if explicit {
+			return nilpa, &missingSourceFailure{
+				goal: ref,
+				prob: "Cannot upgrade %s, as no source repository could be found.",
+			}
 		}
 	}
 
@@ -285,7 +355,7 @@ func (s *solver) getLockVersionIfValid(ref ProjectName) ProjectAtom {
 		if s.l.Level >= logrus.DebugLevel {
 			s.l.WithField("name", ref).Debug("Project not present in lock")
 		}
-		return nilpa
+		return nilpa, nil
 	}
 
 	constraint := s.sel.getConstraint(ref)
@@ -296,7 +366,7 @@ func (s *solver) getLockVersionIfValid(ref ProjectName) ProjectAtom {
 				"version": lp.v,
 			}).Info("Project found in lock, but version not allowed by current constraints")
 		}
-		return nilpa
+		return nilpa, nil
 	}
 
 	if s.l.Level >= logrus.InfoLevel {
@@ -309,7 +379,7 @@ func (s *solver) getLockVersionIfValid(ref ProjectName) ProjectAtom {
 	return ProjectAtom{
 		Name:    lp.n,
 		Version: lp.v,
-	}
+	}, nil
 }
 
 // satisfiable is the main checking method - it determines if introducing a new
@@ -454,20 +524,22 @@ func (s *solver) satisfiable(pi ProjectAtom) error {
 // through any overrides dictated by the root project.
 //
 // If it's the root project, also includes dev dependencies, etc.
-func (s *solver) getDependenciesOf(pi ProjectAtom) ([]ProjectDep, error) {
-	info, err := s.sm.GetProjectInfo(pi)
-	if err != nil {
-		// TODO revisit this once a decision is made about better-formed errors;
-		// question is, do we expect the fetcher to pass back simple errors, or
-		// well-typed solver errors?
-		return nil, err
-	}
+func (s *solver) getDependenciesOf(pa ProjectAtom) ([]ProjectDep, error) {
+	var deps []ProjectDep
 
-	deps := info.GetDependencies()
-	if s.rp.Name() == pi.Name {
-		// Root package has more things to pull in
-		deps = append(deps, info.GetDevDependencies()...)
+	// If we're looking for root's deps, get it from opts rather than sm
+	if s.o.M.Name() == pa.Name {
+		deps = append(s.o.M.GetDependencies(), s.o.M.GetDevDependencies()...)
+	} else {
+		info, err := s.sm.GetProjectInfo(pa)
+		if err != nil {
+			// TODO revisit this once a decision is made about better-formed errors;
+			// question is, do we expect the fetcher to pass back simple errors, or
+			// well-typed solver errors?
+			return nil, err
+		}
 
+		deps = info.GetDependencies()
 		// TODO add overrides here...if we impl the concept (which we should)
 	}
 
@@ -596,7 +668,7 @@ func (s *solver) unselectedComparator(i, j int) bool {
 		return false
 	}
 
-	rname := s.rp.Name()
+	rname := s.o.M.Name()
 	// *always* put root project first
 	if iname == rname {
 		return true
@@ -649,7 +721,7 @@ func (s *solver) unselectedComparator(i, j int) bool {
 
 func (s *solver) fail(name ProjectName) {
 	// skip if the root project
-	if s.rp.Name() == name {
+	if s.o.M.Name() == name {
 		s.l.Debug("Not marking the root project as failed")
 		return
 	}
@@ -673,7 +745,7 @@ func (s *solver) selectVersion(pa ProjectAtom) {
 		// if we're choosing a package that has errors getting its deps, there's
 		// a bigger problem
 		// TODO try to create a test that hits this
-		panic("shouldn't be possible")
+		panic(fmt.Sprintf("shouldn't be possible %s", err))
 	}
 
 	for _, dep := range deps {
@@ -718,4 +790,29 @@ func (s *solver) unselectLast() {
 			s.unsel.remove(dep.Name)
 		}
 	}
+}
+
+// simple (temporary?) helper just to convert atoms into locked projects
+func pa2lp(pa ProjectAtom) LockedProject {
+	// TODO will need to revisit this once we flesh out the relationship between
+	// names, uris, etc.
+	lp := LockedProject{
+		n:    pa.Name,
+		path: string(pa.Name),
+		uri:  string(pa.Name),
+	}
+
+	switch v := pa.Version.(type) {
+	case UnpairedVersion:
+		lp.v = v
+	case Revision:
+		lp.r = v
+	case versionPair:
+		lp.v = v.v
+		lp.r = v.r
+	default:
+		panic("unreachable")
+	}
+
+	return lp
 }
