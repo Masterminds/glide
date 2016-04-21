@@ -1,7 +1,10 @@
 package action
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cfg"
@@ -9,6 +12,8 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
+	"github.com/Sirupsen/logrus"
+	"github.com/sdboyer/vsolver"
 )
 
 // Install installs a vendor directory based on an existing Glide configuration.
@@ -19,58 +24,66 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 	EnsureVendorDir()
 	conf := EnsureConfig()
 
-	// Lockfile exists
-	if !gpath.HasLock(base) {
-		msg.Info("Lock file (glide.lock) does not exist. Performing update.")
-		Update(installer, false, strip, stripVendor)
-		return
-	}
-	// Load lockfile
-	lock, err := LoadLockfile(base, conf)
+	// Create the SourceManager for this run
+	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, true, false, dependency.Analyzer{})
 	if err != nil {
-		msg.Die("Could not load lockfile.")
+		msg.Die(err.Error())
 	}
 
-	// Delete unused packages
-	if installer.DeleteUnused {
-		// It's unclear whether this should operate off of the lock, or off
-		// of the glide.yaml file. I'd think that doing this based on the
-		// lock would be much more reliable.
-		dependency.DeleteUnused(conf)
+	opts := vsolver.SolveOpts{
+		N:    vsolver.ProjectName(filepath.Dir(installer.Vendor)),
+		Root: filepath.Dir(installer.Vendor),
+		M:    conf,
 	}
 
-	// Install
-	newConf, err := installer.Install(lock, conf)
-	if err != nil {
-		msg.Die("Failed to install: %s", err)
-	}
-
-	msg.Info("Setting references.")
-
-	// Set reference
-	if err := repo.SetReference(newConf); err != nil {
-		msg.Err("Failed to set references: %s (Skip to cleanup)", err)
-	}
-
-	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.
-	// When stripping VCS happens this will happen as well. No need for double
-	// effort.
-	if installer.UpdateVendored && !strip {
-		repo.VendoredCleanup(newConf)
-	}
-
-	if strip {
-		msg.Info("Removing version control data from vendor directory...")
-		gpath.StripVcs()
-	}
-
-	if stripVendor {
-		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
-		err := gpath.StripVendor()
+	if gpath.HasLock(base) {
+		opts.L, err = LoadLockfile(base, conf)
 		if err != nil {
-			msg.Err("Unable to strip vendor directories: %s", err)
+			msg.Die("Could not load lockfile.")
+		}
+		// Check if digests match, and warn if they don't
+		if bytes.Equal(opts.L.InputHash(), opts.HashInputs()) {
+			msg.Warn("glide.yaml is out of sync with glide.lock!")
+		}
+		err = writeVendor(installer.Vendor, opts.L, sm)
+		if err != nil {
+			msg.Die(err.Error())
+		}
+	} else {
+		// There is no lock, so we solve first
+		s := vsolver.NewSolver(sm, logrus.New())
+		r, err := s.Solve(opts)
+		if err != nil {
+			// TODO better error handling
+			msg.Die(err.Error())
+		}
+
+		err = writeVendor(installer.Vendor, r, sm)
+		if err != nil {
+			msg.Die(err.Error())
 		}
 	}
+}
+
+// TODO This will almost certainly need to be renamed and move somewhere else
+func writeVendor(vendor string, l vsolver.Lock, sm vsolver.SourceManager) error {
+	td, err := ioutil.TempDir(os.TempDir(), "glide")
+	if err != nil {
+		return fmt.Errorf("Error while creating temp dir for vendor directory: %s", err)
+	}
+	defer os.RemoveAll(td)
+
+	err = vsolver.CreateVendorTree(td, l, sm)
+	if err != nil {
+		return fmt.Errorf("Error while generating vendor tree: %s", err)
+	}
+
+	err = os.Rename(td, vendor)
+	if err != nil {
+		return fmt.Errorf("Error while moving generated vendor directory into place: %s", err)
+	}
+
+	return nil
 }
 
 // LoadLockfile loads the contents of a glide.lock file.

@@ -1,14 +1,17 @@
 package action
 
 import (
+	"encoding/hex"
 	"path/filepath"
+	"time"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
-	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
+	"github.com/Sirupsen/logrus"
+	"github.com/sdboyer/vsolver"
 )
 
 // Update updates repos and the lock file from the main glide yaml.
@@ -18,93 +21,71 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	EnsureVendorDir()
 	conf := EnsureConfig()
 
-	// Delete unused packages
-	if installer.DeleteUnused {
-		dependency.DeleteUnused(conf)
-	}
-
-	// Try to check out the initial dependencies.
-	if err := installer.Checkout(conf, false); err != nil {
-		msg.Die("Failed to do initial checkout of config: %s", err)
-	}
-
-	// Set the versions for the initial dependencies so that resolved dependencies
-	// are rooted in the correct version of the base.
-	if err := repo.SetReference(conf); err != nil {
-		msg.Die("Failed to set initial config references: %s", err)
-	}
-
-	// Prior to resolving dependencies we need to start working with a clone
-	// of the conf because we'll be making real changes to it.
-	confcopy := conf.Clone()
-
-	if !skipRecursive {
-		// Get all repos and update them.
-		err := installer.Update(confcopy)
-		if err != nil {
-			msg.Die("Could not update packages: %s", err)
-		}
-
-		// TODO: There is no support here for importing Godeps, GPM, and GB files.
-		// I think that all we really need to do now is hunt for these files, and then
-		// roll their version numbers into the config file.
-
-		// Set references. There may be no remaining references to set since the
-		// installer set them as it went to make sure it parsed the right imports
-		// from the right version of the package.
-		msg.Info("Setting references for remaining imports")
-		if err := repo.SetReference(confcopy); err != nil {
-			msg.Err("Failed to set references: %s (Skip to cleanup)", err)
-		}
-	}
-	// Vendored cleanup
-	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.
-	// When stripping VCS happens this will happen as well. No need for double
-	// effort.
-	if installer.UpdateVendored && !strip {
-		repo.VendoredCleanup(confcopy)
-	}
-
-	// Write glide.yaml (Why? Godeps/GPM/GB?)
-	// I think we don't need to write a new Glide file because update should not
-	// change anything important. It will just generate information about
-	// transative dependencies, all of which belongs exclusively in the lock
-	// file, not the glide.yaml file.
 	// TODO(mattfarina): Detect when a new dependency has been added or removed
 	// from the project. A removed dependency should warn and an added dependency
 	// should be added to the glide.yaml file. See issue #193.
 
-	if stripVendor {
-		confcopy = godep.RemoveGodepSubpackages(confcopy)
+	// Create the SourceManager for this run
+	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, true, false, dependency.Analyzer{})
+	if err != nil {
+		msg.Die(err.Error())
 	}
 
-	if !skipRecursive {
-		// Write lock
-		hash, err := conf.Hash()
+	opts := vsolver.SolveOpts{
+		N:    vsolver.ProjectName(filepath.Dir(installer.Vendor)),
+		Root: filepath.Dir(installer.Vendor),
+		M:    conf,
+	}
+
+	if gpath.HasLock(base) {
+		opts.L, err = LoadLockfile(base, conf)
 		if err != nil {
-			msg.Die("Failed to generate config hash. Unable to generate lock file.")
+			msg.Warn("Could not load lockfile; all projects will be updated.")
 		}
-		lock := cfg.NewLockfile(confcopy.Imports, hash)
-		if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
-			msg.Err("Could not write lock file to %s: %s", base, err)
-			return
-		}
-
-		msg.Info("Project relies on %d dependencies.", len(confcopy.Imports))
-	} else {
-		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
 	}
 
-	if strip {
-		msg.Info("Removing version control data from vendor directory...")
-		gpath.StripVcs()
+	s := vsolver.NewSolver(sm, logrus.New())
+	r, err := s.Solve(opts)
+	if err != nil {
+		// TODO better error handling
+		msg.Die(err.Error())
 	}
 
-	if stripVendor {
-		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
-		err := gpath.StripVendor()
-		if err != nil {
-			msg.Err("Unable to strip vendor directories: %s", err)
+	err = writeVendor(installer.Vendor, r, sm)
+	if err != nil {
+		msg.Die(err.Error())
+	}
+
+	// TODO compare old and new lock, and only change if contents differ
+
+	// Create and write out a new lock file from the result
+	lf := &cfg.Lockfile{
+		Hash:    hex.EncodeToString(r.InputHash()),
+		Updated: time.Now(),
+	}
+
+	for _, p := range r.Projects() {
+		l := &cfg.Lock{
+			Name:       string(p.Name()),
+			Repository: p.URI(), // TODO this is wrong
+			VcsType:    "",      // TODO allow this to be extracted from sm
 		}
+
+		v := p.Version()
+		if pv, ok := v.(vsolver.PairedVersion); ok {
+			l.Version = pv.Underlying().String()
+		} else {
+			l.Version = pv.String()
+		}
+	}
+
+	err = lf.WriteFile(filepath.Join(base, gpath.LockFile))
+	if err != nil {
+		msg.Die("Error on writing new lock file: %s", err)
+	}
+
+	err = writeVendor(installer.Vendor, r, sm)
+	if err != nil {
+		msg.Die(err.Error())
 	}
 }

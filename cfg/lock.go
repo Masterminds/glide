@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"encoding/hex"
 	"io/ioutil"
 	"sort"
 	"strings"
@@ -50,8 +51,12 @@ func (lf *Lockfile) WriteFile(lockpath string) error {
 
 // InputHash returns the hash of the input arguments that resulted in this lock
 // file.
-func (lf *Lockfile) InputHash() string {
-	return lf.Hash
+func (lf *Lockfile) InputHash() []byte {
+	b, err := hex.DecodeString(lf.Hash)
+	if err != nil {
+		return nil
+	}
+	return b
 }
 
 // Projects returns the list of projects enumerated in the lock file.
