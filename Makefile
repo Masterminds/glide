@@ -1,15 +1,16 @@
+GLIDE_GO_EXECUTABLE ?= go
 VERSION := $(shell git describe --tags)
 DIST_DIRS := find * -type d -exec
 
 build:
-	go build -o glide -ldflags "-X main.version=${VERSION}" glide.go
+	${GLIDE_GO_EXECUTABLE} build -o glide -ldflags "-X main.version=${VERSION}" glide.go
 
 install: build
 	install -d ${DESTDIR}/usr/local/bin/
 	install -m 755 ./glide ${DESTDIR}/usr/local/bin/glide
 
 test:
-	go test . ./gb ./path ./action ./tree ./util ./godep ./godep/strip ./gpm ./cfg ./dependency ./importer ./msg ./repo
+	${GLIDE_GO_EXECUTABLE} test . ./gb ./path ./action ./tree ./util ./godep ./godep/strip ./gpm ./cfg ./dependency ./importer ./msg ./repo
 
 clean:
 	rm -f ./glide.test
@@ -17,7 +18,7 @@ clean:
 	rm -rf ./dist
 
 bootstrap-dist:
-	go get -u github.com/mitchellh/gox
+	${GLIDE_GO_EXECUTABLE} get -u github.com/mitchellh/gox
 
 build-all:
 	gox -verbose \
