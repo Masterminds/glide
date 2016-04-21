@@ -30,6 +30,7 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	if err != nil {
 		msg.Die(err.Error())
 	}
+	defer sm.Release()
 
 	opts := vsolver.SolveOpts{
 		N:    vsolver.ProjectName(filepath.Dir(installer.Vendor)),
