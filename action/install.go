@@ -24,6 +24,12 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 	EnsureVendorDir()
 	conf := EnsureConfig()
 
+	// TODO might need a better way for discovering the root
+	vend, err := gpath.Vendor()
+	if err != nil {
+		msg.Die("Could not find the vendor dir: %s", err)
+	}
+
 	// Create the SourceManager for this run
 	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, true, false, dependency.Analyzer{})
 	if err != nil {
@@ -32,22 +38,24 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 	defer sm.Release()
 
 	opts := vsolver.SolveOpts{
-		N:    vsolver.ProjectName(filepath.Dir(installer.Vendor)),
-		Root: filepath.Dir(installer.Vendor),
+		N:    vsolver.ProjectName(conf.ProjectName),
+		Root: filepath.Dir(vend),
 		M:    conf,
 	}
 
 	if gpath.HasLock(base) {
 		opts.L, err = LoadLockfile(base, conf)
 		if err != nil {
+			sm.Release()
 			msg.Die("Could not load lockfile.")
 		}
 		// Check if digests match, and warn if they don't
 		if bytes.Equal(opts.L.InputHash(), opts.HashInputs()) {
 			msg.Warn("glide.yaml is out of sync with glide.lock!")
 		}
-		err = writeVendor(installer.Vendor, opts.L, sm)
+		err = writeVendor(vend, opts.L, sm)
 		if err != nil {
+			sm.Release()
 			msg.Die(err.Error())
 		}
 	} else {
@@ -56,11 +64,13 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 		r, err := s.Solve(opts)
 		if err != nil {
 			// TODO better error handling
+			sm.Release()
 			msg.Die(err.Error())
 		}
 
-		err = writeVendor(installer.Vendor, r, sm)
+		err = writeVendor(vend, r, sm)
 		if err != nil {
+			sm.Release()
 			msg.Die(err.Error())
 		}
 	}
@@ -79,6 +89,20 @@ func writeVendor(vendor string, l vsolver.Lock, sm vsolver.SourceManager) error 
 		return fmt.Errorf("Error while generating vendor tree: %s", err)
 	}
 
+	// Move the existing vendor dir to somewhere safe while we put the new one
+	// in order to provide insurance against errors for as long as possible
+	td2, err := ioutil.TempDir(filepath.Dir(vendor), "vendor")
+	if err != nil {
+		return fmt.Errorf("Error creating swap dir for existing vendor directory: %s", err)
+	}
+
+	err = os.Rename(vendor, td2)
+	defer os.RemoveAll(td2)
+	if err != nil {
+		return fmt.Errorf("Error moving existing vendor into swap dir: %s", err)
+	}
+
+	fmt.Println(vendor)
 	err = os.Rename(td, vendor)
 	if err != nil {
 		return fmt.Errorf("Error while moving generated vendor directory into place: %s", err)
