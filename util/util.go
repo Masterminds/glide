@@ -29,13 +29,21 @@ func init() {
 	}
 }
 
+func toSlash(v string) string {
+	v = strings.Replace(v, "\\", "/", -1)
+	if os.PathSeparator != '\\' && os.PathSeparator != '/' {
+		v = strings.Replace(v, string(os.PathSeparator), "/", -1)
+	}
+	return v
+}
+
 // GetRootFromPackage retrives the top level package from a name.
 //
 // From a package name find the root repo. For example,
 // the package github.com/Masterminds/cookoo/io has a root repo
 // at github.com/Masterminds/cookoo
 func GetRootFromPackage(pkg string) string {
-	pkg = filepath.ToSlash(pkg)
+	pkg = toSlash(pkg)
 	for _, v := range vcsList {
 		m := v.regex.FindStringSubmatch(pkg)
 		if m == nil {
@@ -307,11 +315,11 @@ func NormalizeName(name string) (string, string) {
 	if err == nil {
 		p := filepath.Join(b.GOROOT, "src", name)
 		if _, err := os.Stat(p); err == nil {
-			return filepath.ToSlash(name), ""
+			return toSlash(name), ""
 		}
 	}
 
-	name = filepath.ToSlash(name)
+	name = toSlash(name)
 	root := GetRootFromPackage(name)
 	extra := strings.TrimPrefix(name, root)
 	if len(extra) > 0 && extra != "/" {
