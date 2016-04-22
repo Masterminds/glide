@@ -7,6 +7,7 @@ import (
 func TestNormalizeName(t *testing.T) {
 	packages := map[string]string{
 		"github.com/Masterminds/cookoo/web/io/foo": "github.com/Masterminds/cookoo",
+		`github.com\Masterminds\cookoo\web\io\foo`: "github.com/Masterminds/cookoo",
 		"golang.org/x/crypto/ssh":                  "golang.org/x/crypto",
 		"incomplete/example":                       "incomplete/example",
 		"net":                                      "net",
