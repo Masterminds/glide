@@ -38,10 +38,10 @@ func TestNormalizeName(t *testing.T) {
 	}
 	for _, test := range packages {
 		root, extra := NormalizeName(test.input)
-		switch {
-		case root != test.root:
+		if root != test.root {
 			t.Errorf("%s: Expected root '%s', got '%s'", test.input, test.root, root)
-		case extra != test.extra:
+		}
+		if extra != test.extra {
 			t.Errorf("%s: Expected extra '%s', got '%s'", test.input, test.extra, extra)
 		}
 	}
