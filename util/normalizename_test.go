@@ -5,18 +5,44 @@ import (
 )
 
 func TestNormalizeName(t *testing.T) {
-	packages := map[string]string{
-		"github.com/Masterminds/cookoo/web/io/foo": "github.com/Masterminds/cookoo",
-		`github.com\Masterminds\cookoo\web\io\foo`: "github.com/Masterminds/cookoo",
-		"golang.org/x/crypto/ssh":                  "golang.org/x/crypto",
-		"incomplete/example":                       "incomplete/example",
-		"net":                                      "net",
+	packages := []struct {
+		input string
+		root  string
+		extra string
+	}{
+		{
+			input: "github.com/Masterminds/cookoo/web/io/foo",
+			root:  "github.com/Masterminds/cookoo",
+			extra: "web/io/foo",
+		},
+		{
+			input: `github.com\Masterminds\cookoo\web\io\foo`,
+			root:  "github.com/Masterminds/cookoo",
+			extra: "web/io/foo",
+		},
+		{
+			input: "golang.org/x/crypto/ssh",
+			root:  "golang.org/x/crypto",
+			extra: "ssh",
+		},
+		{
+			input: "incomplete/example",
+			root:  "incomplete/example",
+			extra: "",
+		},
+		{
+			input: "net",
+			root:  "net",
+			extra: "",
+		},
 	}
-	for start, expected := range packages {
-		if finish, extra := NormalizeName(start); expected != finish {
-			t.Errorf("Expected '%s', got '%s'", expected, finish)
-		} else if start != finish && start != finish+"/"+extra {
-			t.Errorf("Expected %s to end with %s", finish, extra)
+	for _, test := range packages {
+		root, extra := NormalizeName(test.input)
+		switch {
+		case root != test.root:
+			t.Errorf("%s: Expected root '%s', got '%s'", test.input, test.root, root)
+		case extra != test.extra:
+			t.Errorf("%s: Expected extra '%s', got '%s'", test.input, test.extra, extra)
 		}
 	}
 }
