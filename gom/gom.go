@@ -160,10 +160,10 @@ func AsMetadataPair(dir string) (vsolver.Manifest, vsolver.Lock, error) {
 				v.Is(vsolver.Revision(body))
 				l = append(l, vsolver.NewLockedProject(vsolver.ProjectName(dir), v, dir, dir))
 			} else {
-				// As with the other system integrations, we're going to choose
-				// not to put revisions into a manifest, even though gom has a
-				// lot more information than most and the argument could be made
-				// for it.
+				// As with the other third-party system integrations, we're
+				// going to choose not to put revisions into a manifest, even
+				// though gom has a lot more information than most and the
+				// argument could be made for it.
 				dep.Constraint = vsolver.Any()
 				l = append(l, vsolver.NewLockedProject(vsolver.ProjectName(dir), vsolver.Revision(body), dir, dir))
 			}

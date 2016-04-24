@@ -81,7 +81,13 @@ func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Ma
 		return nil, nil, err
 	}
 
-	// TODO drop in glide's general analysis logic here
+	// Finally, infer from source
+	m, l, err = a.inferFromSource(ctx, pn)
+	if err == nil {
+		return m, l, nil
+	} else if _, ok := err.(notApplicable); !ok {
+		return nil, nil, err
+	}
 
 	return nil, nil, fmt.Errorf("No usable project data found")
 }
@@ -170,4 +176,31 @@ func (a Analyzer) lookForGom(root string) (vsolver.Manifest, vsolver.Lock, error
 	}
 
 	return gom.AsMetadataPair(root)
+}
+
+func (a Analyzer) inferFromSource(ctx build.Context, pn vsolver.ProjectName) (vsolver.Manifest, vsolver.Lock, error) {
+	root := filepath.Join(ctx.GOPATH, "src", string(pn))
+	r, err := NewResolver(root)
+	if err != nil {
+		return nil, nil, notApplicable{}
+	}
+	//r.BuildContext = ctx
+
+	ext, err := r.ResolveLocal(false)
+	if err != nil {
+		return nil, nil, notApplicable{} // TODO a real err here?
+	}
+
+	m := vsolver.SimpleManifest{
+		N: pn,
+	}
+
+	for _, s := range ext {
+		m.P = append(m.P, vsolver.ProjectDep{
+			Name:       vsolver.ProjectName(s),
+			Constraint: vsolver.Any(),
+		})
+	}
+
+	return m, nil, nil
 }
