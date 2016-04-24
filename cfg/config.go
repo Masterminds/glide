@@ -56,6 +56,19 @@ type Config struct {
 }
 
 // A transitive representation of a dependency for importing and exporting to yaml.
+type cf1 struct {
+	Name        string       `yaml:"package"`
+	Description string       `yaml:"description,omitempty"`
+	Home        string       `yaml:"homepage,omitempty"`
+	License     string       `yaml:"license,omitempty"`
+	Owners      Owners       `yaml:"owners,omitempty"`
+	Ignore      []string     `yaml:"ignore,omitempty"`
+	Exclude     []string     `yaml:"excludeDirs,omitempty"`
+	Imports     Dependencies `yaml:"dependencies"`
+	DevImports  Dependencies `yaml:"testdependencies,omitempty"`
+}
+
+// Legacy representation of a glide.yaml file.
 type cf struct {
 	Name        string       `yaml:"package"`
 	Description string       `yaml:"description,omitempty"`
@@ -163,19 +176,27 @@ func (c *Config) GetDevDependencies() []vsolver.ProjectDep {
 func depsToVSolver(deps Dependencies) []vsolver.ProjectDep {
 	cp := make([]vsolver.ProjectDep, len(deps))
 	for k, d := range deps {
-		// TODO need to differentiate types of constraints so that we don't have
-		// this ambiguity
-		// Try semver first
-		c, err := vsolver.NewConstraint(d.Reference, vsolver.SemverConstraint)
-		if err != nil {
-			// Not a semver constraint. Super crappy heuristic that'll cover hg
-			// and git revs, but not bzr (svn, you say? lol, madame. lol)
-			if len(d.Reference) == 40 {
-				c, _ = vsolver.NewConstraint(d.Reference, vsolver.RevisionConstraint)
-			} else {
-				// Otherwise, assume a branch. This also sucks, because it could
-				// very well be a shitty, non-semver tag.
-				c, _ = vsolver.NewConstraint(d.Reference, vsolver.BranchConstraint)
+		var c vsolver.Constraint
+		var err error
+
+		// Support both old and new. TODO handle this earlier
+		if d.Constraint != nil {
+			c = d.Constraint
+		} else {
+			// TODO need to differentiate types of constraints so that we don't have
+			// this ambiguity
+			// Try semver first
+			c, err = vsolver.NewConstraint(d.Reference, vsolver.SemverConstraint)
+			if err != nil {
+				// Not a semver constraint. Super crappy heuristic that'll cover hg
+				// and git revs, but not bzr (svn, you say? lol, madame. lol)
+				if len(d.Reference) == 40 {
+					c, _ = vsolver.NewConstraint(d.Reference, vsolver.RevisionConstraint)
+				} else {
+					// Otherwise, assume a branch. This also sucks, because it could
+					// very well be a shitty, non-semver tag.
+					c, _ = vsolver.NewConstraint(d.Reference, vsolver.BranchConstraint)
+				}
 			}
 		}
 
@@ -388,21 +409,23 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
-	Name             string   `yaml:"package"`
-	Reference        string   `yaml:"version,omitempty"`
-	Pin              string   `yaml:"-"`
-	Repository       string   `yaml:"repo,omitempty"`
-	VcsType          string   `yaml:"vcs,omitempty"`
-	Subpackages      []string `yaml:"subpackages,omitempty"`
-	Arch             []string `yaml:"arch,omitempty"`
-	Os               []string `yaml:"os,omitempty"`
-	UpdateAsVendored bool     `yaml:"-"`
+	Name             string             `yaml:"package"`
+	Constraint       vsolver.Constraint `yaml:"-"` // TODO temporary, for experimenting; reconcile with other data
+	Reference        string             `yaml:"version,omitempty"`
+	Pin              string             `yaml:"-"`
+	Repository       string             `yaml:"repo,omitempty"`
+	VcsType          string             `yaml:"vcs,omitempty"`
+	Subpackages      []string           `yaml:"subpackages,omitempty"`
+	Arch             []string           `yaml:"arch,omitempty"`
+	Os               []string           `yaml:"os,omitempty"`
+	UpdateAsVendored bool               `yaml:"-"`
 }
 
 // A transitive representation of a dependency for importing and exploting to yaml.
 type dep struct {
 	Name        string   `yaml:"package"`
 	Reference   string   `yaml:"version,omitempty"`
+	RefType     string   `yaml:"vtype,omitempty"`
 	Ref         string   `yaml:"ref,omitempty"`
 	Repository  string   `yaml:"repo,omitempty"`
 	VcsType     string   `yaml:"vcs,omitempty"`
@@ -420,6 +443,31 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	d.Name = newDep.Name
 	d.Reference = newDep.Reference
+
+	if newDep.Reference == "" && newDep.RefType == "" {
+		// If both are empty, treat it as unrestricted
+		newDep.RefType = "any"
+	}
+	// TODO allow a 'default branch' constraint type?
+
+	switch newDep.RefType {
+	case "version":
+		d.Constraint, err = vsolver.NewConstraint(newDep.Reference, vsolver.VersionConstraint)
+	case "semver":
+		d.Constraint, err = vsolver.NewConstraint(newDep.Reference, vsolver.SemverConstraint)
+	case "branch":
+		d.Constraint, err = vsolver.NewConstraint(newDep.Reference, vsolver.BranchConstraint)
+	case "rev", "revision":
+		d.Constraint, err = vsolver.NewConstraint(newDep.Reference, vsolver.RevisionConstraint)
+	case "any":
+		d.Constraint = vsolver.Any()
+	default:
+		return fmt.Errorf("Invalid version constraint type specified: %q", newDep.RefType)
+	}
+	if err != nil {
+		return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Reference, err)
+	}
+
 	d.Repository = newDep.Repository
 	d.VcsType = newDep.VcsType
 	d.Subpackages = newDep.Subpackages
@@ -454,9 +502,23 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 
 	// Make sure we only write the correct vcs type to file
 	t := filterVcsType(d.VcsType)
+
+	// Pull out the correct type of constraint
+	// TODO this is horrible; formally expose something
+	var rt string
+	if v, ok := d.Constraint.(vsolver.Version); ok {
+		rt = v.Type()
+	} else if d.Constraint == vsolver.Any() {
+		rt = "any"
+	} else {
+		// Only other possible case that's not also a version is semverConstraint
+		rt = "semver"
+	}
+
 	newDep := &dep{
 		Name:        d.Name,
 		Reference:   d.Reference,
+		RefType:     rt,
 		Repository:  d.Repository,
 		VcsType:     t,
 		Subpackages: d.Subpackages,
