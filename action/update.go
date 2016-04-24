@@ -40,7 +40,7 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	defer sm.Release()
 
 	opts := vsolver.SolveOpts{
-		N:    vsolver.ProjectName(filepath.Dir(vend)),
+		N:    vsolver.ProjectName(conf.ProjectName),
 		Root: filepath.Dir(vend),
 		M:    conf,
 	}

@@ -30,7 +30,7 @@ type Analyzer struct{}
 func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Manifest, vsolver.Lock, error) {
 	// For now, at least, we do not search above the root path provided by
 	// the SourceManager.
-	root := filepath.Join(ctx.GOPATH, string(pn))
+	root := filepath.Join(ctx.GOPATH, "src", string(pn))
 
 	// this check should be unnecessary, but keeping it for now as a canary
 	if _, err := os.Lstat(root); err != nil {
