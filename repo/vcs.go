@@ -468,6 +468,43 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 	return gerr
 }
 
+// VcsVerFromRef finds a tag from a passed in reference.
+func VcsVerFromRef(dep *cfg.Dependency, loc, ref string) (string, error) {
+	repo, err := dep.GetRepo(loc)
+	if err != nil {
+		return ref, err
+	}
+
+	if repo.IsReference(ref) {
+		l, err := repo.TagsFromCommit(ref)
+		if err != nil {
+			return ref, err
+		}
+
+		ll := len(l)
+		if ll == 0 {
+			return ref, nil
+		} else if ll == 1 {
+			return l[0], nil
+		}
+
+		// When there are multiple tags for the same commit we loop through
+		// them to find a semver one. If there is one that's the one we use.
+		for _, r := range l {
+			_, err = semver.NewVersion(r)
+			if err == nil {
+				return r, nil
+			}
+		}
+
+		// When there are multiple tags and none of them are semver we return
+		// the first one.
+		return l[0], nil
+	}
+
+	return ref, nil
+}
+
 // filterArchOs indicates a dependency should be filtered out because it is
 // the wrong GOOS or GOARCH.
 //
