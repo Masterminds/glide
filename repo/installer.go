@@ -630,7 +630,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 
 	err := d.Vcs.Version(dep)
 	if err != nil {
-		msg.Warn("Unable to set verion on %s to %s. Err: %s", root, dep.Reference, err)
+		msg.Warn("Unable to set version on %s to %s. Err: %s", root, dep.Reference, err)
 		e = err
 	}
 

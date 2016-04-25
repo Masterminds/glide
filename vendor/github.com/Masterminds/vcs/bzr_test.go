@@ -123,6 +123,22 @@ func TestBzr(t *testing.T) {
 		t.Error("Bzr tags is not reporting the correct version")
 	}
 
+	tags, err = repo.TagsFromCommit("2")
+	if err != nil {
+		t.Error(err)
+	}
+	if len(tags) != 0 {
+		t.Error("Bzr is incorrectly returning tags for a commit")
+	}
+
+	tags, err = repo.TagsFromCommit("3")
+	if err != nil {
+		t.Error(err)
+	}
+	if len(tags) != 1 || tags[0] != "1.0.0" {
+		t.Error("Bzr is incorrectly returning tags for a commit")
+	}
+
 	branches, err := repo.Branches()
 	if err != nil {
 		t.Error(err)
@@ -194,5 +210,70 @@ func TestBzrCheckLocal(t *testing.T) {
 	_, nrerr := NewRepo("https://launchpad.net/govcstestbzrrepo", tempDir+"/govcstestbzrrepo")
 	if nrerr != nil {
 		t.Error(nrerr)
+	}
+}
+
+func TestBzrPing(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-vcs-bzr-tests")
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	repo, err := NewBzrRepo("https://launchpad.net/govcstestbzrrepo", tempDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ping := repo.Ping()
+	if !ping {
+		t.Error("Bzr unable to ping working repo")
+	}
+
+	repo, err = NewBzrRepo("https://launchpad.net/ihopethisneverexistsbecauseitshouldnt", tempDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ping = repo.Ping()
+	if ping {
+		t.Error("Bzr got a ping response from when it should not have")
+	}
+}
+
+func TestBzrInit(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-vcs-bzr-tests")
+	repoDir := tempDir + "/repo"
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	repo, err := NewBzrRepo(repoDir, repoDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = repo.Init()
+	if err != nil {
+		t.Error(err)
+	}
+
+	v, err := repo.Version()
+	if err != nil {
+		t.Error(err)
+	}
+	if v != "0" {
+		t.Errorf("Bzr Init returns wrong version: %s", v)
 	}
 }

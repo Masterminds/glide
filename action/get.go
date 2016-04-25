@@ -37,7 +37,10 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	// Fetch the new packages. Can't resolve versions via installer.Update if
 	// get is called while the vendor/ directory is empty so we checkout
 	// everything.
-	installer.Checkout(false)
+	err = installer.Checkout(conf, false)
+	if err != nil {
+		msg.Die("Failed to checkout packages: %s", err)
+	}
 
 	// Prior to resolving dependencies we need to start working with a clone
 	// of the conf because we'll be making real changes to it.

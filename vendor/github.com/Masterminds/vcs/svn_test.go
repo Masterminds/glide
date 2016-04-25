@@ -134,6 +134,14 @@ func TestSvn(t *testing.T) {
 		t.Error("Svn is incorrectly returning tags")
 	}
 
+	tags, err = repo.TagsFromCommit("2")
+	if err != nil {
+		t.Error(err)
+	}
+	if len(tags) != 0 {
+		t.Error("Svn is incorrectly returning tags for a commit")
+	}
+
 	branches, err := repo.Branches()
 	if err != nil {
 		t.Error(err)
@@ -205,5 +213,76 @@ func TestSvnCheckLocal(t *testing.T) {
 	_, nrerr := NewRepo("https://github.com/Masterminds/VCSTestRepo/trunk", tempDir+"/VCSTestRepo")
 	if nrerr != nil {
 		t.Error(nrerr)
+	}
+}
+
+func TestSvnPing(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-vcs-svn-tests")
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	repo, err := NewSvnRepo("https://github.com/Masterminds/VCSTestRepo/trunk", tempDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ping := repo.Ping()
+	if !ping {
+		t.Error("Svn unable to ping working repo")
+	}
+
+	repo, err = NewSvnRepo("https://github.com/Masterminds/ihopethisneverexistsbecauseitshouldnt", tempDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	ping = repo.Ping()
+	if ping {
+		t.Error("Svn got a ping response from when it should not have")
+	}
+}
+
+func TestSvnInit(t *testing.T) {
+	tempDir, err := ioutil.TempDir("", "go-vcs-svn-tests")
+	remoteDir := tempDir + "/remoteDir"
+	localDir := tempDir + "/localDir"
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	repo, err := NewSvnRepo(remoteDir, localDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = repo.Init()
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = repo.Get()
+	if err != nil {
+		t.Error(err)
+	}
+
+	v, err := repo.Version()
+	if err != nil {
+		t.Error(err)
+	}
+	if v != "0" {
+		t.Errorf("Svn Init returns wrong version: %s", v)
 	}
 }

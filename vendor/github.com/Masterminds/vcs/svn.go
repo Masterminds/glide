@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -35,7 +36,7 @@ func NewSvnRepo(remote, local string) (*SvnRepo, error) {
 		// the repo passed in here.
 		out, err := exec.Command("svn", "info", local).CombinedOutput()
 		if err != nil {
-			return nil, err
+			return nil, NewLocalError("Unable to retrieve local repo information", err, string(out))
 		}
 
 		m := svnDetectURL.FindStringSubmatch(string(out))
@@ -67,28 +68,68 @@ func (s SvnRepo) Vcs() Type {
 // Note, because SVN isn't distributed this is a checkout without
 // a clone.
 func (s *SvnRepo) Get() error {
-	_, err := s.run("svn", "checkout", s.Remote(), s.LocalPath())
-	return err
+	remote := s.Remote()
+	if strings.HasPrefix(remote, "/") {
+		remote = "file://" + remote
+	}
+	out, err := s.run("svn", "checkout", remote, s.LocalPath())
+	if err != nil {
+		return NewRemoteError("Unable to get repository", err, string(out))
+	}
+	return nil
+}
+
+// Init will create a svn repository at remote location.
+func (s *SvnRepo) Init() error {
+	out, err := s.run("svnadmin", "create", s.Remote())
+
+	if err != nil && s.isUnableToCreateDir(err) {
+
+		basePath := filepath.Dir(filepath.FromSlash(s.Remote()))
+		if _, err := os.Stat(basePath); os.IsNotExist(err) {
+			err = os.MkdirAll(basePath, 0755)
+			if err != nil {
+				return NewLocalError("Unable to initialize repository", err, "")
+			}
+
+			out, err = s.run("svnadmin", "create", s.Remote())
+			if err != nil {
+				return NewLocalError("Unable to initialize repository", err, string(out))
+			}
+			return nil
+		}
+
+	} else if err != nil {
+		return NewLocalError("Unable to initialize repository", err, string(out))
+	}
+
+	return nil
 }
 
 // Update performs an SVN update to an existing checkout.
 func (s *SvnRepo) Update() error {
-	_, err := s.runFromDir("svn", "update")
+	out, err := s.RunFromDir("svn", "update")
+	if err != nil {
+		return NewRemoteError("Unable to update repository", err, string(out))
+	}
 	return err
 }
 
 // UpdateVersion sets the version of a package currently checked out via SVN.
 func (s *SvnRepo) UpdateVersion(version string) error {
-	_, err := s.runFromDir("svn", "update", "-r", version)
-	return err
+	out, err := s.RunFromDir("svn", "update", "-r", version)
+	if err != nil {
+		return NewRemoteError("Unable to update checked out version", err, string(out))
+	}
+	return nil
 }
 
 // Version retrieves the current version.
 func (s *SvnRepo) Version() (string, error) {
-	out, err := s.runFromDir("svnversion", ".")
+	out, err := s.RunFromDir("svnversion", ".")
 	s.log(out)
 	if err != nil {
-		return "", err
+		return "", NewLocalError("Unable to retrieve checked out version", err, string(out))
 	}
 	return strings.TrimSpace(string(out)), nil
 }
@@ -97,16 +138,16 @@ func (s *SvnRepo) Version() (string, error) {
 func (s *SvnRepo) Date() (time.Time, error) {
 	version, err := s.Version()
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, NewLocalError("Unable to retrieve revision date", err, "")
 	}
-	out, err := s.runFromDir("svn", "pget", "svn:date", "--revprop", "-r", version)
+	out, err := s.RunFromDir("svn", "pget", "svn:date", "--revprop", "-r", version)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, NewLocalError("Unable to retrieve revision date", err, string(out))
 	}
 	const longForm = "2006-01-02T15:04:05.000000Z\n"
 	t, err := time.Parse(longForm, string(out))
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, NewLocalError("Unable to retrieve revision date", err, string(out))
 	}
 	return t, nil
 }
@@ -144,7 +185,7 @@ func (s *SvnRepo) Branches() ([]string, error) {
 // IsReference returns if a string is a reference. A reference is a commit id.
 // Branches and tags are part of the path.
 func (s *SvnRepo) IsReference(r string) bool {
-	out, err := s.runFromDir("svn", "log", "-r", r)
+	out, err := s.RunFromDir("svn", "log", "-r", r)
 
 	// This is a complete hack. There must be a better way to do this. Pull
 	// requests welcome. When the reference isn't real you get a line of
@@ -162,15 +203,15 @@ func (s *SvnRepo) IsReference(r string) bool {
 // IsDirty returns if the checkout has been modified from the checked
 // out reference.
 func (s *SvnRepo) IsDirty() bool {
-	out, err := s.runFromDir("svn", "diff")
+	out, err := s.RunFromDir("svn", "diff")
 	return err != nil || len(out) != 0
 }
 
 // CommitInfo retrieves metadata about a commit.
 func (s *SvnRepo) CommitInfo(id string) (*CommitInfo, error) {
-	out, err := s.runFromDir("svn", "log", "-r", id, "--xml")
+	out, err := s.RunFromDir("svn", "log", "-r", id, "--xml")
 	if err != nil {
-		return nil, err
+		return nil, NewRemoteError("Unable to retrieve commit information", err, string(out))
 	}
 
 	type Logentry struct {
@@ -186,7 +227,7 @@ func (s *SvnRepo) CommitInfo(id string) (*CommitInfo, error) {
 	logs := &Log{}
 	err = xml.Unmarshal(out, &logs)
 	if err != nil {
-		return nil, err
+		return nil, NewLocalError("Unable to retrieve commit information", err, string(out))
 	}
 	if len(logs.Logs) == 0 {
 		return nil, ErrRevisionUnavailable
@@ -201,9 +242,37 @@ func (s *SvnRepo) CommitInfo(id string) (*CommitInfo, error) {
 	if len(logs.Logs[0].Date) > 0 {
 		ci.Date, err = time.Parse(time.RFC3339Nano, logs.Logs[0].Date)
 		if err != nil {
-			return nil, err
+			return nil, NewLocalError("Unable to retrieve commit information", err, string(out))
 		}
 	}
 
 	return ci, nil
+}
+
+// TagsFromCommit retrieves tags from a commit id.
+func (s *SvnRepo) TagsFromCommit(id string) ([]string, error) {
+	// Svn tags are a convention implemented as paths. See the details on the
+	// Tag() method for more information.
+	return []string{}, nil
+}
+
+// Ping returns if remote location is accessible.
+func (s *SvnRepo) Ping() bool {
+	_, err := s.run("svn", "--non-interactive", "info", s.Remote())
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+// isUnableToCreateDir checks for an error in Init() to see if an error
+// where the parent directory of the VCS local path doesn't exist.
+func (s *SvnRepo) isUnableToCreateDir(err error) bool {
+	msg := err.Error()
+	if strings.HasPrefix(msg, "E000002") {
+		return true
+	}
+
+	return false
 }
