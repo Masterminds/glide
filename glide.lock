@@ -8,7 +8,7 @@ imports:
 - name: github.com/Masterminds/vcs
   version: 591ce246073ea90ca042fc8837a9729680613844
 - name: github.com/sdboyer/vsolver
-  version: 9ab3ce5ba8a806934754d3d4bf19aad9ff100806
+  version: ff678258d305cac3af8c5db09b455afd94743fca
 - name: github.com/Sirupsen/logrus
   version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
 - name: github.com/termie/go-shutil
