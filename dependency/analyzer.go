@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/gb"
@@ -196,6 +197,10 @@ func (a Analyzer) inferFromSource(ctx build.Context, pn vsolver.ProjectName) (vs
 	}
 
 	for _, s := range ext {
+		// TODO the local resolver creates a vendor path, which is not at all
+		// what we want. For now, just trim it off
+		s = strings.TrimPrefix(s, filepath.Join(root, "vendor")+string(filepath.Separator))
+
 		m.P = append(m.P, vsolver.ProjectDep{
 			Name:       vsolver.ProjectName(s),
 			Constraint: vsolver.Any(),
