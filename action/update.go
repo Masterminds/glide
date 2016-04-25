@@ -52,7 +52,9 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 		}
 	}
 
-	s := vsolver.NewSolver(sm, logrus.New())
+	l := logrus.New()
+	l.Level = logrus.WarnLevel
+	s := vsolver.NewSolver(sm, l)
 	r, err := s.Solve(opts)
 	if err != nil {
 		// TODO better error handling

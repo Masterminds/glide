@@ -60,7 +60,9 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 		}
 	} else {
 		// There is no lock, so we solve first
-		s := vsolver.NewSolver(sm, logrus.New())
+		l := logrus.New()
+		l.Level = logrus.WarnLevel
+		s := vsolver.NewSolver(sm, l)
 		r, err := s.Solve(opts)
 		if err != nil {
 			// TODO better error handling
