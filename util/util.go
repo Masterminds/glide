@@ -30,11 +30,7 @@ func init() {
 }
 
 func toSlash(v string) string {
-	v = strings.Replace(v, "\\", "/", -1)
-	if os.PathSeparator != '\\' && os.PathSeparator != '/' {
-		v = strings.Replace(v, string(os.PathSeparator), "/", -1)
-	}
-	return v
+	return strings.Replace(v, "\\", "/", -1)
 }
 
 // GetRootFromPackage retrives the top level package from a name.
