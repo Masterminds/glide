@@ -69,10 +69,11 @@ type InstallerOptions struct {
 
 // NewInstaller returns a new Installer configured with the specified InstallerOptions.
 func NewInstaller(options InstallerOptions) *Installer {
+	tracker := NewUpdateTracker()
 
 	return &Installer{
 		InstallerOptions: options,
-		Updated:          NewUpdateTracker(),
+		Updated:          tracker,
 		Vcs: NewVcs(VcsOptions{
 			Home:           options.Home,
 			UseCache:       options.UseCache,
@@ -82,6 +83,7 @@ func NewInstaller(options InstallerOptions) *Installer {
 			Force:          options.Force,
 			Vendor:         options.Vendor,
 			Config:         options.Config,
+			Tracker:        tracker,
 		}),
 	}
 }
