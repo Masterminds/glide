@@ -104,7 +104,6 @@ func writeVendor(vendor string, l vsolver.Lock, sm vsolver.SourceManager) error 
 		return fmt.Errorf("Error moving existing vendor into swap dir: %s", err)
 	}
 
-	fmt.Println(vendor)
 	err = os.Rename(td, vendor)
 	if err != nil {
 		return fmt.Errorf("Error while moving generated vendor directory into place: %s", err)
