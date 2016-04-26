@@ -290,11 +290,6 @@ func (vcs *defaultVcs) Version(dep *cfg.Dependency, dest string) error {
 
 // Get figures out how to fetch a dependency, and then gets it.
 func (vcs *defaultVcs) Get(dep *cfg.Dependency, dest string) error {
-	/*
-			return VcsGet(dep, dest, v.Home, v.UseCache, v.UseCacheGopath, v.UseGopath)
-		}
-		func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath bool) error {
-	*/
 	// When not skipping the $GOPATH look in it for a copy of the package
 	if vcs.UseGopath {
 		// Check if the $GOPATH has a viable version to use and if so copy to vendor
