@@ -24,7 +24,7 @@ import (
 type Vcser interface {
 	Update(*cfg.Dependency, string) error
 	Get(*cfg.Dependency, string) error
-	Version(*cfg.Dependency) error
+	Version(*cfg.Dependency, string) error
 }
 
 // VcsOptions is a configuration object for a Vcs implementation.
@@ -191,7 +191,7 @@ func (vcs *defaultVcs) Update(dep *cfg.Dependency, dest string) error {
 }
 
 // Version set the VCS version for a checkout.
-func (vcs *defaultVcs) Version(dep *cfg.Dependency) error {
+func (vcs *defaultVcs) Version(dep *cfg.Dependency, dest string) error {
 
 	// If the dependency has already been pinned we can skip it. This is a
 	// faster path so we don't need to resolve it again.
@@ -200,7 +200,7 @@ func (vcs *defaultVcs) Version(dep *cfg.Dependency) error {
 		return nil
 	}
 
-	cwd := filepath.Join(vcs.Vendor, dep.Name)
+	cwd := filepath.Join(dest, dep.Name)
 
 	// If there is no reference configured there is nothing to set.
 	if dep.Reference == "" {

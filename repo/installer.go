@@ -271,6 +271,11 @@ func (i *Installer) List() []*cfg.Dependency {
 
 func (inst *Installer) SetReferences() error {
 
+	cwd, err := gpath.Vendor()
+	if err != nil {
+		return err
+	}
+
 	if len(inst.Config.Imports) == 0 {
 		msg.Info("No references set.\n")
 		return nil
@@ -285,7 +290,7 @@ func (inst *Installer) SetReferences() error {
 			for {
 				select {
 				case dep := <-ch:
-					if err := inst.Vcs.Version(dep); err != nil {
+					if err := inst.Vcs.Version(dep, cwd); err != nil {
 						msg.Err("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
 					}
 					wg.Done()
@@ -630,7 +635,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		d.Config.Imports = append(d.Config.Imports, dep)
 	}
 
-	err := d.Vcs.Version(dep)
+	err := d.Vcs.Version(dep, d.Destination)
 	if err != nil {
 		msg.Warn("Unable to set version on %s to %s. Err: %s", root, dep.Reference, err)
 		e = err
