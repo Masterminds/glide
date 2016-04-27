@@ -90,10 +90,6 @@ func detectVcsFromRemote(vcsURL string) (Type, string, error) {
 		return t, vcsURL, nil
 	}
 
-	// Need to test for vanity or paths like golang.org/x/
-
-	// TODO: Test for 3xx redirect codes and handle appropriately.
-
 	// Pages like https://golang.org/x/net provide an html document with
 	// meta tags containing a location to work with. The go tool uses
 	// a meta tag with the name go-import which is what we use here.
@@ -117,10 +113,14 @@ func detectVcsFromRemote(vcsURL string) (Type, string, error) {
 		return NoVCS, "", ErrCannotDetectVCS
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return NoVCS, "", ErrCannotDetectVCS
+	}
 
 	t, nu, err := parseImportFromBody(u, resp.Body)
 	if err != nil {
-		return NoVCS, "", err
+		// TODO(mattfarina): Log the parsing error
+		return NoVCS, "", ErrCannotDetectVCS
 	} else if t == "" || nu == "" {
 		return NoVCS, "", ErrCannotDetectVCS
 	}
@@ -299,6 +299,7 @@ func get(url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
+		// TODO(mattfarina): log the failed status
 		return nil, fmt.Errorf("%s: %s", url, resp.Status)
 	}
 	b, err := ioutil.ReadAll(resp.Body)

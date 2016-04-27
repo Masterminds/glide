@@ -1,3 +1,9 @@
+# 1.6.1 (2016-04-27)
+
+- Fixed #30: tags from commit should not have ^{} appended (seen in git)
+- Fixed #29: isDetachedHead fails with non-english locales (git)
+- Fixed #33: Access denied and not found http errors causing xml parsing errors
+
 # 1.6.0 (2016-04-18)
 
 - Issue #26: Added Init method to initialize a repo at the local location
