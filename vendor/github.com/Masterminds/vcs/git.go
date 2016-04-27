@@ -1,7 +1,9 @@
 package vcs
 
 import (
+	"bytes"
 	"encoding/xml"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -289,7 +291,8 @@ func (s *GitRepo) TagsFromCommit(id string) ([]string, error) {
 	}
 	tags := s.referenceList(strings.Join(list, "\n"), `(?m-s)(?:tags)/(\S+)$`)
 	for _, t := range tags {
-		re = append(re, t)
+		// Dereferenced tags have ^{} appended to them.
+		re = append(re, strings.TrimSuffix(t, "^{}"))
 	}
 
 	return re, nil
@@ -313,16 +316,18 @@ func (s *GitRepo) Ping() bool {
 
 // isDetachedHead will detect if git repo is in "detached head" state.
 func isDetachedHead(dir string) (bool, error) {
-	c := exec.Command("git", "status", "-uno")
-	c.Dir = dir
-	c.Env = envForDir(c.Dir)
-	out, err := c.CombinedOutput()
+	p := filepath.Join(dir, ".git", "HEAD")
+	contents, err := ioutil.ReadFile(p)
 	if err != nil {
 		return false, err
 	}
-	detached := strings.Contains(string(out), "HEAD detached at")
 
-	return detached, nil
+	contents = bytes.TrimSpace(contents)
+	if bytes.HasPrefix(contents, []byte("ref: ")) {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // isUnableToCreateDir checks for an error in Init() to see if an error

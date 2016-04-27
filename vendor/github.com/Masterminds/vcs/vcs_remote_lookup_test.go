@@ -13,6 +13,8 @@ func TestVCSLookup(t *testing.T) {
 		"https://github.com/masterminds":                                   {work: false, t: Git},
 		"https://github.com/Masterminds/VCSTestRepo":                       {work: true, t: Git},
 		"https://bitbucket.org/mattfarina/testhgrepo":                      {work: true, t: Hg},
+		"https://bitbucket.org/mattfarina/repo-does-not-exist":             {work: false, t: Hg},
+		"https://bitbucket.org/mattfarina/private-repo-for-vcs-testing":    {work: false, t: Hg},
 		"https://launchpad.net/govcstestbzrrepo/trunk":                     {work: true, t: Bzr},
 		"https://launchpad.net/~mattfarina/+junk/mygovcstestbzrrepo":       {work: true, t: Bzr},
 		"https://launchpad.net/~mattfarina/+junk/mygovcstestbzrrepo/trunk": {work: true, t: Bzr},
@@ -54,6 +56,10 @@ func TestVCSLookup(t *testing.T) {
 
 		if err != nil && c.work == true {
 			t.Errorf("Error detecting VCS from URL(%s): %s", u, err)
+		}
+
+		if err != nil && err != ErrCannotDetectVCS && c.work == false {
+			t.Errorf("Unexpected error returned (%s): %s", u, err)
 		}
 
 		if c.work == true && ty != c.t {
