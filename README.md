@@ -82,7 +82,7 @@ On Mac OS X you can install the latest release via [Homebrew](https://github.com
 $ brew install glide
 ```
 
-On Ubuntu Precise(12.04), Trusty (14.04) or Wily (15.10) you can install from our PPA:
+On Ubuntu Precise(12.04), Trusty (14.04), Wily (15.10) or Xenial (16.04) you can install from our PPA:
 
 ```
 sudo add-apt-repository ppa:masterminds/glide && sudo apt-get update
