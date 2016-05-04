@@ -202,7 +202,9 @@ func (a Analyzer) inferFromSource(ctx build.Context, pn vsolver.ProjectName) (vs
 		s = strings.TrimPrefix(s, filepath.Join(root, "vendor")+string(filepath.Separator))
 
 		m.P = append(m.P, vsolver.ProjectDep{
-			Name:       vsolver.ProjectName(s),
+			Ident: vsolver.ProjectIdentifier{
+				LocalName: vsolver.ProjectName(s),
+			},
 			Constraint: vsolver.Any(),
 		})
 	}

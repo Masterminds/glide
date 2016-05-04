@@ -130,7 +130,9 @@ func AsMetadataPair(dir string) (vsolver.Manifest, vsolver.Lock, error) {
 		pkg, _ := util.NormalizeName(gom.name)
 
 		dep := vsolver.ProjectDep{
-			Name: vsolver.ProjectName(pkg),
+			Ident: vsolver.ProjectIdentifier{
+				LocalName: vsolver.ProjectName(pkg),
+			},
 		}
 
 		// Our order of preference for things to put in the manifest are

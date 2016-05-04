@@ -2,6 +2,8 @@ package action
 
 import (
 	"encoding/hex"
+	"log"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -10,7 +12,6 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
-	"github.com/Sirupsen/logrus"
 	"github.com/sdboyer/vsolver"
 )
 
@@ -32,7 +33,7 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, true, false, dependency.Analyzer{})
+	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
 	if err != nil {
 		msg.Die(err.Error())
 	}
@@ -52,8 +53,7 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 		}
 	}
 
-	l := logrus.New()
-	l.Level = logrus.WarnLevel
+	l := log.New(os.Stdout, "", 0)
 	s := vsolver.NewSolver(sm, l)
 	r, err := s.Solve(opts)
 	if err != nil {
@@ -77,10 +77,11 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	}
 
 	for _, p := range r.Projects() {
+		pi := p.Ident()
 		l := &cfg.Lock{
-			Name:       string(p.Name()),
-			Repository: p.URI(), // TODO this is wrong
-			VcsType:    "",      // TODO allow this to be extracted from sm
+			Name:       string(pi.LocalName),
+			Repository: pi.NetworkName,
+			VcsType:    "", // TODO allow this to be extracted from sm
 		}
 
 		v := p.Version()

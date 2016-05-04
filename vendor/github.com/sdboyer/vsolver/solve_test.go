@@ -2,37 +2,44 @@ package vsolver
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strings"
 	"testing"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // TODO regression test ensuring that locks with only revs for projects don't cause errors
+
+var stderrlog = log.New(os.Stderr, "", 0)
 
 func TestBasicSolves(t *testing.T) {
 	//solveAndBasicChecks(fixtures[8], t)
 	for _, fix := range fixtures {
 		solveAndBasicChecks(fix, t)
+		if testing.Verbose() {
+			// insert a line break between tests
+			stderrlog.Println("")
+		}
 	}
 }
 
 func solveAndBasicChecks(fix fixture, t *testing.T) (res Result, err error) {
-	sm := newdepspecSM(fix.ds, !fix.downgrade)
-
-	l := logrus.New()
-	if testing.Verbose() {
-		l.Level = logrus.DebugLevel
-	}
-
-	s := NewSolver(sm, l)
+	sm := newdepspecSM(fix.ds)
 
 	o := SolveOpts{
-		Root: string(fix.ds[0].Name()),
-		N:    ProjectName(fix.ds[0].Name()),
-		M:    fix.ds[0],
-		L:    dummyLock{},
+		Root:      string(fix.ds[0].Name()),
+		N:         ProjectName(fix.ds[0].Name()),
+		M:         fix.ds[0],
+		L:         dummyLock{},
+		Downgrade: fix.downgrade,
+		ChangeAll: fix.changeall,
 	}
+
+	if testing.Verbose() {
+		o.Trace = true
+	}
+
+	s := NewSolver(sm, stderrlog)
 
 	if fix.l != nil {
 		o.L = fix.l
@@ -48,8 +55,8 @@ func solveAndBasicChecks(fix fixture, t *testing.T) (res Result, err error) {
 		case *BadOptsFailure:
 			t.Error("Unexpected bad opts failure solve error: %s", err)
 		case *noVersionError:
-			if fix.errp[0] != string(fail.pn) {
-				t.Errorf("Expected failure on project %s, but was on project %s", fail.pn, fix.errp[0])
+			if fix.errp[0] != string(fail.pn.LocalName) { // TODO identifierify
+				t.Errorf("Expected failure on project %s, but was on project %s", fail.pn.LocalName, fix.errp[0])
 			}
 
 			ep := make(map[string]struct{})
@@ -100,7 +107,7 @@ func solveAndBasicChecks(fix fixture, t *testing.T) (res Result, err error) {
 		rp := make(map[string]Version)
 		for _, p := range r.p {
 			pa := p.toAtom()
-			rp[string(pa.Name)] = pa.Version
+			rp[string(pa.Ident.LocalName)] = pa.Version
 		}
 
 		fixlen, rlen := len(fix.r), len(rp)
@@ -139,18 +146,23 @@ func solveAndBasicChecks(fix fixture, t *testing.T) (res Result, err error) {
 func getFailureCausingProjects(err error) (projs []string) {
 	switch e := err.(type) {
 	case *noVersionError:
-		projs = append(projs, string(e.pn))
+		projs = append(projs, string(e.pn.LocalName)) // TODO identifierify
 	case *disjointConstraintFailure:
 		for _, f := range e.failsib {
-			projs = append(projs, string(f.Depender.Name))
+			projs = append(projs, string(f.Depender.Ident.LocalName))
 		}
 	case *versionNotAllowedFailure:
 		for _, f := range e.failparent {
-			projs = append(projs, string(f.Depender.Name))
+			projs = append(projs, string(f.Depender.Ident.LocalName))
 		}
 	case *constraintNotAllowedFailure:
 		// No sane way of knowing why the currently selected version is
 		// selected, so do nothing
+	case *sourceMismatchFailure:
+		projs = append(projs, string(e.prob.Ident.LocalName))
+		for _, c := range e.sel {
+			projs = append(projs, string(c.Depender.Ident.LocalName))
+		}
 	default:
 		panic("unknown failtype")
 	}
@@ -159,14 +171,9 @@ func getFailureCausingProjects(err error) (projs []string) {
 }
 
 func TestBadSolveOpts(t *testing.T) {
-	sm := newdepspecSM(fixtures[0].ds, true)
+	sm := newdepspecSM(fixtures[0].ds)
 
-	l := logrus.New()
-	if testing.Verbose() {
-		l.Level = logrus.DebugLevel
-	}
-
-	s := NewSolver(sm, l)
+	s := NewSolver(sm, nil)
 
 	o := SolveOpts{}
 	_, err := s.Solve(o)
@@ -174,7 +181,7 @@ func TestBadSolveOpts(t *testing.T) {
 		t.Errorf("Should have errored on missing manifest")
 	}
 
-	p, _ := sm.GetProjectInfo(fixtures[0].ds[0].name)
+	p, _ := sm.GetProjectInfo(fixtures[0].ds[0].n, fixtures[0].ds[0].v)
 	o.M = p.Manifest
 	_, err = s.Solve(o)
 	if err == nil {

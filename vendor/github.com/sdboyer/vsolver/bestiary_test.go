@@ -2,24 +2,35 @@ package vsolver
 
 import (
 	"fmt"
-	"sort"
+	"regexp"
 	"strings"
 
 	"github.com/Masterminds/semver"
 )
+
+var regfrom = regexp.MustCompile(`^(\w*) from (\w*) ([0-9\.]*)`)
 
 // nsvSplit splits an "info" string on " " into the pair of name and
 // version/constraint, and returns each individually.
 //
 // This is for narrow use - panics if there are less than two resulting items in
 // the slice.
-func nsvSplit(info string) (name string, version string) {
+func nsvSplit(info string) (id ProjectIdentifier, version string) {
+	if strings.Contains(info, " from ") {
+		parts := regfrom.FindStringSubmatch(info)
+		info = parts[1] + " " + parts[3]
+		id.NetworkName = parts[2]
+	}
+
 	s := strings.SplitN(info, " ", 2)
 	if len(s) < 2 {
 		panic(fmt.Sprintf("Malformed name/version info string '%s'", info))
 	}
 
-	name, version = s[0], s[1]
+	id.LocalName, version = ProjectName(s[0]), s[1]
+	if id.NetworkName == "" {
+		id.NetworkName = string(id.LocalName)
+	}
 	return
 }
 
@@ -30,17 +41,26 @@ func nsvSplit(info string) (name string, version string) {
 //
 // This is for narrow use - panics if there are less than two resulting items in
 // the slice.
-func nsvrSplit(info string) (name, version string, revision Revision) {
+func nsvrSplit(info string) (id ProjectIdentifier, version string, revision Revision) {
+	if strings.Contains(info, " from ") {
+		parts := regfrom.FindStringSubmatch(info)
+		info = parts[1] + " " + parts[3]
+		id.NetworkName = parts[2]
+	}
+
 	s := strings.SplitN(info, " ", 3)
 	if len(s) < 2 {
 		panic(fmt.Sprintf("Malformed name/version info string '%s'", info))
 	}
 
-	name, version = s[0], s[1]
+	id.LocalName, version = ProjectName(s[0]), s[1]
+	if id.NetworkName == "" {
+		id.NetworkName = string(id.LocalName)
+	}
+
 	if len(s) == 3 {
 		revision = Revision(s[2])
 	}
-
 	return
 }
 
@@ -49,7 +69,7 @@ func nsvrSplit(info string) (name, version string, revision Revision) {
 // Splits the input string on a space, and uses the first two elements as the
 // project name and constraint body, respectively.
 func mksvpa(info string) ProjectAtom {
-	name, ver, rev := nsvrSplit(info)
+	id, ver, rev := nsvrSplit(info)
 
 	_, err := semver.NewVersion(ver)
 	if err != nil {
@@ -64,7 +84,7 @@ func mksvpa(info string) ProjectAtom {
 	}
 
 	return ProjectAtom{
-		Name:    ProjectName(name),
+		Ident:   id,
 		Version: v,
 	}
 }
@@ -85,16 +105,17 @@ func mkc(body string, t ConstraintType) Constraint {
 // Splits the input string on a space, and uses the first two elements as the
 // project name and constraint body, respectively.
 func mksvd(info string) ProjectDep {
-	name, v := nsvSplit(info)
+	id, v := nsvSplit(info)
 
 	return ProjectDep{
-		Name:       ProjectName(name),
+		Ident:      id,
 		Constraint: mkc(v, SemverConstraint),
 	}
 }
 
 type depspec struct {
-	name    ProjectAtom
+	n       ProjectName
+	v       Version
 	deps    []ProjectDep
 	devdeps []ProjectDep
 }
@@ -109,16 +130,26 @@ type depspec struct {
 //
 // First string is broken out into the name/semver of the main package.
 func dsv(pi string, deps ...string) depspec {
+	pa := mksvpa(pi)
+	if string(pa.Ident.LocalName) != pa.Ident.NetworkName {
+		panic("alternate source on self makes no sense")
+	}
+
 	ds := depspec{
-		name: mksvpa(pi),
+		n: pa.Ident.LocalName,
+		v: pa.Version,
 	}
 
 	for _, dep := range deps {
+		var sl *[]ProjectDep
 		if strings.HasPrefix(dep, "(dev) ") {
-			ds.devdeps = append(ds.devdeps, mksvd(strings.TrimPrefix(dep, "(dev) ")))
+			dep = strings.TrimPrefix(dep, "(dev) ")
+			sl = &ds.devdeps
 		} else {
-			ds.deps = append(ds.deps, mksvd(dep))
+			sl = &ds.deps
 		}
+
+		*sl = append(*sl, mksvd(dep))
 	}
 
 	return ds
@@ -139,6 +170,8 @@ type fixture struct {
 	l fixLock
 	// projects expected to have errors, if any
 	errp []string
+	// request up/downgrade to all projects
+	changeall bool
 }
 
 // mklock makes a fixLock, suitable to act as a lock file
@@ -146,7 +179,7 @@ func mklock(pairs ...string) fixLock {
 	l := make(fixLock, 0)
 	for _, s := range pairs {
 		pa := mksvpa(s)
-		l = append(l, NewLockedProject(pa.Name, pa.Version, "", ""))
+		l = append(l, NewLockedProject(pa.Ident.LocalName, pa.Version, pa.Ident.netName(), ""))
 	}
 
 	return l
@@ -164,7 +197,7 @@ func mkresults(pairs ...string) map[string]Version {
 			v = v.(UnpairedVersion).Is(rev)
 		}
 
-		m[name] = v
+		m[string(name.LocalName)] = v
 	}
 
 	return m
@@ -218,6 +251,25 @@ var fixtures = []fixture{
 		),
 	},
 	{
+		n: "downgrade on overlapping constraints",
+		ds: []depspec{
+			dsv("root 0.0.0", "a 1.0.0", "b 1.0.0"),
+			dsv("a 1.0.0", "shared >=2.0.0, <=4.0.0"),
+			dsv("b 1.0.0", "shared >=3.0.0, <5.0.0"),
+			dsv("shared 2.0.0"),
+			dsv("shared 3.0.0"),
+			dsv("shared 3.6.9"),
+			dsv("shared 4.0.0"),
+			dsv("shared 5.0.0"),
+		},
+		r: mkresults(
+			"a 1.0.0",
+			"b 1.0.0",
+			"shared 3.0.0",
+		),
+		downgrade: true,
+	},
+	{
 		n: "shared dependency where dependent version in turn affects other dependencies",
 		ds: []depspec{
 			dsv("root 0.0.0", "foo <=1.0.2", "bar 1.0.0"),
@@ -252,6 +304,16 @@ var fixtures = []fixture{
 		),
 		maxAttempts: 2,
 	},
+	{
+		n: "with mismatched net addrs",
+		ds: []depspec{
+			dsv("root 1.0.0", "foo 1.0.0", "bar 1.0.0"),
+			dsv("foo 1.0.0", "bar from baz 1.0.0"),
+			dsv("bar 1.0.0"),
+		},
+		// TODO ugh; do real error comparison instead of shitty abstraction
+		errp: []string{"foo", "foo", "root"},
+	},
 	// fixtures with locks
 	{
 		n: "with compatible locked dependency",
@@ -271,6 +333,47 @@ var fixtures = []fixture{
 			"foo 1.0.1",
 			"bar 1.0.1",
 		),
+	},
+	{
+		n: "upgrade through lock",
+		ds: []depspec{
+			dsv("root 0.0.0", "foo *"),
+			dsv("foo 1.0.0", "bar 1.0.0"),
+			dsv("foo 1.0.1", "bar 1.0.1"),
+			dsv("foo 1.0.2", "bar 1.0.2"),
+			dsv("bar 1.0.0"),
+			dsv("bar 1.0.1"),
+			dsv("bar 1.0.2"),
+		},
+		l: mklock(
+			"foo 1.0.1",
+		),
+		r: mkresults(
+			"foo 1.0.2",
+			"bar 1.0.2",
+		),
+		changeall: true,
+	},
+	{
+		n: "downgrade through lock",
+		ds: []depspec{
+			dsv("root 0.0.0", "foo *"),
+			dsv("foo 1.0.0", "bar 1.0.0"),
+			dsv("foo 1.0.1", "bar 1.0.1"),
+			dsv("foo 1.0.2", "bar 1.0.2"),
+			dsv("bar 1.0.0"),
+			dsv("bar 1.0.1"),
+			dsv("bar 1.0.2"),
+		},
+		l: mklock(
+			"foo 1.0.1",
+		),
+		r: mkresults(
+			"foo 1.0.0",
+			"bar 1.0.0",
+		),
+		changeall: true,
+		downgrade: true,
 	},
 	{
 		n: "with incompatible locked dependency",
@@ -339,6 +442,20 @@ var fixtures = []fixture{
 			"newdep 2.0.0",
 		),
 		maxAttempts: 4,
+	},
+	{
+		n: "locked atoms are matched on both local and net name",
+		ds: []depspec{
+			dsv("root 0.0.0", "foo *"),
+			dsv("foo 1.0.0 foorev"),
+			dsv("foo 2.0.0 foorev2"),
+		},
+		l: mklock(
+			"foo from baz 1.0.0 foorev",
+		),
+		r: mkresults(
+			"foo 2.0.0 foorev2",
+		),
 	},
 	{
 		n: "includes root package's dev dependencies",
@@ -605,19 +722,19 @@ type depspecSourceManager struct {
 
 var _ SourceManager = &depspecSourceManager{}
 
-func newdepspecSM(ds []depspec, upgrade bool) *depspecSourceManager {
+func newdepspecSM(ds []depspec) *depspecSourceManager {
 	//TODO precompute the version lists, for speediness?
 	return &depspecSourceManager{
-		specs:  ds,
-		sortup: upgrade,
+		specs: ds,
 	}
 }
 
-func (sm *depspecSourceManager) GetProjectInfo(pa ProjectAtom) (ProjectInfo, error) {
+func (sm *depspecSourceManager) GetProjectInfo(n ProjectName, v Version) (ProjectInfo, error) {
 	for _, ds := range sm.specs {
-		if pa.Name == ds.name.Name && pa.Version.Matches(ds.name.Version) {
+		if n == ds.n && v.Matches(ds.v) {
 			return ProjectInfo{
-				pa:       ds.name,
+				N:        ds.n,
+				V:        ds.v,
 				Manifest: ds,
 				Lock:     dummyLock{},
 			}, nil
@@ -625,13 +742,13 @@ func (sm *depspecSourceManager) GetProjectInfo(pa ProjectAtom) (ProjectInfo, err
 	}
 
 	// TODO proper solver-type errors
-	return ProjectInfo{}, fmt.Errorf("Project '%s' at version '%s' could not be found", pa.Name, pa.Version)
+	return ProjectInfo{}, fmt.Errorf("Project '%s' at version '%s' could not be found", n, v)
 }
 
 func (sm *depspecSourceManager) ListVersions(name ProjectName) (pi []Version, err error) {
 	for _, ds := range sm.specs {
-		if name == ds.name.Name {
-			pi = append(pi, ds.name.Version)
+		if name == ds.n {
+			pi = append(pi, ds.v)
 		}
 	}
 
@@ -639,18 +756,12 @@ func (sm *depspecSourceManager) ListVersions(name ProjectName) (pi []Version, er
 		err = fmt.Errorf("Project '%s' could not be found", name)
 	}
 
-	if sm.sortup {
-		sort.Sort(upgradeVersionSorter(pi))
-	} else {
-		sort.Sort(downgradeVersionSorter(pi))
-	}
-
 	return
 }
 
 func (sm *depspecSourceManager) RepoExists(name ProjectName) (bool, error) {
 	for _, ds := range sm.specs {
-		if name == ds.name.Name {
+		if name == ds.n {
 			return true, nil
 		}
 	}
@@ -685,7 +796,7 @@ func (ds depspec) GetDevDependencies() []ProjectDep {
 
 // impl Spec interface
 func (ds depspec) Name() ProjectName {
-	return ds.name.Name
+	return ds.n
 }
 
 type fixLock []LockedProject
@@ -774,19 +885,6 @@ func rootDependency() {
     "myapp from root": "1.0.0",
     "foo": "1.0.0"
   });
-
-  testResolve("with mismatched sources", {
-    "myapp 1.0.0": {
-      "foo": "1.0.0",
-      "bar": "1.0.0"
-    },
-    "foo 1.0.0": {
-      "myapp": ">=1.0.0"
-    },
-    "bar 1.0.0": {
-      "myapp from mock2": ">=1.0.0"
-    }
-  }, error: sourceMismatch("myapp", "foo", "bar"));
 
   testResolve("with wrong version", {
     "myapp 1.0.0": {
@@ -923,134 +1021,5 @@ func backtracking() {
     "myapp from root": "0.0.0",
     "a": "1.0.0"
   }, maxTries: 2);
-
-  // Tests that the backjumper will jump past unrelated selections when a
-  // source conflict occurs. This test selects, in order:
-  // - myapp -> a
-  // - myapp -> b
-  // - myapp -> c (1 of 5)
-  // - b -> a
-  // It selects a and b first because they have fewer versions than c. It
-  // traverses b"s dependency on a after selecting a version of c because
-  // dependencies are traversed breadth-first (all of myapps"s immediate deps
-  // before any other their deps).
-  //
-  // This means it doesn"t discover the source conflict until after selecting
-  // c. When that happens, it should backjump past c instead of trying older
-  // versions of it since they aren"t related to the conflict.
-  testResolve("backjump to conflicting source", {
-    "myapp 0.0.0": {
-      "a": "any",
-      "b": "any",
-      "c": "any"
-    },
-    "a 1.0.0": {},
-    "a 1.0.0 from mock2": {},
-    "b 1.0.0": {
-      "a": "any"
-    },
-    "b 2.0.0": {
-      "a from mock2": "any"
-    },
-    "c 1.0.0": {},
-    "c 2.0.0": {},
-    "c 3.0.0": {},
-    "c 4.0.0": {},
-    "c 5.0.0": {},
-  }, result: {
-    "myapp from root": "0.0.0",
-    "a": "1.0.0",
-    "b": "1.0.0",
-    "c": "5.0.0"
-  }, maxTries: 2);
-
-  // Like the above test, but for a conflicting description.
-  testResolve("backjump to conflicting description", {
-    "myapp 0.0.0": {
-      "a-x": "any",
-      "b": "any",
-      "c": "any"
-    },
-    "a-x 1.0.0": {},
-    "a-y 1.0.0": {},
-    "b 1.0.0": {
-      "a-x": "any"
-    },
-    "b 2.0.0": {
-      "a-y": "any"
-    },
-    "c 1.0.0": {},
-    "c 2.0.0": {},
-    "c 3.0.0": {},
-    "c 4.0.0": {},
-    "c 5.0.0": {},
-  }, result: {
-    "myapp from root": "0.0.0",
-    "a": "1.0.0",
-    "b": "1.0.0",
-    "c": "5.0.0"
-  }, maxTries: 2);
-
-  // Similar to the above two tests but where there is no solution. It should
-  // fail in this case with no backtracking.
-  testResolve("backjump to conflicting source", {
-    "myapp 0.0.0": {
-      "a": "any",
-      "b": "any",
-      "c": "any"
-    },
-    "a 1.0.0": {},
-    "a 1.0.0 from mock2": {},
-    "b 1.0.0": {
-      "a from mock2": "any"
-    },
-    "c 1.0.0": {},
-    "c 2.0.0": {},
-    "c 3.0.0": {},
-    "c 4.0.0": {},
-    "c 5.0.0": {},
-  }, error: sourceMismatch("a", "myapp", "b"), maxTries: 1);
-
-  testResolve("backjump to conflicting description", {
-    "myapp 0.0.0": {
-      "a-x": "any",
-      "b": "any",
-      "c": "any"
-    },
-    "a-x 1.0.0": {},
-    "a-y 1.0.0": {},
-    "b 1.0.0": {
-      "a-y": "any"
-    },
-    "c 1.0.0": {},
-    "c 2.0.0": {},
-    "c 3.0.0": {},
-    "c 4.0.0": {},
-    "c 5.0.0": {},
-  }, error: descriptionMismatch("a", "myapp", "b"), maxTries: 1);
-
-  // This is a regression test for #18666. It was possible for the solver to
-  // "forget" that a package had previously led to an error. In that case, it
-  // would backtrack over the failed package instead of trying different
-  // versions of it.
-  testResolve("finds solution with less strict constraint", {
-    "myapp 1.0.0": {
-      "a": "any",
-      "c": "any",
-      "d": "any"
-    },
-    "a 2.0.0": {},
-    "a 1.0.0": {},
-    "b 1.0.0": {"a": "1.0.0"},
-    "c 1.0.0": {"b": "any"},
-    "d 2.0.0": {"myapp": "any"},
-    "d 1.0.0": {"myapp": "<1.0.0"}
-  }, result: {
-    "myapp from root": "1.0.0",
-    "a": "1.0.0",
-    "b": "1.0.0",
-    "c": "1.0.0",
-    "d": "2.0.0"
-  }, maxTries: 3);
 }
 */

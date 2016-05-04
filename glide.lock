@@ -8,13 +8,9 @@ imports:
 - name: github.com/Masterminds/vcs
   version: 591ce246073ea90ca042fc8837a9729680613844
 - name: github.com/sdboyer/vsolver
-  version: ff678258d305cac3af8c5db09b455afd94743fca
-- name: github.com/Sirupsen/logrus
-  version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
+  version: 56d2e3b8734ad7137c63021942cbb29d649d639f
 - name: github.com/termie/go-shutil
   version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
-- name: golang.org/x/sys
-  version: f64b50fbea64174967a8882830d621a18ee1548e
   subpackages:
   - unix
 - name: gopkg.in/yaml.v2

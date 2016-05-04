@@ -200,10 +200,15 @@ func depsToVSolver(deps Dependencies) []vsolver.ProjectDep {
 			}
 		}
 
+		id := vsolver.ProjectIdentifier{
+			LocalName: vsolver.ProjectName(d.Name),
+		}
+		if d.Repository != "" {
+			id.NetworkName = d.Repository
+		}
+
 		cp[k] = vsolver.ProjectDep{
-			// TODO vsolver makes a lot of assumptions about this name - need to
-			// make sure glide is compatible with those
-			Name:       vsolver.ProjectName(d.Name),
+			Ident:      id,
 			Constraint: c,
 		}
 	}

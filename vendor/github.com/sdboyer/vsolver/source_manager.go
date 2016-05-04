@@ -11,7 +11,7 @@ import (
 )
 
 type SourceManager interface {
-	GetProjectInfo(ProjectAtom) (ProjectInfo, error)
+	GetProjectInfo(ProjectName, Version) (ProjectInfo, error)
 	ListVersions(ProjectName) ([]Version, error)
 	RepoExists(ProjectName) (bool, error)
 	VendorCodeExists(ProjectName) (bool, error)
@@ -41,8 +41,6 @@ type sourceManager struct {
 	pms               map[ProjectName]*pmState
 	an                ProjectAnalyzer
 	ctx               build.Context
-	// Whether to sort versions for upgrade or downgrade
-	sortup bool
 	//pme               map[ProjectName]error
 }
 
@@ -54,7 +52,7 @@ type pmState struct {
 	vcur bool     // indicates that we've called ListVersions()
 }
 
-func NewSourceManager(cachedir, basedir string, upgrade, force bool, an ProjectAnalyzer) (SourceManager, error) {
+func NewSourceManager(cachedir, basedir string, force bool, an ProjectAnalyzer) (SourceManager, error) {
 	if an == nil {
 		return nil, fmt.Errorf("A ProjectAnalyzer must be provided to the SourceManager.")
 	}
@@ -82,7 +80,6 @@ func NewSourceManager(cachedir, basedir string, upgrade, force bool, an ProjectA
 	return &sourceManager{
 		cachedir: cachedir,
 		pms:      make(map[ProjectName]*pmState),
-		sortup:   upgrade,
 		ctx:      ctx,
 		an:       an,
 	}, nil
@@ -93,13 +90,13 @@ func (sm *sourceManager) Release() {
 	os.Remove(path.Join(sm.cachedir, "sm.lock"))
 }
 
-func (sm *sourceManager) GetProjectInfo(pa ProjectAtom) (ProjectInfo, error) {
-	pmc, err := sm.getProjectManager(pa.Name)
+func (sm *sourceManager) GetProjectInfo(n ProjectName, v Version) (ProjectInfo, error) {
+	pmc, err := sm.getProjectManager(n)
 	if err != nil {
 		return ProjectInfo{}, err
 	}
 
-	return pmc.pm.GetInfoAt(pa.Version)
+	return pmc.pm.GetInfoAt(v)
 }
 
 func (sm *sourceManager) ListVersions(n ProjectName) ([]Version, error) {
@@ -131,7 +128,8 @@ func (sm *sourceManager) RepoExists(n ProjectName) (bool, error) {
 }
 
 func (sm *sourceManager) ExportAtomTo(pa ProjectAtom, to string) error {
-	pms, err := sm.getProjectManager(pa.Name)
+	// TODO break up this atom, too?
+	pms, err := sm.getProjectManager(pa.Ident.LocalName)
 	if err != nil {
 		return err
 	}
@@ -212,7 +210,6 @@ func (sm *sourceManager) getProjectManager(n ProjectName) (*pmState, error) {
 		vendordir: sm.basedir + "/vendor",
 		an:        sm.an,
 		dc:        dc,
-		sortup:    sm.sortup,
 		crepo: &repo{
 			rpath: repodir,
 			r:     r,
@@ -222,97 +219,4 @@ func (sm *sourceManager) getProjectManager(n ProjectName) (*pmState, error) {
 	pms.pm = pm
 	sm.pms[n] = pms
 	return pms, nil
-}
-
-type upgradeVersionSorter []Version
-type downgradeVersionSorter []Version
-
-func (vs upgradeVersionSorter) Len() int {
-	return len(vs)
-}
-
-func (vs upgradeVersionSorter) Swap(i, j int) {
-	vs[i], vs[j] = vs[j], vs[i]
-}
-
-func (vs downgradeVersionSorter) Len() int {
-	return len(vs)
-}
-
-func (vs downgradeVersionSorter) Swap(i, j int) {
-	vs[i], vs[j] = vs[j], vs[i]
-}
-
-func (vs upgradeVersionSorter) Less(i, j int) bool {
-	l, r := vs[i], vs[j]
-
-	if tl, ispair := l.(versionPair); ispair {
-		l = tl.v
-	}
-	if tr, ispair := r.(versionPair); ispair {
-		r = tr.v
-	}
-
-	switch compareVersionType(l, r) {
-	case -1:
-		return true
-	case 1:
-		return false
-	case 0:
-		break
-	default:
-		panic("unreachable")
-	}
-
-	switch l.(type) {
-	// For these, now nothing to do but alpha sort
-	case Revision, branchVersion, plainVersion:
-		return l.String() < r.String()
-	}
-
-	// This ensures that pre-release versions are always sorted after ALL
-	// full-release versions
-	lsv, rsv := l.(semVersion).sv, r.(semVersion).sv
-	lpre, rpre := lsv.Prerelease() == "", rsv.Prerelease() == ""
-	if (lpre && !rpre) || (!lpre && rpre) {
-		return lpre
-	}
-	return lsv.GreaterThan(rsv)
-}
-
-func (vs downgradeVersionSorter) Less(i, j int) bool {
-	l, r := vs[i], vs[j]
-
-	if tl, ispair := l.(versionPair); ispair {
-		l = tl.v
-	}
-	if tr, ispair := r.(versionPair); ispair {
-		r = tr.v
-	}
-
-	switch compareVersionType(l, r) {
-	case -1:
-		return true
-	case 1:
-		return false
-	case 0:
-		break
-	default:
-		panic("unreachable")
-	}
-
-	switch l.(type) {
-	// For these, now nothing to do but alpha
-	case Revision, branchVersion, plainVersion:
-		return l.String() < r.String()
-	}
-
-	// This ensures that pre-release versions are always sorted after ALL
-	// full-release versions
-	lsv, rsv := l.(semVersion).sv, r.(semVersion).sv
-	lpre, rpre := lsv.Prerelease() == "", rsv.Prerelease() == ""
-	if (lpre && !rpre) || (!lpre && rpre) {
-		return lpre
-	}
-	return lsv.LessThan(rsv)
 }
