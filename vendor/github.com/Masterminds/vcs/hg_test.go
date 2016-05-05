@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"time"
 	//"log"
@@ -78,6 +79,14 @@ func TestHg(t *testing.T) {
 		t.Error("Wrong version returned from NewRepo")
 	}
 
+	v, err := repo.Current()
+	if err != nil {
+		t.Errorf("Error trying Hg Current: %s", err)
+	}
+	if v != "default" {
+		t.Errorf("Current failed to detect Hg on tip of default. Got version: %s", v)
+	}
+
 	// Set the version using the short hash.
 	err = repo.UpdateVersion("a5494ba2177f")
 	if err != nil {
@@ -85,12 +94,20 @@ func TestHg(t *testing.T) {
 	}
 
 	// Use Version to verify we are on the right version.
-	v, err := repo.Version()
-	if v != "a5494ba2177f" {
-		t.Error("Error checking checked out Hg version")
+	v, err = repo.Version()
+	if v != "a5494ba2177ff9ef26feb3c155dfecc350b1a8ef" {
+		t.Errorf("Error checking checked out Hg version: %s", v)
 	}
 	if err != nil {
 		t.Error(err)
+	}
+
+	v, err = repo.Current()
+	if err != nil {
+		t.Errorf("Error trying Hg Current for ref: %s", err)
+	}
+	if v != "a5494ba2177ff9ef26feb3c155dfecc350b1a8ef" {
+		t.Errorf("Current failed to detect Hg on ref of branch. Got version: %s", v)
 	}
 
 	// Use Date to verify we are on the right commit.
@@ -109,8 +126,8 @@ func TestHg(t *testing.T) {
 	}
 
 	v, err = repo.Version()
-	if v != "9c6ccbca73e8" {
-		t.Error("Error checking checked out Hg version")
+	if v != "9c6ccbca73e8a1351c834f33f57f1f7a0329ad35" {
+		t.Errorf("Error checking checked out Hg version: %s", v)
 	}
 	if err != nil {
 		t.Error(err)
@@ -187,6 +204,38 @@ func TestHg(t *testing.T) {
 	_, err = repo.CommitInfo("asdfasdfasdf")
 	if err != ErrRevisionUnavailable {
 		t.Error("Hg didn't return expected ErrRevisionUnavailable")
+	}
+
+	tempDir2, err := ioutil.TempDir("", "go-vcs-hg-tests-export")
+	if err != nil {
+		t.Fatalf("Error creating temp directory: %s", err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir2)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	exportDir := filepath.Join(tempDir2, "src")
+
+	err = repo.ExportDir(exportDir)
+	if err != nil {
+		t.Errorf("Unable to export Hg repo. Err was %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(exportDir, "Readme.md"))
+	if err != nil {
+		t.Errorf("Error checking exported file in Hg: %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(exportDir, string(repo.Vcs())))
+	if err != nil {
+		if found := os.IsNotExist(err); found == false {
+			t.Errorf("Error checking exported metadata in Hg: %s", err)
+		}
+	} else {
+		t.Error("Error checking Hg metadata. It exists.")
 	}
 }
 

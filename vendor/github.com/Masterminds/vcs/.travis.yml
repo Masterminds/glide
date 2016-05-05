@@ -7,6 +7,10 @@ go:
   - 1.6
   - tip
 
+before_script:
+  - git version
+  - svn --version
+
 # Setting sudo access to false will let Travis CI use containers rather than
 # VMs to run the tests. For more details see:
 # - http://docs.travis-ci.com/user/workers/container-based-infrastructure/
