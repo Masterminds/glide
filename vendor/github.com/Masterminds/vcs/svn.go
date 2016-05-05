@@ -126,12 +126,43 @@ func (s *SvnRepo) UpdateVersion(version string) error {
 
 // Version retrieves the current version.
 func (s *SvnRepo) Version() (string, error) {
-	out, err := s.RunFromDir("svnversion", ".")
+	type Commit struct {
+		Revision string `xml:"revision,attr"`
+	}
+	type Info struct {
+		Commit Commit `xml:"entry>commit"`
+	}
+
+	out, err := s.RunFromDir("svn", "info", "--xml")
 	s.log(out)
+	infos := &Info{}
+	err = xml.Unmarshal(out, &infos)
 	if err != nil {
 		return "", NewLocalError("Unable to retrieve checked out version", err, string(out))
 	}
-	return strings.TrimSpace(string(out)), nil
+
+	return infos.Commit.Revision, nil
+}
+
+// Current returns the current version-ish. This means:
+// * HEAD if on the tip.
+// * Otherwise a revision id
+func (s *SvnRepo) Current() (string, error) {
+	tip, err := s.CommitInfo("HEAD")
+	if err != nil {
+		return "", err
+	}
+
+	curr, err := s.Version()
+	if err != nil {
+		return "", err
+	}
+
+	if tip.Commit == curr {
+		return "HEAD", nil
+	}
+
+	return curr, nil
 }
 
 // Date retrieves the date on the latest commit.
@@ -209,6 +240,31 @@ func (s *SvnRepo) IsDirty() bool {
 
 // CommitInfo retrieves metadata about a commit.
 func (s *SvnRepo) CommitInfo(id string) (*CommitInfo, error) {
+
+	// There are cases where Svn log doesn't return anything for HEAD or BASE.
+	// svn info does provide details for these but does not have elements like
+	// the commit message.
+	if id == "HEAD" || id == "BASE" {
+		type Commit struct {
+			Revision string `xml:"revision,attr"`
+		}
+		type Info struct {
+			Commit Commit `xml:"entry>commit"`
+		}
+
+		out, err := s.RunFromDir("svn", "info", "-r", id, "--xml")
+		infos := &Info{}
+		err = xml.Unmarshal(out, &infos)
+		if err != nil {
+			return nil, NewLocalError("Unable to retrieve commit information", err, string(out))
+		}
+
+		id = infos.Commit.Revision
+		if id == "" {
+			return nil, ErrRevisionUnavailable
+		}
+	}
+
 	out, err := s.RunFromDir("svn", "log", "-r", id, "--xml")
 	if err != nil {
 		return nil, NewRemoteError("Unable to retrieve commit information", err, string(out))
@@ -264,6 +320,18 @@ func (s *SvnRepo) Ping() bool {
 	}
 
 	return true
+}
+
+// ExportDir exports the current revision to the passed in directory.
+func (s *SvnRepo) ExportDir(dir string) error {
+
+	out, err := s.RunFromDir("svn", "export", ".", dir)
+	s.log(out)
+	if err != nil {
+		return NewLocalError("Unable to export source", err, string(out))
+	}
+
+	return nil
 }
 
 // isUnableToCreateDir checks for an error in Init() to see if an error

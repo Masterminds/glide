@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"time"
 	//"log"
 	"os"
@@ -87,6 +88,14 @@ func TestSvn(t *testing.T) {
 	// 	t.Error("Wrong version returned from NewRepo")
 	// }
 
+	v, err := repo.Current()
+	if err != nil {
+		t.Errorf("Error trying Svn Current: %s", err)
+	}
+	if v != "HEAD" {
+		t.Errorf("Current failed to detect Svn on HEAD. Got version: %s", v)
+	}
+
 	// Update the version to a previous version.
 	err = repo.UpdateVersion("r2")
 	if err != nil {
@@ -94,12 +103,20 @@ func TestSvn(t *testing.T) {
 	}
 
 	// Use Version to verify we are on the right version.
-	v, err := repo.Version()
+	v, err = repo.Version()
 	if v != "2" {
 		t.Error("Error checking checked SVN out version")
 	}
 	if err != nil {
 		t.Error(err)
+	}
+
+	v, err = repo.Current()
+	if err != nil {
+		t.Errorf("Error trying Svn Current for ref: %s", err)
+	}
+	if v != "2" {
+		t.Errorf("Current failed to detect Svn on HEAD. Got version: %s", v)
 	}
 
 	// Perform an update which should take up back to the latest version.
@@ -186,6 +203,38 @@ func TestSvn(t *testing.T) {
 	_, err = repo.CommitInfo("555555555")
 	if err != ErrRevisionUnavailable {
 		t.Error("Svn didn't return expected ErrRevisionUnavailable")
+	}
+
+	tempDir2, err := ioutil.TempDir("", "go-vcs-svn-tests-export")
+	if err != nil {
+		t.Fatalf("Error creating temp directory: %s", err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir2)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	exportDir := filepath.Join(tempDir2, "src")
+
+	err = repo.ExportDir(exportDir)
+	if err != nil {
+		t.Errorf("Unable to export Svn repo. Err was %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(exportDir, "README.md"))
+	if err != nil {
+		t.Errorf("Error checking exported file in Svn: %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(exportDir, string(repo.Vcs())))
+	if err != nil {
+		if found := os.IsNotExist(err); found == false {
+			t.Errorf("Error checking exported metadata in Svn: %s", err)
+		}
+	} else {
+		t.Error("Error checking Svn metadata. It exists.")
 	}
 }
 
