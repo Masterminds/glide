@@ -80,7 +80,16 @@ func (pm *projectManager) GetInfoAt(v Version) (ProjectInfo, error) {
 	// happen?) that it'd be better to just not allow so that we don't have to
 	// think about it elsewhere
 	if !pm.CheckExistence(ExistsInCache) {
-		return ProjectInfo{}, fmt.Errorf("Project repository cache for %s does not exist", pm.n)
+		if pm.CheckExistence(ExistsUpstream) {
+			err := pm.crepo.r.Get()
+			if err != nil {
+				return ProjectInfo{}, fmt.Errorf("Failed to create repository cache for %s", pm.n)
+			}
+			pm.ex.s |= ExistsInCache
+			pm.ex.f |= ExistsInCache
+		} else {
+			return ProjectInfo{}, fmt.Errorf("Project repository cache for %s does not exist", pm.n)
+		}
 	}
 
 	if r, exists := pm.dc.VMap[v]; exists {
@@ -91,6 +100,8 @@ func (pm *projectManager) GetInfoAt(v Version) (ProjectInfo, error) {
 
 	var err error
 	if !pm.cvsync {
+		// TODO this may not be sufficient - git, for example, will fetch down
+		// the new revs, but local ones will remain unchanged
 		err = pm.crepo.r.Update()
 		if err != nil {
 			return ProjectInfo{}, fmt.Errorf("Could not fetch latest updates into repository")
@@ -108,7 +119,7 @@ func (pm *projectManager) GetInfoAt(v Version) (ProjectInfo, error) {
 	pm.crepo.mut.Unlock()
 	if err != nil {
 		// TODO More-er proper-er error
-		panic(fmt.Sprintf("canary - why is checkout/whatever failing: %s", err))
+		panic(fmt.Sprintf("canary - why is checkout/whatever failing: %s %s %s", pm.n, v.String(), err))
 	}
 
 	pm.crepo.mut.RLock()
@@ -130,9 +141,11 @@ func (pm *projectManager) GetInfoAt(v Version) (ProjectInfo, error) {
 
 func (pm *projectManager) ListVersions() (vlist []Version, err error) {
 	if !pm.cvsync {
-		pm.ex.s |= ExistsInCache | ExistsUpstream
-
+		// This check only guarantees that the upstream exists, not the cache
+		pm.ex.s |= ExistsUpstream
 		vpairs, exbits, err := pm.crepo.getCurrentVersionPairs()
+		// But it *may* also check the local existence
+		pm.ex.s |= exbits
 		pm.ex.f |= exbits
 
 		if err != nil {
@@ -142,7 +155,11 @@ func (pm *projectManager) ListVersions() (vlist []Version, err error) {
 		}
 
 		vlist = make([]Version, len(vpairs))
-		pm.cvsync = true
+		// only mark as synced if the callback indicated ExistsInCache
+		if exbits&ExistsInCache == ExistsInCache {
+			pm.cvsync = true
+		}
+
 		// Process the version data into the cache
 		// TODO detect out-of-sync data as we do this?
 		for k, v := range vpairs {
@@ -247,16 +264,33 @@ func (r *repo) getCurrentVersionPairs() (vlist []PairedVersion, exbits ProjectEx
 		// Local cache may not actually exist here, but upstream definitely does
 		exbits |= ExistsUpstream
 
+		tmap := make(map[string]PairedVersion)
 		for _, pair := range all {
 			var v PairedVersion
 			if string(pair[46:51]) == "heads" {
 				v = NewBranch(string(pair[52:])).Is(Revision(pair[:40])).(PairedVersion)
+				vlist = append(vlist, v)
 			} else if string(pair[46:50]) == "tags" {
-				// TODO deal with dereferenced tags
-				v = NewVersion(string(pair[51:])).Is(Revision(pair[:40])).(PairedVersion)
-			} else {
-				continue
+				vstr := string(pair[51:])
+				if strings.HasSuffix(vstr, "^{}") {
+					// If the suffix is there, then we *know* this is the rev of
+					// the underlying commit object that we actually want
+					vstr = strings.TrimSuffix(vstr, "^{}")
+				} else if _, exists := tmap[vstr]; exists {
+					// Already saw the deref'd version of this tag, if one
+					// exists, so skip this.
+					continue
+					// Can only hit this branch if we somehow got the deref'd
+					// version first. Which should be impossible, but this
+					// covers us in case of weirdness, anyway.
+				}
+				v = NewVersion(vstr).Is(Revision(pair[:40])).(PairedVersion)
+				tmap[vstr] = v
 			}
+		}
+
+		// Append all the deref'd (if applicable) tags into the list
+		for _, v := range tmap {
 			vlist = append(vlist, v)
 		}
 	case *vcs.BzrRepo:
@@ -374,7 +408,11 @@ func (r *repo) exportVersionTo(v Version, to string) error {
 		// TODO could have an err here
 		defer os.Rename(bak, idx)
 
-		_, err = r.r.RunFromDir("git", "read-tree", v.String())
+		vstr := v.String()
+		if rv, ok := v.(PairedVersion); ok {
+			vstr = rv.Underlying().String()
+		}
+		_, err = r.r.RunFromDir("git", "read-tree", vstr)
 		if err != nil {
 			return err
 		}
