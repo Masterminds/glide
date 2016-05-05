@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -201,10 +202,8 @@ func depsToVSolver(deps Dependencies) []vsolver.ProjectDep {
 		}
 
 		id := vsolver.ProjectIdentifier{
-			LocalName: vsolver.ProjectName(d.Name),
-		}
-		if d.Repository != "" {
-			id.NetworkName = d.Repository
+			LocalName:   vsolver.ProjectName(d.Name),
+			NetworkName: d.Repository,
 		}
 
 		cp[k] = vsolver.ProjectDep{
@@ -430,7 +429,7 @@ type Dependency struct {
 type dep struct {
 	Name        string   `yaml:"package"`
 	Reference   string   `yaml:"version,omitempty"`
-	RefType     string   `yaml:"vtype,omitempty"`
+	Branch      string   `yaml:"branch,omitempty"`
 	Ref         string   `yaml:"ref,omitempty"`
 	Repository  string   `yaml:"repo,omitempty"`
 	VcsType     string   `yaml:"vcs,omitempty"`
@@ -449,26 +448,30 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	d.Name = newDep.Name
 	d.Reference = newDep.Reference
 
-	if newDep.Reference == "" && newDep.RefType == "" {
-		// If both are empty, treat it as unrestricted
-		newDep.RefType = "any"
+	if d.Reference == "" && newDep.Ref != "" {
+		d.Reference = newDep.Ref
 	}
-	// TODO allow a 'default branch' constraint type?
 
-	switch newDep.RefType {
-	case "version":
-		d.Constraint, err = vsolver.NewConstraint(newDep.Reference, vsolver.VersionConstraint)
-	case "semver":
-		d.Constraint, err = vsolver.NewConstraint(newDep.Reference, vsolver.SemverConstraint)
-	case "branch":
-		d.Constraint, err = vsolver.NewConstraint(newDep.Reference, vsolver.BranchConstraint)
-	case "rev", "revision":
-		d.Constraint, err = vsolver.NewConstraint(newDep.Reference, vsolver.RevisionConstraint)
-	case "any":
+	if d.Reference != "" {
+		r := d.Reference
+		// TODO this covers git & hg; bzr and svn (??) need love
+		if len(r) == 40 {
+			if _, err := hex.DecodeString(r); err == nil {
+				d.Constraint, err = vsolver.NewConstraint(r, vsolver.RevisionConstraint)
+			}
+		} else {
+			d.Constraint, err = vsolver.NewConstraint(r, vsolver.SemverConstraint)
+			if err != nil {
+				d.Constraint, err = vsolver.NewConstraint(r, vsolver.VersionConstraint)
+			}
+		}
+	} else if newDep.Branch != "" {
+		d.Constraint, err = vsolver.NewConstraint(newDep.Branch, vsolver.BranchConstraint)
+	} else {
+		// TODO this is just for now - need a default branch constraint type
 		d.Constraint = vsolver.Any()
-	default:
-		return fmt.Errorf("Invalid version constraint type specified: %q", newDep.RefType)
 	}
+
 	if err != nil {
 		return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Reference, err)
 	}
@@ -478,10 +481,6 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	d.Subpackages = newDep.Subpackages
 	d.Arch = newDep.Arch
 	d.Os = newDep.Os
-
-	if d.Reference == "" && newDep.Ref != "" {
-		d.Reference = newDep.Ref
-	}
 
 	// Make sure only legitimate VCS are listed.
 	d.VcsType = filterVcsType(d.VcsType)
@@ -508,27 +507,31 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	// Make sure we only write the correct vcs type to file
 	t := filterVcsType(d.VcsType)
 
-	// Pull out the correct type of constraint
-	// TODO this is horrible; formally expose something
-	var rt string
-	if v, ok := d.Constraint.(vsolver.Version); ok {
-		rt = v.Type()
-	} else if d.Constraint == vsolver.Any() {
-		rt = "any"
-	} else {
-		// Only other possible case that's not also a version is semverConstraint
-		rt = "semver"
-	}
-
 	newDep := &dep{
 		Name:        d.Name,
-		Reference:   d.Reference,
-		RefType:     rt,
 		Repository:  d.Repository,
 		VcsType:     t,
 		Subpackages: d.Subpackages,
 		Arch:        d.Arch,
 		Os:          d.Os,
+	}
+
+	// Pull out the correct type of constraint
+	if v, ok := d.Constraint.(vsolver.Version); ok {
+		switch v.Type() {
+		case "any":
+			// Do nothing; nothing here is taken as 'any'
+		case "branch":
+			newDep.Branch = v.String()
+		case "revision", "semver", "version":
+			newDep.Reference = v.String()
+		}
+	} else if vsolver.IsAny(v) {
+		// We do nothing here, as the way any gets represented is with no
+		// constraint information at all
+		// TODO for now, probably until we add first-class 'default branch'
+	} else {
+		return nil, fmt.Errorf("Unrecognized constraint, cannot serialize config yaml")
 	}
 
 	return newDep, nil

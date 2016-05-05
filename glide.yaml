@@ -10,11 +10,9 @@ owners:
   homepage: https://www.mattfarina.com/
 import:
 - package: gopkg.in/yaml.v2
-  version: v2
-  vtype: branch
+  branch: v2
 - package: github.com/Masterminds/vcs
 - package: github.com/codegangsta/cli
 - package: github.com/Masterminds/semver
-  version: 2.x
-  vtype: branch
+  branch: 2.x
 - package: github.com/sdboyer/vsolver
