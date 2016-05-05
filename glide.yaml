@@ -16,3 +16,4 @@ import:
 - package: github.com/Masterminds/semver
   branch: 2.x
 - package: github.com/sdboyer/vsolver
+  branch: master

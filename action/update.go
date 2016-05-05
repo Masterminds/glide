@@ -49,7 +49,8 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	if gpath.HasLock(base) {
 		opts.L, err = LoadLockfile(base, conf)
 		if err != nil {
-			msg.Warn("Could not load lockfile; all projects will be updated.")
+			opts.L = nil
+			msg.Warn("Could not load lockfile; all projects will be updated. %s", err)
 		}
 	}
 
@@ -79,9 +80,12 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	for _, p := range r.Projects() {
 		pi := p.Ident()
 		l := &cfg.Lock{
-			Name:       string(pi.LocalName),
-			Repository: pi.NetworkName,
-			VcsType:    "", // TODO allow this to be extracted from sm
+			Name:    string(pi.LocalName),
+			VcsType: "", // TODO allow this to be extracted from sm
+		}
+
+		if l.Name != pi.NetworkName && pi.NetworkName != "" {
+			l.Repository = pi.NetworkName
 		}
 
 		v := p.Version()
@@ -90,6 +94,8 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 		} else {
 			l.Version = pv.String()
 		}
+
+		lf.Imports = append(lf.Imports, l)
 	}
 
 	err = lf.WriteFile(filepath.Join(base, gpath.LockFile))

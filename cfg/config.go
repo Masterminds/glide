@@ -465,15 +465,19 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				d.Constraint, err = vsolver.NewConstraint(r, vsolver.VersionConstraint)
 			}
 		}
+
+		if err != nil {
+			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, r, err)
+		}
 	} else if newDep.Branch != "" {
 		d.Constraint, err = vsolver.NewConstraint(newDep.Branch, vsolver.BranchConstraint)
+
+		if err != nil {
+			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Branch, err)
+		}
 	} else {
 		// TODO this is just for now - need a default branch constraint type
 		d.Constraint = vsolver.Any()
-	}
-
-	if err != nil {
-		return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Reference, err)
 	}
 
 	d.Repository = newDep.Repository
@@ -526,12 +530,12 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 		case "revision", "semver", "version":
 			newDep.Reference = v.String()
 		}
-	} else if vsolver.IsAny(v) {
+	} else if vsolver.IsAny(d.Constraint) {
 		// We do nothing here, as the way any gets represented is with no
 		// constraint information at all
 		// TODO for now, probably until we add first-class 'default branch'
 	} else {
-		return nil, fmt.Errorf("Unrecognized constraint, cannot serialize config yaml")
+		return nil, fmt.Errorf("Unrecognized constraint, cannot serialize config yaml; %s", newDep.Name)
 	}
 
 	return newDep, nil
@@ -574,6 +578,7 @@ func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 func (d *Dependency) Clone() *Dependency {
 	return &Dependency{
 		Name:             d.Name,
+		Constraint:       d.Constraint,
 		Reference:        d.Reference,
 		Pin:              d.Pin,
 		Repository:       d.Repository,
