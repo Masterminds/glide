@@ -45,6 +45,19 @@ func (lf *Lockfile) WriteFile(lockpath string) error {
 	return ioutil.WriteFile(lockpath, o, 0666)
 }
 
+// ReadLockFile loads the contents of a glide.lock file.
+func ReadLockFile(lockpath string) (*Lockfile, error) {
+	yml, err := ioutil.ReadFile(lockpath)
+	if err != nil {
+		return nil, err
+	}
+	lock, err := LockfileFromYaml(yml)
+	if err != nil {
+		return nil, err
+	}
+	return lock, nil
+}
+
 // Locks is a slice of locked dependencies.
 type Locks []*Lock
 
@@ -81,6 +94,19 @@ type Lock struct {
 	Os          []string `yaml:"os,omitempty"`
 }
 
+// LockFromDependency converts a Dependency to a Lock
+func LockFromDependency(dep *Dependency) *Lock {
+	return &Lock{
+		Name:        dep.Name,
+		Version:     dep.Pin,
+		Repository:  dep.Repository,
+		VcsType:     dep.VcsType,
+		Subpackages: dep.Subpackages,
+		Arch:        dep.Arch,
+		Os:          dep.Os,
+	}
+}
+
 // NewLockfile is used to create an instance of Lockfile.
 func NewLockfile(ds Dependencies, hash string) *Lockfile {
 	lf := &Lockfile{
@@ -90,15 +116,7 @@ func NewLockfile(ds Dependencies, hash string) *Lockfile {
 	}
 
 	for i := 0; i < len(ds); i++ {
-		lf.Imports[i] = &Lock{
-			Name:        ds[i].Name,
-			Version:     ds[i].Pin,
-			Repository:  ds[i].Repository,
-			VcsType:     ds[i].VcsType,
-			Subpackages: ds[i].Subpackages,
-			Arch:        ds[i].Arch,
-			Os:          ds[i].Os,
-		}
+		lf.Imports[i] = LockFromDependency(ds[i])
 	}
 
 	sort.Sort(lf.Imports)
@@ -116,15 +134,8 @@ func LockfileFromMap(ds map[string]*Dependency, hash string) *Lockfile {
 
 	i := 0
 	for name, dep := range ds {
-		lf.Imports[i] = &Lock{
-			Name:        name,
-			Version:     dep.Pin,
-			Repository:  dep.Repository,
-			VcsType:     dep.VcsType,
-			Subpackages: dep.Subpackages,
-			Arch:        dep.Arch,
-			Os:          dep.Os,
-		}
+		lf.Imports[i] = LockFromDependency(dep)
+		lf.Imports[i].Name = name
 		i++
 	}
 
