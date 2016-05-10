@@ -31,10 +31,13 @@ func CheckGoVendor() {
 			}
 		}
 		if len(_vendor) == 0 {
-			msg.Warn("no *%s GOPATH found.", _vendorSuffix)
+			_vendor = gopath[0] + _vendorSuffix
+		}
+		if len(_vendor) == 0 {
+			msg.Warn("no '*%s' found.", _vendorSuffix)
 			os.Exit(1)
 		} else {
-			msg.Info("found *%s GOPATH: %v", _vendorSuffix, _vendor)
+			msg.Info("using '*%s': %v", _vendorSuffix, _vendor)
 			gpath.UseGoVendor = false
 			gpath.GoPathVendorDir = filepath.Join(_vendor, "src")
 		}
