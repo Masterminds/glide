@@ -144,7 +144,7 @@ func EnsureGopath() string {
 
 	msg.Err("Could not find any of %s/src.\n", strings.Join(gps, "/src, "))
 	msg.Info("As of Glide 0.5/Go 1.5, this is required.\n")
-	msg.Die("Wihtout src, cannot continue.")
+	msg.Die("Without src, cannot continue.")
 	return ""
 }
 
