@@ -216,7 +216,7 @@ var vcsList = []*vcsInfo{
 	},
 	{
 		host:    "golang.org",
-		pattern: `^(?P<rootpkg>golang\.org/x/[A-Za-z0-9_.\-]+)(/?[A-Za-z0-9_.\-]+)*$`,
+		pattern: `^(?P<rootpkg>golang\.org/x/[A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)*$`,
 	},
 	{
 		host:    "go.googlesource.com",
