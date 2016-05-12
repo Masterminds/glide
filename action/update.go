@@ -16,31 +16,31 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	base := "."
 	EnsureGopath()
 	EnsureVendorDir()
-	conf := EnsureConfig()
 
 	// Delete unused packages
 	if installer.DeleteUnused {
-		dependency.DeleteUnused(conf)
+		dependency.DeleteUnused(installer.Config)
 	}
 
 	// Try to check out the initial dependencies.
-	if err := installer.Checkout(conf, false); err != nil {
+	if err := installer.Checkout(false); err != nil {
 		msg.Die("Failed to do initial checkout of config: %s", err)
 	}
 
 	// Set the versions for the initial dependencies so that resolved dependencies
 	// are rooted in the correct version of the base.
-	if err := repo.SetReference(conf); err != nil {
+	if err := installer.SetReferences(); err != nil {
 		msg.Die("Failed to set initial config references: %s", err)
 	}
 
 	// Prior to resolving dependencies we need to start working with a clone
 	// of the conf because we'll be making real changes to it.
-	confcopy := conf.Clone()
+	conforig := installer.Config
+	installer.Config = installer.Config.Clone()
 
 	if !skipRecursive {
 		// Get all repos and update them.
-		err := installer.Update(confcopy)
+		err := installer.Update()
 		if err != nil {
 			msg.Die("Could not update packages: %s", err)
 		}
@@ -53,7 +53,7 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 		// installer set them as it went to make sure it parsed the right imports
 		// from the right version of the package.
 		msg.Info("Setting references for remaining imports")
-		if err := repo.SetReference(confcopy); err != nil {
+		if err := installer.SetReferences(); err != nil {
 			msg.Err("Failed to set references: %s (Skip to cleanup)", err)
 		}
 	}
@@ -62,7 +62,7 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	// When stripping VCS happens this will happen as well. No need for double
 	// effort.
 	if installer.UpdateVendored && !strip {
-		repo.VendoredCleanup(confcopy)
+		repo.VendoredCleanup(installer.Config)
 	}
 
 	// Write glide.yaml (Why? Godeps/GPM/GB?)
@@ -75,25 +75,27 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	// should be added to the glide.yaml file. See issue #193.
 
 	if stripVendor {
-		confcopy = godep.RemoveGodepSubpackages(confcopy)
+		installer.Config = godep.RemoveGodepSubpackages(installer.Config)
 	}
 
 	if !skipRecursive {
 		// Write lock
-		hash, err := conf.Hash()
+		hash, err := conforig.Hash()
 		if err != nil {
 			msg.Die("Failed to generate config hash. Unable to generate lock file.")
 		}
-		lock := cfg.NewLockfile(confcopy.Imports, hash)
+		lock := cfg.NewLockfile(installer.Config.Imports, hash)
 		if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 			msg.Err("Could not write lock file to %s: %s", base, err)
 			return
 		}
 
-		msg.Info("Project relies on %d dependencies.", len(confcopy.Imports))
+		msg.Info("Project relies on %d dependencies.", len(installer.Config.Imports))
 	} else {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
 	}
+
+	installer.Config = conforig
 
 	if strip {
 		msg.Info("Removing version control data from vendor directory...")

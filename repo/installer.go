@@ -21,6 +21,20 @@ import (
 
 // Installer provides facilities for installing the repos in a config file.
 type Installer struct {
+	InstallerOptions
+
+	// Updated tracks the packages that have been remotely fetched.
+	Updated *UpdateTracker
+
+	// Vcs performs operations on repositories.
+	Vcs Vcser
+}
+
+// InstallerOptions is a configurations object for an Installer.
+type InstallerOptions struct {
+
+	// Config is a configuration object.
+	Config *cfg.Config
 
 	// Force the install when certain normally stopping conditions occur.
 	Force bool
@@ -33,8 +47,10 @@ type Installer struct {
 
 	// Use a cache
 	UseCache bool
+
 	// Use Gopath to cache
 	UseCacheGopath bool
+
 	// Use Gopath as a source to read from
 	UseGopath bool
 
@@ -49,15 +65,27 @@ type Installer struct {
 	// of every file of every package, rather than only following imported
 	// packages.
 	ResolveAllFiles bool
-
-	// Updated tracks the packages that have been remotely fetched.
-	Updated *UpdateTracker
 }
 
-func NewInstaller() *Installer {
-	i := &Installer{}
-	i.Updated = NewUpdateTracker()
-	return i
+// NewInstaller returns a new Installer configured with the specified InstallerOptions.
+func NewInstaller(options InstallerOptions) *Installer {
+	tracker := NewUpdateTracker()
+
+	return &Installer{
+		InstallerOptions: options,
+		Updated:          tracker,
+		Vcs: NewVcs(VcsOptions{
+			Home:           options.Home,
+			UseCache:       options.UseCache,
+			UseCacheGopath: options.UseCacheGopath,
+			UseGopath:      options.UseGopath,
+			UpdateVendored: options.UpdateVendored,
+			Force:          options.Force,
+			Vendor:         options.Vendor,
+			Config:         options.Config,
+			Tracker:        tracker,
+		}),
+	}
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -75,17 +103,17 @@ func (i *Installer) VendorPath() string {
 }
 
 // Install installs the dependencies from a Lockfile.
-func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, error) {
+func (i *Installer) Install(lock *cfg.Lockfile) (*cfg.Config, error) {
 
 	cwd, err := gpath.Vendor()
 	if err != nil {
-		return conf, err
+		return i.Config, err
 	}
 
 	// Create a config setup based on the Lockfile data to process with
 	// existing commands.
 	newConf := &cfg.Config{}
-	newConf.Name = conf.Name
+	newConf.Name = i.Config.Name
 
 	newConf.Imports = make(cfg.Dependencies, len(lock.Imports))
 	for k, v := range lock.Imports {
@@ -129,16 +157,16 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 //
 // This is used when initializing an empty vendor directory, or when updating a
 // vendor directory based on changed config.
-func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
+func (i *Installer) Checkout(useDev bool) error {
 
 	dest := i.VendorPath()
 
-	if err := ConcurrentUpdate(conf.Imports, dest, i, conf); err != nil {
+	if err := ConcurrentUpdate(i.Config.Imports, dest, i, i.Config); err != nil {
 		return err
 	}
 
 	if useDev {
-		return ConcurrentUpdate(conf.DevImports, dest, i, conf)
+		return ConcurrentUpdate(i.Config.DevImports, dest, i, i.Config)
 	}
 
 	return nil
@@ -151,22 +179,21 @@ func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
 // listed, but the version reconciliation has not been done.
 //
 // In other words, all versions in the Lockfile will be empty.
-func (i *Installer) Update(conf *cfg.Config) error {
+func (i *Installer) Update() error {
 	base := "."
 	vpath := i.VendorPath()
 
 	ic := newImportCache()
 
 	m := &MissingPackageHandler{
-		destination: vpath,
-
+		destination:    vpath,
 		cache:          i.UseCache,
 		cacheGopath:    i.UseCacheGopath,
 		useGopath:      i.UseGopath,
 		home:           i.Home,
 		force:          i.Force,
 		updateVendored: i.UpdateVendored,
-		Config:         conf,
+		Config:         i.Config,
 		Use:            ic,
 		updated:        i.Updated,
 	}
@@ -176,7 +203,8 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		Use:         ic,
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
-		Config:      conf,
+		Config:      i.Config,
+		Vcs:         i.Vcs,
 	}
 
 	// Update imports
@@ -184,27 +212,27 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
-	res.Config = conf
+	res.Config = i.Config
 	res.Handler = m
 	res.VersionHandler = v
 	res.ResolveAllFiles = i.ResolveAllFiles
 	msg.Info("Resolving imports")
-	_, err = allPackages(conf.Imports, res)
+	_, err = allPackages(i.Config.Imports, res)
 	if err != nil {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 
-	if len(conf.DevImports) > 0 {
+	if len(i.Config.DevImports) > 0 {
 		msg.Warn("dev imports not resolved.")
 	}
 
-	err = ConcurrentUpdate(conf.Imports, vpath, i, conf)
+	err = ConcurrentUpdate(i.Config.Imports, vpath, i, i.Config)
 
 	return err
 }
 
 // List resolves the complete dependency tree and returns a list of dependencies.
-func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
+func (i *Installer) List() []*cfg.Dependency {
 	base := "."
 	vpath := i.VendorPath()
 
@@ -215,7 +243,8 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 		Use:         ic,
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
-		Config:      conf,
+		Config:      i.Config,
+		Vcs:         i.Vcs,
 	}
 
 	// Update imports
@@ -223,21 +252,71 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
-	res.Config = conf
+	res.Config = i.Config
 	res.VersionHandler = v
 	res.ResolveAllFiles = i.ResolveAllFiles
 
 	msg.Info("Resolving imports")
-	_, err = allPackages(conf.Imports, res)
+	_, err = allPackages(i.Config.Imports, res)
 	if err != nil {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 
-	if len(conf.DevImports) > 0 {
+	if len(i.Config.DevImports) > 0 {
 		msg.Warn("dev imports not resolved.")
 	}
 
-	return conf.Imports
+	return i.Config.Imports
+}
+
+func (inst *Installer) SetReferences() error {
+
+	cwd, err := gpath.Vendor()
+	if err != nil {
+		return err
+	}
+
+	if len(inst.Config.Imports) == 0 {
+		msg.Info("No references set.\n")
+		return nil
+	}
+
+	done := make(chan struct{}, concurrentWorkers)
+	in := make(chan *cfg.Dependency, concurrentWorkers)
+	var wg sync.WaitGroup
+
+	for i := 0; i < concurrentWorkers; i++ {
+		go func(ch <-chan *cfg.Dependency) {
+			for {
+				select {
+				case dep := <-ch:
+					if err := inst.Vcs.Version(dep, cwd); err != nil {
+						msg.Err("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+					}
+					wg.Done()
+				case <-done:
+					return
+				}
+			}
+		}(in)
+	}
+
+	for _, dep := range inst.Config.Imports {
+		if !inst.Config.HasIgnore(dep.Name) {
+			wg.Add(1)
+			in <- dep
+		}
+	}
+
+	wg.Wait()
+	// Close goroutines setting the version
+	for i := 0; i < concurrentWorkers; i++ {
+		done <- struct{}{}
+	}
+	// close(done)
+	// close(in)
+
+	return nil
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
@@ -256,7 +335,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.C
 				select {
 				case dep := <-ch:
 					dest := filepath.Join(i.VendorPath(), dep.Name)
-					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored, i.Updated); err != nil {
+					if err := i.Vcs.Update(dep, dest); err != nil {
 						msg.Err("Update failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
@@ -327,6 +406,7 @@ type MissingPackageHandler struct {
 	Config                                               *cfg.Config
 	Use                                                  *importCache
 	updated                                              *UpdateTracker
+	vcs                                                  Vcser
 }
 
 // NotFound attempts to retrieve a package when not found in the local vendor/
@@ -376,7 +456,7 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 
 		m.Config.Imports = append(m.Config.Imports, d)
 	}
-	if err := VcsGet(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath); err != nil {
+	if err := m.vcs.Get(d, dest); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -444,7 +524,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 		m.Config.Imports = append(m.Config.Imports, d)
 	}
 
-	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored, m.updated); err != nil {
+	if err := m.vcs.Update(d, dest); err != nil {
 		return err
 	}
 
@@ -465,6 +545,8 @@ type VersionHandler struct {
 	Destination string
 
 	Config *cfg.Config
+
+	Vcs Vcser
 
 	// There's a problem where many sub-packages have been asked to set a version
 	// and you can end up with numerous conflict messages that are exactly the
@@ -553,7 +635,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		d.Config.Imports = append(d.Config.Imports, dep)
 	}
 
-	err := VcsVersion(dep, d.Destination)
+	err := d.Vcs.Version(dep, d.Destination)
 	if err != nil {
 		msg.Warn("Unable to set version on %s to %s. Err: %s", root, dep.Reference, err)
 		e = err

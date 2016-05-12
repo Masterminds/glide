@@ -242,13 +242,16 @@ func commands() []cli.Command {
 					msg.Warn("Only resolving dependencies for the current OS/Arch")
 				}
 
-				inst := repo.NewInstaller()
-				inst.Force = c.Bool("force")
-				inst.UseCache = c.Bool("cache")
-				inst.UseGopath = c.Bool("use-gopath")
-				inst.UseCacheGopath = c.Bool("cache-gopath")
-				inst.UpdateVendored = c.Bool("update-vendored")
-				inst.ResolveAllFiles = c.Bool("all-dependencies")
+				inst := repo.NewInstaller(repo.InstallerOptions{
+					Config:          action.EnsureConfig(),
+					Force:           c.Bool("force"),
+					UseCache:        c.Bool("cache"),
+					UseGopath:       c.Bool("use-gopath"),
+					UseCacheGopath:  c.Bool("cache-gopath"),
+					UpdateVendored:  c.Bool("update-vendored"),
+					ResolveAllFiles: c.Bool("all-dependencies"),
+				})
+
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
 				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
@@ -280,8 +283,10 @@ func commands() []cli.Command {
 					// FIXME: Implement this in the installer.
 					fmt.Println("Delete is not currently implemented.")
 				}
-				inst := repo.NewInstaller()
-				inst.Force = c.Bool("force")
+				inst := repo.NewInstaller(repo.InstallerOptions{
+					Config: action.EnsureConfig(),
+					Force:  c.Bool("force"),
+				})
 				packages := []string(c.Args())
 				action.Remove(packages, inst)
 			},
@@ -438,14 +443,16 @@ Example:
 					msg.Die("--strip-vendor cannot be used without --strip-vcs")
 				}
 
-				installer := repo.NewInstaller()
-				installer.Force = c.Bool("force")
-				installer.UseCache = c.Bool("cache")
-				installer.UseGopath = c.Bool("use-gopath")
-				installer.UseCacheGopath = c.Bool("cache-gopath")
-				installer.UpdateVendored = c.Bool("update-vendored")
-				installer.Home = gpath.Home()
-				installer.DeleteUnused = c.Bool("deleteOptIn")
+				installer := repo.NewInstaller(repo.InstallerOptions{
+					Config:         action.EnsureConfig(),
+					Force:          c.Bool("force"),
+					UseCache:       c.Bool("cache"),
+					UseGopath:      c.Bool("use-gopath"),
+					UseCacheGopath: c.Bool("cache-gopath"),
+					UpdateVendored: c.Bool("update-vendored"),
+					Home:           gpath.Home(),
+					DeleteUnused:   c.Bool("deleteOptIn"),
+				})
 
 				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
@@ -550,15 +557,17 @@ Example:
 					msg.Warn("Only resolving dependencies for the current OS/Arch")
 				}
 
-				installer := repo.NewInstaller()
-				installer.Force = c.Bool("force")
-				installer.UseCache = c.Bool("cache")
-				installer.UseGopath = c.Bool("use-gopath")
-				installer.UseCacheGopath = c.Bool("cache-gopath")
-				installer.UpdateVendored = c.Bool("update-vendored")
-				installer.ResolveAllFiles = c.Bool("all-dependencies")
-				installer.Home = gpath.Home()
-				installer.DeleteUnused = c.Bool("deleteOptIn")
+				installer := repo.NewInstaller(repo.InstallerOptions{
+					Config:          action.EnsureConfig(),
+					Force:           c.Bool("force"),
+					UseCache:        c.Bool("cache"),
+					UseGopath:       c.Bool("use-gopath"),
+					UseCacheGopath:  c.Bool("cache-gopath"),
+					UpdateVendored:  c.Bool("update-vendored"),
+					ResolveAllFiles: c.Bool("all-dependencies"),
+					Home:            gpath.Home(),
+					DeleteUnused:    c.Bool("deleteOptIn"),
+				})
 
 				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},

@@ -20,14 +20,14 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
-	conf := EnsureConfig()
+
 	glidefile, err := gpath.Glide()
 	if err != nil {
 		msg.Die("Could not find Glide file: %s", err)
 	}
 
 	// Add the packages to the config.
-	if count, err := addPkgsToConfig(conf, names, insecure); err != nil {
+	if count, err := addPkgsToConfig(installer.Config, names, insecure); err != nil {
 		msg.Die("Failed to get new packages: %s", err)
 	} else if count == 0 {
 		msg.Warn("Nothing to do")
@@ -37,14 +37,15 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	// Fetch the new packages. Can't resolve versions via installer.Update if
 	// get is called while the vendor/ directory is empty so we checkout
 	// everything.
-	err = installer.Checkout(conf, false)
+	err = installer.Checkout(false)
 	if err != nil {
 		msg.Die("Failed to checkout packages: %s", err)
 	}
 
 	// Prior to resolving dependencies we need to start working with a clone
 	// of the conf because we'll be making real changes to it.
-	confcopy := conf.Clone()
+	conforig := installer.Config
+	installer.Config = installer.Config.Clone()
 
 	if !skipRecursive {
 		// Get all repos and update them.
@@ -55,14 +56,14 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 		// to be between 1.0 and 2.0. But changing that dependency may then result
 		// in that dependency's dependencies changing... so we sorta do the whole
 		// thing to be safe.
-		err = installer.Update(confcopy)
+		err = installer.Update()
 		if err != nil {
 			msg.Die("Could not update packages: %s", err)
 		}
 	}
 
 	// Set Reference
-	if err := repo.SetReference(confcopy); err != nil {
+	if err := installer.SetReferences(); err != nil {
 		msg.Err("Failed to set references: %s", err)
 	}
 
@@ -70,22 +71,24 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	// When stripping VCS happens this will happen as well. No need for double
 	// effort.
 	if installer.UpdateVendored && !strip {
-		repo.VendoredCleanup(confcopy)
+		repo.VendoredCleanup(installer.Config)
 	}
 
 	// Write YAML
-	if err := conf.WriteFile(glidefile); err != nil {
+	if err := installer.Config.WriteFile(glidefile); err != nil {
 		msg.Die("Failed to write glide YAML file: %s", err)
 	}
 	if !skipRecursive {
 		// Write lock
 		if stripVendor {
-			confcopy = godep.RemoveGodepSubpackages(confcopy)
+			installer.Config = godep.RemoveGodepSubpackages(installer.Config)
 		}
-		writeLock(conf, confcopy, base)
+		writeLock(conforig, installer.Config, base)
 	} else {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
 	}
+
+	installer.Config = conforig
 
 	if strip {
 		msg.Info("Removing version control data from vendor directory...")

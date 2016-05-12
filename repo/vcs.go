@@ -20,8 +20,37 @@ import (
 	v "github.com/Masterminds/vcs"
 )
 
-// VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath, force, updateVendored bool, updated *UpdateTracker) error {
+// Vcser performs operations on repositories.
+type Vcser interface {
+	Update(*cfg.Dependency, string) error
+	Get(*cfg.Dependency, string) error
+	Version(*cfg.Dependency, string) error
+}
+
+// VcsOptions is a configuration object for a Vcs implementation.
+type VcsOptions struct {
+	Config         *cfg.Config
+	Tracker        *UpdateTracker
+	Home           string
+	UseCache       bool
+	UseCacheGopath bool
+	UseGopath      bool
+	UpdateVendored bool
+	Force          bool
+	Vendor         string
+}
+
+type defaultVcs struct {
+	VcsOptions
+}
+
+// NewVcs returns a new Vcser implementation.
+func NewVcs(options VcsOptions) Vcser {
+	return &defaultVcs{options}
+}
+
+// Update updates to a particular checkout based on the VCS setting.
+func (vcs *defaultVcs) Update(dep *cfg.Dependency, dest string) error {
 
 	// If the dependency has already been pinned we can skip it. This is a
 	// faster path so we don't need to resolve it again.
@@ -30,11 +59,11 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 		return nil
 	}
 
-	if updated.Check(dep.Name) {
+	if vcs.Tracker.Check(dep.Name) {
 		msg.Debug("%s was already updated, skipping.", dep.Name)
 		return nil
 	}
-	updated.Add(dep.Name)
+	vcs.Tracker.Add(dep.Name)
 
 	msg.Info("Fetching updates for %s.\n", dep.Name)
 
@@ -45,7 +74,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
+		if err = vcs.Get(dep, dest); err != nil {
 			msg.Warn("Unable to checkout %s\n", dep.Name)
 			return err
 		}
@@ -59,22 +88,22 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 			return err
 		}
 		_, err = v.DetectVcsFromFS(dest)
-		if updateVendored == false && empty == false && err == v.ErrCannotDetectVCS {
+		if vcs.UpdateVendored == false && empty == false && err == v.ErrCannotDetectVCS {
 			msg.Warn("%s appears to be a vendored package. Unable to update. Consider the '--update-vendored' flag.\n", dep.Name)
-		} else if updateVendored == false && empty == true && err == v.ErrCannotDetectVCS {
+		} else if vcs.UpdateVendored == false && empty == true && err == v.ErrCannotDetectVCS {
 			msg.Warn("%s is an empty directory. Fetching a new copy of the dependency.", dep.Name)
 			msg.Debug("Removing empty directory %s", dest)
 			err := os.RemoveAll(dest)
 			if err != nil {
 				return err
 			}
-			if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
+			if err = vcs.Get(dep, dest); err != nil {
 				msg.Warn("Unable to checkout %s\n", dep.Name)
 				return err
 			}
 		} else {
 
-			if updateVendored == true && empty == false && err == v.ErrCannotDetectVCS {
+			if vcs.UpdateVendored == true && empty == false && err == v.ErrCannotDetectVCS {
 				// A vendored package, no repo, and updating the vendored packages
 				// has been opted into.
 				msg.Info("%s is a vendored package. Updating.", dep.Name)
@@ -85,7 +114,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 				}
 				dep.UpdateAsVendored = true
 
-				if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
+				if err = vcs.Get(dep, dest); err != nil {
 					msg.Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
@@ -100,7 +129,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 			// location can be removed and replaced with the new one.
 			// Warning, any changes in the old location will be deleted.
 			// TODO: Put dirty checking in on the existing local checkout.
-			if (err == v.ErrWrongVCS || err == v.ErrWrongRemote) && force == true {
+			if (err == v.ErrWrongVCS || err == v.ErrWrongRemote) && vcs.Force == true {
 				var newRemote string
 				if len(dep.Repository) > 0 {
 					newRemote = dep.Repository
@@ -113,7 +142,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 				if rerr != nil {
 					return rerr
 				}
-				if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
+				if err = vcs.Get(dep, dest); err != nil {
 					msg.Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
@@ -161,8 +190,8 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 	return nil
 }
 
-// VcsVersion set the VCS version for a checkout.
-func VcsVersion(dep *cfg.Dependency, vend string) error {
+// Version set the VCS version for a checkout.
+func (vcs *defaultVcs) Version(dep *cfg.Dependency, dest string) error {
 
 	// If the dependency has already been pinned we can skip it. This is a
 	// faster path so we don't need to resolve it again.
@@ -171,7 +200,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 		return nil
 	}
 
-	cwd := filepath.Join(vend, dep.Name)
+	cwd := filepath.Join(dest, dep.Name)
 
 	// If there is no reference configured there is nothing to set.
 	if dep.Reference == "" {
@@ -259,12 +288,10 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 	return nil
 }
 
-// VcsGet figures out how to fetch a dependency, and then gets it.
-//
-// VcsGet installs into the dest.
-func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath bool) error {
+// Get figures out how to fetch a dependency, and then gets it.
+func (vcs *defaultVcs) Get(dep *cfg.Dependency, dest string) error {
 	// When not skipping the $GOPATH look in it for a copy of the package
-	if useGopath {
+	if vcs.UseGopath {
 		// Check if the $GOPATH has a viable version to use and if so copy to vendor
 		gps := gpath.Gopaths()
 		for _, p := range gps {
@@ -307,7 +334,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 				// If there is no reference set on the dep we try to checkout
 				// the default branch.
 				if dep.Reference == "" {
-					db := defaultBranch(repo, home)
+					db := defaultBranch(repo, vcs.Home)
 					if db != "" {
 						err = repo.UpdateVersion(db)
 						if err != nil && msg.Default.IsDebugging {
@@ -321,7 +348,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 	}
 
 	// When opting in to cache in the GOPATH attempt to do put a copy there.
-	if cacheGopath {
+	if vcs.UseCacheGopath {
 
 		// Since we didn't find an existing copy in the GOPATHs try to clone there.
 		gp := gpath.Gopath()
@@ -349,7 +376,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 					if err == nil {
 						msg.Debug("Saving default branch for %s", repo.Remote())
 						c := cacheRepoInfo{DefaultBranch: branch}
-						err = saveCacheRepoData(key, c, home)
+						err = saveCacheRepoData(key, c, vcs.Home)
 						if msg.Default.IsDebugging && err == errCacheDisabled {
 							msg.Debug("Unable to cache default branch because caching is disabled")
 						}
@@ -368,7 +395,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 	}
 
 	// If opting in to caching attempt to put it in the cache folder
-	if cache {
+	if vcs.UseCache {
 		// Check if the cache has a viable version and try to use that.
 		var loc string
 		if dep.Repository != "" {
@@ -378,7 +405,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 		}
 		key, err := cacheCreateKey(loc)
 		if err == nil {
-			d := filepath.Join(home, "cache", "src", key)
+			d := filepath.Join(vcs.Home, "cache", "src", key)
 
 			repo, err := dep.GetRepo(d)
 			if err != nil {
@@ -404,7 +431,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 					if err == nil {
 						msg.Debug("Saving default branch for %s", repo.Remote())
 						c := cacheRepoInfo{DefaultBranch: branch}
-						err = saveCacheRepoData(key, c, home)
+						err = saveCacheRepoData(key, c, vcs.Home)
 						if err == errCacheDisabled {
 							msg.Debug("Unable to cache default branch because caching is disabled")
 						} else if err != nil {
@@ -442,7 +469,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 	gerr := repo.Get()
 
 	// Attempt to cache the default branch
-	if cache {
+	if vcs.UseCache {
 		if branch := findCurrentBranch(repo); branch != "" {
 			// we know the default branch so we can store it in the cache
 			var loc string
@@ -455,7 +482,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 			if err == nil {
 				msg.Debug("Saving default branch for %s", repo.Remote())
 				c := cacheRepoInfo{DefaultBranch: branch}
-				err = saveCacheRepoData(key, c, home)
+				err = saveCacheRepoData(key, c, vcs.Home)
 				if err == errCacheDisabled {
 					msg.Debug("Unable to cache default branch because caching is disabled")
 				} else if err != nil {
