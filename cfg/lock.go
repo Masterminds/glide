@@ -2,7 +2,6 @@ package cfg
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"io/ioutil"
 	"sort"
 	"strings"
@@ -60,19 +59,17 @@ func (lf *Lockfile) Clone() *Lockfile {
 
 // Fingerprint returns a hash of the contents minus the date. This allows for
 // two lockfiles to be compared irrespective of their updated times.
-func (lf *Lockfile) Fingerprint() (string, error) {
+func (lf *Lockfile) Fingerprint() ([32]byte, error) {
 	c := lf.Clone()
 	c.Updated = time.Time{} // Set the time to be the nil equivalent
 	sort.Sort(c.Imports)
 	sort.Sort(c.DevImports)
 	yml, err := c.Marshal()
 	if err != nil {
-		return "", err
+		return [32]byte{}, err
 	}
 
-	hash := sha256.New()
-	hash.Write(yml)
-	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+	return sha256.Sum256(yml), nil
 }
 
 // Locks is a slice of locked dependencies.
