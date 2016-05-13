@@ -59,11 +59,6 @@ func EnsureConfig() *cfg.Config {
 	return conf
 }
 
-// EnsureCacheDir ensures the existence of the cache directory
-func EnsureCacheDir() {
-	msg.Warn("ensure.go: ensureCacheDir is not implemented.")
-}
-
 // EnsureGoVendor ensures that the Go version is correct.
 func EnsureGoVendor() {
 	// 6l was removed in 1.5, when vendoring was introduced.
@@ -147,7 +142,6 @@ func EnsureGopath() string {
 	msg.Die("Without src, cannot continue.")
 	return ""
 }
-
 
 // goExecutable checks for a set environment variable of GLIDE_GO_EXECUTABLE
 // for the go executable name. The Google App Engine SDK ships with a python

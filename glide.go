@@ -49,7 +49,6 @@ import (
 
 	"fmt"
 	"os"
-	"os/user"
 )
 
 var version = "0.11.0-dev"
@@ -97,7 +96,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "home",
-			Value:  defaultGlideDir(),
+			Value:  gpath.Home(),
 			Usage:  "The location of Glide files",
 			EnvVar: "GLIDE_HOME",
 		},
@@ -444,7 +443,7 @@ Example:
 				installer.UseGopath = c.Bool("use-gopath")
 				installer.UseCacheGopath = c.Bool("cache-gopath")
 				installer.UpdateVendored = c.Bool("update-vendored")
-				installer.Home = gpath.Home()
+				installer.Home = c.GlobalString("home")
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
 				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
@@ -557,7 +556,7 @@ Example:
 				installer.UseCacheGopath = c.Bool("cache-gopath")
 				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.ResolveAllFiles = c.Bool("all-dependencies")
-				installer.Home = gpath.Home()
+				installer.Home = c.GlobalString("home")
 				installer.DeleteUnused = c.Bool("deleteOptIn")
 
 				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
@@ -647,14 +646,6 @@ Example:
 			},
 		},
 	}
-}
-
-func defaultGlideDir() string {
-	c, err := user.Current()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(c.HomeDir, ".glide")
 }
 
 // startup sets up the base environment.
