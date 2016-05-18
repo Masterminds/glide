@@ -1,5 +1,5 @@
-hash: ad45c67435360c4f325456e7ddf29c1717eac0558d137d70ff233d3e47c5192e
-updated: 2016-04-15T23:24:11.358741125-04:00
+hash: 7910c2dd1621da530f7089cbfa62dec829a70069a42eadea5b91871f687c36ad
+updated: 2016-05-17T23:34:47.680952322-04:00
 imports:
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
@@ -8,7 +8,7 @@ imports:
 - name: github.com/Masterminds/vcs
   version: 591ce246073ea90ca042fc8837a9729680613844
 - name: github.com/sdboyer/vsolver
-  version: f4ed99bbece5fc06716488f56df163dcbd08d8df
+  version: 9bc87644dc7f495e7eeab473ae74d38d0dab1b86
 - name: github.com/termie/go-shutil
   version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
   subpackages:
