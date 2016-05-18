@@ -1,5 +1,5 @@
 hash: 7910c2dd1621da530f7089cbfa62dec829a70069a42eadea5b91871f687c36ad
-updated: 2016-05-18T00:13:49.105825049-04:00
+updated: 2016-05-18T10:11:13.245632806-04:00
 imports:
 - name: github.com/Masterminds/semver
   version: 0a2c9fc0eee2c4cbb9526877c4a54da047fdcadd
@@ -10,7 +10,7 @@ imports:
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
 - name: github.com/sdboyer/vsolver
-  version: 9bc87644dc7f495e7eeab473ae74d38d0dab1b86
+  version: 7e9063e6eaced292f4c4dec334015ff40018c656
 - name: github.com/termie/go-shutil
   version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
 devImports: []
