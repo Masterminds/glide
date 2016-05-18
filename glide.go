@@ -469,10 +469,6 @@ Example:
 					Name:  "all-dependencies",
 					Usage: "This will resolve all dependencies for all packages, not just those directly used.",
 				},
-				cli.StringFlag{
-					Name:  "file, f",
-					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
-				},
 				cli.BoolFlag{
 					Name:  "cache-gopath",
 					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
@@ -487,10 +483,6 @@ Example:
 				},
 			},
 			Action: func(c *cli.Context) {
-				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
-					msg.Die("--strip-vendor cannot be used without --strip-vcs")
-				}
-
 				if c.Bool("resolve-current") {
 					util.ResolveCurrent = true
 					msg.Warn("Only resolving dependencies for the current OS/Arch")
