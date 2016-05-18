@@ -16,7 +16,7 @@ import (
 )
 
 // Update updates repos and the lock file from the main glide yaml.
-func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
+func Update(installer *repo.Installer, sv bool, projs []string) {
 	base := "."
 	EnsureGopath()
 	EnsureVendorDir()
@@ -32,18 +32,23 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
-	// Create the SourceManager for this run
-	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
-	if err != nil {
-		msg.Die(err.Error())
-	}
-	// TODO this defer doesn't trigger when we exit through a msg.Die() call
-	defer sm.Release()
-
 	opts := vsolver.SolveOpts{
-		N:    vsolver.ProjectName(conf.ProjectName),
-		Root: filepath.Dir(vend),
-		M:    conf,
+		N:     vsolver.ProjectName(conf.ProjectName),
+		Root:  filepath.Dir(vend),
+		M:     conf,
+		Trace: true,
+	}
+
+	if len(projs) == 0 {
+		opts.ChangeAll = true
+	} else {
+		opts.ChangeAll = false
+		for _, p := range projs {
+			if !conf.HasDependency(p) {
+				msg.Die("Cannot update %s, as it is not listed as dependency in glide.yaml.", p)
+			}
+			opts.ToChange = append(opts.ToChange, vsolver.ProjectName(p))
+		}
 	}
 
 	if gpath.HasLock(base) {
@@ -53,6 +58,14 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 			msg.Warn("Could not load lockfile; all projects will be updated. %s", err)
 		}
 	}
+
+	// Create the SourceManager for this run
+	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
+	if err != nil {
+		msg.Die(err.Error())
+	}
+	// TODO this defer doesn't trigger when we exit through a msg.Die() call
+	defer sm.Release()
 
 	l := log.New(os.Stdout, "", 0)
 	s := vsolver.NewSolver(sm, l)
@@ -92,7 +105,7 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 		if pv, ok := v.(vsolver.PairedVersion); ok {
 			l.Version = pv.Underlying().String()
 		} else {
-			l.Version = pv.String()
+			l.Version = v.String()
 		}
 
 		lf.Imports = append(lf.Imports, l)

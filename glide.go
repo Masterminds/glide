@@ -391,66 +391,36 @@ Example:
 			Name:      "install",
 			ShortName: "i",
 			Usage:     "Install a project's dependencies",
-			Description: `This uses the native VCS of each packages to install
-		the appropriate version. There are two ways a projects dependencies can
-	be installed. When there is a glide.yaml file defining the dependencies but
-	no lock file (glide.lock) the dependencies are installed using the "update"
-	command and a glide.lock file is generated pinning all dependencies. If a
-	glide.lock file is already present the dependencies are installed or updated
-	from the lock file.`,
+			Description: `This uses the native VCS of each package to install
+			the appropriate version into the vendor directory adjacent to
+			glide.yaml. Installs are always performed from a lock file, which
+			contains pinned, immutable versions. If no lock file exists, glide
+			will compute one first, then run the install (unless --install-only
+			is passed).`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "delete",
-					Usage: "Delete vendor packages not specified in config.",
+					Name:  "install-only",
+					Usage: "Install only if a glide.lock file already exists; otherwise, an error is thrown.",
 				},
 				cli.BoolFlag{
-					Name:  "force",
-					Usage: "If there was a change in the repo or VCS switch to new one. Warning: changes will be lost.",
-				},
-				cli.BoolFlag{
-					Name:  "update-vendored, u",
-					Usage: "Update vendored packages (without local VCS repo). Warning: this may destroy local modifications to vendor/.",
-				},
-				cli.StringFlag{
-					Name:  "file, f",
-					Usage: "Save all of the discovered dependencies to a Glide YAML file. (DEPRECATED: This has no impact.)",
-				},
-				cli.BoolFlag{
-					Name:  "cache",
-					Usage: "When downloading dependencies attempt to cache them.",
+					Name:  "synced-only",
+					Usage: "Install only if the glide.lock file is in sync with the glide.yaml, otherwise exit with an error. (Implies --install-only)",
 				},
 				cli.BoolFlag{
 					Name:  "cache-gopath",
 					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
 				},
 				cli.BoolFlag{
-					Name:  "use-gopath",
-					Usage: "Copy dependencies from the GOPATH if they exist there.",
-				},
-				cli.BoolFlag{
-					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
-				},
-				cli.BoolFlag{
 					Name:  "strip-vendor, v",
-					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+					Usage: "Removes nested vendor and Godeps/_workspace directories.",
 				},
 			},
 			Action: func(c *cli.Context) {
-				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
-					msg.Die("--strip-vendor cannot be used without --strip-vcs")
-				}
-
 				installer := repo.NewInstaller()
-				installer.Force = c.Bool("force")
-				installer.UseCache = c.Bool("cache")
-				installer.UseGopath = c.Bool("use-gopath")
 				installer.UseCacheGopath = c.Bool("cache-gopath")
-				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.Home = gpath.Home()
-				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+				action.Install(installer, c.Bool("install-only"), c.Bool("synced-only"), c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -458,9 +428,9 @@ Example:
 			ShortName: "up",
 			Usage:     "Update a project's dependencies",
 			Description: `This uses the native VCS of each package to try to
-	pull the most applicable updates. Packages with fixed refs (Versions or
-	tags) will not be updated. Packages with no ref or with a branch ref will
-	be updated as expected.
+	pull the most applicable updates. If no arguments are provided, then glide
+	will attempt to update all dependencies. If package names are provided, then
+	glide will attempt to find a solution where only those packages are changed.
 
 	If a dependency has a glide.yaml file, update will read that file and
 	update those dependencies accordingly. Those dependencies are maintained in
@@ -496,52 +466,24 @@ Example:
 	`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "delete",
-					Usage: "Delete vendor packages not specified in config.",
-				},
-				cli.BoolFlag{
-					Name:  "no-recursive, quick",
-					Usage: "Disable updating dependencies' dependencies. Only update things in glide.yaml.",
-				},
-				cli.BoolFlag{
-					Name:  "force",
-					Usage: "If there was a change in the repo or VCS switch to new one. Warning, changes will be lost.",
-				},
-				cli.BoolFlag{
 					Name:  "all-dependencies",
 					Usage: "This will resolve all dependencies for all packages, not just those directly used.",
-				},
-				cli.BoolFlag{
-					Name:  "update-vendored, u",
-					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
 				},
 				cli.StringFlag{
 					Name:  "file, f",
 					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 				},
 				cli.BoolFlag{
-					Name:  "cache",
-					Usage: "When downloading dependencies attempt to cache them.",
-				},
-				cli.BoolFlag{
 					Name:  "cache-gopath",
 					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
-				},
-				cli.BoolFlag{
-					Name:  "use-gopath",
-					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
 				cli.BoolFlag{
 					Name:  "resolve-current",
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
 				cli.BoolFlag{
-					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
-				},
-				cli.BoolFlag{
 					Name:  "strip-vendor, v",
-					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+					Usage: "Removes nested vendor and Godeps/_workspace directories.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -555,16 +497,11 @@ Example:
 				}
 
 				installer := repo.NewInstaller()
-				installer.Force = c.Bool("force")
-				installer.UseCache = c.Bool("cache")
-				installer.UseGopath = c.Bool("use-gopath")
 				installer.UseCacheGopath = c.Bool("cache-gopath")
-				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.ResolveAllFiles = c.Bool("all-dependencies")
 				installer.Home = gpath.Home()
-				installer.DeleteUnused = c.Bool("deleteOptIn")
 
-				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+				action.Update(installer, c.Bool("strip-vendor"), []string(c.Args()))
 			},
 		},
 		{

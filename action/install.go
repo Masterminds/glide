@@ -17,7 +17,7 @@ import (
 )
 
 // Install installs a vendor directory based on an existing Glide configuration.
-func Install(installer *repo.Installer, strip, stripVendor bool) {
+func Install(installer *repo.Installer, io, so, sv bool) {
 	base := "."
 	// Ensure GOPATH
 	EnsureGopath()
@@ -35,7 +35,6 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 	if err != nil {
 		msg.Die(err.Error())
 	}
-	defer sm.Release()
 
 	opts := vsolver.SolveOpts{
 		N:    vsolver.ProjectName(conf.ProjectName),
@@ -51,13 +50,21 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 		}
 		// Check if digests match, and warn if they don't
 		if bytes.Equal(opts.L.InputHash(), opts.HashInputs()) {
-			msg.Warn("glide.yaml is out of sync with glide.lock!")
+			if so {
+				sm.Release()
+				msg.Die("glide.yaml is out of sync with glide.lock")
+			} else {
+				msg.Warn("glide.yaml is out of sync with glide.lock!")
+			}
 		}
 		err = writeVendor(vend, opts.L, sm)
 		if err != nil {
 			sm.Release()
 			msg.Die(err.Error())
 		}
+	} else if io || so {
+		sm.Release()
+		msg.Die("No glide.lock file could be found.")
 	} else {
 		// There is no lock, so we solve first
 		l := log.New(os.Stdout, "", 0)
@@ -75,6 +82,8 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 			msg.Die(err.Error())
 		}
 	}
+
+	sm.Release()
 }
 
 // TODO This will almost certainly need to be renamed and move somewhere else
