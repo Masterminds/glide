@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
-
 	//"github.com/Masterminds/glide/msg"
 )
 
@@ -36,22 +36,34 @@ func EnsureCacheDir(c cookoo.Context, p *cookoo.Params) (interface{}, cookoo.Int
 }
 */
 
+// scpSyntaxRe matches the SCP-like addresses used to access repos over SSH.
+var scpSyntaxRe = regexp.MustCompile(`^([a-zA-Z0-9_]+)@([a-zA-Z0-9._-]+):(.*)$`)
+
 // Pass in a repo location and get a cache key from it.
 func cacheCreateKey(repo string) (string, error) {
 
-	// A url needs a scheme. A git repo such as
-	// git@github.com:Masterminds/cookoo.git reworked to the url parser.
-	c := strings.Contains(repo, "://")
-	if !c {
-		repo = "ssh://" + repo
+	var u *url.URL
+	var err error
+	var strip bool
+	if m := scpSyntaxRe.FindStringSubmatch(repo); m != nil {
+		// Match SCP-like syntax and convert it to a URL.
+		// Eg, "git@github.com:user/repo" becomes
+		// "ssh://git@github.com/user/repo".
+		u = &url.URL{
+			Scheme: "ssh",
+			User:   url.User(m[1]),
+			Host:   m[2],
+			Path:   "/" + m[3],
+		}
+		strip = true
+	} else {
+		u, err = url.Parse(repo)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	u, err := url.Parse(repo)
-	if err != nil {
-		return "", err
-	}
-
-	if !c {
+	if strip {
 		u.Scheme = ""
 	}
 

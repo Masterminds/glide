@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"io/ioutil"
 	"sort"
@@ -86,8 +87,43 @@ func (lf *Lockfile) Projects() []vsolver.LockedProject {
 	return lp
 }
 
+// Clone returns a clone of Lockfile
+func (lf *Lockfile) Clone() *Lockfile {
+	n := &Lockfile{}
+	n.Hash = lf.Hash
+	n.Updated = lf.Updated
+	n.Imports = lf.Imports.Clone()
+	n.DevImports = lf.DevImports.Clone()
+
+	return n
+}
+
+// Fingerprint returns a hash of the contents minus the date. This allows for
+// two lockfiles to be compared irrespective of their updated times.
+func (lf *Lockfile) Fingerprint() ([32]byte, error) {
+	c := lf.Clone()
+	c.Updated = time.Time{} // Set the time to be the nil equivalent
+	sort.Sort(c.Imports)
+	sort.Sort(c.DevImports)
+	yml, err := c.Marshal()
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	return sha256.Sum256(yml), nil
+}
+
 // Locks is a slice of locked dependencies.
 type Locks []*Lock
+
+// Clone returns a Clone of Locks.
+func (l Locks) Clone() Locks {
+	n := make(Locks, 0, len(l))
+	for _, v := range l {
+		n = append(n, v.Clone())
+	}
+	return n
+}
 
 // Len returns the length of the Locks. This is needed for sorting with
 // the sort package.
@@ -120,6 +156,19 @@ type Lock struct {
 	Subpackages []string `yaml:"subpackages,omitempty"`
 	Arch        []string `yaml:"arch,omitempty"`
 	Os          []string `yaml:"os,omitempty"`
+}
+
+// Clone creates a clone of a Lock.
+func (l *Lock) Clone() *Lock {
+	return &Lock{
+		Name:        l.Name,
+		Version:     l.Version,
+		Repository:  l.Repository,
+		VcsType:     l.VcsType,
+		Subpackages: l.Subpackages,
+		Arch:        l.Arch,
+		Os:          l.Os,
+	}
 }
 
 // NewLockfile is used to create an instance of Lockfile.

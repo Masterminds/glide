@@ -67,7 +67,7 @@ func EnsureCacheDir() {
 // EnsureGoVendor ensures that the Go version is correct.
 func EnsureGoVendor() {
 	// 6l was removed in 1.5, when vendoring was introduced.
-	cmd := exec.Command("go", "tool", "6l")
+	cmd := exec.Command(goExecutable(), "tool", "6l")
 	if _, err := cmd.CombinedOutput(); err == nil {
 		msg.Warn("You must install the Go 1.5 or greater toolchain to work with Glide.\n")
 		os.Exit(1)
@@ -75,13 +75,13 @@ func EnsureGoVendor() {
 
 	// Check if this is go15, which requires GO15VENDOREXPERIMENT
 	// Any release after go15 does not require that env var.
-	cmd = exec.Command("go", "version")
+	cmd = exec.Command(goExecutable(), "version")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		msg.Err("Error getting version: %s.\n", err)
 		os.Exit(1)
 	} else if strings.HasPrefix(string(out), "go version 1.5") {
 		// This works with 1.5 and 1.6.
-		cmd = exec.Command("go", "env", "GO15VENDOREXPERIMENT")
+		cmd = exec.Command(goExecutable(), "env", "GO15VENDOREXPERIMENT")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			msg.Err("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
 			os.Exit(1)
@@ -144,6 +144,21 @@ func EnsureGopath() string {
 
 	msg.Err("Could not find any of %s/src.\n", strings.Join(gps, "/src, "))
 	msg.Info("As of Glide 0.5/Go 1.5, this is required.\n")
-	msg.Die("Wihtout src, cannot continue.")
+	msg.Die("Without src, cannot continue.")
 	return ""
+}
+
+
+// goExecutable checks for a set environment variable of GLIDE_GO_EXECUTABLE
+// for the go executable name. The Google App Engine SDK ships with a python
+// wrapper called goapp
+//
+// Example usage: GLIDE_GO_EXECUTABLE=goapp glide install
+func goExecutable() string {
+	goExecutable := os.Getenv("GLIDE_GO_EXECUTABLE")
+	if len(goExecutable) <= 0 {
+		goExecutable = "go"
+	}
+
+	return goExecutable
 }

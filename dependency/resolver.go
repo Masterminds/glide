@@ -793,7 +793,7 @@ const (
 	// Why does a Google product get a special case build mode with a local
 	// package?
 	LocAppengine
-	// LocRelative indicates the packge is a relative directory
+	// LocRelative indicates the package is a relative directory
 	LocRelative
 )
 

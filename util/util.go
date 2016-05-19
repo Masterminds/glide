@@ -29,13 +29,17 @@ func init() {
 	}
 }
 
+func toSlash(v string) string {
+	return strings.Replace(v, "\\", "/", -1)
+}
+
 // GetRootFromPackage retrives the top level package from a name.
 //
 // From a package name find the root repo. For example,
 // the package github.com/Masterminds/cookoo/io has a root repo
 // at github.com/Masterminds/cookoo
 func GetRootFromPackage(pkg string) string {
-	pkg = filepath.ToSlash(pkg)
+	pkg = toSlash(pkg)
 	for _, v := range vcsList {
 		m := v.regex.FindStringSubmatch(pkg)
 		if m == nil {
@@ -279,7 +283,11 @@ func GetBuildContext() (*BuildCtxt, error) {
 	}
 
 	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
-		out, err := exec.Command("go", "env", "GOROOT").Output()
+		goExecutable := os.Getenv("GLIDE_GO_EXECUTABLE")
+		if len(goExecutable) <= 0 {
+			goExecutable = "go"
+		}
+		out, err := exec.Command(goExecutable, "env", "GOROOT").Output()
 		if goRoot = strings.TrimSpace(string(out)); len(goRoot) == 0 || err != nil {
 			return nil, fmt.Errorf("Please set the $GOROOT environment " +
 				"variable to use this command\n")
@@ -303,10 +311,11 @@ func NormalizeName(name string) (string, string) {
 	if err == nil {
 		p := filepath.Join(b.GOROOT, "src", name)
 		if _, err := os.Stat(p); err == nil {
-			return filepath.ToSlash(name), ""
+			return toSlash(name), ""
 		}
 	}
 
+	name = toSlash(name)
 	root := GetRootFromPackage(name)
 	extra := strings.TrimPrefix(name, root)
 	if len(extra) > 0 && extra != "/" {

@@ -82,6 +82,13 @@ On Mac OS X you can install the latest release via [Homebrew](https://github.com
 $ brew install glide
 ```
 
+On Ubuntu Precise(12.04), Trusty (14.04), Wily (15.10) or Xenial (16.04) you can install from our PPA:
+
+```
+sudo add-apt-repository ppa:masterminds/glide && sudo apt-get update
+sudo apt-get install glide
+```
+
 [Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac, Linux and Windows.
 
 To build from source you can:
@@ -211,7 +218,7 @@ package listed in the `glide.yaml` file.
 
 ### glide rebuild
 
-Re-run `go install` on the packages in the `glide.yaml` file. This
+Runs `go install` on the packages in the `glide.yaml` file. This
 (along with `glide install` and `glide update`) pays special attention
 to the contents of the `subpackages:` directive in the YAML file.
 
@@ -226,6 +233,8 @@ $ glide rebuild
 This is useful when you are working with large 3rd party libraries. It
 will create the `.a` files, which can have a positive impact on your
 build times.
+
+**This feature is deprecated and will be removed before Glide 1.0.0**
 
 ### glide tree
 
@@ -351,36 +360,6 @@ depends on what's supported in the VCS.
 importing a package, not a subpackage name. For example, use
 `github.com/kylelemons/go-gypsy` and not
 `github.com/kylelemons/go-gypsy/yaml`.
-
-### Controlling package and subpackage builds
-
-In addition to fetching packages, Glide builds the packages with `go
-install`. The YAML file can give special instructions about how to build
-a package. Example:
-
-```yaml
-package: github.com/technosophos/glide
-import:
-  - package: github.com/kylelemons/go-gypsy
-    subpackages:
-      - yaml
-  - package: github.com/Masterminds/cookoo
-    subpackages:
-      - .
-      - cli
-      - web
-  - package: github.com/crowdmob/amz
-    subpackages:
-      - ...
-```
-
-According to the above, the following packages will be built:
-
-1. The `go-gypsy/yaml` package
-2. The `cookoo` package (`.`), along with `cookoo/web` and `cookoo/cli`
-3. Everything in `amz` (`...`)
-
-See the `docs/` folder for more examples.
 
 ## Supported Version Control Systems
 

@@ -1,7 +1,9 @@
 package vcs
 
 import (
+	"bytes"
 	"encoding/xml"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -167,6 +169,34 @@ func (s *GitRepo) Version() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// Current returns the current version-ish. This means:
+// * Branch name if on the tip of the branch
+// * Tag if on a tag
+// * Otherwise a revision id
+func (s *GitRepo) Current() (string, error) {
+	out, err := s.RunFromDir("git", "symbolic-ref", "HEAD")
+	if err == nil {
+		o := bytes.TrimSpace(bytes.TrimPrefix(out, []byte("refs/heads/")))
+		return string(o), nil
+	}
+
+	v, err := s.Version()
+	if err != nil {
+		return "", err
+	}
+
+	ts, err := s.TagsFromCommit(v)
+	if err != nil {
+		return "", err
+	}
+
+	if len(ts) > 0 {
+		return ts[0], nil
+	}
+
+	return v, nil
+}
+
 // Date retrieves the date on the latest commit.
 func (s *GitRepo) Date() (time.Time, error) {
 	out, err := s.RunFromDir("git", "log", "-1", "--date=iso", "--pretty=format:%cd")
@@ -274,14 +304,8 @@ func (s *GitRepo) TagsFromCommit(id string) ([]string, error) {
 	// This is imperfect and a better method would be great.
 
 	var re []string
-	// Get the one we think is right first. This only returns a single tag.
-	out, err := s.RunFromDir("git", "describe", "--tags", "--exact-match", id)
-	if err == nil {
-		// If there is no tag describing the commit it returns an error.
-		re = append(re, strings.TrimSpace(string(out)))
-	}
 
-	out, err = s.RunFromDir("git", "show-ref", "-d")
+	out, err := s.RunFromDir("git", "show-ref", "-d")
 	if err != nil {
 		return []string{}, NewLocalError("Unable to retrieve tags", err, string(out))
 	}
@@ -294,19 +318,9 @@ func (s *GitRepo) TagsFromCommit(id string) ([]string, error) {
 		}
 	}
 	tags := s.referenceList(strings.Join(list, "\n"), `(?m-s)(?:tags)/(\S+)$`)
-	var found bool
 	for _, t := range tags {
-		found = false
-		for _, v := range re {
-			if v == t {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			re = append(re, t)
-		}
+		// Dereferenced tags have ^{} appended to them.
+		re = append(re, strings.TrimSuffix(t, "^{}"))
 	}
 
 	return re, nil
@@ -328,18 +342,37 @@ func (s *GitRepo) Ping() bool {
 	return true
 }
 
+// ExportDir exports the current revision to the passed in directory.
+func (s *GitRepo) ExportDir(dir string) error {
+
+	// Without the trailing / there can be problems.
+	if !strings.HasSuffix(dir, string(os.PathSeparator)) {
+		dir = dir + string(os.PathSeparator)
+	}
+
+	out, err := s.RunFromDir("git", "checkout-index", "-f", "-a", "--prefix="+dir)
+	s.log(out)
+	if err != nil {
+		return NewLocalError("Unable to export source", err, string(out))
+	}
+
+	return nil
+}
+
 // isDetachedHead will detect if git repo is in "detached head" state.
 func isDetachedHead(dir string) (bool, error) {
-	c := exec.Command("git", "status", "-uno")
-	c.Dir = dir
-	c.Env = envForDir(c.Dir)
-	out, err := c.CombinedOutput()
+	p := filepath.Join(dir, ".git", "HEAD")
+	contents, err := ioutil.ReadFile(p)
 	if err != nil {
 		return false, err
 	}
-	detached := strings.Contains(string(out), "HEAD detached at")
 
-	return detached, nil
+	contents = bytes.TrimSpace(contents)
+	if bytes.HasPrefix(contents, []byte("ref: ")) {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // isUnableToCreateDir checks for an error in Init() to see if an error

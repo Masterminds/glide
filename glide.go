@@ -52,7 +52,7 @@ import (
 	"os/user"
 )
 
-var version = "0.10.2"
+var version = "0.11.0-dev"
 
 const usage = `The lightweight vendor package manager for your Go projects.
 
@@ -134,12 +134,12 @@ func commands() []cli.Command {
 			ShortName: "init",
 			Usage:     "Initialize a new project, creating a glide.yaml file",
 			Description: `This command starts from a project without Glide and
-	sets it up. It generates a glide.yaml file, parsing your codebase to guess
-	the dependencies to include. Once this step is done you may edit the
-	glide.yaml file to update imported dependency properties such as the version
-	or version range to include.
+   sets it up. It generates a glide.yaml file, parsing your codebase to guess
+   the dependencies to include. Once this step is done you may edit the
+   glide.yaml file to update imported dependency properties such as the version
+   or version range to include.
 
-	To fetch the dependencies you may run 'glide install'.`,
+   To fetch the dependencies you may run 'glide install'.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "skip-import",
@@ -154,33 +154,33 @@ func commands() []cli.Command {
 			Name:  "get",
 			Usage: "Install one or more packages into `vendor/` and add dependency to glide.yaml.",
 			Description: `Gets one or more package (like 'go get') and then adds that file
-	to the glide.yaml file. Multiple package names can be specified on one line.
+   to the glide.yaml file. Multiple package names can be specified on one line.
 
-		$ glide get github.com/Masterminds/cookoo/web
+   	$ glide get github.com/Masterminds/cookoo/web
 
-	The above will install the project github.com/Masterminds/cookoo and add
-	the subpackage 'web'.
+   The above will install the project github.com/Masterminds/cookoo and add
+   the subpackage 'web'.
 
-	If a fetched dependency has a glide.yaml file, configuration from Godep,
-	GPM, or GB Glide that configuration will be used to find the dependencies
-	and versions to fetch. If those are not available the dependent packages will
-	be fetched as either a version specified elsewhere or the latest version.
+   If a fetched dependency has a glide.yaml file, configuration from Godep,
+   GPM, or GB Glide that configuration will be used to find the dependencies
+   and versions to fetch. If those are not available the dependent packages will
+   be fetched as either a version specified elsewhere or the latest version.
 
-	When adding a new dependency Glide will perform an update to work out the
-	the versions to use from the dependency tree. This will generate an updated
-	glide.lock file with specific locked versions to use.
+   When adding a new dependency Glide will perform an update to work out the
+   the versions to use from the dependency tree. This will generate an updated
+   glide.lock file with specific locked versions to use.
 
-	If you are storing the outside dependencies in your version control system
-	(VCS), also known as vendoring, there are a few flags that may be useful.
-	The '--update-vendored' flag will cause Glide to update packages when VCS
-	information is unavailable. This can be used with the '--strip-vcs' flag which
-	will strip VCS data found in the vendor directory. This is useful for
-	removing VCS data from transitive dependencies and initial setups. The
-	'--strip-vendor' flag will remove any nested 'vendor' folders and
-	'Godeps/_workspace' folders after an update (along with undoing any Godep
-	import rewriting). Note, The Godeps specific functionality is deprecated and
-	will be removed when most Godeps users have migrated to using the vendor
-	folder.`,
+   If you are storing the outside dependencies in your version control system
+   (VCS), also known as vendoring, there are a few flags that may be useful.
+   The '--update-vendored' flag will cause Glide to update packages when VCS
+   information is unavailable. This can be used with the '--strip-vcs' flag which
+   will strip VCS data found in the vendor directory. This is useful for
+   removing VCS data from transitive dependencies and initial setups. The
+   '--strip-vendor' flag will remove any nested 'vendor' folders and
+   'Godeps/_workspace' folders after an update (along with undoing any Godep
+   import rewriting). Note, The Godeps specific functionality is deprecated and
+   will be removed when most Godeps users have migrated to using the vendor
+   folder.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "insecure",
@@ -259,12 +259,11 @@ func commands() []cli.Command {
 			ShortName: "rm",
 			Usage:     "Remove a package from the glide.yaml file, and regenerate the lock file.",
 			Description: `This takes one or more package names, and removes references from the glide.yaml file.
-	This will rebuild the glide lock file with the following constraints:
+   This will rebuild the glide lock file with the following constraints:
 
-	- Dependencies are re-negotiated. Any that are no longer used are left out of the lock.
-	- Minor version re-nogotiation is performed on remaining dependencies.
-	- No updates are peformed. You may want to run 'glide up' to accomplish that.
-`,
+   - Dependencies are re-negotiated. Any that are no longer used are left out of the lock.
+   - Minor version re-nogotiation is performed on remaining dependencies.
+   - No updates are peformed. You may want to run 'glide up' to accomplish that.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "delete,d",
@@ -360,9 +359,7 @@ func commands() []cli.Command {
 			Description: `Given a directory, list all the relevant Go paths that are not vendored.
 
 Example:
-
-			$ go test $(glide novendor)
-`,
+   $ go test $(glide novendor)`,
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "dir,d",
@@ -391,12 +388,11 @@ Example:
 			Name:      "install",
 			ShortName: "i",
 			Usage:     "Install a project's dependencies",
-			Description: `This uses the native VCS of each package to install
-			the appropriate version into the vendor directory adjacent to
-			glide.yaml. Installs are always performed from a lock file, which
-			contains pinned, immutable versions. If no lock file exists, glide
-			will compute one first, then run the install (unless --install-only
-			is passed).`,
+			Description: `This uses the native VCS of each package to install the appropriate version into
+   the vendor directory adjacent to glide.yaml. Installs are always performed
+   from a lock file, which contains pinned, immutable versions. If no lock file
+   exists, glide will compute one first, then run the install (unless
+   --install-only is passed).`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "install-only",
@@ -428,42 +424,42 @@ Example:
 			ShortName: "up",
 			Usage:     "Update a project's dependencies",
 			Description: `This uses the native VCS of each package to try to
-	pull the most applicable updates. If no arguments are provided, then glide
-	will attempt to update all dependencies. If package names are provided, then
-	glide will attempt to find a solution where only those packages are changed.
+   pull the most applicable updates. If no arguments are provided, then glide
+   will attempt to update all dependencies. If package names are provided, then
+   glide will attempt to find a solution where only those packages are changed.
 
-	If a dependency has a glide.yaml file, update will read that file and
-	update those dependencies accordingly. Those dependencies are maintained in
-	a the top level 'vendor/' directory. 'vendor/foo/bar' will have its
-	dependencies stored in 'vendor/'. This behavior can be disabled with
-	'--no-recursive'. When this behavior is skipped a glide.lock file is not
-	generated because the full dependency tree cannot be known.
+   If a dependency has a glide.yaml file, update will read that file and
+   update those dependencies accordingly. Those dependencies are maintained in
+   a the top level 'vendor/' directory. 'vendor/foo/bar' will have its
+   dependencies stored in 'vendor/'. This behavior can be disabled with
+   '--no-recursive'. When this behavior is skipped a glide.lock file is not
+   generated because the full dependency tree cannot be known.
 
-	Glide will also import Godep, GB, and GPM files as it finds them in dependencies.
-	It will create a glide.yaml file from the Godeps data, and then update. This
-	has no effect if '--no-recursive' is set.
+   Glide will also import Godep, GB, and GPM files as it finds them in dependencies.
+   It will create a glide.yaml file from the Godeps data, and then update. This
+   has no effect if '--no-recursive' is set.
 
-	If you are storing the outside dependencies in your version control system
-	(VCS), also known as vendoring, there are a few flags that may be useful.
-	The '--update-vendored' flag will cause Glide to update packages when VCS
-	information is unavailable. This can be used with the '--strip-vcs' flag which
-	will strip VCS data found in the vendor directory. This is useful for
-	removing VCS data from transitive dependencies and initial setups. The
-	'--strip-vendor' flag will remove any nested 'vendor' folders and
-	'Godeps/_workspace' folders after an update (along with undoing any Godep
-	import rewriting). Note, The Godeps specific functionality is deprecated and
-	will be removed when most Godeps users have migrated to using the vendor
-	folder.
+   If you are storing the outside dependencies in your version control system
+   (VCS), also known as vendoring, there are a few flags that may be useful.
+   The '--update-vendored' flag will cause Glide to update packages when VCS
+   information is unavailable. This can be used with the '--strip-vcs' flag which
+   will strip VCS data found in the vendor directory. This is useful for
+   removing VCS data from transitive dependencies and initial setups. The
+   '--strip-vendor' flag will remove any nested 'vendor' folders and
+   'Godeps/_workspace' folders after an update (along with undoing any Godep
+   import rewriting). Note, The Godeps specific functionality is deprecated and
+   will be removed when most Godeps users have migrated to using the vendor
+   folder.
 
-	Note, Glide detects vendored dependencies. With the '--update-vendored' flag
-	Glide will update vendored dependencies leaving them in a vendored state.
-	Tertiary dependencies will not be vendored automatically unless the
-	'--strip-vcs' flag is used along with it.
+   Note, Glide detects vendored dependencies. With the '--update-vendored' flag
+   Glide will update vendored dependencies leaving them in a vendored state.
+   Tertiary dependencies will not be vendored automatically unless the
+   '--strip-vcs' flag is used along with it.
 
-	By default, packages that are discovered are considered transient, and are
-	not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
-	to save the discovered dependencies to a YAML file.
-	`,
+   By default, packages that are discovered are considered transient, and are
+   not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
+   to save the discovered dependencies to a YAML file.
+   `,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "all-dependencies",
@@ -500,11 +496,11 @@ Example:
 			Name:  "tree",
 			Usage: "Tree prints the dependencies of this project as a tree.",
 			Description: `This scans a project's source files and builds a tree
-	representation of the import graph.
+   representation of the import graph.
 
-	It ignores testdata/ and directories that begin with . or _. Packages in
-	vendor/ are only included if they are referenced by the main project or
-	one of its dependencies.`,
+   It ignores testdata/ and directories that begin with . or _. Packages in
+   vendor/ are only included if they are referenced by the main project or
+   one of its dependencies.`,
 			Action: func(c *cli.Context) {
 				action.Tree(".", false)
 			},
@@ -514,14 +510,62 @@ Example:
 			Usage: "List prints all dependencies that the present code references.",
 			Description: `List scans your code and lists all of the packages that are used.
 
-			It does not use the glide.yaml. Instead, it inspects the code to determine what packages are
-			imported.
+   It does not use the glide.yaml. Instead, it inspects the code to determine what packages are
+   imported.
 
-			Directories that begin with . or _ are ignored, as are testdata directories. Packages in
-			vendor are only included if they are used by the project.
-			`,
+   Directories that begin with . or _ are ignored, as are testdata directories. Packages in
+   vendor are only included if they are used by the project.`,
 			Action: func(c *cli.Context) {
-				action.List(".", true)
+				action.List(".", true, c.String("output"))
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "output, o",
+					Usage: "Output format. One of: json|json-pretty|text",
+					Value: "text",
+				},
+			},
+		},
+		{
+			Name:  "info",
+			Usage: "Info prints information about this project",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "format, f",
+					Usage: `Format of the information wanted (required).`,
+				},
+			},
+			Description: `A format containing the text with replacement variables
+   has to be passed in. Those variables are:
+
+       %n - name
+       %d - description
+       %h - homepage
+       %l - license
+
+   For example, given a project with the following glide.yaml:
+
+       package: foo
+       homepage: https://example.com
+       license: MIT
+       description: Some example description
+
+   Then running the following commands:
+
+       glide info -f %n
+          prints 'foo'
+
+       glide info -f "License: %l"
+          prints 'License: MIT'
+
+       glide info -f "%n - %d - %h - %l"
+          prints 'foo - Some example description - https://example.com - MIT'`,
+			Action: func(c *cli.Context) {
+				if c.IsSet("format") {
+					action.Info(c.String("format"))
+				} else {
+					cli.ShowCommandHelp(c, c.Command.Name)
+				}
 			},
 		},
 		{

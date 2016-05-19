@@ -147,6 +147,36 @@ func (s *BzrRepo) Version() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// Current returns the current version-ish. This means:
+// * -1 if on the tip of the branch (this is the Bzr value for HEAD)
+// * A tag if on a tag
+// * Otherwise a revision
+func (s *BzrRepo) Current() (string, error) {
+	tip, err := s.CommitInfo("-1")
+	if err != nil {
+		return "", err
+	}
+
+	curr, err := s.Version()
+	if err != nil {
+		return "", err
+	}
+
+	if tip.Commit == curr {
+		return "-1", nil
+	}
+
+	ts, err := s.TagsFromCommit(curr)
+	if err != nil {
+		return "", err
+	}
+	if len(ts) > 0 {
+		return ts[0], nil
+	}
+
+	return curr, nil
+}
+
 // Date retrieves the date on the latest commit.
 func (s *BzrRepo) Date() (time.Time, error) {
 	out, err := s.RunFromDir("bzr", "version-info", "--custom", "--template={date}")
@@ -214,9 +244,7 @@ func (s *BzrRepo) CommitInfo(id string) (*CommitInfo, error) {
 		return nil, ErrRevisionUnavailable
 	}
 
-	ci := &CommitInfo{
-		Commit: id,
-	}
+	ci := &CommitInfo{}
 	lines := strings.Split(string(out), "\n")
 	const format = "Mon 2006-01-02 15:04:05 -0700"
 	var track int
@@ -224,7 +252,9 @@ func (s *BzrRepo) CommitInfo(id string) (*CommitInfo, error) {
 
 	// Note, bzr does not appear to use i18m.
 	for i, l := range lines {
-		if strings.HasPrefix(l, "committer:") {
+		if strings.HasPrefix(l, "revno:") {
+			ci.Commit = strings.TrimSpace(strings.TrimPrefix(l, "revno:"))
+		} else if strings.HasPrefix(l, "committer:") {
 			ci.Author = strings.TrimSpace(strings.TrimPrefix(l, "committer:"))
 		} else if strings.HasPrefix(l, "timestamp:") {
 			ts := strings.TrimSpace(strings.TrimPrefix(l, "timestamp:"))
@@ -289,6 +319,17 @@ func (s *BzrRepo) Ping() bool {
 	}
 
 	return true
+}
+
+// ExportDir exports the current revision to the passed in directory.
+func (s *BzrRepo) ExportDir(dir string) error {
+	out, err := s.RunFromDir("bzr", "export", dir)
+	s.log(out)
+	if err != nil {
+		return NewLocalError("Unable to export source", err, string(out))
+	}
+
+	return nil
 }
 
 // Multi-lingual manner check for the VCS error that it couldn't create directory.

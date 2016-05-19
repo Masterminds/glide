@@ -61,28 +61,26 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 
 	// Create the SourceManager for this run
 	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
-	if err != nil {
-		msg.Die(err.Error())
-	}
-	// TODO this defer doesn't trigger when we exit through a msg.Die() call
 	defer sm.Release()
+	if err != nil {
+		msg.Err(err.Error())
+		return
+	}
 
 	l := log.New(os.Stdout, "", 0)
 	s := vsolver.NewSolver(sm, l)
 	r, err := s.Solve(opts)
 	if err != nil {
 		// TODO better error handling
-		sm.Release()
-		msg.Die(err.Error())
+		msg.Err(err.Error())
+		return
 	}
 
 	err = writeVendor(vend, r, sm)
 	if err != nil {
-		sm.Release()
-		msg.Die(err.Error())
+		msg.Err(err.Error())
+		return
 	}
-
-	// TODO compare old and new lock, and only change if contents differ
 
 	// Create and write out a new lock file from the result
 	lf := &cfg.Lockfile{
@@ -111,15 +109,26 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		lf.Imports = append(lf.Imports, l)
 	}
 
-	err = lf.WriteFile(filepath.Join(base, gpath.LockFile))
-	if err != nil {
-		sm.Release()
-		msg.Die("Error on writing new lock file: %s", err)
+	wl := true
+	if opts.L != nil {
+		f1, err := opts.L.(*cfg.Lockfile).Fingerprint()
+		f2, err2 := lf.Fingerprint()
+		if err == nil && err2 == nil && f1 == f2 {
+			wl = false
+		}
+	}
+
+	if wl {
+		if err := lf.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
+			msg.Err("Could not write lock file to %s: %s", base, err)
+			return
+		}
+	} else {
+		msg.Info("Versions did not change. Skipping glide.lock update.")
 	}
 
 	err = writeVendor(vend, r, sm)
 	if err != nil {
-		sm.Release()
-		msg.Die(err.Error())
+		msg.Err(err.Error())
 	}
 }
