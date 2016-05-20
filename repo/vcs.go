@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	cp "github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
@@ -345,12 +346,12 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 					} else {
 						loc = "https://" + dep.Name
 					}
-					key, err := cacheCreateKey(loc)
+					key, err := cp.Key(loc)
 					if err == nil {
 						msg.Debug("Saving default branch for %s", repo.Remote())
-						c := cacheRepoInfo{DefaultBranch: branch}
-						err = saveCacheRepoData(key, c, home)
-						if msg.Default.IsDebugging && err == errCacheDisabled {
+						c := cp.RepoInfo{DefaultBranch: branch}
+						err = cp.SaveRepoData(key, c)
+						if msg.Default.IsDebugging && err == cp.ErrCacheDisabled {
 							msg.Debug("Unable to cache default branch because caching is disabled")
 						}
 					}
@@ -376,9 +377,13 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 		} else {
 			loc = "https://" + dep.Name
 		}
-		key, err := cacheCreateKey(loc)
+		key, err := cp.Key(loc)
 		if err == nil {
-			d := filepath.Join(home, "cache", "src", key)
+			location, err := cp.Location()
+			if err != nil {
+				return err
+			}
+			d := filepath.Join(location, "src", key)
 
 			repo, err := dep.GetRepo(d)
 			if err != nil {
@@ -400,12 +405,12 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 					} else {
 						loc = "https://" + dep.Name
 					}
-					key, err := cacheCreateKey(loc)
+					key, err := cp.Key(loc)
 					if err == nil {
 						msg.Debug("Saving default branch for %s", repo.Remote())
-						c := cacheRepoInfo{DefaultBranch: branch}
-						err = saveCacheRepoData(key, c, home)
-						if err == errCacheDisabled {
+						c := cp.RepoInfo{DefaultBranch: branch}
+						err = cp.SaveRepoData(key, c)
+						if err == cp.ErrCacheDisabled {
 							msg.Debug("Unable to cache default branch because caching is disabled")
 						} else if err != nil {
 							msg.Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
@@ -451,12 +456,12 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 			} else {
 				loc = "https://" + dep.Name
 			}
-			key, err := cacheCreateKey(loc)
+			key, err := cp.Key(loc)
 			if err == nil {
 				msg.Debug("Saving default branch for %s", repo.Remote())
-				c := cacheRepoInfo{DefaultBranch: branch}
-				err = saveCacheRepoData(key, c, home)
-				if err == errCacheDisabled {
+				c := cp.RepoInfo{DefaultBranch: branch}
+				err = cp.SaveRepoData(key, c)
+				if err == cp.ErrCacheDisabled {
 					msg.Debug("Unable to cache default branch because caching is disabled")
 				} else if err != nil {
 					msg.Debug("Error saving %s to cache - Error: %s", repo.Remote(), err)
@@ -528,10 +533,10 @@ func defaultBranch(repo v.Repo, home string) string {
 	}
 
 	// Check the cache for a value.
-	key, kerr := cacheCreateKey(repo.Remote())
-	var d cacheRepoInfo
+	key, kerr := cp.Key(repo.Remote())
+	var d cp.RepoInfo
 	if kerr == nil {
-		d, err := cacheRepoData(key, home)
+		d, err := cp.RepoData(key)
 		if err == nil {
 			if d.DefaultBranch != "" {
 				return d.DefaultBranch
@@ -579,8 +584,8 @@ func defaultBranch(repo v.Repo, home string) string {
 		db := gh["default_branch"].(string)
 		if kerr == nil {
 			d.DefaultBranch = db
-			err := saveCacheRepoData(key, d, home)
-			if err == errCacheDisabled {
+			err := cp.SaveRepoData(key, d)
+			if err == cp.ErrCacheDisabled {
 				msg.Debug("Unable to cache default branch because caching is disabled")
 			} else if err != nil {
 				msg.Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
@@ -613,8 +618,8 @@ func defaultBranch(repo v.Repo, home string) string {
 		db := bb["name"].(string)
 		if kerr == nil {
 			d.DefaultBranch = db
-			err := saveCacheRepoData(key, d, home)
-			if err == errCacheDisabled {
+			err := cp.SaveRepoData(key, d)
+			if err == cp.ErrCacheDisabled {
 				msg.Debug("Unable to cache default branch because caching is disabled")
 			} else if err != nil {
 				msg.Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
