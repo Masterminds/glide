@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/importer"
@@ -255,6 +256,17 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.C
 			for {
 				select {
 				case dep := <-ch:
+					var loc string
+					if dep.Repository != "" {
+						loc = dep.Repository
+					} else {
+						loc = "https://" + dep.Name
+					}
+					key, err := cache.Key(loc)
+					if err != nil {
+						msg.Die(err.Error())
+					}
+					cache.Lock(key)
 					dest := filepath.Join(i.VendorPath(), dep.Name)
 					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored, i.Updated); err != nil {
 						msg.Err("Update failed for %s: %s\n", dep.Name, err)
@@ -268,6 +280,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.C
 						}
 						lock.Unlock()
 					}
+					cache.Unlock(key)
 					wg.Done()
 				case <-done:
 					return

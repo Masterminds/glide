@@ -3,6 +3,7 @@ package vcs
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -82,12 +83,14 @@ func (s *GitRepo) Get() error {
 
 			out, err = s.run("git", "clone", s.Remote(), s.LocalPath())
 			if err != nil {
+				fmt.Println(err)
 				return NewRemoteError("Unable to get repository", err, string(out))
 			}
 			return err
 		}
 
 	} else if err != nil {
+		fmt.Println(err)
 		return NewRemoteError("Unable to get repository", err, string(out))
 	}
 

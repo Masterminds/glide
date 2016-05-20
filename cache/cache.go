@@ -168,3 +168,33 @@ func RepoData(key string) (*RepoInfo, error) {
 	}
 	return c, nil
 }
+
+var lockSync sync.Mutex
+
+var lockData = make(map[string]*sync.Mutex)
+
+// Lock locks a particular key name
+func Lock(name string) {
+	lockSync.Lock()
+	m, ok := lockData[name]
+	if !ok {
+		msg.Debug("Creating lock for %s", name)
+		m = &sync.Mutex{}
+		lockData[name] = m
+	}
+	lockSync.Unlock()
+	msg.Debug("Locking %s", name)
+	m.Lock()
+	msg.Debug("Locking %s ...", name)
+}
+
+// Unlock unlocks a particular key name
+func Unlock(name string) {
+	msg.Debug("Unlocking %s", name)
+	lockSync.Lock()
+	if m, ok := lockData[name]; ok {
+		m.Unlock()
+	}
+
+	lockSync.Unlock()
+}
