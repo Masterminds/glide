@@ -3,6 +3,7 @@ package action
 import (
 	"path/filepath"
 
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/godep"
@@ -13,6 +14,10 @@ import (
 
 // Update updates repos and the lock file from the main glide yaml.
 func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
+	if installer.UseCache {
+		cache.SystemLock()
+	}
+
 	base := "."
 	EnsureGopath()
 	EnsureVendorDir()

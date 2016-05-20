@@ -40,6 +40,7 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/glide/action"
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
@@ -110,6 +111,7 @@ func main() {
 		action.Plugin(command, os.Args)
 	}
 	app.Before = startup
+	app.After = shutdown
 	app.Commands = commands()
 
 	// Detect errors from the Before and After calls and exit on them.
@@ -666,6 +668,11 @@ func startup(c *cli.Context) error {
 	action.Quiet(c.Bool("quiet"))
 	action.Init(c.String("yaml"), c.String("home"))
 	action.EnsureGoVendor()
+	return nil
+}
+
+func shutdown(c *cli.Context) error {
+	cache.SystemUnlock()
 	return nil
 }
 

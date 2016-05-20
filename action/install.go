@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/msg"
@@ -13,6 +14,10 @@ import (
 
 // Install installs a vendor directory based on an existing Glide configuration.
 func Install(installer *repo.Installer, strip, stripVendor bool) {
+	if installer.UseCache {
+		cache.SystemLock()
+	}
+
 	base := "."
 	// Ensure GOPATH
 	EnsureGopath()

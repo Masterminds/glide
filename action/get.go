@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/msg"
@@ -17,6 +18,10 @@ import (
 //
 // This includes resolving dependency resolution and re-generating the lock file.
 func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor bool) {
+	if installer.UseCache {
+		cache.SystemLock()
+	}
+
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
