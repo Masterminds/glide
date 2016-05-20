@@ -99,7 +99,7 @@ func waitOnLock() error {
 
 		if !announced {
 			announced = true
-			msg.Info("Waiting on global cache access")
+			msg.Info("Waiting on Glide global cache access")
 		}
 
 		// Check on the lock file every 15 seconds.
