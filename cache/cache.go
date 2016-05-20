@@ -178,14 +178,12 @@ func Lock(name string) {
 	lockSync.Lock()
 	m, ok := lockData[name]
 	if !ok {
-		msg.Debug("Creating lock for %s", name)
 		m = &sync.Mutex{}
 		lockData[name] = m
 	}
 	lockSync.Unlock()
 	msg.Debug("Locking %s", name)
 	m.Lock()
-	msg.Debug("Locking %s ...", name)
 }
 
 // Unlock unlocks a particular key name
