@@ -67,14 +67,16 @@ func startLock() error {
 	}
 
 	go func() {
-		select {
-		case <-lockdone:
-			return
-		default:
-			//time.Sleep(10 * time.Second)
-			err := writeLock()
-			if err != nil {
-				msg.Die("Error using Glide lock: %s", err)
+		for {
+			select {
+			case <-lockdone:
+				return
+			default:
+				time.Sleep(10 * time.Second)
+				err := writeLock()
+				if err != nil {
+					msg.Die("Error using Glide lock: %s", err)
+				}
 			}
 		}
 	}()
