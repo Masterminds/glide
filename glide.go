@@ -639,6 +639,14 @@ Example:
 			},
 		},
 		{
+			Name:      "cache-clear",
+			ShortName: "cc",
+			Usage:     "Clears the Glide cache.",
+			Action: func(c *cli.Context) {
+				action.CacheClear()
+			},
+		},
+		{
 			Name:  "about",
 			Usage: "Learn about Glide",
 			Action: func(c *cli.Context) {

@@ -27,7 +27,8 @@ var isSetup bool
 
 var setupMutex sync.Mutex
 
-func setup() error {
+// Setup creates the cache location.
+func Setup() error {
 	setupMutex.Lock()
 	defer setupMutex.Unlock()
 
@@ -52,10 +53,16 @@ func setup() error {
 	return nil
 }
 
+// SetupReset resets if setup has been completed. The next time setup is run
+// it will attempt a full setup.
+func SetupReset() {
+	isSetup = false
+}
+
 // Location returns the location of the cache.
 func Location() (string, error) {
 	p := filepath.Join(gpath.Home(), "cache")
-	err := setup()
+	err := Setup()
 
 	return p, err
 }
