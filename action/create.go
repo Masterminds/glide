@@ -73,29 +73,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 
 	// Attempt to import from other package managers.
 	if !skipImport {
-		msg.Info("Attempting to import from other package managers (use --skip-import to skip)")
-		deps := []*cfg.Dependency{}
-		absBase, err := filepath.Abs(base)
-		if err != nil {
-			msg.Die("Failed to resolve location of %s: %s", base, err)
-		}
-
-		if d, ok := guessImportGodep(absBase); ok {
-			msg.Info("Importing Godep configuration")
-			msg.Warn("Godep uses commit id versions. Consider using Semantic Versions with Glide")
-			deps = d
-		} else if d, ok := guessImportGPM(absBase); ok {
-			msg.Info("Importing GPM configuration")
-			deps = d
-		} else if d, ok := guessImportGB(absBase); ok {
-			msg.Info("Importing GB configuration")
-			deps = d
-		}
-
-		for _, i := range deps {
-			msg.Info("Found imported reference to %s\n", i.Name)
-			config.Imports = append(config.Imports, i)
-		}
+		guessImportDeps(base, config)
 	}
 
 	// Resolve dependencies by looking at the tree.
@@ -145,6 +123,32 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 	}
 
 	return config
+}
+
+func guessImportDeps(base string, config *cfg.Config) {
+	msg.Info("Attempting to import from other package managers (use --skip-import to skip)")
+	deps := []*cfg.Dependency{}
+	absBase, err := filepath.Abs(base)
+	if err != nil {
+		msg.Die("Failed to resolve location of %s: %s", base, err)
+	}
+
+	if d, ok := guessImportGodep(absBase); ok {
+		msg.Info("Importing Godep configuration")
+		msg.Warn("Godep uses commit id versions. Consider using Semantic Versions with Glide")
+		deps = d
+	} else if d, ok := guessImportGPM(absBase); ok {
+		msg.Info("Importing GPM configuration")
+		deps = d
+	} else if d, ok := guessImportGB(absBase); ok {
+		msg.Info("Importing GB configuration")
+		deps = d
+	}
+
+	for _, i := range deps {
+		msg.Info("Found imported reference to %s\n", i.Name)
+		config.Imports = append(config.Imports, i)
+	}
 }
 
 func guessImportGodep(dir string) ([]*cfg.Dependency, bool) {
