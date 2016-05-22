@@ -5,3 +5,4 @@ glide.exe
 *.sublime-workspace
 dist/
 .DS_Store
+.idea
