@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -632,6 +631,8 @@ func defaultBranch(repo v.Repo, home string) string {
 }
 
 // From a local repo find out the current branch name if there is one.
+// Note, this should only be used right after a fresh clone to get accurate
+// information.
 func findCurrentBranch(repo v.Repo) string {
 	msg.Debug("Attempting to find current branch for %s", repo.Remote())
 	// Svn and Bzr don't have default branches.
@@ -639,28 +640,13 @@ func findCurrentBranch(repo v.Repo) string {
 		return ""
 	}
 
-	if repo.Vcs() == v.Git {
-		c := exec.Command("git", "symbolic-ref", "--short", "HEAD")
-		c.Dir = repo.LocalPath()
-		c.Env = envForDir(c.Dir)
-		out, err := c.CombinedOutput()
+	if repo.Vcs() == v.Git || repo.Vcs() == v.Hg {
+		ver, err := repo.Current()
 		if err != nil {
 			msg.Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
 			return ""
 		}
-		return strings.TrimSpace(string(out))
-	}
-
-	if repo.Vcs() == v.Hg {
-		c := exec.Command("hg", "branch")
-		c.Dir = repo.LocalPath()
-		c.Env = envForDir(c.Dir)
-		out, err := c.CombinedOutput()
-		if err != nil {
-			msg.Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
-			return ""
-		}
-		return strings.TrimSpace(string(out))
+		return ver
 	}
 
 	return ""
