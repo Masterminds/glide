@@ -106,6 +106,6 @@ func waitOnLock() error {
 
 		// Check on the lock file every 15 seconds.
 		// TODO(mattfarina): should this be a different length?
-		time.Sleep(15 * time.Second)
+		time.Sleep(time.Second)
 	}
 }
