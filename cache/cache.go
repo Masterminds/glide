@@ -1,4 +1,30 @@
 // Package cache provides an interface for interfacing with the Glide local cache
+//
+// Glide has a local cache of metadata and repositories similar to the GOPATH.
+// To store the cache Glide creates a .glide directory with a cache subdirectory.
+// This is usually in the users home directory unless there is no accessible
+// home directory in which case the .glide directory is in the root of the
+// repository.
+//
+// To get the cache location use the `cache.Location()` function. This will
+// return the proper base location in your environment.
+//
+// Within the cache directory there are two subdirectories. They are the src
+// and info directories. The src directory contains version control checkouts
+// of the packages. The info direcory contains metadata. The metadata maps to
+// the RepoInfo struct. Both stores are happed to keys.
+//
+// Using the `cache.Key()` function you can get a key for a repo. Pass in a
+// location such as `https://github.com/foo/bar` or `git@example.com:foo.git`
+// and a key will be returned that can be used for caching operations.
+//
+// Note, the caching is based on repo rather than package. This is important
+// for a couple reasons.
+//
+// 1. Forks or package replacements are supported in Glide. Where a different
+//    repo maps to a package.
+// 2. Permissions enable different access. For example `https://example.com/foo.git`
+//    and `git@example.com:foo.git` may have access to different branches or tags.
 package cache
 
 import (
