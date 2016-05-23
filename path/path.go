@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 )
@@ -20,10 +21,8 @@ const DefaultGlideFile = "glide.yaml"
 // As of Go 1.5, this is always vendor.
 var VendorDir = "vendor"
 
-// HomeDir is the home directory for Glide.
-//
-// HomeDir is where cache files and other configuration data are stored.
-var HomeDir = "$HOME/.glide"
+// Cache the location of the homedirectory.
+var homeDir = ""
 
 // GlideFile is the name of the Glide file.
 //
@@ -38,12 +37,29 @@ const LockFile = "glide.lock"
 //
 // This normalizes to an absolute path, and passes through os.ExpandEnv.
 func Home() string {
-	h := os.ExpandEnv(HomeDir)
-	var err error
-	if h, err = filepath.Abs(HomeDir); err != nil {
-		return HomeDir
+	if homeDir != "" {
+		return homeDir
 	}
-	return h
+
+	// Initialize the default user.
+	u, err := user.Current()
+	if err == nil && u.HomeDir != "" {
+		homeDir = filepath.Join(u.HomeDir, ".glide")
+	} else {
+		cwd, err := os.Getwd()
+		if err == nil {
+			homeDir = filepath.Join(cwd, ".glide")
+		} else {
+			homeDir = ".glide"
+		}
+	}
+
+	return homeDir
+}
+
+// SetHome sets the home directory for Glide.
+func SetHome(h string) {
+	homeDir = h
 }
 
 // Vendor calculates the path to the vendor directory.

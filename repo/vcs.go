@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 
+	cp "github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
@@ -345,12 +345,12 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 					} else {
 						loc = "https://" + dep.Name
 					}
-					key, err := cacheCreateKey(loc)
+					key, err := cp.Key(loc)
 					if err == nil {
 						msg.Debug("Saving default branch for %s", repo.Remote())
-						c := cacheRepoInfo{DefaultBranch: branch}
-						err = saveCacheRepoData(key, c, home)
-						if msg.Default.IsDebugging && err == errCacheDisabled {
+						c := cp.RepoInfo{DefaultBranch: branch}
+						err = cp.SaveRepoData(key, c)
+						if msg.Default.IsDebugging && err == cp.ErrCacheDisabled {
 							msg.Debug("Unable to cache default branch because caching is disabled")
 						}
 					}
@@ -376,9 +376,13 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 		} else {
 			loc = "https://" + dep.Name
 		}
-		key, err := cacheCreateKey(loc)
+		key, err := cp.Key(loc)
 		if err == nil {
-			d := filepath.Join(home, "cache", "src", key)
+			location, err := cp.Location()
+			if err != nil {
+				return err
+			}
+			d := filepath.Join(location, "src", key)
 
 			repo, err := dep.GetRepo(d)
 			if err != nil {
@@ -400,12 +404,12 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 					} else {
 						loc = "https://" + dep.Name
 					}
-					key, err := cacheCreateKey(loc)
+					key, err := cp.Key(loc)
 					if err == nil {
 						msg.Debug("Saving default branch for %s", repo.Remote())
-						c := cacheRepoInfo{DefaultBranch: branch}
-						err = saveCacheRepoData(key, c, home)
-						if err == errCacheDisabled {
+						c := cp.RepoInfo{DefaultBranch: branch}
+						err = cp.SaveRepoData(key, c)
+						if err == cp.ErrCacheDisabled {
 							msg.Debug("Unable to cache default branch because caching is disabled")
 						} else if err != nil {
 							msg.Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
@@ -451,12 +455,12 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 			} else {
 				loc = "https://" + dep.Name
 			}
-			key, err := cacheCreateKey(loc)
+			key, err := cp.Key(loc)
 			if err == nil {
 				msg.Debug("Saving default branch for %s", repo.Remote())
-				c := cacheRepoInfo{DefaultBranch: branch}
-				err = saveCacheRepoData(key, c, home)
-				if err == errCacheDisabled {
+				c := cp.RepoInfo{DefaultBranch: branch}
+				err = cp.SaveRepoData(key, c)
+				if err == cp.ErrCacheDisabled {
 					msg.Debug("Unable to cache default branch because caching is disabled")
 				} else if err != nil {
 					msg.Debug("Error saving %s to cache - Error: %s", repo.Remote(), err)
@@ -528,10 +532,10 @@ func defaultBranch(repo v.Repo, home string) string {
 	}
 
 	// Check the cache for a value.
-	key, kerr := cacheCreateKey(repo.Remote())
-	var d cacheRepoInfo
+	key, kerr := cp.Key(repo.Remote())
+	var d cp.RepoInfo
 	if kerr == nil {
-		d, err := cacheRepoData(key, home)
+		d, err := cp.RepoData(key)
 		if err == nil {
 			if d.DefaultBranch != "" {
 				return d.DefaultBranch
@@ -579,8 +583,8 @@ func defaultBranch(repo v.Repo, home string) string {
 		db := gh["default_branch"].(string)
 		if kerr == nil {
 			d.DefaultBranch = db
-			err := saveCacheRepoData(key, d, home)
-			if err == errCacheDisabled {
+			err := cp.SaveRepoData(key, d)
+			if err == cp.ErrCacheDisabled {
 				msg.Debug("Unable to cache default branch because caching is disabled")
 			} else if err != nil {
 				msg.Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
@@ -613,8 +617,8 @@ func defaultBranch(repo v.Repo, home string) string {
 		db := bb["name"].(string)
 		if kerr == nil {
 			d.DefaultBranch = db
-			err := saveCacheRepoData(key, d, home)
-			if err == errCacheDisabled {
+			err := cp.SaveRepoData(key, d)
+			if err == cp.ErrCacheDisabled {
 				msg.Debug("Unable to cache default branch because caching is disabled")
 			} else if err != nil {
 				msg.Debug("Error saving %s to cache. Error: %s", repo.Remote(), err)
@@ -627,6 +631,8 @@ func defaultBranch(repo v.Repo, home string) string {
 }
 
 // From a local repo find out the current branch name if there is one.
+// Note, this should only be used right after a fresh clone to get accurate
+// information.
 func findCurrentBranch(repo v.Repo) string {
 	msg.Debug("Attempting to find current branch for %s", repo.Remote())
 	// Svn and Bzr don't have default branches.
@@ -634,28 +640,13 @@ func findCurrentBranch(repo v.Repo) string {
 		return ""
 	}
 
-	if repo.Vcs() == v.Git {
-		c := exec.Command("git", "symbolic-ref", "--short", "HEAD")
-		c.Dir = repo.LocalPath()
-		c.Env = envForDir(c.Dir)
-		out, err := c.CombinedOutput()
+	if repo.Vcs() == v.Git || repo.Vcs() == v.Hg {
+		ver, err := repo.Current()
 		if err != nil {
 			msg.Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
 			return ""
 		}
-		return strings.TrimSpace(string(out))
-	}
-
-	if repo.Vcs() == v.Hg {
-		c := exec.Command("hg", "branch")
-		c.Dir = repo.LocalPath()
-		c.Env = envForDir(c.Dir)
-		out, err := c.CombinedOutput()
-		if err != nil {
-			msg.Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
-			return ""
-		}
-		return strings.TrimSpace(string(out))
+		return ver
 	}
 
 	return ""
