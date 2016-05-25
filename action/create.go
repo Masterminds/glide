@@ -43,6 +43,9 @@ func Create(base string, skipImport bool) {
 	if err := conf.WriteFile(glidefile); err != nil {
 		msg.Die("Could not save %s: %s", glidefile, err)
 	}
+	msg.Info("You can now edit the glide.yaml file. Consider:")
+	msg.Info("--> Using versions and ranges. See https://glide.sh/docs/versions/")
+	msg.Info("--> Adding additional metadata. See https://glide.sh/docs/glide.yaml/")
 }
 
 // guardYAML fails if the given file already exists.
