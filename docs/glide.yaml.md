@@ -41,6 +41,7 @@ These elements are:
     - `version`: A semantic version, semantic version range, branch, tag, or commit id to use. For more information see the [versioning documentation](versions.md).
     - `repo`: If the package name isn't the repo location or this is a private repository it can go here. The package will be checked out from the repo and put where the package name specifies. This allows using forks.
     - `vcs`: A VCS to use such as git, hg, bzr, or svn. This is only needed when the type cannot be detected from the name. For example, a repo ending in .git or on GitHub can be detected to be Git. For a repo on Bitbucket we can contact the API to discover the type.
+    - `subpackages`: A record of packages being used within a repository. This does not include all packages within a repository but rather those being used.
     - `os`: A list of operating systems used for filtering. If set it will compare the current runtime OS to the one specified and only fetch the dependency if there is a match. If not set filtering is skipped. The names are the same used in build flags and `GOOS` environment variable.
     - `arch`: A list of architectures used for filtering. If set it will compare the current runtime architecture to the one specified and only fetch the dependency if there is a match. If not set filtering is skipped. The names are the same used in build flags and `GOARCH` environment variable.
 - `devImport`: A list of development packages. Each package has the same details as those listed under import.
