@@ -2,10 +2,14 @@ package action
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/gb"
@@ -15,6 +19,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
+	"github.com/Masterminds/vcs"
 )
 
 // Create creates/initializes a new Glide repository.
@@ -34,6 +39,7 @@ func Create(base string, skipImport bool) {
 	// Guess deps
 	conf := guessDeps(base, skipImport)
 	// Write YAML
+	msg.Info("Writing glide.yaml file")
 	if err := conf.WriteFile(glidefile); err != nil {
 		msg.Die("Could not save %s: %s", glidefile, err)
 	}
@@ -77,6 +83,16 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		guessImportDeps(base, config)
 	}
 
+	importLen := len(config.Imports)
+	if importLen > 0 {
+		msg.Info("Scanning code to look for additional dependencies")
+	} else if !skipImport {
+		msg.Info("No dependencies found to import")
+		msg.Info("Scanning code to look for dependencies")
+	} else {
+		msg.Info("Scanning code to look for dependencies")
+	}
+
 	// Resolve dependencies by looking at the tree.
 	r, err := dependency.NewResolver(base)
 	if err != nil {
@@ -98,12 +114,14 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		vpath = vpath + string(os.PathSeparator)
 	}
 
+	var count int
 	for _, pa := range sortable {
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
 
 		if !config.HasDependency(root) {
-			msg.Info("Found reference to %s\n", n)
+			count++
+			msg.Info("--> Found reference to %s\n", n)
 			d := &cfg.Dependency{
 				Name: root,
 			}
@@ -116,11 +134,18 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
 				if !d.HasSubpackage(subpkg) {
-					msg.Info("Adding sub-package %s to %s\n", subpkg, root)
+					count++
+					msg.Info("--> Adding sub-package %s to %s\n", subpkg, root)
 					d.Subpackages = append(d.Subpackages, subpkg)
 				}
 			}
 		}
+	}
+
+	if count == 0 && importLen > 0 {
+		msg.Info("--> Scanning found no additional dependencies to import")
+	} else if count == 0 {
+		msg.Info("--> Scanning found no dependencies to import")
 	}
 
 	return config
@@ -136,7 +161,7 @@ func guessImportDeps(base string, config *cfg.Config) {
 
 	if d, ok := guessImportGodep(absBase); ok {
 		msg.Info("Importing Godep configuration")
-		msg.Warn("Godep uses commit id versions. Consider using Semantic Versions with Glide")
+		msg.Warn("--> Godep uses commit id versions. Consider using Semantic Versions with Glide")
 		deps = d
 	} else if d, ok := guessImportGPM(absBase); ok {
 		msg.Info("Importing GPM configuration")
@@ -149,10 +174,36 @@ func guessImportDeps(base string, config *cfg.Config) {
 		deps = d
 	}
 
+	if len(deps) > 0 {
+		msg.Info("--> Attempting to detect versions from commit ids")
+	}
+
+	var wg sync.WaitGroup
+
 	for _, i := range deps {
-		msg.Info("Found imported reference to %s\n", i.Name)
+		wg.Add(1)
+		go func(dep *cfg.Dependency) {
+			var remote string
+			if dep.Repository != "" {
+				remote = dep.Repository
+			} else {
+				remote = "https://" + dep.Name
+			}
+			ver := createGuessVersion(remote, dep.Reference)
+			if ver != dep.Reference {
+				msg.Info("--> Found imported reference to %s at version %s", dep.Name, ver)
+				dep.Reference = ver
+			} else {
+				msg.Info("--> Found imported reference to %s", dep.Name)
+			}
+
+			wg.Done()
+		}(i)
+
 		config.Imports = append(config.Imports, i)
 	}
+
+	wg.Wait()
 }
 
 func guessImportGodep(dir string) ([]*cfg.Dependency, bool) {
@@ -189,4 +240,96 @@ func guessImportGom(dir string) ([]*cfg.Dependency, bool) {
 	}
 
 	return d, true
+}
+
+// Note, this really needs a simpler name.
+var createGitParseVersion = regexp.MustCompile(`(?m-s)(?:tags)/(\S+)$`)
+
+func createGuessVersion(remote, id string) string {
+	err := cache.Setup()
+	if err != nil {
+		msg.Debug("Problem setting up cache: %s", err)
+	}
+	l, err := cache.Location()
+	if err != nil {
+		msg.Debug("Problem detecting cache location: %s", err)
+	}
+	key, err := cache.Key(remote)
+	if err != nil {
+		msg.Debug("Problem generating cache key for %s: %s", remote, err)
+	}
+
+	local := filepath.Join(l, "src", key)
+	repo, err := vcs.NewRepo(remote, local)
+	if err != nil {
+		msg.Debug("Problem getting repo instance: %s", err)
+	}
+
+	// Git endpoints allow for querying without fetching the codebase locally.
+	// We try that first to avoid fetching right away. Is this premature
+	// optimization?
+	cc := true
+	if repo.Vcs() == vcs.Git {
+		out, err := exec.Command("git", "ls-remote", remote).CombinedOutput()
+		if err == nil {
+			cc = false
+			lines := strings.Split(string(out), "\n")
+
+			// TODO(mattfarina): Detect if the found version is semver and use
+			// that one instead of the first found.
+			for _, i := range lines {
+				ti := strings.TrimSpace(i)
+				if strings.HasPrefix(ti, id) {
+					if found := createGitParseVersion.FindString(ti); found != "" {
+						return strings.TrimPrefix(strings.TrimSuffix(found, "^{}"), "tags/")
+					}
+				}
+			}
+		}
+	}
+
+	if cc {
+		cache.Lock(key)
+		if _, err = os.Stat(local); os.IsNotExist(err) {
+			repo.Get()
+			branch := findCurrentBranch(repo)
+			c := cache.RepoInfo{DefaultBranch: branch}
+			err = cache.SaveRepoData(key, c)
+			if err != nil {
+				msg.Debug("Error saving cache repo details: %s", err)
+			}
+		} else {
+			repo.Update()
+		}
+
+		tgs, err := repo.TagsFromCommit(id)
+		if err != nil {
+			msg.Debug("Problem getting tags for commit: %s", err)
+		}
+		cache.Unlock(key)
+		if len(tgs) > 0 {
+			return tgs[0]
+		}
+	}
+
+	return id
+}
+
+func findCurrentBranch(repo vcs.Repo) string {
+	msg.Debug("Attempting to find current branch for %s", repo.Remote())
+	// Svn and Bzr don't have default branches.
+	if repo.Vcs() == vcs.Svn || repo.Vcs() == vcs.Bzr {
+		return ""
+	}
+
+	if repo.Vcs() == vcs.Git || repo.Vcs() == vcs.Hg {
+		ver, err := repo.Current()
+		if err != nil {
+			msg.Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
+			return ""
+		}
+		return ver
+	}
+
+	return ""
 }
