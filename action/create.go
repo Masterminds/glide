@@ -23,6 +23,10 @@ import (
 	"github.com/Masterminds/vcs"
 )
 
+// TODO(mattfarina): This file could really use to be cleaned up. It's functional
+// but not all that elegant. This mess of code really needs someone to come
+// along and clean it up. Pretty please.
+
 // Create creates/initializes a new Glide repository.
 //
 // This will fail if a glide.yaml already exists.
@@ -192,6 +196,35 @@ func guessDeps(base string, skipImport, noInteract, skipVerSug bool) *cfg.Config
 }
 
 func guessAskVersion(noInteract bool, all string, allonce, skipVerSug bool, d *cfg.Dependency) (string, bool) {
+	if !noInteract && !skipVerSug && d.Reference == "" {
+		// If scanning has not happened already, for example this isn't an
+		// import, try it now.
+		var loc string
+		if d.Repository != "" {
+			loc = d.Repository
+		} else {
+			loc = "https://" + d.Name
+		}
+		if !guessVersionCache.checked(loc) {
+			createGuessVersion(loc, d.Reference)
+		}
+
+		semv := guessVersionCache.get(loc)
+		if semv != "" {
+			msg.Info("The package %s appears to have Semantic Version releases. The latest", d.Name)
+			msg.Info("release is %s. Would you like to use this release? Yes (Y) or No (N)", semv)
+			res, err2 := msg.PromptUntil([]string{"y", "yes", "n", "no"})
+			if err2 != nil {
+				msg.Die("Error processing response: %s", err2)
+			}
+
+			if res == "y" || res == "yes" {
+				d.Reference = semv
+			}
+		}
+
+	}
+
 	if !noInteract && d.Reference != "" {
 		var changedVer bool
 		ver, err := semver.NewVersion(d.Reference)
@@ -203,14 +236,14 @@ func guessAskVersion(noInteract bool, all string, allonce, skipVerSug bool, d *c
 				loc = "https://" + d.Name
 			}
 
-			semv := guessVersionCache[loc]
+			semv := guessVersionCache.get(loc)
 			if semv != "" {
 				msg.Info("The package %s appears to have Semantic Version releases but the imported data", d.Name)
 				msg.Info("is not using them. The latest release is %s but the imported data is using %s.", semv, d.Reference)
 				msg.Info("Would you like to use the latest release version instead? Yes (Y) or No (N)")
 				res, err2 := msg.PromptUntil([]string{"y", "yes", "n", "no"})
 				if err2 != nil {
-					msg.Die("Error processing response: %s", err)
+					msg.Die("Error processing response: %s", err2)
 				}
 
 				if res == "y" || res == "yes" {
@@ -237,9 +270,9 @@ func guessAskVersion(noInteract bool, all string, allonce, skipVerSug bool, d *c
 					msg.Die("Error processing response: %s", err)
 				}
 				if res == "m" || res == "minor" {
-					d.Reference = "~" + vstr
-				} else if res == "p" || res == "patch" {
 					d.Reference = "^" + vstr
+				} else if res == "p" || res == "patch" {
+					d.Reference = "~" + vstr
 				}
 
 				if !allonce {
@@ -257,9 +290,9 @@ func guessAskVersion(noInteract bool, all string, allonce, skipVerSug bool, d *c
 
 			} else {
 				if all == "m" || all == "minor" {
-					d.Reference = "~" + ver.String()
-				} else if all == "p" || all == "patch" {
 					d.Reference = "^" + ver.String()
+				} else if all == "p" || all == "patch" {
+					d.Reference = "~" + ver.String()
 				}
 			}
 
@@ -366,8 +399,7 @@ func guessImportGom(dir string) ([]*cfg.Dependency, bool) {
 // Note, this really needs a simpler name.
 var createGitParseVersion = regexp.MustCompile(`(?m-s)(?:tags)/(\S+)$`)
 
-var guessVersionCache = make(map[string]string)
-var guessVersionCacheLock = sync.Mutex{}
+var guessVersionCache = newVersionCache()
 
 func createGuessVersion(remote, id string) string {
 	err := cache.Setup()
@@ -396,6 +428,7 @@ func createGuessVersion(remote, id string) string {
 	if repo.Vcs() == vcs.Git {
 		out, err := exec.Command("git", "ls-remote", remote).CombinedOutput()
 		if err == nil {
+			guessVersionCache.touchChecked(remote)
 			cc = false
 			lines := strings.Split(string(out), "\n")
 			res := ""
@@ -412,18 +445,16 @@ func createGuessVersion(remote, id string) string {
 
 					ver, err := semver.NewVersion(tg)
 					if err == nil {
-						guessVersionCacheLock.Lock()
-						if guessVersionCache[remote] == "" {
-							guessVersionCache[remote] = tg
+						if guessVersionCache.get(remote) == "" {
+							guessVersionCache.put(remote, tg)
 						} else {
-							ver2, err := semver.NewVersion(guessVersionCache[remote])
+							ver2, err := semver.NewVersion(guessVersionCache.get(remote))
 							if err == nil {
 								if ver.GreaterThan(ver2) {
-									guessVersionCache[remote] = tg
+									guessVersionCache.put(remote, tg)
 								}
 							}
 						}
-						guessVersionCacheLock.Unlock()
 					}
 				}
 			}
@@ -478,4 +509,42 @@ func findCurrentBranch(repo vcs.Repo) string {
 	}
 
 	return ""
+}
+
+type versionCache struct {
+	sync.RWMutex
+	cache map[string]string
+	cd    map[string]bool
+}
+
+func newVersionCache() *versionCache {
+	return &versionCache{
+		cache: make(map[string]string),
+		cd:    make(map[string]bool),
+	}
+}
+
+func (v *versionCache) put(name, version string) {
+	v.Lock()
+	defer v.Unlock()
+	v.cache[name] = version
+	v.cd[name] = true
+}
+
+func (v *versionCache) checked(name string) bool {
+	v.RLock()
+	defer v.RUnlock()
+	return v.cd[name]
+}
+
+func (v *versionCache) touchChecked(name string) {
+	v.Lock()
+	defer v.Unlock()
+	v.cd[name] = true
+}
+
+func (v *versionCache) get(name string) string {
+	v.RLock()
+	defer v.RUnlock()
+	return v.cache[name]
 }
