@@ -32,13 +32,13 @@ import (
 // If skipImport is set to true, this will not attempt to import from an existing
 // GPM, Godep, or GB project if one should exist. However, it will still attempt
 // to read the local source to determine required packages.
-func Create(base string, skipImport, noInteract bool) {
+func Create(base string, skipImport, noInteract, skipVerSug bool) {
 	glidefile := gpath.GlideFile
 	// Guard against overwrites.
 	guardYAML(glidefile)
 
 	// Guess deps
-	conf := guessDeps(base, skipImport, noInteract)
+	conf := guessDeps(base, skipImport, noInteract, skipVerSug)
 	// Write YAML
 	msg.Info("Writing glide.yaml file")
 	if err := conf.WriteFile(glidefile); err != nil {
@@ -65,7 +65,7 @@ func guardYAML(filename string) {
 //
 // FIXME: This function is likely a one-off that has a more standard alternative.
 // It's also long and could use a refactor.
-func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
+func guessDeps(base string, skipImport, noInteract, skipVerSug bool) *cfg.Config {
 	buildContext, err := util.GetBuildContext()
 	if err != nil {
 		msg.Die("Failed to build an import context: %s", err)
@@ -133,7 +133,7 @@ func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 				msg.Info("--> Found imported reference to %s", n)
 			}
 
-			all, allOnce = guessAskVersion(noInteract, all, allOnce, d)
+			all, allOnce = guessAskVersion(noInteract, all, allOnce, skipVerSug, d)
 
 			if subpkg != "" {
 				if !d.HasSubpackage(subpkg) {
@@ -178,7 +178,7 @@ func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 				if found == nil {
 					config.Imports = append(config.Imports, dep)
 					if dep.Reference != "" {
-						all, allOnce = guessAskVersion(noInteract, all, allOnce, dep)
+						all, allOnce = guessAskVersion(noInteract, all, allOnce, skipVerSug, dep)
 						msg.Info("--> Adding %s at version %s", dep.Name, dep.Reference)
 					} else {
 						msg.Info("--> Adding %s", dep.Name)
@@ -191,9 +191,38 @@ func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 	return config
 }
 
-func guessAskVersion(noInteract bool, all string, allonce bool, d *cfg.Dependency) (string, bool) {
+func guessAskVersion(noInteract bool, all string, allonce, skipVerSug bool, d *cfg.Dependency) (string, bool) {
 	if !noInteract && d.Reference != "" {
+		var changedVer bool
 		ver, err := semver.NewVersion(d.Reference)
+		if err != nil && !skipVerSug {
+			var loc string
+			if d.Repository != "" {
+				loc = d.Repository
+			} else {
+				loc = "https://" + d.Name
+			}
+
+			semv := guessVersionCache[loc]
+			if semv != "" {
+				msg.Info("The package %s appears to have Semantic Version releases but the imported data", d.Name)
+				msg.Info("is not using them. The latest release is %s but the imported data is using %s.", semv, d.Reference)
+				msg.Info("Would you like to use the latest release version instead? Yes (Y) or No (N)")
+				res, err2 := msg.PromptUntil([]string{"y", "yes", "n", "no"})
+				if err2 != nil {
+					msg.Die("Error processing response: %s", err)
+				}
+
+				if res == "y" || res == "yes" {
+					d.Reference = semv
+					changedVer = true
+				}
+			}
+		}
+
+		if changedVer {
+			ver, err = semver.NewVersion(d.Reference)
+		}
 		if err == nil {
 			if all == "" {
 				vstr := ver.String()
@@ -337,6 +366,9 @@ func guessImportGom(dir string) ([]*cfg.Dependency, bool) {
 // Note, this really needs a simpler name.
 var createGitParseVersion = regexp.MustCompile(`(?m-s)(?:tags)/(\S+)$`)
 
+var guessVersionCache = make(map[string]string)
+var guessVersionCacheLock = sync.Mutex{}
+
 func createGuessVersion(remote, id string) string {
 	err := cache.Setup()
 	if err != nil {
@@ -366,16 +398,38 @@ func createGuessVersion(remote, id string) string {
 		if err == nil {
 			cc = false
 			lines := strings.Split(string(out), "\n")
+			res := ""
 
 			// TODO(mattfarina): Detect if the found version is semver and use
 			// that one instead of the first found.
 			for _, i := range lines {
 				ti := strings.TrimSpace(i)
-				if strings.HasPrefix(ti, id) {
-					if found := createGitParseVersion.FindString(ti); found != "" {
-						return strings.TrimPrefix(strings.TrimSuffix(found, "^{}"), "tags/")
+				if found := createGitParseVersion.FindString(ti); found != "" {
+					tg := strings.TrimPrefix(strings.TrimSuffix(found, "^{}"), "tags/")
+					if strings.HasPrefix(ti, id) {
+						res = tg
+					}
+
+					ver, err := semver.NewVersion(tg)
+					if err == nil {
+						guessVersionCacheLock.Lock()
+						if guessVersionCache[remote] == "" {
+							guessVersionCache[remote] = tg
+						} else {
+							ver2, err := semver.NewVersion(guessVersionCache[remote])
+							if err == nil {
+								if ver.GreaterThan(ver2) {
+									guessVersionCache[remote] = tg
+								}
+							}
+						}
+						guessVersionCacheLock.Unlock()
 					}
 				}
+			}
+
+			if res != "" {
+				return res
 			}
 		}
 	}

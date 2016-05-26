@@ -154,9 +154,13 @@ func commands() []cli.Command {
 					Name:  "non-interactive",
 					Usage: "Disable interactive prompts.",
 				},
+				cli.BoolFlag{
+					Name:  "skip-version-suggestions",
+					Usage: "When imported commit ids are found that don't map to versions skip suggesting a version.",
+				},
 			},
 			Action: func(c *cli.Context) {
-				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"))
+				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"), c.Bool("skip-version-suggestions"))
 			},
 		},
 		{
