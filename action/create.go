@@ -19,6 +19,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
+	"github.com/Masterminds/semver"
 	"github.com/Masterminds/vcs"
 )
 
@@ -114,6 +115,8 @@ func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 	}
 
 	var count int
+	var all string
+	var allOnce bool
 	for _, pa := range sortable {
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
@@ -127,8 +130,10 @@ func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 				}
 				msg.Info("--> Found reference to %s", n)
 			} else {
-				msg.Info("--> Found reference to %s. Importing version %s", n, d.Reference)
+				msg.Info("--> Found imported reference to %s", n)
 			}
+
+			all, allOnce = guessAskVersion(noInteract, all, allOnce, d)
 
 			if subpkg != "" {
 				if !d.HasSubpackage(subpkg) {
@@ -160,7 +165,7 @@ func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 			msg.Info("glide.yaml file? Note, Glide will automatically scan your codebase to detect")
 			msg.Info("the complete dependency tree and import the complete tree. If your dependencies")
 			msg.Info("do not track dependency version information some version information may be lost.")
-			msg.Info("Yes (y) or No (n)?")
+			msg.Info("Yes (Y) or No (N)?")
 			res, err = msg.PromptUntil([]string{"y", "yes", "n", "no"})
 			if err != nil {
 				msg.Die("Error processing response: %s", err)
@@ -173,6 +178,7 @@ func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 				if found == nil {
 					config.Imports = append(config.Imports, dep)
 					if dep.Reference != "" {
+						all, allOnce = guessAskVersion(noInteract, all, allOnce, dep)
 						msg.Info("--> Adding %s at version %s", dep.Name, dep.Reference)
 					} else {
 						msg.Info("--> Adding %s", dep.Name)
@@ -183,6 +189,58 @@ func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 	}
 
 	return config
+}
+
+func guessAskVersion(noInteract bool, all string, allonce bool, d *cfg.Dependency) (string, bool) {
+	if !noInteract && d.Reference != "" {
+		ver, err := semver.NewVersion(d.Reference)
+		if err == nil {
+			if all == "" {
+				vstr := ver.String()
+				msg.Info("Imported dependency %s (%s) appears to use semantic versions (http://semver.org).", d.Name, d.Reference)
+				msg.Info("Would you like Glide to track the latest minor or patch releases (major.minor.path)?")
+				msg.Info("Tracking minor version releases would use '>= %s, < %d.0.0' ('^%s'). Tracking patch version", vstr, ver.Major()+1, vstr)
+				msg.Info("releases would use '>= %s, < %d.%d.0' ('~%s'). For more information on Glide versions", vstr, ver.Major(), ver.Minor()+1, vstr)
+				msg.Info("and ranges see https://glide.sh/docs/versions")
+				msg.Info("Minor (M), Patch (P), or Skip Ranges (S)?")
+				res, err := msg.PromptUntil([]string{"minor", "m", "patch", "p", "skip ranges", "s"})
+				if err != nil {
+					msg.Die("Error processing response: %s", err)
+				}
+				if res == "m" || res == "minor" {
+					d.Reference = "~" + vstr
+				} else if res == "p" || res == "patch" {
+					d.Reference = "^" + vstr
+				}
+
+				if !allonce {
+					msg.Info("Would you like to same response (%s) for future dependencies? Yes (Y) or No (N)", res)
+					res2, err := msg.PromptUntil([]string{"y", "yes", "n", "no"})
+					if err != nil {
+						msg.Die("Error processing response: %s", err)
+					}
+					if res2 == "yes" || res2 == "y" {
+						return res, true
+					}
+
+					return "", true
+				}
+
+			} else {
+				if all == "m" || all == "minor" {
+					d.Reference = "~" + ver.String()
+				} else if all == "p" || all == "patch" {
+					d.Reference = "^" + ver.String()
+				}
+			}
+
+			return all, allonce
+		}
+
+		return all, allonce
+	}
+
+	return all, allonce
 }
 
 func guessImportDeps(base string) cfg.Dependencies {
