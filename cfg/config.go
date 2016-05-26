@@ -187,16 +187,16 @@ func depsToVSolver(deps Dependencies) []vsolver.ProjectDep {
 			// TODO need to differentiate types of constraints so that we don't have
 			// this ambiguity
 			// Try semver first
-			c, err = vsolver.NewConstraint(d.Reference, vsolver.SemverConstraint)
+			c, err = vsolver.NewSemverConstraint(d.Reference)
 			if err != nil {
 				// Not a semver constraint. Super crappy heuristic that'll cover hg
 				// and git revs, but not bzr (svn, you say? lol, madame. lol)
 				if len(d.Reference) == 40 {
-					c, _ = vsolver.NewConstraint(d.Reference, vsolver.RevisionConstraint)
+					c = vsolver.Revision(d.Reference)
 				} else {
 					// Otherwise, assume a branch. This also sucks, because it could
 					// very well be a shitty, non-semver tag.
-					c, _ = vsolver.NewConstraint(d.Reference, vsolver.BranchConstraint)
+					c = vsolver.NewBranch(d.Reference)
 				}
 			}
 		}
@@ -457,12 +457,12 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		// TODO this covers git & hg; bzr and svn (??) need love
 		if len(r) == 40 {
 			if _, err := hex.DecodeString(r); err == nil {
-				d.Constraint, err = vsolver.NewConstraint(r, vsolver.RevisionConstraint)
+				d.Constraint = vsolver.Revision(r)
 			}
 		} else {
-			d.Constraint, err = vsolver.NewConstraint(r, vsolver.SemverConstraint)
+			d.Constraint, err = vsolver.NewSemverConstraint(r)
 			if err != nil {
-				d.Constraint, err = vsolver.NewConstraint(r, vsolver.VersionConstraint)
+				d.Constraint = vsolver.NewVersion(r)
 			}
 		}
 
@@ -470,7 +470,7 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, r, err)
 		}
 	} else if newDep.Branch != "" {
-		d.Constraint, err = vsolver.NewConstraint(newDep.Branch, vsolver.BranchConstraint)
+		d.Constraint = vsolver.NewBranch(newDep.Branch)
 
 		if err != nil {
 			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Branch, err)

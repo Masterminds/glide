@@ -90,8 +90,8 @@ func mksvpa(info string) ProjectAtom {
 }
 
 // mkc - "make constraint"
-func mkc(body string, t ConstraintType) Constraint {
-	c, err := NewConstraint(body, t)
+func mkc(body string) Constraint {
+	c, err := NewSemverConstraint(body)
 	if err != nil {
 		// don't want bad test data at this level, so just panic
 		panic(fmt.Sprintf("Error when converting '%s' into semver constraint: %s", body, err))
@@ -109,7 +109,7 @@ func mksvd(info string) ProjectDep {
 
 	return ProjectDep{
 		Ident:      id,
-		Constraint: mkc(v, SemverConstraint),
+		Constraint: mkc(v),
 	}
 }
 
@@ -844,7 +844,7 @@ func (sm *depspecSourceManager) VendorCodeExists(name ProjectName) (bool, error)
 
 func (sm *depspecSourceManager) Release() {}
 
-func (sm *depspecSourceManager) ExportAtomTo(pa ProjectAtom, to string) error {
+func (sm *depspecSourceManager) ExportProject(n ProjectName, v Version, to string) error {
 	return fmt.Errorf("dummy sm doesn't support exporting")
 }
 
