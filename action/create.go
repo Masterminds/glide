@@ -31,13 +31,13 @@ import (
 // If skipImport is set to true, this will not attempt to import from an existing
 // GPM, Godep, or GB project if one should exist. However, it will still attempt
 // to read the local source to determine required packages.
-func Create(base string, skipImport bool) {
+func Create(base string, skipImport, noInteract bool) {
 	glidefile := gpath.GlideFile
 	// Guard against overwrites.
 	guardYAML(glidefile)
 
 	// Guess deps
-	conf := guessDeps(base, skipImport)
+	conf := guessDeps(base, skipImport, noInteract)
 	// Write YAML
 	msg.Info("Writing glide.yaml file")
 	if err := conf.WriteFile(glidefile); err != nil {
@@ -64,7 +64,7 @@ func guardYAML(filename string) {
 //
 // FIXME: This function is likely a one-off that has a more standard alternative.
 // It's also long and could use a refactor.
-func guessDeps(base string, skipImport bool) *cfg.Config {
+func guessDeps(base string, skipImport, noInteract bool) *cfg.Config {
 	buildContext, err := util.GetBuildContext()
 	if err != nil {
 		msg.Die("Failed to build an import context: %s", err)
@@ -80,21 +80,17 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 
 	// Import by looking at other package managers and looking over the
 	// entire directory structure.
+	var deps cfg.Dependencies
 
 	// Attempt to import from other package managers.
 	if !skipImport {
-		guessImportDeps(base, config)
+		deps = guessImportDeps(base)
+		if len(deps) == 0 {
+			msg.Info("No dependencies found to import")
+		}
 	}
 
-	importLen := len(config.Imports)
-	if importLen > 0 {
-		msg.Info("Scanning code to look for additional dependencies")
-	} else if !skipImport {
-		msg.Info("No dependencies found to import")
-		msg.Info("Scanning code to look for dependencies")
-	} else {
-		msg.Info("Scanning code to look for dependencies")
-	}
+	msg.Info("Scanning code to look for dependencies")
 
 	// Resolve dependencies by looking at the tree.
 	r, err := dependency.NewResolver(base)
@@ -124,37 +120,72 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 
 		if !config.HasDependency(root) {
 			count++
-			msg.Info("--> Found reference to %s\n", n)
-			d := &cfg.Dependency{
-				Name: root,
+			d := deps.Get(root)
+			if d == nil {
+				d = &cfg.Dependency{
+					Name: root,
+				}
+				msg.Info("--> Found reference to %s", n)
+			} else {
+				msg.Info("--> Found reference to %s. Importing version %s", n, d.Reference)
 			}
-			if len(subpkg) > 0 {
-				d.Subpackages = []string{subpkg}
+
+			if subpkg != "" {
+				if !d.HasSubpackage(subpkg) {
+					d.Subpackages = append(d.Subpackages, subpkg)
+				}
+				msg.Verbose("--> Noting sub-package %s to %s", subpkg, root)
 			}
+
 			config.Imports = append(config.Imports, d)
 		} else {
 			if len(subpkg) > 0 {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
 				if !d.HasSubpackage(subpkg) {
-					count++
-					msg.Info("--> Adding sub-package %s to %s\n", subpkg, root)
 					d.Subpackages = append(d.Subpackages, subpkg)
+				}
+				msg.Verbose("--> Noting sub-package %s to %s", subpkg, root)
+			}
+		}
+	}
+
+	if !skipImport && len(deps) > count {
+		var res string
+		if noInteract {
+			res = "y"
+		} else {
+			msg.Info("%d unused imported dependencies found. These are likely transitive dependencies ", len(deps)-count)
+			msg.Info("(dependencies of your dependencies). Would you like to track them in your")
+			msg.Info("glide.yaml file? Note, Glide will automatically scan your codebase to detect")
+			msg.Info("the complete dependency tree and import the complete tree. If your dependencies")
+			msg.Info("do not track dependency version information some version information may be lost.")
+			msg.Info("Yes (y) or No (n)?")
+			res, err = msg.PromptUntil([]string{"y", "yes", "n", "no"})
+			if err != nil {
+				msg.Die("Error processing response: %s", err)
+			}
+		}
+		if res == "y" || res == "yes" {
+			msg.Info("Including additional imports in the glide.yaml file")
+			for _, dep := range deps {
+				found := config.Imports.Get(dep.Name)
+				if found == nil {
+					config.Imports = append(config.Imports, dep)
+					if dep.Reference != "" {
+						msg.Info("--> Adding %s at version %s", dep.Name, dep.Reference)
+					} else {
+						msg.Info("--> Adding %s", dep.Name)
+					}
 				}
 			}
 		}
 	}
 
-	if count == 0 && importLen > 0 {
-		msg.Info("--> Scanning found no additional dependencies to import")
-	} else if count == 0 {
-		msg.Info("--> Scanning found no dependencies to import")
-	}
-
 	return config
 }
 
-func guessImportDeps(base string, config *cfg.Config) {
+func guessImportDeps(base string) cfg.Dependencies {
 	msg.Info("Attempting to import from other package managers (use --skip-import to skip)")
 	deps := []*cfg.Dependency{}
 	absBase, err := filepath.Abs(base)
@@ -178,7 +209,7 @@ func guessImportDeps(base string, config *cfg.Config) {
 	}
 
 	if len(deps) > 0 {
-		msg.Info("--> Attempting to detect versions from commit ids")
+		msg.Info("--> Attempting to detect versions from imported commit ids")
 	}
 
 	var wg sync.WaitGroup
@@ -194,19 +225,19 @@ func guessImportDeps(base string, config *cfg.Config) {
 			}
 			ver := createGuessVersion(remote, dep.Reference)
 			if ver != dep.Reference {
-				msg.Info("--> Found imported reference to %s at version %s", dep.Name, ver)
+				msg.Verbose("--> Found imported reference to %s at version %s", dep.Name, ver)
 				dep.Reference = ver
-			} else {
-				msg.Info("--> Found imported reference to %s", dep.Name)
 			}
+
+			msg.Debug("--> Found imported reference to %s at revision %s", dep.Name, dep.Reference)
 
 			wg.Done()
 		}(i)
-
-		config.Imports = append(config.Imports, i)
 	}
 
 	wg.Wait()
+
+	return deps
 }
 
 func guessImportGodep(dir string) ([]*cfg.Dependency, bool) {

@@ -1,6 +1,7 @@
 package msg
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -16,8 +17,11 @@ type Messenger struct {
 	// Quiet, if true, suppresses chatty levels, like Info.
 	Quiet bool
 
-	// IsDebugging, if true, shows verbose levels, like Debug.
+	// IsDebugging, if true, shows Debug.
 	IsDebugging bool
+
+	// IsVerbose, if true, shows detailed informational messages.
+	IsVerbose bool
 
 	// NoColor, if true, will not use color in the output.
 	NoColor bool
@@ -27,6 +31,9 @@ type Messenger struct {
 
 	// Stderr is the location where this prints logs.
 	Stderr io.Writer
+
+	// Stdin is the location where input is read.
+	Stdin io.Reader
 
 	// PanicOnDie if true Die() will panic instead of exiting.
 	PanicOnDie bool
@@ -43,9 +50,11 @@ func NewMessenger() *Messenger {
 	m := &Messenger{
 		Quiet:       false,
 		IsDebugging: false,
+		IsVerbose:   false,
 		NoColor:     false,
 		Stdout:      os.Stdout,
 		Stderr:      os.Stderr,
+		Stdin:       os.Stdin,
 		PanicOnDie:  false,
 		ecode:       1,
 	}
@@ -76,12 +85,25 @@ func (m *Messenger) Debug(msg string, args ...interface{}) {
 		return
 	}
 	prefix := "[DEBUG] "
-	Msg(prefix+msg, args...)
+	m.Msg(prefix+msg, args...)
 }
 
 // Debug logs debug information using the Default Messenger
 func Debug(msg string, args ...interface{}) {
 	Default.Debug(msg, args...)
+}
+
+// Verbose logs detailed information
+func (m *Messenger) Verbose(msg string, args ...interface{}) {
+	if m.Quiet || !m.IsVerbose {
+		return
+	}
+	m.Info(msg, args...)
+}
+
+// Verbose detailed information using the Default Messenger
+func Verbose(msg string, args ...interface{}) {
+	Default.Verbose(msg, args...)
 }
 
 // Warn logs a warning
@@ -237,4 +259,31 @@ func HasErrored() bool {
 // available on that platform.
 func Color(code, msg string) string {
 	return Default.Color(code, msg)
+}
+
+// PromptUntil provides a prompt until one of the passed in strings has been
+// entered and return is hit. Note, the comparisons are case insensitive meaning
+// Y == y. The returned value is the one from the passed in options (same case).
+func (m *Messenger) PromptUntil(opts []string) (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			return "", err
+		}
+
+		for _, c := range opts {
+			if strings.EqualFold(c, strings.TrimSpace(text)) {
+				return c, nil
+			}
+		}
+	}
+}
+
+// PromptUntil provides a prompt until one of the passed in strings has been
+// entered and return is hit. Note, the comparisons are case insensitive meaning
+// Y == y. The returned value is the one from the passed in options (same case).
+// Uses the default setup.
+func PromptUntil(opts []string) (string, error) {
+	return Default.PromptUntil(opts)
 }

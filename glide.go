@@ -92,8 +92,12 @@ func main() {
 			Usage: "Quiet (no info or debug messages)",
 		},
 		cli.BoolFlag{
+			Name:  "verbose",
+			Usage: "Print detailed informational messages",
+		},
+		cli.BoolFlag{
 			Name:  "debug",
-			Usage: "Print Debug messages (verbose)",
+			Usage: "Print debug verbose informational messages",
 		},
 		cli.StringFlag{
 			Name:   "home",
@@ -146,9 +150,13 @@ func commands() []cli.Command {
 					Name:  "skip-import",
 					Usage: "When initializing skip importing from other package managers.",
 				},
+				cli.BoolFlag{
+					Name:  "non-interactive",
+					Usage: "Disable interactive prompts.",
+				},
 			},
 			Action: func(c *cli.Context) {
-				action.Create(".", c.Bool("skip-import"))
+				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"))
 			},
 		},
 		{
@@ -664,6 +672,7 @@ Example:
 // so it can be used by any Glide command.
 func startup(c *cli.Context) error {
 	action.Debug(c.Bool("debug"))
+	action.Verbose(c.Bool("verbose"))
 	action.NoColor(c.Bool("no-color"))
 	action.Quiet(c.Bool("quiet"))
 	action.Init(c.String("yaml"), c.String("home"))
