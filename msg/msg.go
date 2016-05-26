@@ -61,7 +61,7 @@ func (m *Messenger) Info(msg string, args ...interface{}) {
 	if m.Quiet {
 		return
 	}
-	prefix := m.Color(Green, "[INFO] ")
+	prefix := m.Color(Green, "[INFO]\t")
 	m.Msg(prefix+msg, args...)
 }
 
@@ -75,7 +75,7 @@ func (m *Messenger) Debug(msg string, args ...interface{}) {
 	if m.Quiet || !m.IsDebugging {
 		return
 	}
-	prefix := "[DEBUG] "
+	prefix := "[DEBUG]\t"
 	Msg(prefix+msg, args...)
 }
 
@@ -86,7 +86,7 @@ func Debug(msg string, args ...interface{}) {
 
 // Warn logs a warning
 func (m *Messenger) Warn(msg string, args ...interface{}) {
-	prefix := m.Color(Yellow, "[WARN] ")
+	prefix := m.Color(Yellow, "[WARN]\t")
 	m.Msg(prefix+msg, args...)
 }
 
@@ -97,7 +97,7 @@ func Warn(msg string, args ...interface{}) {
 
 // Err logs an error.
 func (m *Messenger) Err(msg string, args ...interface{}) {
-	prefix := m.Color(Red, "[ERROR] ")
+	prefix := m.Color(Red, "[ERROR]\t")
 	m.Msg(prefix+msg, args...)
 	m.hasErrored = true
 }
