@@ -221,7 +221,7 @@ func commands() []cli.Command {
 				},
 				cli.BoolFlag{
 					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -427,7 +427,7 @@ Example:
 				},
 				cli.BoolFlag{
 					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -534,7 +534,7 @@ Example:
 				},
 				cli.BoolFlag{
 					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
