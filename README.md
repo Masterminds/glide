@@ -95,8 +95,9 @@ To build from source you can:
 
 1. Clone this repository into `$GOPATH/src/github.com/Masterminds/glide` and
    change directory into it
-2. Ensure that the environment variable GO15VENDOREXPERIMENT is set, for
-   example by running `export GO15VENDOREXPERIMENT=1` when using GO 1.5. Go 1.6 release makes vendoring behaviour the default.
+2. If you are using Go 1.5 ensure the environment variable GO15VENDOREXPERIMENT is set, for
+   example by running `export GO15VENDOREXPERIMENT=1`. In Go 1.6 it is enabled by default and
+   in Go 1.7 it is always enabled without the ability to turn it off.
 3. Run `make build`
 
 This will leave you with `./glide`, which you can put in your `$PATH` if
