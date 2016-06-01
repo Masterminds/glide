@@ -446,7 +446,7 @@ Example:
 				installer.UseCacheGopath = c.Bool("cache-gopath")
 				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.Home = c.GlobalString("home")
-				installer.DeleteUnused = c.Bool("deleteOptIn")
+				installer.DeleteUnused = c.Bool("delete")
 
 				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
@@ -559,7 +559,7 @@ Example:
 				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.ResolveAllFiles = c.Bool("all-dependencies")
 				installer.Home = c.GlobalString("home")
-				installer.DeleteUnused = c.Bool("deleteOptIn")
+				installer.DeleteUnused = c.Bool("delete")
 
 				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
