@@ -166,6 +166,13 @@ func NewResolver(basedir string) (*Resolver, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	basedir, err = checkForBasedirSymlink(basedir)
+
+	if err != nil {
+		return nil, err
+	}
+
 	vdir := filepath.Join(basedir, "vendor")
 
 	buildContext, err := util.GetBuildContext()
@@ -940,4 +947,21 @@ func srcDir(fi os.FileInfo) bool {
 	}
 
 	return true
+}
+
+// checkForBasedirSymlink checks to see if the given basedir is actually a
+// symlink. In the case that it is a symlink, the symlink is read and returned.
+// If the basedir is not a symlink, the provided basedir argument is simply
+// returned back to the caller.
+func checkForBasedirSymlink(basedir string) (string, error) {
+	fi, err := os.Lstat(basedir)
+	if err != nil {
+		return "", err
+	}
+
+	if fi.Mode()&os.ModeSymlink != 0 {
+		return os.Readlink(basedir)
+	}
+
+	return basedir, nil
 }
