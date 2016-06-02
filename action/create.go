@@ -123,7 +123,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
 
-		if !config.HasDependency(root) {
+		if !config.HasDependency(root) && root != config.Name {
 			msg.Info("Found reference to %s\n", n)
 			d := &cfg.Dependency{
 				Name: root,
@@ -132,7 +132,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 				d.Subpackages = []string{subpkg}
 			}
 			config.Imports = append(config.Imports, d)
-		} else {
+		} else if config.HasDependency(root) {
 			if len(subpkg) > 0 {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
