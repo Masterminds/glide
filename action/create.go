@@ -125,7 +125,7 @@ func guessDeps(base string, skipImport, noInteract, skipVerSug bool) *cfg.Config
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
 
-		if !config.HasDependency(root) {
+		if !config.HasDependency(root) && root != config.Name {
 			count++
 			d := deps.Get(root)
 			if d == nil {
@@ -147,7 +147,7 @@ func guessDeps(base string, skipImport, noInteract, skipVerSug bool) *cfg.Config
 			}
 
 			config.Imports = append(config.Imports, d)
-		} else {
+		} else if config.HasDependency(root) {
 			if len(subpkg) > 0 {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)

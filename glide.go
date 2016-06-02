@@ -233,7 +233,7 @@ func commands() []cli.Command {
 				},
 				cli.BoolFlag{
 					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -439,7 +439,7 @@ Example:
 				},
 				cli.BoolFlag{
 					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -458,7 +458,7 @@ Example:
 				installer.UseCacheGopath = c.Bool("cache-gopath")
 				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.Home = c.GlobalString("home")
-				installer.DeleteUnused = c.Bool("deleteOptIn")
+				installer.DeleteUnused = c.Bool("delete")
 
 				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
@@ -546,7 +546,7 @@ Example:
 				},
 				cli.BoolFlag{
 					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -571,7 +571,7 @@ Example:
 				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.ResolveAllFiles = c.Bool("all-dependencies")
 				installer.Home = c.GlobalString("home")
-				installer.DeleteUnused = c.Bool("deleteOptIn")
+				installer.DeleteUnused = c.Bool("delete")
 
 				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
