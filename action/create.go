@@ -2,30 +2,19 @@ package action
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
-	"sync"
 
-	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/gb"
 	"github.com/Masterminds/glide/godep"
-	"github.com/Masterminds/glide/gom"
 	"github.com/Masterminds/glide/gpm"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
-	"github.com/Masterminds/semver"
-	"github.com/Masterminds/vcs"
 )
-
-// TODO(mattfarina): This file could really use to be cleaned up. It's functional
-// but not all that elegant. This mess of code really needs someone to come
-// along and clean it up. Pretty please.
 
 // Create creates/initializes a new Glide repository.
 //
@@ -36,21 +25,36 @@ import (
 // If skipImport is set to true, this will not attempt to import from an existing
 // GPM, Godep, or GB project if one should exist. However, it will still attempt
 // to read the local source to determine required packages.
-func Create(base string, skipImport, noInteract, skipVerSug bool) {
+func Create(base string, skipImport, nonInteractive bool) {
 	glidefile := gpath.GlideFile
 	// Guard against overwrites.
 	guardYAML(glidefile)
 
 	// Guess deps
-	conf := guessDeps(base, skipImport, noInteract, skipVerSug)
+	conf := guessDeps(base, skipImport)
 	// Write YAML
-	msg.Info("Writing glide.yaml file")
+	msg.Info("Writing configuration file (%s)", glidefile)
 	if err := conf.WriteFile(glidefile); err != nil {
 		msg.Die("Could not save %s: %s", glidefile, err)
 	}
-	msg.Info("You can now edit the glide.yaml file. Consider:")
-	msg.Info("--> Using versions and ranges. See https://glide.sh/docs/versions/")
-	msg.Info("--> Adding additional metadata. See https://glide.sh/docs/glide.yaml/")
+
+	var res bool
+	if !nonInteractive {
+		msg.Info("Would you like Glide to help you find ways to improve your glide.yaml configuration?")
+		msg.Info("If you want to revisit this step you can use the config-wizard command at any time.")
+		msg.Info("Yes (Y) or No (N)?")
+		res = msg.PromptUntilYorN()
+		if res {
+			ConfigWizard(base)
+		}
+	}
+
+	if !res {
+		msg.Info("You can now edit the glide.yaml file. Consider:")
+		msg.Info("--> Using versions and ranges. See https://glide.sh/docs/versions/")
+		msg.Info("--> Adding additional metadata. See https://glide.sh/docs/glide.yaml/")
+		msg.Info("--> Running the config-wizard command to improve the versions in your configuration")
+	}
 }
 
 // guardYAML fails if the given file already exists.
@@ -69,7 +73,7 @@ func guardYAML(filename string) {
 //
 // FIXME: This function is likely a one-off that has a more standard alternative.
 // It's also long and could use a refactor.
-func guessDeps(base string, skipImport, noInteract, skipVerSug bool) *cfg.Config {
+func guessDeps(base string, skipImport bool) *cfg.Config {
 	buildContext, err := util.GetBuildContext()
 	if err != nil {
 		msg.Die("Failed to build an import context: %s", err)
@@ -85,17 +89,18 @@ func guessDeps(base string, skipImport, noInteract, skipVerSug bool) *cfg.Config
 
 	// Import by looking at other package managers and looking over the
 	// entire directory structure.
-	var deps cfg.Dependencies
 
 	// Attempt to import from other package managers.
 	if !skipImport {
-		deps = guessImportDeps(base)
-		if len(deps) == 0 {
-			msg.Info("No dependencies found to import")
-		}
+		guessImportDeps(base, config)
 	}
 
-	msg.Info("Scanning code to look for dependencies")
+	importLen := len(config.Imports)
+	if importLen == 0 {
+		msg.Info("Scanning code to look for dependencies")
+	} else {
+		msg.Info("Scanning code to look for dependencies not found in import")
+	}
 
 	// Resolve dependencies by looking at the tree.
 	r, err := dependency.NewResolver(base)
@@ -118,194 +123,39 @@ func guessDeps(base string, skipImport, noInteract, skipVerSug bool) *cfg.Config
 		vpath = vpath + string(os.PathSeparator)
 	}
 
-	var count int
-	var all string
-	var allOnce bool
 	for _, pa := range sortable {
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
 
 		if !config.HasDependency(root) && root != config.Name {
-			count++
-			d := deps.Get(root)
-			if d == nil {
-				d = &cfg.Dependency{
-					Name: root,
-				}
-				msg.Info("--> Found reference to %s", n)
-			} else {
-				msg.Info("--> Found imported reference to %s", n)
+			msg.Info("--> Found reference to %s\n", n)
+			d := &cfg.Dependency{
+				Name: root,
 			}
-
-			all, allOnce = guessAskVersion(noInteract, all, allOnce, skipVerSug, d)
-
-			if subpkg != "" {
-				if !d.HasSubpackage(subpkg) {
-					d.Subpackages = append(d.Subpackages, subpkg)
-				}
-				msg.Verbose("--> Noting sub-package %s to %s", subpkg, root)
+			if len(subpkg) > 0 {
+				d.Subpackages = []string{subpkg}
 			}
-
 			config.Imports = append(config.Imports, d)
 		} else if config.HasDependency(root) {
 			if len(subpkg) > 0 {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
 				if !d.HasSubpackage(subpkg) {
+					msg.Info("--> Adding sub-package %s to %s\n", subpkg, root)
 					d.Subpackages = append(d.Subpackages, subpkg)
 				}
-				msg.Verbose("--> Noting sub-package %s to %s", subpkg, root)
 			}
 		}
 	}
 
-	if !skipImport && len(deps) > count {
-		var res string
-		if noInteract {
-			res = "y"
-		} else {
-			msg.Info("%d unused imported dependencies found. These are likely transitive dependencies ", len(deps)-count)
-			msg.Info("(dependencies of your dependencies). Would you like to track them in your")
-			msg.Info("glide.yaml file? Note, Glide will automatically scan your codebase to detect")
-			msg.Info("the complete dependency tree and import the complete tree. If your dependencies")
-			msg.Info("do not track dependency version information some version information may be lost.")
-			msg.Info("Yes (Y) or No (N)?")
-			res, err = msg.PromptUntil([]string{"y", "yes", "n", "no"})
-			if err != nil {
-				msg.Die("Error processing response: %s", err)
-			}
-		}
-		if res == "y" || res == "yes" {
-			msg.Info("Including additional imports in the glide.yaml file")
-			for _, dep := range deps {
-				found := config.Imports.Get(dep.Name)
-				if found == nil {
-					config.Imports = append(config.Imports, dep)
-					if dep.Reference != "" {
-						all, allOnce = guessAskVersion(noInteract, all, allOnce, skipVerSug, dep)
-						msg.Info("--> Adding %s at version %s", dep.Name, dep.Reference)
-					} else {
-						msg.Info("--> Adding %s", dep.Name)
-					}
-				}
-			}
-		}
+	if len(config.Imports) == importLen && importLen != 0 {
+		msg.Info("--> Code scanning found no additional imports")
 	}
 
 	return config
 }
 
-func guessAskVersion(noInteract bool, all string, allonce, skipVerSug bool, d *cfg.Dependency) (string, bool) {
-	if !noInteract && !skipVerSug && d.Reference == "" {
-		// If scanning has not happened already, for example this isn't an
-		// import, try it now.
-		var loc string
-		if d.Repository != "" {
-			loc = d.Repository
-		} else {
-			loc = "https://" + d.Name
-		}
-		if !guessVersionCache.checked(loc) {
-			createGuessVersion(loc, d.Reference)
-		}
-
-		semv := guessVersionCache.get(loc)
-		if semv != "" {
-			msg.Info("The package %s appears to have Semantic Version releases. The latest", d.Name)
-			msg.Info("release is %s. Would you like to use this release? Yes (Y) or No (N)", semv)
-			res, err2 := msg.PromptUntil([]string{"y", "yes", "n", "no"})
-			if err2 != nil {
-				msg.Die("Error processing response: %s", err2)
-			}
-
-			if res == "y" || res == "yes" {
-				d.Reference = semv
-			}
-		}
-
-	}
-
-	if !noInteract && d.Reference != "" {
-		var changedVer bool
-		ver, err := semver.NewVersion(d.Reference)
-		if err != nil && !skipVerSug {
-			var loc string
-			if d.Repository != "" {
-				loc = d.Repository
-			} else {
-				loc = "https://" + d.Name
-			}
-
-			semv := guessVersionCache.get(loc)
-			if semv != "" {
-				msg.Info("The package %s appears to have Semantic Version releases but the imported data", d.Name)
-				msg.Info("is not using them. The latest release is %s but the imported data is using %s.", semv, d.Reference)
-				msg.Info("Would you like to use the latest release version instead? Yes (Y) or No (N)")
-				res, err2 := msg.PromptUntil([]string{"y", "yes", "n", "no"})
-				if err2 != nil {
-					msg.Die("Error processing response: %s", err2)
-				}
-
-				if res == "y" || res == "yes" {
-					d.Reference = semv
-					changedVer = true
-				}
-			}
-		}
-
-		if changedVer {
-			ver, err = semver.NewVersion(d.Reference)
-		}
-		if err == nil {
-			if all == "" {
-				vstr := ver.String()
-				msg.Info("Imported dependency %s (%s) appears to use semantic versions (http://semver.org).", d.Name, d.Reference)
-				msg.Info("Would you like Glide to track the latest minor or patch releases (major.minor.path)?")
-				msg.Info("Tracking minor version releases would use '>= %s, < %d.0.0' ('^%s'). Tracking patch version", vstr, ver.Major()+1, vstr)
-				msg.Info("releases would use '>= %s, < %d.%d.0' ('~%s'). For more information on Glide versions", vstr, ver.Major(), ver.Minor()+1, vstr)
-				msg.Info("and ranges see https://glide.sh/docs/versions")
-				msg.Info("Minor (M), Patch (P), or Skip Ranges (S)?")
-				res, err := msg.PromptUntil([]string{"minor", "m", "patch", "p", "skip ranges", "s"})
-				if err != nil {
-					msg.Die("Error processing response: %s", err)
-				}
-				if res == "m" || res == "minor" {
-					d.Reference = "^" + vstr
-				} else if res == "p" || res == "patch" {
-					d.Reference = "~" + vstr
-				}
-
-				if !allonce {
-					msg.Info("Would you like to same response (%s) for future dependencies? Yes (Y) or No (N)", res)
-					res2, err := msg.PromptUntil([]string{"y", "yes", "n", "no"})
-					if err != nil {
-						msg.Die("Error processing response: %s", err)
-					}
-					if res2 == "yes" || res2 == "y" {
-						return res, true
-					}
-
-					return "", true
-				}
-
-			} else {
-				if all == "m" || all == "minor" {
-					d.Reference = "^" + ver.String()
-				} else if all == "p" || all == "patch" {
-					d.Reference = "~" + ver.String()
-				}
-			}
-
-			return all, allonce
-		}
-
-		return all, allonce
-	}
-
-	return all, allonce
-}
-
-func guessImportDeps(base string) cfg.Dependencies {
+func guessImportDeps(base string, config *cfg.Config) {
 	msg.Info("Attempting to import from other package managers (use --skip-import to skip)")
 	deps := []*cfg.Dependency{}
 	absBase, err := filepath.Abs(base)
@@ -315,7 +165,7 @@ func guessImportDeps(base string) cfg.Dependencies {
 
 	if d, ok := guessImportGodep(absBase); ok {
 		msg.Info("Importing Godep configuration")
-		msg.Warn("--> Godep uses commit id versions. Consider using Semantic Versions with Glide")
+		msg.Warn("Godep uses commit id versions. Consider using Semantic Versions with Glide")
 		deps = d
 	} else if d, ok := guessImportGPM(absBase); ok {
 		msg.Info("Importing GPM configuration")
@@ -323,41 +173,17 @@ func guessImportDeps(base string) cfg.Dependencies {
 	} else if d, ok := guessImportGB(absBase); ok {
 		msg.Info("Importing GB configuration")
 		deps = d
-	} else if d, ok := guessImportGom(absBase); ok {
-		msg.Info("Importing GB configuration")
-		deps = d
 	}
-
-	if len(deps) > 0 {
-		msg.Info("--> Attempting to detect versions from imported commit ids")
-	}
-
-	var wg sync.WaitGroup
 
 	for _, i := range deps {
-		wg.Add(1)
-		go func(dep *cfg.Dependency) {
-			var remote string
-			if dep.Repository != "" {
-				remote = dep.Repository
-			} else {
-				remote = "https://" + dep.Name
-			}
-			ver := createGuessVersion(remote, dep.Reference)
-			if ver != dep.Reference {
-				msg.Verbose("--> Found imported reference to %s at version %s", dep.Name, ver)
-				dep.Reference = ver
-			}
+		if i.Reference == "" {
+			msg.Info("--> Found imported reference to %s", i.Name)
+		} else {
+			msg.Info("--> Found imported reference to %s at revision %s", i.Name, i.Reference)
+		}
 
-			msg.Debug("--> Found imported reference to %s at revision %s", dep.Name, dep.Reference)
-
-			wg.Done()
-		}(i)
+		config.Imports = append(config.Imports, i)
 	}
-
-	wg.Wait()
-
-	return deps
 }
 
 func guessImportGodep(dir string) ([]*cfg.Dependency, bool) {
@@ -385,166 +211,4 @@ func guessImportGB(dir string) ([]*cfg.Dependency, bool) {
 	}
 
 	return d, true
-}
-
-func guessImportGom(dir string) ([]*cfg.Dependency, bool) {
-	d, err := gom.Parse(dir)
-	if err != nil || len(d) == 0 {
-		return []*cfg.Dependency{}, false
-	}
-
-	return d, true
-}
-
-// Note, this really needs a simpler name.
-var createGitParseVersion = regexp.MustCompile(`(?m-s)(?:tags)/(\S+)$`)
-
-var guessVersionCache = newVersionCache()
-
-func createGuessVersion(remote, id string) string {
-	err := cache.Setup()
-	if err != nil {
-		msg.Debug("Problem setting up cache: %s", err)
-	}
-	l, err := cache.Location()
-	if err != nil {
-		msg.Debug("Problem detecting cache location: %s", err)
-	}
-	key, err := cache.Key(remote)
-	if err != nil {
-		msg.Debug("Problem generating cache key for %s: %s", remote, err)
-	}
-
-	local := filepath.Join(l, "src", key)
-	repo, err := vcs.NewRepo(remote, local)
-	if err != nil {
-		msg.Debug("Problem getting repo instance: %s", err)
-	}
-
-	// Git endpoints allow for querying without fetching the codebase locally.
-	// We try that first to avoid fetching right away. Is this premature
-	// optimization?
-	cc := true
-	if repo.Vcs() == vcs.Git {
-		out, err := exec.Command("git", "ls-remote", remote).CombinedOutput()
-		if err == nil {
-			guessVersionCache.touchChecked(remote)
-			cc = false
-			lines := strings.Split(string(out), "\n")
-			res := ""
-
-			// TODO(mattfarina): Detect if the found version is semver and use
-			// that one instead of the first found.
-			for _, i := range lines {
-				ti := strings.TrimSpace(i)
-				if found := createGitParseVersion.FindString(ti); found != "" {
-					tg := strings.TrimPrefix(strings.TrimSuffix(found, "^{}"), "tags/")
-					if strings.HasPrefix(ti, id) {
-						res = tg
-					}
-
-					ver, err := semver.NewVersion(tg)
-					if err == nil {
-						if guessVersionCache.get(remote) == "" {
-							guessVersionCache.put(remote, tg)
-						} else {
-							ver2, err := semver.NewVersion(guessVersionCache.get(remote))
-							if err == nil {
-								if ver.GreaterThan(ver2) {
-									guessVersionCache.put(remote, tg)
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if res != "" {
-				return res
-			}
-		}
-	}
-
-	if cc {
-		cache.Lock(key)
-		if _, err = os.Stat(local); os.IsNotExist(err) {
-			repo.Get()
-			branch := findCurrentBranch(repo)
-			c := cache.RepoInfo{DefaultBranch: branch}
-			err = cache.SaveRepoData(key, c)
-			if err != nil {
-				msg.Debug("Error saving cache repo details: %s", err)
-			}
-		} else {
-			repo.Update()
-		}
-
-		tgs, err := repo.TagsFromCommit(id)
-		if err != nil {
-			msg.Debug("Problem getting tags for commit: %s", err)
-		}
-		cache.Unlock(key)
-		if len(tgs) > 0 {
-			return tgs[0]
-		}
-	}
-
-	return id
-}
-
-func findCurrentBranch(repo vcs.Repo) string {
-	msg.Debug("Attempting to find current branch for %s", repo.Remote())
-	// Svn and Bzr don't have default branches.
-	if repo.Vcs() == vcs.Svn || repo.Vcs() == vcs.Bzr {
-		return ""
-	}
-
-	if repo.Vcs() == vcs.Git || repo.Vcs() == vcs.Hg {
-		ver, err := repo.Current()
-		if err != nil {
-			msg.Debug("Unable to find current branch for %s, error: %s", repo.Remote(), err)
-			return ""
-		}
-		return ver
-	}
-
-	return ""
-}
-
-type versionCache struct {
-	sync.RWMutex
-	cache map[string]string
-	cd    map[string]bool
-}
-
-func newVersionCache() *versionCache {
-	return &versionCache{
-		cache: make(map[string]string),
-		cd:    make(map[string]bool),
-	}
-}
-
-func (v *versionCache) put(name, version string) {
-	v.Lock()
-	defer v.Unlock()
-	v.cache[name] = version
-	v.cd[name] = true
-}
-
-func (v *versionCache) checked(name string) bool {
-	v.RLock()
-	defer v.RUnlock()
-	return v.cd[name]
-}
-
-func (v *versionCache) touchChecked(name string) {
-	v.Lock()
-	defer v.Unlock()
-	v.cd[name] = true
-}
-
-func (v *versionCache) get(name string) string {
-	v.RLock()
-	defer v.RUnlock()
-	return v.cache[name]
 }

@@ -287,3 +287,27 @@ func (m *Messenger) PromptUntil(opts []string) (string, error) {
 func PromptUntil(opts []string) (string, error) {
 	return Default.PromptUntil(opts)
 }
+
+// PromptUntilYorN provides a prompt until the user chooses yes or no. This is
+// not case sensitive and they can input other options such as Y or N.
+// In the response Yes is bool true and No is bool false.
+func (m *Messenger) PromptUntilYorN() bool {
+	res, err := m.PromptUntil([]string{"y", "yes", "n", "no"})
+	if err != nil {
+		m.Die("Error processing response: %s", err)
+	}
+
+	if res == "y" || res == "yes" {
+		return true
+	}
+
+	return false
+}
+
+// PromptUntilYorN provides a prompt until the user chooses yes or no. This is
+// not case sensitive and they can input other options such as Y or N.
+// In the response Yes is bool true and No is bool false.
+// Uses the default setup.
+func PromptUntilYorN() bool {
+	return Default.PromptUntilYorN()
+}

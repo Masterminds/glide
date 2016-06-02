@@ -154,13 +154,20 @@ func commands() []cli.Command {
 					Name:  "non-interactive",
 					Usage: "Disable interactive prompts.",
 				},
-				cli.BoolFlag{
-					Name:  "skip-version-suggestions",
-					Usage: "When imported commit ids are found that don't map to versions skip suggesting a version.",
-				},
 			},
 			Action: func(c *cli.Context) {
-				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"), c.Bool("skip-version-suggestions"))
+				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"))
+			},
+		},
+		{
+			Name:      "config-wizard",
+			ShortName: "cw",
+			Usage:     "Wizard that makes optional suggestions to improve config in a glide.yaml file.",
+			Description: `Glide will analyze a projects glide.yaml file and the imported
+		projects to find ways the glide.yaml file can potentially be improved. It
+		will then interactively make suggestions that you can skip or accept.`,
+			Action: func(c *cli.Context) {
+				action.ConfigWizard(".")
 			},
 		},
 		{
