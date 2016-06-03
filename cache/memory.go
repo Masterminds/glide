@@ -105,6 +105,8 @@ func (m *memCache) put(name, version string) {
 				m.latest[name] = version
 			}
 		}
+	} else {
+		m.latest[name] = version
 	}
 
 	found = false

@@ -113,8 +113,8 @@ func ConfigWizard(base string) {
 			}
 
 			if dres {
-				msg.Info("Updating %s to use the release %s instead of no release", dep.Name, cur)
-				dep.Reference = cur
+				msg.Info("Updating %s to use the release %s instead of no release", dep.Name, memlatest)
+				dep.Reference = memlatest
 				changes++
 			}
 		}
