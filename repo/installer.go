@@ -157,6 +157,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	vpath := i.VendorPath()
 
 	ic := newImportCache()
+	tc := NewUpdateTracker()
 
 	m := &MissingPackageHandler{
 		destination: vpath,
@@ -169,6 +170,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		updateVendored: i.UpdateVendored,
 		Config:         conf,
 		Use:            ic,
+		LookupTag:      tc,
 		updated:        i.Updated,
 	}
 
@@ -178,6 +180,8 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
 		Config:      conf,
+		LookupTag:   tc,
+		lookedUpTag: make(map[string]bool),
 	}
 
 	// Update imports
@@ -210,6 +214,7 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	vpath := i.VendorPath()
 
 	ic := newImportCache()
+	tc := NewUpdateTracker()
 
 	v := &VersionHandler{
 		Destination: vpath,
@@ -217,6 +222,8 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 		Imported:    make(map[string]bool),
 		Conflicts:   make(map[string]bool),
 		Config:      conf,
+		LookupTag:   tc,
+		lookedUpTag: make(map[string]bool),
 	}
 
 	// Update imports
@@ -340,6 +347,9 @@ type MissingPackageHandler struct {
 	Config                                               *cfg.Config
 	Use                                                  *importCache
 	updated                                              *UpdateTracker
+
+	// If a package should have it's reference checked for a tag to use instead.
+	LookupTag *UpdateTracker
 }
 
 // NotFound attempts to retrieve a package when not found in the local vendor/
@@ -381,6 +391,7 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	d := m.Config.Imports.Get(root)
 	// If the dependency is nil it means the Config doesn't yet know about it.
 	if d == nil {
+		m.LookupTag.Add(root)
 		d, _ = m.Use.Get(root)
 		// We don't know about this dependency so we create a basic instance.
 		if d == nil {
@@ -448,6 +459,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 	d := m.Config.Imports.Get(root)
 	// If the dependency is nil it means the Config doesn't yet know about it.
 	if d == nil {
+		m.LookupTag.Add(root)
 		d, _ = m.Use.Get(root)
 		// We don't know about this dependency so we create a basic instance.
 		if d == nil {
@@ -484,6 +496,12 @@ type VersionHandler struct {
 	// same. We are keeping track to only display them once.
 	// the parent pac
 	Conflicts map[string]bool
+
+	// If a package should have it's reference checked for a tag to use instead.
+	LookupTag *UpdateTracker
+
+	// When looking up a tag has already happened.
+	lookedUpTag map[string]bool
 }
 
 // Process imports dependencies for a package
@@ -535,6 +553,51 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	v := d.Config.Imports.Get(root)
 
 	dep, req := d.Use.Get(root)
+
+	// Try to find tags for a version here. We know we have the repo available
+	// at this point which makes it possible.
+	// We only want to check for tags on things imported or from transitive deps.
+	// Only lookup on this this once.
+	if dep != nil && dep.Reference != "" {
+		_, found := d.lookedUpTag[root+dep.Reference]
+		if !found {
+			d.lookedUpTag[root+dep.Reference] = true
+			dest := filepath.Join(d.Destination, filepath.FromSlash(dep.Name))
+			repo, err := dep.GetRepo(dest)
+			if err != nil {
+				msg.Warn("Unable to access repo for %s to find tags", dep.Name)
+			} else {
+				if repo.IsReference(dep.Reference) {
+					dep.Reference, err = VcsVerFromRef(dep, dest, dep.Reference)
+					if err != nil {
+						msg.Warn("Problem finding tags for %s (%s): %s", dep.Name, dep.Reference, err)
+					}
+				}
+			}
+		}
+	}
+
+	// Values off config should only be checked if they were marked as being
+	// added during the import process and were not in the original conf.
+	if v != nil && v.Reference != "" && d.LookupTag.Check(root) {
+		_, found := d.lookedUpTag[root+v.Reference]
+		if !found {
+			d.lookedUpTag[root+v.Reference] = true
+			dest := filepath.Join(d.Destination, filepath.FromSlash(v.Name))
+			repo, err := v.GetRepo(dest)
+			if err != nil {
+				msg.Warn("Unable to access repo for %s to find tags", v.Name)
+			} else {
+				if repo.IsReference(v.Reference) {
+					dep.Reference, err = VcsVerFromRef(v, dest, v.Reference)
+					if err != nil {
+						msg.Warn("Problem finding tags for %s (%s): %s", v.Name, v.Reference, err)
+					}
+				}
+			}
+		}
+	}
+
 	if dep != nil && v != nil {
 		if v.Reference == "" && dep.Reference != "" {
 			v.Reference = dep.Reference
