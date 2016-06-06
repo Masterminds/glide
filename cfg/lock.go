@@ -15,7 +15,7 @@ type Lockfile struct {
 	Hash       string    `yaml:"hash"`
 	Updated    time.Time `yaml:"updated"`
 	Imports    Locks     `yaml:"imports"`
-	DevImports Locks     `yaml:"devImports"`
+	DevImports Locks     `yaml:"testImports"`
 }
 
 // LockfileFromYaml returns an instance of Lockfile from YAML

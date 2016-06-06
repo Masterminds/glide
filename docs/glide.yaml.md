@@ -44,4 +44,4 @@ These elements are:
     - `subpackages`: A record of packages being used within a repository. This does not include all packages within a repository but rather those being used.
     - `os`: A list of operating systems used for filtering. If set it will compare the current runtime OS to the one specified and only fetch the dependency if there is a match. If not set filtering is skipped. The names are the same used in build flags and `GOOS` environment variable.
     - `arch`: A list of architectures used for filtering. If set it will compare the current runtime architecture to the one specified and only fetch the dependency if there is a match. If not set filtering is skipped. The names are the same used in build flags and `GOARCH` environment variable.
-- `devImport`: A list of development packages. Each package has the same details as those listed under import.
+- `testImport`: A list of packages used in tests that are not already listed in `import`. Each package has the same details as those listed under import.

@@ -51,7 +51,7 @@ type Config struct {
 
 	// DevImports contains the test or other development imports for a project.
 	// See the Dependency type for more details on how this is recorded.
-	DevImports Dependencies `yaml:"devimport,omitempty"`
+	DevImports Dependencies `yaml:"testImport,omitempty"`
 }
 
 // A transitive representation of a dependency for importing and exporting to yaml.
@@ -64,7 +64,7 @@ type cf struct {
 	Ignore      []string     `yaml:"ignore,omitempty"`
 	Exclude     []string     `yaml:"excludeDirs,omitempty"`
 	Imports     Dependencies `yaml:"import"`
-	DevImports  Dependencies `yaml:"devimport,omitempty"`
+	DevImports  Dependencies `yaml:"testImport,omitempty"`
 }
 
 // ConfigFromYaml returns an instance of Config from YAML
