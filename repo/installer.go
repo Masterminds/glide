@@ -741,8 +741,16 @@ var displayCommitInfoTemplate = "%s reference %s:\n" +
 
 func displayCommitInfo(repo vcs.Repo, dep *cfg.Dependency) {
 	c, err := repo.CommitInfo(dep.Reference)
+	ref := dep.Reference
+
 	if err == nil {
-		singleInfo(displayCommitInfoTemplate, dep.Name, dep.Reference, c.Author, c.Date.Format(time.RFC1123Z), commitSubjectFirstLine(c.Message))
+		tgs, err2 := repo.TagsFromCommit(c.Commit)
+		if err2 == nil && len(tgs) > 0 {
+			if tgs[0] != dep.Reference {
+				ref = ref + " (" + tgs[0] + ")"
+			}
+		}
+		singleInfo(displayCommitInfoTemplate, dep.Name, ref, c.Author, c.Date.Format(time.RFC1123Z), commitSubjectFirstLine(c.Message))
 	}
 }
 
