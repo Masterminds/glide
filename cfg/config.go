@@ -298,6 +298,16 @@ func (d Dependencies) Get(name string) *Dependency {
 	return nil
 }
 
+// Has checks if a dependency is on a list of dependencies such as import or devimport
+func (d Dependencies) Has(name string) bool {
+	for _, dep := range d {
+		if dep.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // Clone performs a deep clone of Dependencies
 func (d Dependencies) Clone() Dependencies {
 	n := make(Dependencies, 0, len(d))

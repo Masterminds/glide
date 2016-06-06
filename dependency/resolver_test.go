@@ -15,7 +15,7 @@ func TestResolveLocalShallow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l, err := r.ResolveLocal(false)
+	l, _, err := r.ResolveLocal(false)
 	if err != nil {
 		t.Fatalf("Failed to resolve: %s", err)
 	}
@@ -47,7 +47,7 @@ func TestResolveLocalDeep(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	l, err := r.ResolveLocal(true)
+	l, _, err := r.ResolveLocal(true)
 	if err != nil {
 		t.Fatalf("Failed to resolve: %s", err)
 	}

@@ -140,7 +140,8 @@ type Resolver struct {
 	ResolveAllFiles bool
 
 	// Items already in the queue.
-	alreadyQ map[string]bool
+	alreadyQ  map[string]bool
+	talreadyQ map[string]bool
 
 	// Attempts to scan that had unrecoverable error.
 	hadError map[string]bool
@@ -222,7 +223,7 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	if r.ResolveAllFiles {
 		return r.resolveList(l)
 	}
-	return r.resolveImports(l)
+	return r.resolveImports(l, false)
 }
 
 // dirHasPrefix tests whether the directory dir begins with prefix.
@@ -240,12 +241,14 @@ func dirHasPrefix(dir, prefix string) bool {
 // If the deep flag is set to true, this will then resolve all of the dependencies
 // of the dependencies it has found. If not, it will return just the packages that
 // the base project relies upon.
-func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
+func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 	// We build a list of local source to walk, then send this list
 	// to resolveList.
 	msg.Debug("Resolving local dependencies")
 	l := list.New()
+	tl := list.New()
 	alreadySeen := map[string]bool{}
+	talreadySeen := map[string]bool{}
 	err := filepath.Walk(r.basedir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil && err != filepath.SkipDir {
 			return err
@@ -266,6 +269,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 		// Scan for dependencies, and anything that's not part of the local
 		// package gets added to the scan list.
 		var imps []string
+		var testImps []string
 		p, err := r.BuildContext.ImportDir(path, 0)
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
@@ -275,7 +279,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 				// declared. This is often because of an example with a package
 				// or main but +build ignore as a build tag. In that case we
 				// try to brute force the packages with a slower scan.
-				imps, err = IterativeScan(path)
+				imps, testImps, err = IterativeScan(path)
 				if err != nil {
 					return err
 				}
@@ -284,6 +288,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 			}
 		} else {
 			imps = p.Imports
+			testImps = p.TestImports
 		}
 
 		// We are only looking for dependencies in vendor. No root, cgo, etc.
@@ -311,20 +316,46 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 			}
 		}
 
+		for _, imp := range testImps {
+			if talreadySeen[imp] {
+				continue
+			}
+			talreadySeen[imp] = true
+			info := r.FindPkg(imp)
+			switch info.Loc {
+			case LocUnknown, LocVendor:
+				tl.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp))) // Do we need a path on this?
+			case LocGopath:
+				if !dirHasPrefix(info.Path, r.basedir) {
+					// FIXME: This is a package outside of the project we're
+					// scanning. It should really be on vendor. But we don't
+					// want it to reference GOPATH. We want it to be detected
+					// and moved.
+					tl.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
+				}
+			case LocRelative:
+				if strings.HasPrefix(imp, "./"+gpath.VendorDir) {
+					msg.Warn("Go package resolving will resolve %s without the ./%s/ prefix", imp, gpath.VendorDir)
+				}
+			}
+		}
+
 		return nil
 	})
 
 	if err != nil {
 		msg.Err("Failed to build an initial list of packages to scan: %s", err)
-		return []string{}, err
+		return []string{}, []string{}, err
 	}
 
-	if deep {
-		if r.ResolveAllFiles {
-			return r.resolveList(l)
-		}
-		return r.resolveImports(l)
-	}
+	// if deep {
+	// 	if r.ResolveAllFiles {
+	// 		re, err := r.resolveList(l)
+	// 		return re, []string{}, err
+	// 	}
+	// 	re, err := r.resolveImports(l, false)
+	// 	return re, []string{}, err
+	// }
 
 	// If we're not doing a deep scan, we just convert the list into an
 	// array and return.
@@ -332,7 +363,12 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 	for e := l.Front(); e != nil; e = e.Next() {
 		res = append(res, e.Value.(string))
 	}
-	return res, nil
+	tres := make([]string, 0, l.Len())
+	for e := tl.Front(); e != nil; e = e.Next() {
+		tres = append(tres, e.Value.(string))
+	}
+
+	return res, tres, nil
 }
 
 // ResolveAll takes a list of packages and returns an inclusive list of all
@@ -355,7 +391,7 @@ func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 		queue = list.New()
 	}
 
-	loc, err := r.ResolveLocal(false)
+	loc, _, err := r.ResolveLocal(false)
 	if err != nil {
 		return []string{}, err
 	}
@@ -367,7 +403,7 @@ func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
 	if r.ResolveAllFiles {
 		return r.resolveList(queue)
 	}
-	return r.resolveImports(queue)
+	return r.resolveImports(queue, false)
 }
 
 // stripv strips the vendor/ prefix from vendored packages.
@@ -392,16 +428,25 @@ func (r *Resolver) vpath(str string) string {
 //
 // The resolver's handler is used in the cases where a package cannot be
 // located.
-func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
+func (r *Resolver) resolveImports(queue *list.List, testDeps bool) ([]string, error) {
 	msg.Debug("Resolving import path")
+	if testDeps {
+		msg.Debug("Resolving test dependencies")
+	}
 	for e := queue.Front(); e != nil; e = e.Next() {
 		vdep := e.Value.(string)
 		dep := r.stripv(vdep)
 
 		// Check if marked in the Q and then explicitly mark it. We want to know
 		// if it had previously been marked and ensure it for the future.
-		_, foundQ := r.alreadyQ[dep]
-		r.alreadyQ[dep] = true
+		var foundQ bool
+		if testDeps {
+			_, foundQ = r.talreadyQ[dep]
+			r.talreadyQ[dep] = true
+		} else {
+			_, foundQ = r.alreadyQ[dep]
+			r.alreadyQ[dep] = true
+		}
 
 		// If we've already encountered an error processing this dependency
 		// skip it.
@@ -427,7 +472,12 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			// or main but +build ignore as a build tag. In that case we
 			// try to brute force the packages with a slower scan.
 			msg.Debug("Using Iterative Scanning for %s", dep)
-			imps, err = IterativeScan(vdep)
+			if testDeps {
+				_, imps, err = IterativeScan(vdep)
+			} else {
+				imps, _, err = IterativeScan(vdep)
+			}
+
 			if err != nil {
 				msg.Err("Iterative scanning error %s: %s", dep, err)
 				continue
@@ -446,7 +496,11 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 				// If the location doesn't exist try to fetch it.
 				if ok, err2 := r.Handler.NotFound(dep); ok {
-					r.alreadyQ[dep] = true
+					if testDeps {
+						r.talreadyQ[dep] = true
+					} else {
+						r.alreadyQ[dep] = true
+					}
 
 					// By adding to the queue it will get reprocessed now that
 					// it exists.
@@ -467,7 +521,12 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			}
 			continue
 		} else {
-			imps = pkg.Imports
+			if testDeps {
+				imps = pkg.TestImports
+			} else {
+				imps = pkg.Imports
+			}
+
 		}
 
 		// Range over all of the identified imports and see which ones we
@@ -486,7 +545,11 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				msg.Debug("In vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					msg.Debug("Marking %s to be scanned.", imp)
-					r.alreadyQ[imp] = true
+					if testDeps {
+						r.talreadyQ[dep] = true
+					} else {
+						r.alreadyQ[dep] = true
+					}
 					queue.PushBack(r.vpath(imp))
 					if err := r.Handler.InVendor(imp); err == nil {
 						r.VersionHandler.SetVersion(imp)
@@ -497,7 +560,11 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 			case LocUnknown:
 				msg.Debug("Missing %s. Trying to resolve.", imp)
 				if ok, err := r.Handler.NotFound(imp); ok {
-					r.alreadyQ[imp] = true
+					if testDeps {
+						r.talreadyQ[dep] = true
+					} else {
+						r.alreadyQ[dep] = true
+					}
 					queue.PushBack(r.vpath(imp))
 					r.VersionHandler.SetVersion(imp)
 				} else if err != nil {
@@ -512,7 +579,11 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				if _, ok := r.alreadyQ[imp]; !ok {
 					// Only scan it if it gets moved into vendor/
 					if ok, _ := r.Handler.OnGopath(imp); ok {
-						r.alreadyQ[imp] = true
+						if testDeps {
+							r.talreadyQ[dep] = true
+						} else {
+							r.alreadyQ[dep] = true
+						}
 						queue.PushBack(r.vpath(imp))
 						r.VersionHandler.SetVersion(imp)
 					}
@@ -695,7 +766,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 		// declared. This is often because of an example with a package
 		// or main but +build ignore as a build tag. In that case we
 		// try to brute force the packages with a slower scan.
-		imps, err = IterativeScan(pkg)
+		imps, _, err = IterativeScan(pkg)
 		if err != nil {
 			return []string{}, err
 		}
