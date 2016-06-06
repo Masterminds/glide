@@ -7,6 +7,15 @@ import (
 // Debug sets the debugging flags across components.
 func Debug(on bool) {
 	msg.Default.IsDebugging = on
+
+	if on == true {
+		msg.Default.IsVerbose = on
+	}
+}
+
+// Verbose sets the verbose flags across components.
+func Verbose(on bool) {
+	msg.Default.IsVerbose = on
 }
 
 // Quiet sets the quiet flags across components.
