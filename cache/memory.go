@@ -100,7 +100,7 @@ func (m *memCache) put(name, version string) {
 	latest, found := m.latest[name]
 	if found {
 		lv, err := semver.NewVersion(latest)
-		if err != nil {
+		if err == nil {
 			if sv.GreaterThan(lv) {
 				m.latest[name] = version
 			}

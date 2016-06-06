@@ -246,6 +246,10 @@ func commands() []cli.Command {
 					Name:  "strip-vendor, v",
 					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
 				},
+				cli.BoolFlag{
+					Name:  "non-interactive",
+					Usage: "Disable interactive prompts.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
@@ -271,7 +275,7 @@ func commands() []cli.Command {
 				inst.ResolveAllFiles = c.Bool("all-dependencies")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"), c.Bool("non-interactive"))
 			},
 		},
 		{
