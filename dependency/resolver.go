@@ -288,6 +288,9 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 
 		// We are only looking for dependencies in vendor. No root, cgo, etc.
 		for _, imp := range imps {
+			if r.Config.HasIgnore(imp) {
+				continue
+			}
 			if alreadySeen[imp] {
 				continue
 			}
