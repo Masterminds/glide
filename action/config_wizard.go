@@ -51,6 +51,11 @@ func ConfigWizard(base string) {
 			deps = append(deps, dep)
 		}
 	}
+	for _, dep := range conf.DevImports {
+		if wizardLookInto(dep) {
+			deps = append(deps, dep)
+		}
+	}
 
 	msg.Info("Gathering information on each dependency")
 	msg.Info("--> This may take a moment. Especially on a codebase with many dependencies")
