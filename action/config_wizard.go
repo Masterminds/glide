@@ -255,6 +255,7 @@ func wizardFindVersions(d *cfg.Dependency) {
 	l, err := cache.Location()
 	if err != nil {
 		msg.Debug("Problem detecting cache location: %s", err)
+		return
 	}
 	var remote string
 	if d.Repository != "" {
@@ -266,12 +267,14 @@ func wizardFindVersions(d *cfg.Dependency) {
 	key, err := cache.Key(remote)
 	if err != nil {
 		msg.Debug("Problem generating cache key for %s: %s", remote, err)
+		return
 	}
 
 	local := filepath.Join(l, "src", key)
 	repo, err := vcs.NewRepo(remote, local)
 	if err != nil {
 		msg.Debug("Problem getting repo instance: %s", err)
+		return
 	}
 
 	var useLocal bool
