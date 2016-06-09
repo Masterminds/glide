@@ -1,3 +1,12 @@
+1.7.0 (2016-05-05)
+
+- Adds a glide.yaml file with some limited information.
+- Implements #37: Ability to export source as a directory.
+- Implements #36: Get current version-ish with Current method. This returns
+  a branch (if on tip) or equivalent tip, a tag if on a tag, or a revision if
+  on an individual revision. Note, the tip of branch is VCS specific so usage
+  may require detecting VCS type.
+
 # 1.6.1 (2016-04-27)
 
 - Fixed #30: tags from commit should not have ^{} appended (seen in git)

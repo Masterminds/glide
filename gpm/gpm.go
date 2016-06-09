@@ -31,6 +31,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		return []*cfg.Dependency{}, nil
 	}
 	msg.Info("Found Godeps file in %s", gpath.StripBasepath(dir))
+	msg.Info("--> Parsing GPM metadata...")
 
 	buf := []*cfg.Dependency{}
 

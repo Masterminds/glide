@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"time"
 	//"log"
 	"os"
@@ -82,6 +83,14 @@ func TestGit(t *testing.T) {
 		t.Error(err)
 	}
 
+	v, err := repo.Current()
+	if err != nil {
+		t.Errorf("Error trying Git Current: %s", err)
+	}
+	if v != "master" {
+		t.Errorf("Current failed to detect Git on tip of master. Got version: %s", v)
+	}
+
 	// Set the version using the short hash.
 	err = repo.UpdateVersion("806b07b")
 	if err != nil {
@@ -98,12 +107,20 @@ func TestGit(t *testing.T) {
 	}
 
 	// Use Version to verify we are on the right version.
-	v, err := repo.Version()
+	v, err = repo.Version()
 	if v != "806b07b08faa21cfbdae93027904f80174679402" {
 		t.Error("Error checking checked out Git version")
 	}
 	if err != nil {
 		t.Error(err)
+	}
+
+	v, err = repo.Current()
+	if err != nil {
+		t.Errorf("Error trying Git Current for ref: %s", err)
+	}
+	if v != "806b07b08faa21cfbdae93027904f80174679402" {
+		t.Errorf("Current failed to detect Git on ref of branch. Got version: %s", v)
 	}
 
 	// Use Date to verify we are on the right commit.
@@ -201,6 +218,38 @@ func TestGit(t *testing.T) {
 	_, err = repo.CommitInfo("asdfasdfasdf")
 	if err != ErrRevisionUnavailable {
 		t.Error("Git didn't return expected ErrRevisionUnavailable")
+	}
+
+	tempDir2, err := ioutil.TempDir("", "go-vcs-git-tests-export")
+	if err != nil {
+		t.Fatalf("Error creating temp directory: %s", err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir2)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	exportDir := filepath.Join(tempDir2, "src")
+
+	err = repo.ExportDir(exportDir)
+	if err != nil {
+		t.Errorf("Unable to export Git repo. Err was %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(exportDir, "README.md"))
+	if err != nil {
+		t.Errorf("Error checking exported file in Git: %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(exportDir, string(repo.Vcs())))
+	if err != nil {
+		if found := os.IsNotExist(err); found == false {
+			t.Errorf("Error checking exported metadata in Git: %s", err)
+		}
+	} else {
+		t.Error("Error checking Git metadata. It exists.")
 	}
 }
 

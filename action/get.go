@@ -5,18 +5,24 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
 	"github.com/Masterminds/glide/util"
+	"github.com/Masterminds/semver"
 )
 
 // Get fetches one or more dependencies and installs.
 //
 // This includes resolving dependency resolution and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor bool) {
+func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor, nonInteract bool) {
+	if installer.UseCache {
+		cache.SystemLock()
+	}
+
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
@@ -27,8 +33,8 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	}
 
 	// Add the packages to the config.
-	if count, err := addPkgsToConfig(conf, names, insecure); err != nil {
-		msg.Die("Failed to get new packages: %s", err)
+	if count, err2 := addPkgsToConfig(conf, names, insecure, nonInteract); err2 != nil {
+		msg.Die("Failed to get new packages: %s", err2)
 	} else if count == 0 {
 		msg.Warn("Nothing to do")
 		return
@@ -121,10 +127,13 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 // - separates repo from packages
 // - sets up insecure repo URLs where necessary
 // - generates a list of subpackages
-func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) (int, error) {
+func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract bool) (int, error) {
 
-	msg.Info("Preparing to install %d package.", len(names))
-
+	if len(names) == 1 {
+		msg.Info("Preparing to install %d package.", len(names))
+	} else {
+		msg.Info("Preparing to install %d packages.", len(names))
+	}
 	numAdded := 0
 	for _, name := range names {
 		var version string
@@ -133,6 +142,8 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) (int, erro
 			name = parts[0]
 			version = parts[1]
 		}
+
+		msg.Info("Attempting to get package %s", name)
 
 		root, subpkg := util.NormalizeName(name)
 		if len(root) == 0 {
@@ -145,29 +156,25 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) (int, erro
 			if subpkg != "" {
 				dep := conf.Imports.Get(root)
 				if dep.HasSubpackage(subpkg) {
-					msg.Warn("Package %q is already in glide.yaml. Skipping", name)
+					msg.Warn("--> Package %q is already in glide.yaml. Skipping", name)
 				} else {
 					dep.Subpackages = append(dep.Subpackages, subpkg)
-					msg.Info("Adding sub-package %s to existing import %s", subpkg, root)
+					msg.Info("--> Adding sub-package %s to existing import %s", subpkg, root)
 					numAdded++
 				}
 			} else {
-				msg.Warn("Package %q is already in glide.yaml. Skipping", root)
+				msg.Warn("--> Package %q is already in glide.yaml. Skipping", root)
 			}
 			continue
 		}
 
 		if conf.HasIgnore(root) {
-			msg.Warn("Package %q is set to be ignored in glide.yaml. Skipping", root)
+			msg.Warn("--> Package %q is set to be ignored in glide.yaml. Skipping", root)
 			continue
 		}
 
 		dep := &cfg.Dependency{
 			Name: root,
-		}
-
-		if version != "" {
-			dep.Reference = version
 		}
 
 		// When retriving from an insecure location set the repo to the
@@ -176,18 +183,55 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure bool) (int, erro
 			dep.Repository = "http://" + root
 		}
 
+		if version != "" {
+			dep.Reference = version
+		} else if !nonInteract {
+			getWizard(dep)
+		}
+
 		if len(subpkg) > 0 {
 			dep.Subpackages = []string{subpkg}
 		}
 
 		if dep.Reference != "" {
-			msg.Info("Importing %s with the version %s", dep.Name, dep.Reference)
+			msg.Info("--> Adding %s to your configuration with the version %s", dep.Name, dep.Reference)
 		} else {
-			msg.Info("Importing %s", dep.Name)
+			msg.Info("--> Adding %s to your configuration %s", dep.Name)
 		}
 
 		conf.Imports = append(conf.Imports, dep)
 		numAdded++
 	}
 	return numAdded, nil
+}
+
+func getWizard(dep *cfg.Dependency) {
+	var remote string
+	if dep.Repository != "" {
+		remote = dep.Repository
+	} else {
+		remote = "https://" + dep.Name
+	}
+
+	// Lookup dependency info and store in cache.
+	msg.Info("--> Gathering release information for %s", dep.Name)
+	wizardFindVersions(dep)
+
+	memlatest := cache.MemLatest(remote)
+	if memlatest != "" {
+		dres := wizardAskLatest(memlatest, dep)
+		if dres {
+			dep.Reference = memlatest
+
+			sv, err := semver.NewVersion(dep.Reference)
+			if err == nil {
+				res := wizardAskRange(sv, dep)
+				if res == "m" {
+					dep.Reference = "^" + sv.String()
+				} else if res == "p" {
+					dep.Reference = "~" + sv.String()
+				}
+			}
+		}
+	}
 }

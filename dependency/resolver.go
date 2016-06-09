@@ -166,6 +166,13 @@ func NewResolver(basedir string) (*Resolver, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	basedir, err = checkForBasedirSymlink(basedir)
+
+	if err != nil {
+		return nil, err
+	}
+
 	vdir := filepath.Join(basedir, "vendor")
 
 	buildContext, err := util.GetBuildContext()
@@ -281,6 +288,9 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 
 		// We are only looking for dependencies in vendor. No root, cgo, etc.
 		for _, imp := range imps {
+			if r.Config.HasIgnore(imp) {
+				continue
+			}
 			if alreadySeen[imp] {
 				continue
 			}
@@ -894,10 +904,11 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 		// https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
 		info.Loc = LocAppengine
 		r.findCache[name] = info
-	} else if name == "context" {
-		// context is a package being added to the Go 1.7 standard library. Some
-		// packages, such as golang.org/x/net are importing it with build flags
-		// in files for go1.7. Need to detect this and handle it.
+	} else if name == "context" || name == "net/http/httptrace" {
+		// context and net/http/httptrace are packages being added to
+		// the Go 1.7 standard library. Some packages, such as golang.org/x/net
+		// are importing it with build flags in files for go1.7. Need to detect
+		// this and handle it.
 		info.Loc = LocGoroot
 		r.findCache[name] = info
 	}
@@ -939,4 +950,21 @@ func srcDir(fi os.FileInfo) bool {
 	}
 
 	return true
+}
+
+// checkForBasedirSymlink checks to see if the given basedir is actually a
+// symlink. In the case that it is a symlink, the symlink is read and returned.
+// If the basedir is not a symlink, the provided basedir argument is simply
+// returned back to the caller.
+func checkForBasedirSymlink(basedir string) (string, error) {
+	fi, err := os.Lstat(basedir)
+	if err != nil {
+		return "", err
+	}
+
+	if fi.Mode()&os.ModeSymlink != 0 {
+		return os.Readlink(basedir)
+	}
+
+	return basedir, nil
 }

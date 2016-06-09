@@ -1,8 +1,10 @@
 package action
 
 import (
+	"io/ioutil"
 	"path/filepath"
 
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/godep"
@@ -13,6 +15,10 @@ import (
 
 // Update updates repos and the lock file from the main glide yaml.
 func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
+	if installer.UseCache {
+		cache.SystemLock()
+	}
+
 	base := "."
 	EnsureGopath()
 	EnsureVendorDir()
@@ -85,9 +91,27 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 			msg.Die("Failed to generate config hash. Unable to generate lock file.")
 		}
 		lock := cfg.NewLockfile(confcopy.Imports, hash)
-		if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
-			msg.Err("Could not write lock file to %s: %s", base, err)
-			return
+		wl := true
+		if gpath.HasLock(base) {
+			yml, err := ioutil.ReadFile(filepath.Join(base, gpath.LockFile))
+			if err == nil {
+				l2, err := cfg.LockfileFromYaml(yml)
+				if err == nil {
+					f1, err := l2.Fingerprint()
+					f2, err2 := lock.Fingerprint()
+					if err == nil && err2 == nil && f1 == f2 {
+						wl = false
+					}
+				}
+			}
+		}
+		if wl {
+			if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
+				msg.Err("Could not write lock file to %s: %s", base, err)
+				return
+			}
+		} else {
+			msg.Info("Versions did not change. Skipping glide.lock update.")
 		}
 
 		msg.Info("Project relies on %d dependencies.", len(confcopy.Imports))

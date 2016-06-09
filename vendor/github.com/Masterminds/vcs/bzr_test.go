@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"time"
 	//"log"
 	"os"
@@ -78,18 +79,34 @@ func TestBzr(t *testing.T) {
 		t.Error("Wrong version returned from NewRepo")
 	}
 
+	v, err := repo.Current()
+	if err != nil {
+		t.Errorf("Error trying Bzr Current: %s", err)
+	}
+	if v != "-1" {
+		t.Errorf("Current failed to detect Bzr on tip of branch. Got version: %s", v)
+	}
+
 	err = repo.UpdateVersion("2")
 	if err != nil {
 		t.Errorf("Unable to update Bzr repo version. Err was %s", err)
 	}
 
 	// Use Version to verify we are on the right version.
-	v, err := repo.Version()
+	v, err = repo.Version()
 	if v != "2" {
 		t.Error("Error checking checked out Bzr version")
 	}
 	if err != nil {
 		t.Error(err)
+	}
+
+	v, err = repo.Current()
+	if err != nil {
+		t.Errorf("Error trying Bzr Current: %s", err)
+	}
+	if v != "2" {
+		t.Errorf("Current failed to detect Bzr on rev 2 of branch. Got version: %s", v)
 	}
 
 	// Use Date to verify we are on the right commit.
@@ -183,6 +200,38 @@ func TestBzr(t *testing.T) {
 	_, err = repo.CommitInfo("asdfasdfasdf")
 	if err != ErrRevisionUnavailable {
 		t.Error("Bzr didn't return expected ErrRevisionUnavailable")
+	}
+
+	tempDir2, err := ioutil.TempDir("", "go-vcs-bzr-tests-export")
+	if err != nil {
+		t.Fatalf("Error creating temp directory: %s", err)
+	}
+	defer func() {
+		err = os.RemoveAll(tempDir2)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	exportDir := filepath.Join(tempDir2, "src")
+
+	err = repo.ExportDir(exportDir)
+	if err != nil {
+		t.Errorf("Unable to export Bzr repo. Err was %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(exportDir, "Readme.md"))
+	if err != nil {
+		t.Errorf("Error checking exported file in Bzr: %s", err)
+	}
+
+	_, err = os.Stat(filepath.Join(exportDir, string(repo.Vcs())))
+	if err != nil {
+		if found := os.IsNotExist(err); found == false {
+			t.Errorf("Error checking exported metadata in Bzr: %s", err)
+		}
+	} else {
+		t.Error("Error checking Bzr metadata. It exists.")
 	}
 }
 
