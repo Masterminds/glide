@@ -45,14 +45,24 @@ installFile() {
 	sudo cp "$GLIDE_TMP_BIN" "/usr/local/bin"
 }
 
+bye() {
+	result=$?
+	if [ "$result" != "0" ]; then
+		echo "Fail to install glide"
+	fi
+	exit $result
+}
+
 # Execution
 
 #Stop execution on any error
 set -e
+trap "bye" EXIT
 testRoot
 initArch
 initOS
 downloadFile
 installFile
 # Test if everything ok
-echo "$(glide -v) installed succesfully"
+GLIDE_VERSION=$(glide -v)
+echo "$GLIDE_VERSION installed succesfully"
