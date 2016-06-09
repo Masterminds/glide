@@ -563,6 +563,10 @@ Example:
 					Name:  "strip-vendor, v",
 					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
 				},
+				cli.BoolFlag{
+					Name:  "skip-test",
+					Usage: "Resolve dependencies in test files.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
@@ -583,6 +587,7 @@ Example:
 				installer.ResolveAllFiles = c.Bool("all-dependencies")
 				installer.Home = c.GlobalString("home")
 				installer.DeleteUnused = c.Bool("delete")
+				installer.ResolveTest = !c.Bool("skip-test")
 
 				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},

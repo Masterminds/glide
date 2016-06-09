@@ -51,6 +51,9 @@ type Installer struct {
 	// packages.
 	ResolveAllFiles bool
 
+	// ResolveTest sets if test dependencies should be resolved.
+	ResolveTest bool
+
 	// Updated tracks the packages that have been remotely fetched.
 	Updated *UpdateTracker
 }
@@ -524,7 +527,7 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 // - keeping the already set version
 // - proviting messaging about the version conflict
 // TODO(mattfarina): The way version setting happens can be improved. Currently not optimal.
-func (d *VersionHandler) SetVersion(pkg string) (e error) {
+func (d *VersionHandler) SetVersion(pkg string, testDep bool) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
@@ -533,6 +536,20 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	}
 
 	v := d.Config.Imports.Get(root)
+	if testDep {
+		if v == nil {
+			v = d.Config.DevImports.Get(root)
+		} else if d.Config.DevImports.Has(root) {
+			// Both imports and test imports lists the same dependency.
+			// There are import chains (because the import tree is resolved
+			// before the test tree) that can cause this.
+			tempD := d.Config.DevImports.Get(root)
+			if tempD.Reference != v.Reference {
+				msg.Warn("Using import %s (version %s) for test instead of testImport (version %s).", v.Name, v.Reference, tempD.Reference)
+			}
+			// TODO(mattfarina): Note repo difference in a warning.
+		}
+	}
 
 	dep, req := d.Use.Get(root)
 	if dep != nil && v != nil {
@@ -553,7 +570,11 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	} else if dep != nil {
 		// We've got an imported dependency to use and don't already have a
 		// record of it. Append it to the Imports.
-		d.Config.Imports = append(d.Config.Imports, dep)
+		if testDep {
+			d.Config.DevImports = append(d.Config.DevImports, dep)
+		} else {
+			d.Config.Imports = append(d.Config.Imports, dep)
+		}
 	} else {
 		// If we've gotten here we don't have any depenency objects.
 		r, sp := util.NormalizeName(pkg)
@@ -563,7 +584,11 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 		if sp != "" {
 			dep.Subpackages = []string{sp}
 		}
-		d.Config.Imports = append(d.Config.Imports, dep)
+		if testDep {
+			d.Config.DevImports = append(d.Config.DevImports, dep)
+		} else {
+			d.Config.Imports = append(d.Config.Imports, dep)
+		}
 	}
 
 	err := VcsVersion(dep, d.Destination)

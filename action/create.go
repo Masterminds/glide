@@ -108,6 +108,9 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		msg.Die("Error creating a dependency resolver: %s", err)
 	}
 
+	// When creating resolve the test dependencies as well as the application ones.
+	r.ResolveTest = true
+
 	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}}
 	r.Handler = h
 
