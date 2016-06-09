@@ -42,7 +42,7 @@ installFile() {
 	mkdir -p "$GLIDE_TMP"
 	tar xf "$GLIDE_TMP_FILE" -C "/tmp/glide"
 	GLIDE_TMP_BIN="$GLIDE_TMP/$OS-$ARCH/glide"
-	sudo cp "$GLIDE_TMP_BIN" "/usr/local/bin"
+	cp "$GLIDE_TMP_BIN" "/usr/local/bin"
 }
 
 bye() {
