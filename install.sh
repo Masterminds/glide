@@ -7,12 +7,12 @@ testRoot() {
 
 
 initArch() {
-    ARCH=$(uname -m)
-    if [ "$ARCH" = "x86" ]; then
-        ARCH="386"
-    elif [ "$ARCH" = "x86_64" ]; then
-        ARCH="amd64"
-    fi
+	ARCH=$(uname -m)
+	case $ARCH in
+		arm*) ARCH="arm";;
+		x86) ARCH="386";;
+		x86_64) ARCH="amd64";;
+	esac
 }
 
 initOS() {
