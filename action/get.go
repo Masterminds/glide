@@ -43,7 +43,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	// Fetch the new packages. Can't resolve versions via installer.Update if
 	// get is called while the vendor/ directory is empty so we checkout
 	// everything.
-	err = installer.Checkout(conf, false)
+	err = installer.Checkout(conf)
 	if err != nil {
 		msg.Die("Failed to checkout packages: %s", err)
 	}
@@ -68,7 +68,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	}
 
 	// Set Reference
-	if err := repo.SetReference(confcopy); err != nil {
+	if err := repo.SetReference(confcopy, installer.ResolveTest); err != nil {
 		msg.Err("Failed to set references: %s", err)
 	}
 
@@ -112,7 +112,7 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 	if err != nil {
 		msg.Die("Failed to generate config hash. Unable to generate lock file.")
 	}
-	lock := cfg.NewLockfile(confcopy.Imports, hash)
+	lock := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
 	if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 		msg.Die("Failed to write glide lock file: %s", err)
 	}

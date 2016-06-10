@@ -91,7 +91,7 @@ func TestResolveAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("No new resolver: %s", err)
 	}
-	l, err := r.ResolveAll(deps)
+	l, err := r.ResolveAll(deps, false)
 	if err != nil {
 		t.Fatalf("Failed to resolve: %s", err)
 	}

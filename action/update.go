@@ -30,13 +30,13 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	}
 
 	// Try to check out the initial dependencies.
-	if err := installer.Checkout(conf, false); err != nil {
+	if err := installer.Checkout(conf); err != nil {
 		msg.Die("Failed to do initial checkout of config: %s", err)
 	}
 
 	// Set the versions for the initial dependencies so that resolved dependencies
 	// are rooted in the correct version of the base.
-	if err := repo.SetReference(conf); err != nil {
+	if err := repo.SetReference(conf, installer.ResolveTest); err != nil {
 		msg.Die("Failed to set initial config references: %s", err)
 	}
 
@@ -51,15 +51,11 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 			msg.Die("Could not update packages: %s", err)
 		}
 
-		// TODO: There is no support here for importing Godeps, GPM, and GB files.
-		// I think that all we really need to do now is hunt for these files, and then
-		// roll their version numbers into the config file.
-
 		// Set references. There may be no remaining references to set since the
 		// installer set them as it went to make sure it parsed the right imports
 		// from the right version of the package.
 		msg.Info("Setting references for remaining imports")
-		if err := repo.SetReference(confcopy); err != nil {
+		if err := repo.SetReference(confcopy, installer.ResolveTest); err != nil {
 			msg.Err("Failed to set references: %s (Skip to cleanup)", err)
 		}
 	}
@@ -90,7 +86,7 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 		if err != nil {
 			msg.Die("Failed to generate config hash. Unable to generate lock file.")
 		}
-		lock := cfg.NewLockfile(confcopy.Imports, hash)
+		lock := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
 		wl := true
 		if gpath.HasLock(base) {
 			yml, err := ioutil.ReadFile(filepath.Join(base, gpath.LockFile))

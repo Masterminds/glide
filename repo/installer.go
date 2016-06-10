@@ -133,7 +133,7 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 //
 // This is used when initializing an empty vendor directory, or when updating a
 // vendor directory based on changed config.
-func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
+func (i *Installer) Checkout(conf *cfg.Config) error {
 
 	dest := i.VendorPath()
 
@@ -141,7 +141,7 @@ func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
 		return err
 	}
 
-	if useDev {
+	if i.ResolveTest {
 		return ConcurrentUpdate(conf.DevImports, dest, i, conf)
 	}
 
@@ -185,6 +185,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 	// Update imports
 	res, err := dependency.NewResolver(base)
+	res.ResolveTest = i.ResolveTest
 	if err != nil {
 		msg.Die("Failed to create a resolver: %s", err)
 	}
@@ -193,18 +194,63 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	res.VersionHandler = v
 	res.ResolveAllFiles = i.ResolveAllFiles
 	msg.Info("Resolving imports")
-	_, err = allPackages(conf.Imports, res)
+
+	imps, timps, err := res.ResolveLocal(false)
+	if err != nil {
+		msg.Die("Failed to resolve local packages: %s", err)
+	}
+	for _, v := range imps {
+		n := res.Stripv(v)
+		d := conf.Imports.Get(n)
+		if d == nil {
+			nd := &cfg.Dependency{
+				Name: n,
+			}
+			conf.Imports = append(conf.Imports, nd)
+		}
+	}
+	if i.ResolveTest {
+		for _, v := range timps {
+			n := res.Stripv(v)
+			d := conf.Imports.Get(n)
+			if d == nil {
+				d = conf.DevImports.Get(n)
+			}
+			if d == nil {
+				nd := &cfg.Dependency{
+					Name: n,
+				}
+				conf.DevImports = append(conf.DevImports, nd)
+			}
+		}
+	}
+
+	_, err = allPackages(conf.Imports, res, false)
 	if err != nil {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 
-	if len(conf.DevImports) > 0 {
-		msg.Warn("dev imports not resolved.")
+	if i.ResolveTest {
+		msg.Debug("Resolving test dependencies")
+		_, err = allPackages(conf.DevImports, res, true)
+		if err != nil {
+			msg.Die("Failed to retrieve a list of test dependencies: %s", err)
+		}
 	}
 
 	err = ConcurrentUpdate(conf.Imports, vpath, i, conf)
+	if err != nil {
+		return err
+	}
 
-	return err
+	if i.ResolveTest {
+		err = ConcurrentUpdate(conf.DevImports, vpath, i, conf)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // List resolves the complete dependency tree and returns a list of dependencies.
@@ -232,7 +278,12 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	res.ResolveAllFiles = i.ResolveAllFiles
 
 	msg.Info("Resolving imports")
-	_, err = allPackages(conf.Imports, res)
+	_, _, err = res.ResolveLocal(false)
+	if err != nil {
+		msg.Die("Failed to resolve local packages: %s", err)
+	}
+
+	_, err = allPackages(conf.Imports, res, false)
 	if err != nil {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
@@ -310,7 +361,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.C
 }
 
 // allPackages gets a list of all packages required to satisfy the given deps.
-func allPackages(deps []*cfg.Dependency, res *dependency.Resolver) ([]string, error) {
+func allPackages(deps []*cfg.Dependency, res *dependency.Resolver, addTest bool) ([]string, error) {
 	if len(deps) == 0 {
 		return []string{}, nil
 	}
@@ -320,7 +371,7 @@ func allPackages(deps []*cfg.Dependency, res *dependency.Resolver) ([]string, er
 		return []string{}, err
 	}
 	vdir += string(os.PathSeparator)
-	ll, err := res.ResolveAll(deps)
+	ll, err := res.ResolveAll(deps, addTest)
 	if err != nil {
 		return []string{}, err
 	}
@@ -347,7 +398,7 @@ type MissingPackageHandler struct {
 
 // NotFound attempts to retrieve a package when not found in the local vendor/
 // folder. It will attempt to get it from the remote location info.
-func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
+func (m *MissingPackageHandler) NotFound(pkg string, addTest bool) (bool, error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
@@ -382,6 +433,10 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	msg.Info("Fetching %s into %s", pkg, m.destination)
 
 	d := m.Config.Imports.Get(root)
+	if d == nil && addTest {
+		d = m.Config.DevImports.Get(root)
+	}
+
 	// If the dependency is nil it means the Config doesn't yet know about it.
 	if d == nil {
 		d, _ = m.Use.Get(root)
@@ -389,8 +444,11 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 		if d == nil {
 			d = &cfg.Dependency{Name: root}
 		}
-
-		m.Config.Imports = append(m.Config.Imports, d)
+		if addTest {
+			m.Config.DevImports = append(m.Config.DevImports, d)
+		} else {
+			m.Config.Imports = append(m.Config.Imports, d)
+		}
 	}
 	if err := VcsGet(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath); err != nil {
 		return false, err
@@ -401,11 +459,11 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 // OnGopath will either copy a package, already found in the GOPATH, to the
 // vendor/ directory or download it from the internet. This is dependent if
 // useGopath on the installer is set to true to copy from the GOPATH.
-func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
+func (m *MissingPackageHandler) OnGopath(pkg string, addTest bool) (bool, error) {
 	// If useGopath is false, we fall back to the strategy of fetching from
 	// remote.
 	if !m.useGopath {
-		return m.NotFound(pkg)
+		return m.NotFound(pkg, addTest)
 	}
 
 	root := util.GetRootFromPackage(pkg)
@@ -438,7 +496,7 @@ func (m *MissingPackageHandler) OnGopath(pkg string) (bool, error) {
 
 // InVendor updates a package in the vendor/ directory to make sure the latest
 // is available.
-func (m *MissingPackageHandler) InVendor(pkg string) error {
+func (m *MissingPackageHandler) InVendor(pkg string, addTest bool) error {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
@@ -449,6 +507,10 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 	dest := filepath.Join(m.destination, root)
 
 	d := m.Config.Imports.Get(root)
+	if d == nil && addTest {
+		d = m.Config.DevImports.Get(root)
+	}
+
 	// If the dependency is nil it means the Config doesn't yet know about it.
 	if d == nil {
 		d, _ = m.Use.Get(root)
@@ -457,7 +519,11 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 			d = &cfg.Dependency{Name: root}
 		}
 
-		m.Config.Imports = append(m.Config.Imports, d)
+		if addTest {
+			m.Config.DevImports = append(m.Config.DevImports, d)
+		} else {
+			m.Config.Imports = append(m.Config.Imports, d)
+		}
 	}
 
 	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored, m.updated); err != nil {
@@ -527,7 +593,7 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 // - keeping the already set version
 // - proviting messaging about the version conflict
 // TODO(mattfarina): The way version setting happens can be improved. Currently not optimal.
-func (d *VersionHandler) SetVersion(pkg string, testDep bool) (e error) {
+func (d *VersionHandler) SetVersion(pkg string, addTest bool) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
@@ -536,7 +602,7 @@ func (d *VersionHandler) SetVersion(pkg string, testDep bool) (e error) {
 	}
 
 	v := d.Config.Imports.Get(root)
-	if testDep {
+	if addTest {
 		if v == nil {
 			v = d.Config.DevImports.Get(root)
 		} else if d.Config.DevImports.Has(root) {
@@ -570,7 +636,7 @@ func (d *VersionHandler) SetVersion(pkg string, testDep bool) (e error) {
 	} else if dep != nil {
 		// We've got an imported dependency to use and don't already have a
 		// record of it. Append it to the Imports.
-		if testDep {
+		if addTest {
 			d.Config.DevImports = append(d.Config.DevImports, dep)
 		} else {
 			d.Config.Imports = append(d.Config.Imports, dep)
@@ -584,7 +650,7 @@ func (d *VersionHandler) SetVersion(pkg string, testDep bool) (e error) {
 		if sp != "" {
 			dep.Subpackages = []string{sp}
 		}
-		if testDep {
+		if addTest {
 			d.Config.DevImports = append(d.Config.DevImports, dep)
 		} else {
 			d.Config.Imports = append(d.Config.Imports, dep)

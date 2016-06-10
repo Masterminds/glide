@@ -250,6 +250,10 @@ func commands() []cli.Command {
 					Name:  "non-interactive",
 					Usage: "Disable interactive prompts.",
 				},
+				cli.BoolFlag{
+					Name:  "skip-test",
+					Usage: "Resolve dependencies in test files.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
@@ -273,6 +277,7 @@ func commands() []cli.Command {
 				inst.UseCacheGopath = c.Bool("cache-gopath")
 				inst.UpdateVendored = c.Bool("update-vendored")
 				inst.ResolveAllFiles = c.Bool("all-dependencies")
+				inst.ResolveTest = !c.Bool("skip-test")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
 				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"), c.Bool("non-interactive"))
@@ -456,6 +461,10 @@ Example:
 					Name:  "strip-vendor, v",
 					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
 				},
+				cli.BoolFlag{
+					Name:  "skip-test",
+					Usage: "Resolve dependencies in test files.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
@@ -470,6 +479,7 @@ Example:
 				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.Home = c.GlobalString("home")
 				installer.DeleteUnused = c.Bool("delete")
+				installer.ResolveTest = !c.Bool("skip-test")
 
 				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},

@@ -1,5 +1,5 @@
 hash: ebc39e5b2036ba2235316f2897fb9f2e696c6a7d5389416812722cc8ed3dfa21
-updated: 2016-05-05T09:44:44.751721442-04:00
+updated: 2016-06-10T16:27:29.24243625-04:00
 imports:
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
@@ -9,4 +9,4 @@ imports:
   version: 7af28b64c5ec41b1558f5514fd938379822c237c
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
-devImports: []
+testImports: []

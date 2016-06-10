@@ -31,7 +31,7 @@ type MissingPackageHandler interface {
 	// When it returns false with no error, this indicates that the handler did
 	// its job, but the resolver should not do any additional work on the
 	// package.
-	NotFound(pkg string) (bool, error)
+	NotFound(pkg string, addTest bool) (bool, error)
 
 	// OnGopath is called when the Resolver finds a dependency, but it's only on GOPATH.
 	//
@@ -45,12 +45,12 @@ type MissingPackageHandler interface {
 	//
 	// An error indicates that OnGopath cannot complete its intended operation.
 	// Not all false results are errors.
-	OnGopath(pkg string) (bool, error)
+	OnGopath(pkg string, addTest bool) (bool, error)
 
 	// InVendor is called when the Resolver finds a dependency in the vendor/ directory.
 	//
 	// This can be used update a project found in the vendor/ folder.
-	InVendor(pkg string) error
+	InVendor(pkg string, addTest bool) error
 }
 
 // DefaultMissingPackageHandler is the default handler for missing packages.
@@ -65,21 +65,21 @@ type DefaultMissingPackageHandler struct {
 // NotFound prints a warning and then stores the package name in Missing.
 //
 // It never returns an error, and it always returns false.
-func (d *DefaultMissingPackageHandler) NotFound(pkg string) (bool, error) {
+func (d *DefaultMissingPackageHandler) NotFound(pkg string, addTest bool) (bool, error) {
 	msg.Warn("Package %s is not installed", pkg)
 	d.Missing = append(d.Missing, pkg)
 	return false, nil
 }
 
 // OnGopath is run when a package is missing from vendor/ but found in the GOPATH
-func (d *DefaultMissingPackageHandler) OnGopath(pkg string) (bool, error) {
+func (d *DefaultMissingPackageHandler) OnGopath(pkg string, addTest bool) (bool, error) {
 	msg.Warn("Package %s is only on GOPATH.", pkg)
 	d.Gopath = append(d.Gopath, pkg)
 	return false, nil
 }
 
 // InVendor is run when a package is found in the vendor/ folder
-func (d *DefaultMissingPackageHandler) InVendor(pkg string) error {
+func (d *DefaultMissingPackageHandler) InVendor(pkg string, addTest bool) error {
 	msg.Info("Package %s found in vendor/ folder", pkg)
 	return nil
 }
@@ -143,8 +143,7 @@ type Resolver struct {
 	ResolveTest bool
 
 	// Items already in the queue.
-	alreadyQ  map[string]bool
-	talreadyQ map[string]bool
+	alreadyQ map[string]bool
 
 	// Attempts to scan that had unrecoverable error.
 	hadError map[string]bool
@@ -226,7 +225,7 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	if r.ResolveAllFiles {
 		return r.resolveList(l, false)
 	}
-	return r.resolveImports(l, false)
+	return r.resolveImports(l, false, false)
 }
 
 // dirHasPrefix tests whether the directory dir begins with prefix.
@@ -362,11 +361,11 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 			tre, err := r.resolveList(l, false)
 			return re, tre, err
 		}
-		re, err := r.resolveImports(l, false)
+		re, err := r.resolveImports(l, false, false)
 		if err != nil {
 			return []string{}, []string{}, err
 		}
-		tre, err := r.resolveImports(tl, true)
+		tre, err := r.resolveImports(tl, true, true)
 		return re, tre, err
 	}
 
@@ -398,31 +397,18 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 //
 // If one of the passed in packages does not exist in the vendor directory,
 // an error is returned.
-func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
-	var queue *list.List
-	if r.ResolveAllFiles {
-		queue = sliceToQueue(deps, r.VendorDir)
-	} else {
-		queue = list.New()
-	}
+func (r *Resolver) ResolveAll(deps []*cfg.Dependency, addTest bool) ([]string, error) {
 
-	loc, _, err := r.ResolveLocal(false)
-	if err != nil {
-		return []string{}, err
-	}
-	for _, l := range loc {
-		msg.Debug("Adding local Import %s to queue", l)
-		queue.PushBack(l)
-	}
+	queue := sliceToQueue(deps, r.VendorDir)
 
 	if r.ResolveAllFiles {
 		return r.resolveList(queue, false)
 	}
-	return r.resolveImports(queue, false)
+	return r.resolveImports(queue, false, addTest)
 }
 
-// stripv strips the vendor/ prefix from vendored packages.
-func (r *Resolver) stripv(str string) string {
+// Stripv strips the vendor/ prefix from vendored packages.
+func (r *Resolver) Stripv(str string) string {
 	return strings.TrimPrefix(str, r.VendorDir+string(os.PathSeparator))
 }
 
@@ -443,31 +429,27 @@ func (r *Resolver) vpath(str string) string {
 //
 // The resolver's handler is used in the cases where a package cannot be
 // located.
-func (r *Resolver) resolveImports(queue *list.List, testDeps bool) ([]string, error) {
+//
+// testDeps specifies if the test dependencies should be resolved and addTest
+// specifies if the dependencies should be added to the Config.DevImports. This
+// is important because we may resolve normal dependencies of test deps and add
+// them to the DevImports list.
+func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]string, error) {
 	msg.Debug("Resolving import path")
-	if testDeps {
-		msg.Debug("Resolving test dependencies")
-	}
 
 	// When test deps passed in but not resolving return empty.
-	if testDeps && !r.ResolveTest {
+	if (testDeps || addTest) && !r.ResolveTest {
 		return []string{}, nil
 	}
 
 	for e := queue.Front(); e != nil; e = e.Next() {
 		vdep := e.Value.(string)
-		dep := r.stripv(vdep)
-
+		dep := r.Stripv(vdep)
 		// Check if marked in the Q and then explicitly mark it. We want to know
 		// if it had previously been marked and ensure it for the future.
-		var foundQ bool
-		if testDeps {
-			_, foundQ = r.talreadyQ[dep]
-			r.talreadyQ[dep] = true
-		} else {
-			_, foundQ = r.alreadyQ[dep]
-			r.alreadyQ[dep] = true
-		}
+
+		_, foundQ := r.alreadyQ[dep]
+		r.alreadyQ[dep] = true
 
 		// If we've already encountered an error processing this dependency
 		// skip it.
@@ -516,17 +498,13 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps bool) ([]string, er
 				// not to get stuck in a recursion.
 
 				// If the location doesn't exist try to fetch it.
-				if ok, err2 := r.Handler.NotFound(dep); ok {
-					if testDeps {
-						r.talreadyQ[dep] = true
-					} else {
-						r.alreadyQ[dep] = true
-					}
+				if ok, err2 := r.Handler.NotFound(dep, addTest); ok {
+					r.alreadyQ[dep] = true
 
 					// By adding to the queue it will get reprocessed now that
 					// it exists.
 					queue.PushBack(r.vpath(dep))
-					r.VersionHandler.SetVersion(dep, testDeps)
+					r.VersionHandler.SetVersion(dep, addTest)
 				} else if err2 != nil {
 					r.hadError[dep] = true
 					msg.Err("Error looking for %s: %s", dep, err2)
@@ -566,28 +544,20 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps bool) ([]string, er
 				msg.Debug("In vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					msg.Debug("Marking %s to be scanned.", imp)
-					if testDeps {
-						r.talreadyQ[dep] = true
-					} else {
-						r.alreadyQ[dep] = true
-					}
+					r.alreadyQ[dep] = true
 					queue.PushBack(r.vpath(imp))
-					if err := r.Handler.InVendor(imp); err == nil {
-						r.VersionHandler.SetVersion(imp, testDeps)
+					if err := r.Handler.InVendor(imp, addTest); err == nil {
+						r.VersionHandler.SetVersion(imp, addTest)
 					} else {
 						msg.Warn("Error updating %s: %s", imp, err)
 					}
 				}
 			case LocUnknown:
 				msg.Debug("Missing %s. Trying to resolve.", imp)
-				if ok, err := r.Handler.NotFound(imp); ok {
-					if testDeps {
-						r.talreadyQ[dep] = true
-					} else {
-						r.alreadyQ[dep] = true
-					}
+				if ok, err := r.Handler.NotFound(imp, addTest); ok {
+					r.alreadyQ[dep] = true
 					queue.PushBack(r.vpath(imp))
-					r.VersionHandler.SetVersion(imp, testDeps)
+					r.VersionHandler.SetVersion(imp, addTest)
 				} else if err != nil {
 					r.hadError[dep] = true
 					msg.Warn("Error looking for %s: %s", imp, err)
@@ -599,14 +569,10 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps bool) ([]string, er
 				msg.Debug("Found on GOPATH, not vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					// Only scan it if it gets moved into vendor/
-					if ok, _ := r.Handler.OnGopath(imp); ok {
-						if testDeps {
-							r.talreadyQ[dep] = true
-						} else {
-							r.alreadyQ[dep] = true
-						}
+					if ok, _ := r.Handler.OnGopath(imp, addTest); ok {
+						r.alreadyQ[dep] = true
 						queue.PushBack(r.vpath(imp))
-						r.VersionHandler.SetVersion(imp, testDeps)
+						r.VersionHandler.SetVersion(imp, addTest)
 					}
 				}
 			}
@@ -619,7 +585,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps bool) ([]string, er
 
 	// In addition to generating a list
 	for e := queue.Front(); e != nil; e = e.Next() {
-		t := r.stripv(e.Value.(string))
+		t := r.Stripv(e.Value.(string))
 		root, sp := util.NormalizeName(t)
 
 		// Skip ignored packages
@@ -630,6 +596,9 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps bool) ([]string, er
 
 		// TODO(mattfarina): Need to eventually support devImport
 		existing := r.Config.Imports.Get(root)
+		if existing == nil && addTest {
+			existing = r.Config.DevImports.Get(root)
+		}
 		if existing != nil {
 			if sp != "" && !existing.HasSubpackage(sp) {
 				existing.Subpackages = append(existing.Subpackages, sp)
@@ -642,7 +611,11 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps bool) ([]string, er
 				newDep.Subpackages = []string{sp}
 			}
 
-			r.Config.Imports = append(r.Config.Imports, newDep)
+			if addTest {
+				r.Config.DevImports = append(r.Config.DevImports, newDep)
+			} else {
+				r.Config.Imports = append(r.Config.Imports, newDep)
+			}
 		}
 		res = append(res, t)
 	}
@@ -831,7 +804,7 @@ func (r *Resolver) imports(pkg string, testDeps bool) ([]string, error) {
 		switch info.Loc {
 		case LocUnknown:
 			// Do we resolve here?
-			found, err := r.Handler.NotFound(imp)
+			found, err := r.Handler.NotFound(imp, false)
 			if err != nil {
 				msg.Err("Failed to fetch %s: %s", imp, err)
 			}
@@ -844,13 +817,13 @@ func (r *Resolver) imports(pkg string, testDeps bool) ([]string, error) {
 		case LocVendor:
 			//msg.Debug("Vendored: %s", imp)
 			buf = append(buf, info.Path)
-			if err := r.Handler.InVendor(imp); err == nil {
+			if err := r.Handler.InVendor(imp, false); err == nil {
 				r.VersionHandler.SetVersion(imp, testDeps)
 			} else {
 				msg.Warn("Error updating %s: %s", imp, err)
 			}
 		case LocGopath:
-			found, err := r.Handler.OnGopath(imp)
+			found, err := r.Handler.OnGopath(imp, false)
 			if err != nil {
 				msg.Err("Failed to fetch %s: %s", imp, err)
 			}
@@ -878,6 +851,7 @@ func (r *Resolver) imports(pkg string, testDeps bool) ([]string, error) {
 func sliceToQueue(deps []*cfg.Dependency, basepath string) *list.List {
 	l := list.New()
 	for _, e := range deps {
+		msg.Debug("Adding local Import %s to queue", e.Name)
 		l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name)))
 	}
 	return l
