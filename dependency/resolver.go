@@ -295,7 +295,6 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 				continue
 			}
 			if r.Config.IgnoreSubpackages(imp) {
-				msg.Info("Ignoring subpackage: %s", imp)
 				continue
 			}
 			alreadySeen[imp] = true
