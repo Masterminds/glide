@@ -132,6 +132,15 @@ func (c *Config) MarshalYAML() (interface{}, error) {
 	return newConfig, nil
 }
 
+func (c *Config) IgnoreSubpackages(name string) bool {
+	for _, d := range c.Imports {
+		if d.NoSubpackages && strings.HasPrefix(name, d.Name+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 // HasDependency returns true if the given name is listed as an import or dev import.
 func (c *Config) HasDependency(name string) bool {
 	for _, d := range c.Imports {
@@ -345,6 +354,7 @@ type Dependency struct {
 	Pin              string   `yaml:"-"`
 	Repository       string   `yaml:"repo,omitempty"`
 	VcsType          string   `yaml:"vcs,omitempty"`
+	NoSubpackages    bool     `yaml:"nosubpackages,omitempty"`
 	Subpackages      []string `yaml:"subpackages,omitempty"`
 	Arch             []string `yaml:"arch,omitempty"`
 	Os               []string `yaml:"os,omitempty"`
@@ -353,14 +363,15 @@ type Dependency struct {
 
 // A transitive representation of a dependency for importing and exploting to yaml.
 type dep struct {
-	Name        string   `yaml:"package"`
-	Reference   string   `yaml:"version,omitempty"`
-	Ref         string   `yaml:"ref,omitempty"`
-	Repository  string   `yaml:"repo,omitempty"`
-	VcsType     string   `yaml:"vcs,omitempty"`
-	Subpackages []string `yaml:"subpackages,omitempty"`
-	Arch        []string `yaml:"arch,omitempty"`
-	Os          []string `yaml:"os,omitempty"`
+	Name          string   `yaml:"package"`
+	Reference     string   `yaml:"version,omitempty"`
+	Ref           string   `yaml:"ref,omitempty"`
+	Repository    string   `yaml:"repo,omitempty"`
+	VcsType       string   `yaml:"vcs,omitempty"`
+	NoSubpackages bool     `yaml:"nosubpackages,omitempty"`
+	Subpackages   []string `yaml:"subpackages,omitempty"`
+	Arch          []string `yaml:"arch,omitempty"`
+	Os            []string `yaml:"os,omitempty"`
 }
 
 // UnmarshalYAML is a hook for gopkg.in/yaml.v2 in the unmarshaling process
@@ -371,6 +382,7 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	d.Name = newDep.Name
+	d.NoSubpackages = newDep.NoSubpackages
 	d.Reference = newDep.Reference
 	d.Repository = newDep.Repository
 	d.VcsType = newDep.VcsType
@@ -407,13 +419,14 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	// Make sure we only write the correct vcs type to file
 	t := filterVcsType(d.VcsType)
 	newDep := &dep{
-		Name:        d.Name,
-		Reference:   d.Reference,
-		Repository:  d.Repository,
-		VcsType:     t,
-		Subpackages: d.Subpackages,
-		Arch:        d.Arch,
-		Os:          d.Os,
+		Name:          d.Name,
+		Reference:     d.Reference,
+		Repository:    d.Repository,
+		VcsType:       t,
+		NoSubpackages: d.NoSubpackages,
+		Subpackages:   d.Subpackages,
+		Arch:          d.Arch,
+		Os:            d.Os,
 	}
 
 	return newDep, nil
@@ -460,6 +473,7 @@ func (d *Dependency) Clone() *Dependency {
 		Pin:              d.Pin,
 		Repository:       d.Repository,
 		VcsType:          d.VcsType,
+		NoSubpackages:    d.NoSubpackages,
 		Subpackages:      d.Subpackages,
 		Arch:             d.Arch,
 		Os:               d.Os,
