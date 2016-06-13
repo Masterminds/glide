@@ -31,7 +31,7 @@ func CheckGoVendor() {
 			}
 		}
 		if len(_vendor) == 0 {
-			_vendor = gopath[0] + _vendorSuffix
+			_vendor = gopath[0]
 		}
 		if len(_vendor) == 0 {
 			msg.Warn("no '*%s' found.", _vendorSuffix)
