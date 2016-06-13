@@ -1,7 +1,7 @@
 // Package path contains path and environment utilities for Glide.
 //
-//This includes tools to find and manipulate Go path variables, as well as
-//tools for copying from one path to another.
+// This includes tools to find and manipulate Go path variables, as well as
+// tools for copying from one path to another.
 package path
 
 import (
@@ -141,6 +141,12 @@ func Basepath() string {
 		return "."
 	}
 	return base
+}
+
+// StripBasepath removes the base directory from a passed in path.
+func StripBasepath(p string) string {
+	bp := Basepath()
+	return strings.TrimPrefix(p, bp+string(os.PathSeparator))
 }
 
 // IsLink returns true if the given FileInfo references a link.

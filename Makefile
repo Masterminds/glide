@@ -9,19 +9,12 @@ install: build
 	install -m 755 ./glide ${DESTDIR}/usr/local/bin/glide
 
 test:
-	go test . ./gb ./path ./action ./tree ./util ./godep ./gpm ./cfg ./dependency ./importer ./msg ./repo
+	go test . ./gb ./path ./action ./tree ./util ./godep ./godep/strip ./gpm ./cfg ./dependency ./importer ./msg ./repo
 
 clean:
 	rm -f ./glide.test
 	rm -f ./glide
 	rm -rf ./dist
-
-bootstrap:
-	mkdir ./vendor
-	git clone https://github.com/Masterminds/vcs vendor/github.com/Masterminds/vcs
-	git clone https://gopkg.in/yaml.v2 vendor/gopkg.in/yaml.v2
-	git clone https://github.com/codegangsta/cli vendor/github.com/codegangsta/cli
-	git clone https://github.com/Masterminds/semver vendor/github.com/Masterminds/semver
 
 bootstrap-dist:
 	go get -u github.com/mitchellh/gox
@@ -42,4 +35,4 @@ dist: build-all
 	cd ..
 
 
-.PHONY: build test install clean bootstrap bootstrap-dist build-all dist
+.PHONY: build test install clean bootstrap-dist build-all dist

@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"container/list"
+	"runtime"
 	//"go/build"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 )
 
@@ -216,6 +218,14 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 	return r.resolveImports(l)
 }
 
+// dirHasPrefix tests whether the directory dir begins with prefix.
+func dirHasPrefix(dir, prefix string) bool {
+	if runtime.GOOS != "windows" {
+		return strings.HasPrefix(dir, prefix)
+	}
+	return len(dir) >= len(prefix) && strings.EqualFold(dir[:len(prefix)], prefix)
+}
+
 // ResolveLocal resolves dependencies for the current project.
 //
 // This begins with the project, builds up a list of external dependencies.
@@ -226,11 +236,18 @@ func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
 func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 	// We build a list of local source to walk, then send this list
 	// to resolveList.
+	msg.Debug("Resolving local dependencies")
 	l := list.New()
 	alreadySeen := map[string]bool{}
 	err := filepath.Walk(r.basedir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil && err != filepath.SkipDir {
 			return err
+		}
+		pt := strings.TrimPrefix(path, r.basedir+string(os.PathSeparator))
+		pt = strings.TrimSuffix(pt, string(os.PathSeparator))
+		if r.Config.HasExclude(pt) {
+			msg.Debug("Excluding %s", pt)
+			return filepath.SkipDir
 		}
 		if !fi.IsDir() {
 			return nil
@@ -241,16 +258,29 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 
 		// Scan for dependencies, and anything that's not part of the local
 		// package gets added to the scan list.
+		var imps []string
 		p, err := r.BuildContext.ImportDir(path, 0)
 		if err != nil {
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				return nil
+			} else if strings.HasPrefix(err.Error(), "found packages ") {
+				// If we got here it's because a package and multiple packages
+				// declared. This is often because of an example with a package
+				// or main but +build ignore as a build tag. In that case we
+				// try to brute force the packages with a slower scan.
+				imps, err = IterativeScan(path)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
 			}
-			return err
+		} else {
+			imps = p.Imports
 		}
 
 		// We are only looking for dependencies in vendor. No root, cgo, etc.
-		for _, imp := range p.Imports {
+		for _, imp := range imps {
 			if alreadySeen[imp] {
 				continue
 			}
@@ -260,12 +290,16 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 			case LocUnknown, LocVendor:
 				l.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp))) // Do we need a path on this?
 			case LocGopath:
-				if !strings.HasPrefix(info.Path, r.basedir) {
+				if !dirHasPrefix(info.Path, r.basedir) {
 					// FIXME: This is a package outside of the project we're
 					// scanning. It should really be on vendor. But we don't
 					// want it to reference GOPATH. We want it to be detected
 					// and moved.
 					l.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp)))
+				}
+			case LocRelative:
+				if strings.HasPrefix(imp, "./"+gpath.VendorDir) {
+					msg.Warn("Go package resolving will resolve %s without the ./%s/ prefix", imp, gpath.VendorDir)
 				}
 			}
 		}
@@ -307,7 +341,12 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, error) {
 // If one of the passed in packages does not exist in the vendor directory,
 // an error is returned.
 func (r *Resolver) ResolveAll(deps []*cfg.Dependency) ([]string, error) {
-	queue := sliceToQueue(deps, r.VendorDir)
+	var queue *list.List
+	if r.ResolveAllFiles {
+		queue = sliceToQueue(deps, r.VendorDir)
+	} else {
+		queue = list.New()
+	}
 
 	loc, err := r.ResolveLocal(false)
 	if err != nil {
@@ -347,6 +386,7 @@ func (r *Resolver) vpath(str string) string {
 // The resolver's handler is used in the cases where a package cannot be
 // located.
 func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
+	msg.Debug("Resolving import path")
 	for e := queue.Front(); e != nil; e = e.Next() {
 		vdep := e.Value.(string)
 		dep := r.stripv(vdep)
@@ -365,15 +405,27 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 
 		// Skip ignored packages
 		if r.Config.HasIgnore(dep) {
-			msg.Info("Ignoring: %s", dep)
+			msg.Debug("Ignoring: %s", dep)
 			continue
 		}
 		r.VersionHandler.Process(dep)
 
 		// Here, we want to import the package and see what imports it has.
 		msg.Debug("Trying to open %s", vdep)
+		var imps []string
 		pkg, err := r.BuildContext.ImportDir(vdep, 0)
-		if err != nil {
+		if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
+			// If we got here it's because a package and multiple packages
+			// declared. This is often because of an example with a package
+			// or main but +build ignore as a build tag. In that case we
+			// try to brute force the packages with a slower scan.
+			msg.Debug("Using Iterative Scanning for %s", dep)
+			imps, err = IterativeScan(vdep)
+			if err != nil {
+				msg.Err("Iterative scanning error %s: %s", dep, err)
+				continue
+			}
+		} else if err != nil {
 			msg.Debug("ImportDir error on %s: %s", vdep, err)
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Debug("No subpackages declared. Skipping %s.", dep)
@@ -407,13 +459,19 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 				msg.Err("Error scanning %s: %s", dep, err)
 			}
 			continue
+		} else {
+			imps = pkg.Imports
 		}
 
 		// Range over all of the identified imports and see which ones we
 		// can locate.
-		for _, imp := range pkg.Imports {
+		for _, imp := range imps {
+			if r.Config.HasIgnore(imp) {
+				msg.Debug("Ignoring: %s", imp)
+				continue
+			}
 			pi := r.FindPkg(imp)
-			if pi.Loc != LocCgo && pi.Loc != LocGoroot {
+			if pi.Loc != LocCgo && pi.Loc != LocGoroot && pi.Loc != LocAppengine {
 				msg.Debug("Package %s imports %s", dep, imp)
 			}
 			switch pi.Loc {
@@ -428,7 +486,6 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 					} else {
 						msg.Warn("Error updating %s: %s", imp, err)
 					}
-					r.VersionHandler.SetVersion(imp)
 				}
 			case LocUnknown:
 				msg.Debug("Missing %s. Trying to resolve.", imp)
@@ -466,6 +523,12 @@ func (r *Resolver) resolveImports(queue *list.List) ([]string, error) {
 		t := r.stripv(e.Value.(string))
 		root, sp := util.NormalizeName(t)
 
+		// Skip ignored packages
+		if r.Config.HasIgnore(e.Value.(string)) {
+			msg.Debug("Ignoring: %s", e.Value.(string))
+			continue
+		}
+
 		// TODO(mattfarina): Need to eventually support devImport
 		existing := r.Config.Imports.Get(root)
 		if existing != nil {
@@ -500,7 +563,7 @@ func (r *Resolver) resolveList(queue *list.List) ([]string, error) {
 		dep := e.Value.(string)
 		t := strings.TrimPrefix(dep, r.VendorDir+string(os.PathSeparator))
 		if r.Config.HasIgnore(t) {
-			msg.Info("Ignoring: %s", t)
+			msg.Debug("Ignoring: %s", t)
 			continue
 		}
 		r.VersionHandler.Process(t)
@@ -618,9 +681,21 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 
 	// FIXME: On error this should try to NotFound to the dependency, and then import
 	// it again.
+	var imps []string
 	p, err := r.BuildContext.ImportDir(pkg, 0)
-	if err != nil {
+	if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
+		// If we got here it's because a package and multiple packages
+		// declared. This is often because of an example with a package
+		// or main but +build ignore as a build tag. In that case we
+		// try to brute force the packages with a slower scan.
+		imps, err = IterativeScan(pkg)
+		if err != nil {
+			return []string{}, err
+		}
+	} else if err != nil {
 		return []string{}, err
+	} else {
+		imps = p.Imports
 	}
 
 	// It is okay to scan a package more than once. In some cases, this is
@@ -636,7 +711,7 @@ func (r *Resolver) imports(pkg string) ([]string, error) {
 
 	// We are only looking for dependencies in vendor. No root, cgo, etc.
 	buf := []string{}
-	for _, imp := range p.Imports {
+	for _, imp := range imps {
 		if r.Config.HasIgnore(imp) {
 			msg.Debug("Ignoring %s", imp)
 			continue
@@ -713,6 +788,13 @@ const (
 	LocGoroot
 	// LocCgo indicates that the package is a a CGO package
 	LocCgo
+	// LocAppengine indicates the package is part of the appengine SDK. It's a
+	// special build mode. https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
+	// Why does a Google product get a special case build mode with a local
+	// package?
+	LocAppengine
+	// LocRelative indicates the packge is a relative directory
+	LocRelative
 )
 
 // PkgInfo represents metadata about a package found by the resolver.
@@ -747,6 +829,12 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 	var p string
 	info := &PkgInfo{
 		Name: name,
+	}
+
+	if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") {
+		info.Loc = LocRelative
+		r.findCache[name] = info
+		return info
 	}
 
 	// Check _only_ if this dep is in the current vendor directory.
@@ -793,9 +881,24 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 		}
 	}
 
-	// Finally, if this is "C", we're dealing with cgo
+	// If this is "C", we're dealing with cgo
 	if name == "C" {
 		info.Loc = LocCgo
+		r.findCache[name] = info
+	} else if name == "appengine" || name == "appengine_internal" ||
+		strings.HasPrefix(name, "appengine/") ||
+		strings.HasPrefix(name, "appengine_internal/") {
+		// Appengine is a special case when it comes to Go builds. It is a local
+		// looking package only available within appengine. It's a special case
+		// where Google products are playing with each other.
+		// https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
+		info.Loc = LocAppengine
+		r.findCache[name] = info
+	} else if name == "context" {
+		// context is a package being added to the Go 1.7 standard library. Some
+		// packages, such as golang.org/x/net are importing it with build flags
+		// in files for go1.7. Need to detect this and handle it.
+		info.Loc = LocGoroot
 		r.findCache[name] = info
 	}
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	gpath "github.com/Masterminds/glide/path"
 )
 
 // Has indicates whether a Godeps file exists.
@@ -29,7 +30,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		msg.Info("Godeps is a directory. This is probably a Godep project.\n")
 		return []*cfg.Dependency{}, nil
 	}
-	msg.Info("Found Godeps file.\n")
+	msg.Info("Found Godeps file in %s", gpath.StripBasepath(dir))
 
 	buf := []*cfg.Dependency{}
 

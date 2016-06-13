@@ -4,14 +4,14 @@ language: go
 # against tip which has the features.
 go:
   - 1.5
+  - 1.6
+  - tip
 
 # Setting sudo access to false will let Travis CI use containers rather than
 # VMs to run the tests. For more details see:
 # - http://docs.travis-ci.com/user/workers/container-based-infrastructure/
 # - http://docs.travis-ci.com/user/workers/standard-infrastructure/
 sudo: false
-
-install: make bootstrap
 
 # The default script is go test -v ./... which will test everything
 # in the vendor directory. We don't need to test all dependent packages.
@@ -20,4 +20,9 @@ script:
   - GO15VENDOREXPERIMENT=1 make test
 
 notifications:
-  irc: "irc.freenode.net#masterminds"
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/67e4b42cbf763625d0b4
+    on_success: change
+    on_failure: always
+    on_start: never

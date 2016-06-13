@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
@@ -14,6 +15,7 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
+	"github.com/Masterminds/vcs"
 	"github.com/codegangsta/cli"
 )
 
@@ -50,6 +52,15 @@ type Installer struct {
 
 	// KeepVendorSymlink when gpath.UseGoVendor == false
 	KeepVendorSymlink bool
+
+	// Updated tracks the packages that have been remotely fetched.
+	Updated *UpdateTracker
+}
+
+func NewInstaller() *Installer {
+	i := &Installer{}
+	i.Updated = NewUpdateTracker()
+	return i
 }
 
 // VendorPath returns the path to the location to put vendor packages
@@ -112,8 +123,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 		return newConf, nil
 	}
 
-	ConcurrentUpdate(newConf.Imports, cwd, i)
-	ConcurrentUpdate(newConf.DevImports, cwd, i)
+	ConcurrentUpdate(newConf.Imports, cwd, i, newConf)
+	ConcurrentUpdate(newConf.DevImports, cwd, i, newConf)
 	return newConf, nil
 }
 
@@ -125,12 +136,12 @@ func (i *Installer) Checkout(conf *cfg.Config, useDev bool) error {
 
 	dest := i.VendorPath()
 
-	if err := ConcurrentUpdate(conf.Imports, dest, i); err != nil {
+	if err := ConcurrentUpdate(conf.Imports, dest, i, conf); err != nil {
 		return err
 	}
 
 	if useDev {
-		return ConcurrentUpdate(conf.DevImports, dest, i)
+		return ConcurrentUpdate(conf.DevImports, dest, i, conf)
 	}
 
 	return nil
@@ -160,6 +171,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		updateVendored: i.UpdateVendored,
 		Config:         conf,
 		Use:            ic,
+		updated:        i.Updated,
 	}
 
 	v := &VersionHandler{
@@ -189,7 +201,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		msg.Warn("dev imports not resolved.")
 	}
 
-	err = ConcurrentUpdate(conf.Imports, vpath, i)
+	err = ConcurrentUpdate(conf.Imports, vpath, i, conf)
 
 	return err
 }
@@ -242,7 +254,7 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
-func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
+func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.Config) error {
 	done := make(chan struct{}, concurrentWorkers)
 	in := make(chan *cfg.Dependency, concurrentWorkers)
 	var wg sync.WaitGroup
@@ -257,7 +269,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 				select {
 				case dep := <-ch:
 					dest := filepath.Join(i.VendorPath(), dep.Name)
-					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored); err != nil {
+					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored, i.Updated); err != nil {
 						msg.Err("Update failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
@@ -278,8 +290,10 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer) error {
 	}
 
 	for _, dep := range deps {
-		wg.Add(1)
-		in <- dep
+		if !c.HasIgnore(dep.Name) {
+			wg.Add(1)
+			in <- dep
+		}
 	}
 
 	wg.Wait()
@@ -325,6 +339,7 @@ type MissingPackageHandler struct {
 	cache, cacheGopath, useGopath, force, updateVendored bool
 	Config                                               *cfg.Config
 	Use                                                  *importCache
+	updated                                              *UpdateTracker
 }
 
 // NotFound attempts to retrieve a package when not found in the local vendor/
@@ -342,8 +357,23 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	// This package may have been placed on the list to look for when it wasn't
 	// downloaded but it has since been downloaded before coming to this entry.
 	if _, err := os.Stat(dest); err == nil {
-		msg.Debug("Found %s", dest)
-		return true, nil
+		// Make sure the location contains files. It may be an empty directory.
+		empty, err := gpath.IsDirectoryEmpty(dest)
+		if err != nil {
+			return false, err
+		}
+		if empty {
+			msg.Warn("%s is an existing location with no files. Fetching a new copy of the dependency.", dest)
+			msg.Debug("Removing empty directory %s", dest)
+			err := os.RemoveAll(dest)
+			if err != nil {
+				msg.Debug("Installer error removing directory %s: %s", dest, err)
+				return false, err
+			}
+		} else {
+			msg.Debug("Found %s", dest)
+			return true, nil
+		}
 	}
 
 	msg.Info("Fetching %s into %s", pkg, m.destination)
@@ -351,7 +381,7 @@ func (m *MissingPackageHandler) NotFound(pkg string) (bool, error) {
 	d := m.Config.Imports.Get(root)
 	// If the dependency is nil it means the Config doesn't yet know about it.
 	if d == nil {
-		d = m.Use.Get(root)
+		d, _ = m.Use.Get(root)
 		// We don't know about this dependency so we create a basic instance.
 		if d == nil {
 			d = &cfg.Dependency{Name: root}
@@ -418,7 +448,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 	d := m.Config.Imports.Get(root)
 	// If the dependency is nil it means the Config doesn't yet know about it.
 	if d == nil {
-		d = m.Use.Get(root)
+		d, _ = m.Use.Get(root)
 		// We don't know about this dependency so we create a basic instance.
 		if d == nil {
 			d = &cfg.Dependency{Name: root}
@@ -427,7 +457,7 @@ func (m *MissingPackageHandler) InVendor(pkg string) error {
 		m.Config.Imports = append(m.Config.Imports, d)
 	}
 
-	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored); err != nil {
+	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored, m.updated); err != nil {
 		return err
 	}
 
@@ -475,9 +505,9 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 			for _, dep := range deps {
 
 				// The fist one wins. Would something smater than this be better?
-				exists := d.Use.Get(dep.Name)
+				exists, _ := d.Use.Get(dep.Name)
 				if exists == nil && (dep.Reference != "" || dep.Repository != "") {
-					d.Use.Add(dep.Name, dep)
+					d.Use.Add(dep.Name, dep, root)
 				}
 			}
 		} else if err != nil {
@@ -504,7 +534,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 
 	v := d.Config.Imports.Get(root)
 
-	dep := d.Use.Get(root)
+	dep, req := d.Use.Get(root)
 	if dep != nil && v != nil {
 		if v.Reference == "" && dep.Reference != "" {
 			v.Reference = dep.Reference
@@ -513,7 +543,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 			dep = v
 		} else if v.Reference != "" && dep.Reference != "" && v.Reference != dep.Reference {
 			dest := filepath.Join(d.Destination, filepath.FromSlash(v.Name))
-			dep = determineDependency(v, dep, dest)
+			dep = determineDependency(v, dep, dest, req)
 		} else {
 			dep = v
 		}
@@ -545,7 +575,7 @@ func (d *VersionHandler) SetVersion(pkg string) (e error) {
 	return
 }
 
-func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
+func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependency {
 	repo, err := v.GetRepo(dest)
 	if err != nil {
 		singleWarn("Unable to access repo for %s\n", v.Name)
@@ -558,7 +588,11 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 
 	// Both are references and they are different ones.
 	if vIsRef && depIsRef {
-		singleWarn("Conflict: %s ref is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+		singleWarn("Conflict: %s rev is currently %s, but %s wants %s\n", v.Name, v.Reference, req, dep.Reference)
+
+		displayCommitInfo(repo, v)
+		displayCommitInfo(repo, dep)
+
 		singleInfo("Keeping %s %s", v.Name, v.Reference)
 		return v
 	} else if vIsRef {
@@ -574,6 +608,7 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 		if err != nil {
 			// The existing version is not a semantic version.
 			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			displayCommitInfo(repo, v)
 			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
@@ -597,6 +632,7 @@ func determineDependency(v, dep *cfg.Dependency, dest string) *cfg.Dependency {
 		ver, err := semver.NewVersion(dep.Reference)
 		if err != nil {
 			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			displayCommitInfo(repo, dep)
 			singleInfo("Keeping %s %s", v.Name, v.Reference)
 			return v
 		}
@@ -673,23 +709,48 @@ func singleInfo(ft string, v ...interface{}) {
 
 type importCache struct {
 	cache map[string]*cfg.Dependency
+	from  map[string]string
 }
 
 func newImportCache() *importCache {
 	return &importCache{
 		cache: make(map[string]*cfg.Dependency),
+		from:  make(map[string]string),
 	}
 }
 
-func (i *importCache) Get(name string) *cfg.Dependency {
+func (i *importCache) Get(name string) (*cfg.Dependency, string) {
 	d, f := i.cache[name]
 	if f {
-		return d
+		return d, i.from[name]
 	}
 
-	return nil
+	return nil, ""
 }
 
-func (i *importCache) Add(name string, dep *cfg.Dependency) {
+func (i *importCache) Add(name string, dep *cfg.Dependency, root string) {
 	i.cache[name] = dep
+	i.from[name] = root
+}
+
+var displayCommitInfoPrefix = msg.Default.Color(msg.Green, "[INFO] ")
+var displayCommitInfoTemplate = "%s reference %s:\n" +
+	displayCommitInfoPrefix + "- author: %s\n" +
+	displayCommitInfoPrefix + "- commit date: %s\n" +
+	displayCommitInfoPrefix + "- subject (first line): %s\n"
+
+func displayCommitInfo(repo vcs.Repo, dep *cfg.Dependency) {
+	c, err := repo.CommitInfo(dep.Reference)
+	if err == nil {
+		singleInfo(displayCommitInfoTemplate, dep.Name, dep.Reference, c.Author, c.Date.Format(time.RFC1123Z), commitSubjectFirstLine(c.Message))
+	}
+}
+
+func commitSubjectFirstLine(sub string) string {
+	lines := strings.Split(sub, "\n")
+	if len(lines) <= 1 {
+		return sub
+	}
+
+	return lines[0]
 }

@@ -52,20 +52,33 @@ func walkDeps(b *util.BuildCtxt, base, myName string) []string {
 			return nil
 		}
 
+		var imps []string
 		pkg, err := b.ImportDir(path, 0)
-		if err != nil {
+		if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
+			// If we got here it's because a package and multiple packages
+			// declared. This is often because of an example with a package
+			// or main but +build ignore as a build tag. In that case we
+			// try to brute force the packages with a slower scan.
+			imps, err = dependency.IterativeScan(path)
+			if err != nil {
+				msg.Err("Error walking dependencies for %s: %s", path, err)
+				return err
+			}
+		} else if err != nil {
 			if !strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Warn("Error: %s (%s)", err, path)
 				// Not sure if we should return here.
 				//return err
 			}
+		} else {
+			imps = pkg.Imports
 		}
 
 		if pkg.Goroot {
 			return nil
 		}
 
-		for _, imp := range pkg.Imports {
+		for _, imp := range imps {
 			//if strings.HasPrefix(imp, myName) {
 			////Info("Skipping %s because it is a subpackage of %s", imp, myName)
 			//continue
@@ -88,6 +101,11 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 
 	info := &dependency.PkgInfo{
 		Name: name,
+	}
+
+	if strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") {
+		info.Loc = dependency.LocRelative
+		return info
 	}
 
 	// Recurse backward to scan other vendor/ directories
@@ -143,9 +161,22 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		}
 	}
 
-	// Finally, if this is "C", we're dealing with cgo
+	// If this is "C", we're dealing with cgo
 	if name == "C" {
 		info.Loc = dependency.LocCgo
+	} else if name == "appengine" || name == "appengine_internal" ||
+		strings.HasPrefix(name, "appengine/") ||
+		strings.HasPrefix(name, "appengine_internal/") {
+		// Appengine is a special case when it comes to Go builds. It is a local
+		// looking package only available within appengine. It's a special case
+		// where Google products are playing with each other.
+		// https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
+		info.Loc = dependency.LocAppengine
+	} else if name == "context" {
+		// context is a package being added to the Go 1.7 standard library. Some
+		// packages, such as golang.org/x/net are importing it with build flags
+		// in files for go1.7. Need to detect this and handle it.
+		info.Loc = dependency.LocGoroot
 	}
 
 	return info

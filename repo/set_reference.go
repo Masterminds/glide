@@ -43,8 +43,10 @@ func SetReference(conf *cfg.Config) error {
 	}
 
 	for _, dep := range conf.Imports {
-		wg.Add(1)
-		in <- dep
+		if !conf.HasIgnore(dep.Name) {
+			wg.Add(1)
+			in <- dep
+		}
 	}
 
 	wg.Wait()

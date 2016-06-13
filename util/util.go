@@ -16,6 +16,12 @@ import (
 	"github.com/Masterminds/vcs"
 )
 
+// ResolveCurrent selects whether the package should only the dependencies for
+// the current OS/ARCH instead of all possible permutations.
+// This is not concurrently safe which is ok for the current application. If
+// other needs arise it may need to be re-written.
+var ResolveCurrent = false
+
 func init() {
 	// Precompile the regular expressions used to check VCS locations.
 	for _, v := range vcsList {
@@ -29,6 +35,7 @@ func init() {
 // the package github.com/Masterminds/cookoo/io has a root repo
 // at github.com/Masterminds/cookoo
 func GetRootFromPackage(pkg string) string {
+	pkg = filepath.ToSlash(pkg)
 	for _, v := range vcsList {
 		m := v.regex.FindStringSubmatch(pkg)
 		if m == nil {
@@ -247,7 +254,7 @@ func (b *BuildCtxt) PackageName(base string) string {
 		// There may not be any top level Go source files but the project may
 		// still be within the GOPATH.
 		if strings.HasPrefix(base, b.GOPATH) {
-			p := strings.TrimPrefix(base, b.GOPATH)
+			p := strings.TrimPrefix(base, filepath.Join(b.GOPATH, "src"))
 			return strings.Trim(p, string(os.PathSeparator))
 		}
 	}
@@ -262,6 +269,15 @@ func (b *BuildCtxt) PackageName(base string) string {
 // TODO: This should be moved to the `dependency` package.
 func GetBuildContext() (*BuildCtxt, error) {
 	buildContext := &BuildCtxt{build.Default}
+
+	// If we aren't resolving for the current system set to look at all
+	// build modes.
+	if !ResolveCurrent {
+		// This tells the context scanning to skip filtering on +build flags or
+		// file names.
+		buildContext.UseAllFiles = true
+	}
+
 	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
 		out, err := exec.Command("go", "env", "GOROOT").Output()
 		if goRoot = strings.TrimSpace(string(out)); len(goRoot) == 0 || err != nil {
@@ -291,7 +307,6 @@ func NormalizeName(name string) (string, string) {
 		}
 	}
 
-	name = filepath.ToSlash(name)
 	root := GetRootFromPackage(name)
 	extra := strings.TrimPrefix(name, root)
 	if len(extra) > 0 && extra != "/" {

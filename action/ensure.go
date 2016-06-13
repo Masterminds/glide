@@ -5,11 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
+	"github.com/Masterminds/glide/util"
 )
 
 // EnsureConfig loads and returns a config file.
@@ -33,6 +35,27 @@ func EnsureConfig() *cfg.Config {
 		msg.Die("Failed to parse %s: %s", yamlpath, err)
 	}
 
+	b := filepath.Dir(yamlpath)
+	buildContext, err := util.GetBuildContext()
+	if err != nil {
+		msg.Die("Failed to build an import context while ensuring config: %s", err)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		msg.Err("Unable to get the current working directory")
+	} else {
+		// Determining a package name requires a relative path
+		b, err = filepath.Rel(b, cwd)
+		if err == nil {
+			name := buildContext.PackageName(b)
+			if name != conf.Name {
+				msg.Warn("The name listed in the config file (%s) does not match the current location (%s)", conf.Name, name)
+			}
+		} else {
+			msg.Warn("Problem finding the config file path (%s) relative to the current directory (%s): %s", b, cwd, err)
+		}
+	}
+
 	return conf
 }
 
@@ -51,14 +74,29 @@ func EnsureGoVendor() bool {
 		return false
 	}
 
-	// This works with 1.5 and >=1.6.
-	cmd = exec.Command("go", "env", "GO15VENDOREXPERIMENT")
+	// Check if this is go15, which requires GO15VENDOREXPERIMENT
+	// Any release after go15 does not require that env var.
+	cmd = exec.Command("go", "version")
 	if out, err := cmd.CombinedOutput(); err != nil {
-		msg.Err("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
-//		os.Exit(1)
-		return false
-	} else if strings.TrimSpace(string(out)) != "1" {
-		msg.Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1\n")
+		msg.Err("Error getting version: %s.\n", err)
+		os.Exit(1)
+	} else if strings.HasPrefix(string(out), "go version 1.5") {
+		// This works with 1.5 and 1.6.
+		cmd = exec.Command("go", "env", "GO15VENDOREXPERIMENT")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			msg.Warn("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
+//			os.Exit(1)
+			return false
+		} else if strings.TrimSpace(string(out)) != "1" {
+			msg.Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1")
+//			os.Exit(1)
+			return false
+		}
+	}
+
+	// In the case where vendoring is explicitly disabled, balk.
+	if os.Getenv("GO15VENDOREXPERIMENT") == "0" {
+		msg.Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1")
 //		os.Exit(1)
 		return false
 	}

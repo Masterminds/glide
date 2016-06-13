@@ -31,7 +31,7 @@ You can download one or more packages to your `vendor` directory and have it add
 
     $ glide get github.com/Masterminds/cookoo
 
-When `glide get` is used it will introspect the listed package to resolve its dependencies including using Godep, GPM, and GB config files.
+When `glide get` is used it will introspect the listed package to resolve its dependencies including using Godep, GPM, Gom, and GB config files.
 
 The `glide get` command can have a [version or range](versions.md) passed in with the package name. For example,
 
@@ -45,9 +45,21 @@ Download or update all of the libraries listed in the `glide.yaml` file and put 
 
     $ glide up
 
-This will recurse over the packages looking for other projects managed by Glide, Godep, gb, and GPM. When one is found those packages will be installed as needed.
+This will recurse over the packages looking for other projects managed by Glide, Godep, GB, Gom, and GPM. When one is found those packages will be installed as needed.
 
 A `glide.lock` file will be created or updated with the dependencies pinned to specific versions. For example, if in the `glide.yaml` file a version was specified as a range (e.g., `^1.2.3`) it will be set to a specific commit id in the `glide.lock` file. That allows for reproducible installs (see `glide install`).
+
+If you want to use `glide up` to help you managed dependencies that are checked into your version control consider the flags:
+
+* `--update-vendored` (aliased to `-u`) to update the vendored dependencies. If Glide detects a vendored dependency it will update it and leave it in a vendored state. Note, any tertiary dependencies will not be automatically vendored with this flag.
+* `--strip-vcs` (aliased to `-s`) to strip VCS metadata (e.g., `.git` directories) from the `vendor` folder.
+* `--strip-vendor` (aliased to `-v`) to strip nested `vendor/` directories.
+
+For example, you can use the command:
+
+    $ glide up -u -s
+
+This will tell Glide to update the vendored packages and remove any VCS directories from transitive dependencies that were picked up as well.
 
 ## glide install
 

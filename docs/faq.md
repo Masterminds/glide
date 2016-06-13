@@ -10,14 +10,20 @@ These are works in progress, and may need some additional tuning. Please take a 
 
 ## Q: Should I check `vendor/` into version control?
 
-That's up to you. It's not necessary, but it may also cause you extra work and lots of extra space in your VCS. There may also be unforeseen errors ([see an example](https://github.com/mattfarina/golang-broken-vendor)).
+That's up to you. It's a personal or organizational decision. Glide will help you install the outside dependencies on demand or help you manage the dependencies as they are checked into your version control system.
 
-## Q: How do I import settings from GPM, Godep, or gb?
+By default, commands such as `glide update` and `glide install` install on-demand. To manage a vendor folder that's checked into version control use the flags:
+
+* `--update-vendored` (aliased to `-u`) to update the vendored dependencies.
+* `--strip-vcs` (aliased to `-s`) to strip VCS metadata (e.g., `.git` directories) from the `vendor` folder.
+* `--strip-vendor` (aliased to `-v`) to strip nested `vendor/` directories.
+
+## Q: How do I import settings from GPM, Godep, Gom, or GB?
 
 There are two parts to importing.
 
-1. If a package you import has configuration for GPM, Godep, or gb Glide will recursively install the dependencies automatically.
-2. If you would like to import configuration from GPM, Godep, or gb to Glide see the `glide import` command. For example, you can run `glide import godep` for Glide to detect the projects Godep configuration and generate a `glide.yaml` file for you.
+1. If a package you import has configuration for GPM, Godep, Gom, or GB Glide will recursively install the dependencies automatically.
+2. If you would like to import configuration from GPM, Godep, Gom, or GB to Glide see the `glide import` command. For example, you can run `glide import godep` for Glide to detect the projects Godep configuration and generate a `glide.yaml` file for you.
 
 Each of these will merge your existing `glide.yaml` file with the
 dependencies it finds for those managers, and then emit the file as

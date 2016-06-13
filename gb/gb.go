@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 )
 
@@ -24,7 +25,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		return []*cfg.Dependency{}, nil
 	}
 
-	msg.Info("Found GB manifest file.\n")
+	msg.Info("Found GB manifest file in %s", gpath.StripBasepath(dir))
 	buf := []*cfg.Dependency{}
 	file, err := os.Open(path)
 	if err != nil {

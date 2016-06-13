@@ -1,5 +1,7 @@
 # Glide: Vendor Package Management for Golang
 
+![glide logo](https://glide.sh/assets/logo-small.png)
+
 Are you used to tools such as Cargo, npm, Composer, Nuget, Pip, Maven, Bundler,
 or other modern package managers? If so, Glide is the comparable Go tool.
 
@@ -10,7 +12,7 @@ containing dependent packages for the project. These vendor packages can be
 installed by a tool (e.g. glide), similar to `go get` or they can be vendored and
 distributed with the package.
 
-[![Build Status](https://travis-ci.org/Masterminds/glide.svg)](https://travis-ci.org/Masterminds/glide) [![Go Report Card](http://goreportcard.com/badge/Masterminds/glide)](http://goreportcard.com/report/Masterminds/glide) [![GoDoc](https://godoc.org/github.com/Masterminds/glide?status.svg)](https://godoc.org/github.com/Masterminds/glide) [![Documentation Status](https://readthedocs.org/projects/glide/badge/?version=latest)](http://glide.readthedocs.org/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.org/Masterminds/glide.svg)](https://travis-ci.org/Masterminds/glide) [![Go Report Card](http://goreportcard.com/badge/Masterminds/glide)](http://goreportcard.com/report/Masterminds/glide) [![GoDoc](https://godoc.org/github.com/Masterminds/glide?status.svg)](https://godoc.org/github.com/Masterminds/glide) [![Documentation Status](https://readthedocs.org/projects/glide/badge/?version=stable)](http://glide.readthedocs.org/en/stable/?badge=stable) [![Documentation Status](https://readthedocs.org/projects/glide/badge/?version=latest)](http://glide.readthedocs.org/en/latest/?badge=latest) [![Join the chat at https://gitter.im/Masterminds/glide](https://badges.gitter.im/Masterminds/glide.svg)](https://gitter.im/Masterminds/glide?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ### Features
 
@@ -30,6 +32,8 @@ distributed with the package.
 * Repository caching including reuse of packages in the `$GOPATH`
 * Flatten dependencies resolving version differences and avoiding the inclusion
   of a package multiple times.
+* Manage and install dependencies on-demand or vendored in your version control
+  system.
 
 ## How It Works
 
@@ -37,7 +41,7 @@ The dependencies for a project are listed in a `glide.yaml` file. This can
 include a version, VCS, repository location (that can be different from the
 package name), etc. When `glide up` is run it downloads the packages (or updates)
 to the `vendor` directory. It then recursively walks through the downloaded
-packages looking for those with a `glide.yaml` file (or Godep, gb, or GPM config
+packages looking for those with a `glide.yaml` file (or Godep, gb, gom, or GPM config
 file) that don't already have a `vendor` directory and installing their
 dependencies to their `vendor` directories. Once Glide has downloaded and figured
 out versions to use in the dependency tree it creates a `glide.lock` file
@@ -84,9 +88,9 @@ To build from source you can:
 
 1. Clone this repository into `$GOPATH/src/github.com/Masterminds/glide` and
    change directory into it
-2. Ensure that the environment variable GO15VENDOREXPERIMENT is set, f.ex. by
-   running `export GO15VENDOREXPERIMENT=1`
-3. Run `make bootstrap`, followed by `make build`
+2. Ensure that the environment variable GO15VENDOREXPERIMENT is set, for
+   example by running `export GO15VENDOREXPERIMENT=1`
+3. Run `make build`
 
 This will leave you with `./glide`, which you can put in your `$PATH` if
 you'd like. (You can also take a look at `make install` to install for
@@ -147,7 +151,7 @@ $ glide get github.com/Masterminds/cookoo
 ```
 
 When `glide get` is used it will introspect the listed package to resolve its
-dependencies including using Godep, GPM, and GB config files.
+dependencies including using Godep, GPM, Gom, and GB config files.
 
 ### glide update (aliased to up)
 
@@ -160,7 +164,7 @@ $ glide up
 ```
 
 This will recurse over the packages looking for other projects managed by Glide,
-Godep, gb, and GPM. When one is found those packages will be installed as needed.
+Godep, gb, gom, and GPM. When one is found those packages will be installed as needed.
 
 A `glide.lock` file will be created or updated with the dependencies pinned to
 specific versions. For example, if in the `glide.yaml` file a version was
@@ -406,13 +410,13 @@ That's up to you. It's not necessary, but it may also cause you extra
 work and lots of extra space in your VCS. There may also be unforeseen errors
 ([see an example](https://github.com/mattfarina/golang-broken-vendor)).
 
-#### Q: How do I import settings from GPM, Godep, or gb?
+#### Q: How do I import settings from GPM, Godep, gom or gb?
 
 There are two parts to importing.
 
-1. If a package you import has configuration for GPM, Godep, or gb Glide will
+1. If a package you import has configuration for GPM, Godep, gom or gb Glide will
    recursively install the dependencies automatically.
-2. If you would like to import configuration from GPM, Godep, or gb to Glide see
+2. If you would like to import configuration from GPM, Godep, gom or gb to Glide see
    the `glide import` command. For example, you can run `glide import godep` for
    Glide to detect the projects Godep configuration and generate a `glide.yaml`
    file for you.

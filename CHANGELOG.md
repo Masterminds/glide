@@ -1,3 +1,65 @@
+# Release 0.10.2 (2016-04-06)
+
+- Issue #362: Updated docs on how -update-vendored works to help avoid confusion.
+- Fixed #371: Warn when name/location mismatch.
+- Fixed #290: On windows Glide was sometimes pulls in current project (thanks tzneal).
+- Fixed #361: Handle relative imports (thanks tmm1).
+- Fixed #373: Go 1.7 context package import issues.
+
+# Release 0.10.1 (2016-03-25)
+
+- Fixed #354: Fixed a situation where a dependency could be fetched when
+  set to ignore.
+
+# Release 0.10.0 (2016-03-24)
+
+- Issue #293: Added support for importing from Gomfile's (thanks mcuelenaere).
+- Issue #318: Opt-In to strip VCS metadata from vendor directory.
+- Issue #297: Adds exclude property for directories in local codebase to exclude
+  from scanning.
+- Issue #301: Detect version control type from scp style paths (e.g. git@) and
+  from scheme types (e.g., git://).
+- Issue #339: Add ability to remove nested vendor and Godeps workspaces
+  directories. Note, if Godeps rewriting occured it is undone. The Godeps handling
+  is deprecated from day one and will be removed when most Godeps projects have
+  migrated to vendor folder handling.
+- Issue #350: More detailed conflict information (commit metadata displayed).
+- Issue #351: Move to Gitter for chat.
+- Issue #352: Make Glide installable. The dependencies are checked into the
+  `vendor` folder.
+
+# Release 0.9.3 (2016-03-09)
+
+- Fixed #324: Glide tries to update ignored package
+
+# Release 0.9.2 (2016-03-08)
+
+- Fixed issue on #317: Some windows calls had the improper path separator.
+- Issue #315: Track updated packages to avoid duplicated work (in part by
+  thockin, thanks).
+- Fixed #312: Don't double-print SetVersion() failure (thanks thockin).
+- Fixed #311: Don't process deps if 'get' was a non-operation (thanks thockin).
+- Issue #307: Moving 'already set' to a debug message to cleanup output
+  (thanks thockin).
+- Fixed #306: Don't call SetVersion twice. There was a place where it was called
+  twice in a logical row (thanks thockin).
+- Fixed #304: Glide tries to update ignored packages.
+- Fixed #302: Force update can cause a panic.
+
+# Release 0.9.1 (2016-02-24)
+
+- Fixed #272: Handling appengine special package case.
+- Fixed #273: Handle multiple packages in the same directory but handling
+  build tags used in those packages.
+- Added documentation explaining how import resolution works.
+- Fixed #275 and #285: Empty directories as package locations reporting errors.
+  Improved the UX and handle the errors.
+- Fixed #279: Added Go 1.7 support that no longer has GO15VENDOREXPERIMENT.
+- Issue #267: Added `os` and `arch` import properties to the documentation.
+- Fixed #267: Glide was only walking the import tree based on build flags for
+  the current OS and Arch. This is a problem for systems like docker that have
+  variation built in.
+
 # Release 0.9.0 (2016-02-17)
 
 - Fixed #262: Using correct query string merging for go-get queries (thanks gdm85).

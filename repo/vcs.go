@@ -21,7 +21,7 @@ import (
 )
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
-func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath, force, updateVendored bool) error {
+func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopath, force, updateVendored bool, updated *UpdateTracker) error {
 
 	// If the dependency has already been pinned we can skip it. This is a
 	// faster path so we don't need to resolve it again.
@@ -29,6 +29,12 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 		msg.Debug("Dependency %s has already been pinned. Fetching updates skipped.", dep.Name)
 		return nil
 	}
+
+	if updated.Check(dep.Name) {
+		msg.Debug("%s was already updated, skipping.", dep.Name)
+		return nil
+	}
+	updated.Add(dep.Name)
 
 	msg.Info("Fetching updates for %s.\n", dep.Name)
 
@@ -55,6 +61,17 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 		_, err = v.DetectVcsFromFS(dest)
 		if updateVendored == false && empty == false && err == v.ErrCannotDetectVCS {
 			msg.Warn("%s appears to be a vendored package. Unable to update. Consider the '--update-vendored' flag.\n", dep.Name)
+		} else if updateVendored == false && empty == true && err == v.ErrCannotDetectVCS {
+			msg.Warn("%s is an empty directory. Fetching a new copy of the dependency.", dep.Name)
+			msg.Debug("Removing empty directory %s", dest)
+			err := os.RemoveAll(dest)
+			if err != nil {
+				return err
+			}
+			if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
+				msg.Warn("Unable to checkout %s\n", dep.Name)
+				return err
+			}
 		} else {
 
 			if updateVendored == true && empty == false && err == v.ErrCannotDetectVCS {
@@ -100,10 +117,15 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 					msg.Warn("Unable to checkout %s\n", dep.Name)
 					return err
 				}
+
+				repo, err = dep.GetRepo(dest)
+				if err != nil {
+					return err
+				}
 			} else if err != nil {
 				return err
 			} else if repo.IsDirty() {
-				return fmt.Errorf("%s contains uncommited changes. Skipping update", dep.Name)
+				return fmt.Errorf("%s contains uncommitted changes. Skipping update", dep.Name)
 			}
 
 			// Check if the current version is a tag or commit id. If it is
@@ -124,7 +146,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 				// branch it's a tag or commit id so we can skip
 				// performing an update.
 				if version == dep.Reference && !ib {
-					msg.Info("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
+					msg.Debug("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
 					return nil
 				}
 			}
@@ -226,7 +248,6 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 			}
 		}
 		if err := repo.UpdateVersion(ver); err != nil {
-			msg.Err("Failed to set version to %s: %s\n", dep.Reference, err)
 			return err
 		}
 		dep.Pin, err = repo.Version()
@@ -421,24 +442,25 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 	gerr := repo.Get()
 
 	// Attempt to cache the default branch
-	branch := findCurrentBranch(repo)
-	if branch != "" {
-		// we know the default branch so we can store it in the cache
-		var loc string
-		if dep.Repository != "" {
-			loc = dep.Repository
-		} else {
-			loc = "https://" + dep.Name
-		}
-		key, err := cacheCreateKey(loc)
-		if err == nil {
-			msg.Debug("Saving default branch for %s", repo.Remote())
-			c := cacheRepoInfo{DefaultBranch: branch}
-			err = saveCacheRepoData(key, c, home)
-			if err == errCacheDisabled {
-				msg.Debug("Unable to cache default branch because caching is disabled")
-			} else if err != nil {
-				msg.Debug("Error saving %s to cache - Error: %s", repo.Remote(), err)
+	if cache {
+		if branch := findCurrentBranch(repo); branch != "" {
+			// we know the default branch so we can store it in the cache
+			var loc string
+			if dep.Repository != "" {
+				loc = dep.Repository
+			} else {
+				loc = "https://" + dep.Name
+			}
+			key, err := cacheCreateKey(loc)
+			if err == nil {
+				msg.Debug("Saving default branch for %s", repo.Remote())
+				c := cacheRepoInfo{DefaultBranch: branch}
+				err = saveCacheRepoData(key, c, home)
+				if err == errCacheDisabled {
+					msg.Debug("Unable to cache default branch because caching is disabled")
+				} else if err != nil {
+					msg.Debug("Error saving %s to cache - Error: %s", repo.Remote(), err)
+				}
 			}
 		}
 	}

@@ -5,13 +5,14 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
+	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
 )
 
 // Update updates repos and the lock file from the main glide yaml.
-func Update(installer *repo.Installer, skipRecursive bool) {
+func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	base := "."
 	EnsureGopath()
 	EnsureVendorDir()
@@ -58,7 +59,9 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 	}
 	// Vendored cleanup
 	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.
-	if installer.UpdateVendored {
+	// When stripping VCS happens this will happen as well. No need for double
+	// effort.
+	if installer.UpdateVendored && !strip {
 		repo.VendoredCleanup(confcopy)
 	}
 
@@ -70,6 +73,10 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 	// TODO(mattfarina): Detect when a new dependency has been added or removed
 	// from the project. A removed dependency should warn and an added dependency
 	// should be added to the glide.yaml file. See issue #193.
+
+	if stripVendor {
+		confcopy = godep.RemoveGodepSubpackages(confcopy)
+	}
 
 	if !skipRecursive {
 		// Write lock
@@ -88,5 +95,18 @@ func Update(installer *repo.Installer, skipRecursive bool) {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
 	}
 
+	if strip {
+		msg.Info("Removing version control data from vendor directory...")
+		gpath.StripVcs()
+	}
+
+	if stripVendor {
+		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
+		err := gpath.StripVendor()
+		if err != nil {
+			msg.Err("Unable to strip vendor directories: %s", err)
+		}
+	}
+	
 	installer.Cleanup()
 }

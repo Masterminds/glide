@@ -43,6 +43,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
+	"github.com/Masterminds/glide/util"
 
 	"github.com/codegangsta/cli"
 
@@ -51,7 +52,7 @@ import (
 	"os/user"
 )
 
-var version = "dev"
+var version = "0.10.2"
 
 const usage = `The lightweight vendor package manager for your Go projects.
 
@@ -120,7 +121,7 @@ func main() {
 
 	// If there was a Error message exit non-zero.
 	if msg.HasErrored() {
-		m := msg.Color(msg.Red, "An Error has occured")
+		m := msg.Color(msg.Red, "An Error has occurred")
 		msg.Msg(m)
 		os.Exit(2)
 	}
@@ -168,7 +169,18 @@ func commands() []cli.Command {
 	When adding a new dependency Glide will perform an update to work out the
 	the versions to use from the dependency tree. This will generate an updated
 	glide.lock file with specific locked versions to use.
-	`,
+
+	If you are storing the outside dependencies in your version control system
+	(VCS), also known as vendoring, there are a few flags that may be useful.
+	The '--update-vendored' flag will cause Glide to update packages when VCS
+	information is unavailable. This can be used with the '--strip-vcs' flag which
+	will strip VCS data found in the vendor directory. This is useful for
+	removing VCS data from transitive dependencies and initial setups. The
+	'--strip-vendor' flag will remove any nested 'vendor' folders and
+	'Godeps/_workspace' folders after an update (along with undoing any Godep
+	import rewriting). Note, The Godeps specific functionality is deprecated and
+	will be removed when most Godeps users have migrated to using the vendor
+	folder.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "insecure",
@@ -202,24 +214,44 @@ func commands() []cli.Command {
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "resolve-current",
+					Usage: "Resolve dependencies for only the current system rather than all build modes.",
+				},
+				cli.BoolFlag{
+					Name:  "strip-vcs, s",
+					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+				}
+
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
 				}
 
-				inst := &repo.Installer{
-					Force:           c.Bool("force"),
-					UseCache:        c.Bool("cache"),
-					UseGopath:       c.Bool("use-gopath"),
-					UseCacheGopath:  c.Bool("cache-gopath"),
-					UpdateVendored:  c.Bool("update-vendored"),
-					ResolveAllFiles: c.Bool("all-dependencies"),
+				if c.Bool("resolve-current") {
+					util.ResolveCurrent = true
+					msg.Warn("Only resolving dependencies for the current OS/Arch")
 				}
+
+				inst := repo.NewInstaller()
+				inst.Force = c.Bool("force")
+				inst.UseCache = c.Bool("cache")
+				inst.UseGopath = c.Bool("use-gopath")
+				inst.UseCacheGopath = c.Bool("cache-gopath")
+				inst.UpdateVendored = c.Bool("update-vendored")
+				inst.ResolveAllFiles = c.Bool("all-dependencies")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -249,10 +281,8 @@ func commands() []cli.Command {
 					// FIXME: Implement this in the installer.
 					fmt.Println("Delete is not currently implemented.")
 				}
-
-				inst := &repo.Installer{
-					Force: c.Bool("force"),
-				}
+				inst := repo.NewInstaller()
+				inst.Force = c.Bool("force")
 				packages := []string(c.Args())
 				action.Remove(packages, inst)
 			},
@@ -298,6 +328,19 @@ func commands() []cli.Command {
 					},
 					Action: func(c *cli.Context) {
 						action.ImportGB(c.String("file"))
+					},
+				},
+				{
+					Name:  "gom",
+					Usage: "Import Gomfile and display the would-be yaml file",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "file, f",
+							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+						},
+					},
+					Action: func(c *cli.Context) {
+						action.ImportGom(c.String("file"))
 					},
 				},
 			},
@@ -384,19 +427,30 @@ Example:
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "strip-vcs, s",
+					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
-				installer := &repo.Installer{
-					DeleteUnused:   c.Bool("deleteOptIn"),
-					UpdateVendored: c.Bool("update-vendored"),
-					Force:          c.Bool("force"),
-					UseCache:       c.Bool("cache"),
-					UseCacheGopath: c.Bool("cache-gopath"),
-					UseGopath:      c.Bool("use-gopath"),
-					Home:           gpath.Home(),
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
 				}
 
-				action.Install(installer)
+				installer := repo.NewInstaller()
+				installer.Force = c.Bool("force")
+				installer.UseCache = c.Bool("cache")
+				installer.UseGopath = c.Bool("use-gopath")
+				installer.UseCacheGopath = c.Bool("cache-gopath")
+				installer.UpdateVendored = c.Bool("update-vendored")
+				installer.Home = gpath.Home()
+				installer.DeleteUnused = c.Bool("deleteOptIn")
+
+				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -419,10 +473,22 @@ Example:
 	It will create a glide.yaml file from the Godeps data, and then update. This
 	has no effect if '--no-recursive' is set.
 
-	If the '--update-vendored' flag (aliased to '-u') is present vendored
-	dependencies, stored in your projects VCS repository, will be updated. This
-	works by removing the old package, checking out an the repo and setting the
-	version, and removing the VCS directory.
+	If you are storing the outside dependencies in your version control system
+	(VCS), also known as vendoring, there are a few flags that may be useful.
+	The '--update-vendored' flag will cause Glide to update packages when VCS
+	information is unavailable. This can be used with the '--strip-vcs' flag which
+	will strip VCS data found in the vendor directory. This is useful for
+	removing VCS data from transitive dependencies and initial setups. The
+	'--strip-vendor' flag will remove any nested 'vendor' folders and
+	'Godeps/_workspace' folders after an update (along with undoing any Godep
+	import rewriting). Note, The Godeps specific functionality is deprecated and
+	will be removed when most Godeps users have migrated to using the vendor
+	folder.
+
+	Note, Glide detects vendored dependencies. With the '--update-vendored' flag
+	Glide will update vendored dependencies leaving them in a vendored state.
+	Tertiary dependencies will not be vendored automatically unless the
+	'--strip-vcs' flag is used along with it.
 
 	By default, packages that are discovered are considered transient, and are
 	not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
@@ -465,20 +531,40 @@ Example:
 					Name:  "use-gopath",
 					Usage: "Copy dependencies from the GOPATH if they exist there.",
 				},
+				cli.BoolFlag{
+					Name:  "resolve-current",
+					Usage: "Resolve dependencies for only the current system rather than all build modes.",
+				},
+				cli.BoolFlag{
+					Name:  "strip-vcs, s",
+					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+				},
+				cli.BoolFlag{
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
 			},
 			Action: func(c *cli.Context) {
-				installer := &repo.Installer{
-					DeleteUnused:    c.Bool("deleteOptIn"),
-					UpdateVendored:  c.Bool("update-vendored"),
-					ResolveAllFiles: c.Bool("all-dependencies"),
-					Force:           c.Bool("force"),
-					UseCache:        c.Bool("cache"),
-					UseCacheGopath:  c.Bool("cache-gopath"),
-					UseGopath:       c.Bool("use-gopath"),
-					Home:            gpath.Home(),
+				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
+					msg.Die("--strip-vendor cannot be used without --strip-vcs")
 				}
 
-				action.Update(installer, c.Bool("no-recursive"))
+				if c.Bool("resolve-current") {
+					util.ResolveCurrent = true
+					msg.Warn("Only resolving dependencies for the current OS/Arch")
+				}
+
+				installer := repo.NewInstaller()
+				installer.Force = c.Bool("force")
+				installer.UseCache = c.Bool("cache")
+				installer.UseGopath = c.Bool("use-gopath")
+				installer.UseCacheGopath = c.Bool("cache-gopath")
+				installer.UpdateVendored = c.Bool("update-vendored")
+				installer.ResolveAllFiles = c.Bool("all-dependencies")
+				installer.Home = gpath.Home()
+				installer.DeleteUnused = c.Bool("deleteOptIn")
+
+				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
 			},
 		},
 		{
