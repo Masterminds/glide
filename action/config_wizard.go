@@ -43,7 +43,7 @@ func ConfigWizard(base string) {
 	}
 
 	msg.Info("Looking for dependencies to make suggestions on")
-	msg.Info("--> Scanning for dependencies not using verion ranges")
+	msg.Info("--> Scanning for dependencies not using version ranges")
 	msg.Info("--> Scanning for dependencies using commit ids")
 	var deps []*cfg.Dependency
 	for _, dep := range conf.Imports {
