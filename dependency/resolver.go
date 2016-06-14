@@ -215,18 +215,18 @@ func NewResolver(basedir string) (*Resolver, error) {
 // If basepath is set to $GOPATH, this will start from that package's root there.
 // If basepath is set to a project's vendor path, the scanning will begin from
 // there.
-// func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
-// 	target := filepath.Join(basepath, filepath.FromSlash(pkg))
-// 	//msg.Debug("Scanning %s", target)
-// 	l := list.New()
-// 	l.PushBack(target)
-//
-// 	// In this mode, walk the entire tree.
-// 	if r.ResolveAllFiles {
-// 		return r.resolveList(l, false, false)
-// 	}
-// 	return r.resolveImports(l, false, false)
-// }
+func (r *Resolver) Resolve(pkg, basepath string) ([]string, error) {
+	target := filepath.Join(basepath, filepath.FromSlash(pkg))
+	//msg.Debug("Scanning %s", target)
+	l := list.New()
+	l.PushBack(target)
+
+	// In this mode, walk the entire tree.
+	if r.ResolveAllFiles {
+		return r.resolveList(l, false, false)
+	}
+	return r.resolveImports(l, false, false)
+}
 
 // dirHasPrefix tests whether the directory dir begins with prefix.
 func dirHasPrefix(dir, prefix string) bool {
