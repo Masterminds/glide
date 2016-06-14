@@ -9,9 +9,9 @@ The `glide.yaml` file contains information about the project and the dependent p
     - name: Matt Butcher
       email: technosophos@gmail.com
       homepage: http://technosophos.com
-      - name: Matt Farina
-        email: matt@mattfarina.com
-        homepage: https://www.mattfarina.com
+    - name: Matt Farina
+      email: matt@mattfarina.com
+      homepage: https://www.mattfarina.com
     ignore:
     - appengine
     excludeDirs:
