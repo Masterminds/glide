@@ -232,7 +232,7 @@ func wizardAskCurrent(cur string, d *cfg.Dependency) bool {
 
 func wizardAskLatest(latest string, d *cfg.Dependency) bool {
 	msg.Info("The package %s appears to have Semantic Version releases (http://semver.org). ", d.Name)
-	msg.Info("The latestrelease is %s. You are currently not using a release. Would you like", latest)
+	msg.Info("The latest release is %s. You are currently not using a release. Would you like", latest)
 	msg.Info("to use this release? Yes (Y) or No (N)")
 	return msg.PromptUntilYorN()
 }
