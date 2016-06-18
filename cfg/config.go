@@ -308,6 +308,23 @@ func (d Dependencies) Has(name string) bool {
 	return false
 }
 
+// Remove removes a dependency from a list of dependencies
+func (d Dependencies) Remove(name string) Dependencies {
+	found := -1
+	for i, dep := range d {
+		if dep.Name == name {
+			found = i
+		}
+	}
+
+	if found >= 0 {
+		copy(d[found:], d[found+1:])
+		d[len(d)-1] = nil
+		return d[:len(d)-1]
+	}
+	return d
+}
+
 // Clone performs a deep clone of Dependencies
 func (d Dependencies) Clone() Dependencies {
 	n := make(Dependencies, 0, len(d))

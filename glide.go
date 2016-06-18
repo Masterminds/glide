@@ -203,6 +203,10 @@ func commands() []cli.Command {
    folder.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
+					Name:  "test",
+					Usage: "Add test dependencies.",
+				},
+				cli.BoolFlag{
 					Name:  "insecure",
 					Usage: "Use http:// rather than https:// to retrieve pacakges.",
 				},
@@ -280,7 +284,7 @@ func commands() []cli.Command {
 				inst.ResolveTest = !c.Bool("skip-test")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"), c.Bool("non-interactive"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"), c.Bool("non-interactive"), c.Bool("test"))
 			},
 		},
 		{
