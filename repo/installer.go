@@ -225,7 +225,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 			}
 			if d == nil {
 				nd := &cfg.Dependency{
-					Name: n,
+					Name: rt,
 				}
 				if sub != "" {
 					nd.Subpackages = []string{sub}
