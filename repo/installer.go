@@ -202,16 +202,17 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	for _, v := range imps {
 		n := res.Stripv(v)
 		rt, sub := util.NormalizeName(n)
+		if sub != "" {
+			sub = "."
+		}
 		d := conf.Imports.Get(rt)
 		if d == nil {
 			nd := &cfg.Dependency{
-				Name: rt,
-			}
-			if sub != "" {
-				nd.Subpackages = []string{sub}
+				Name:        rt,
+				Subpackages: []string{sub},
 			}
 			conf.Imports = append(conf.Imports, nd)
-		} else if sub != "" && !d.HasSubpackage(sub) {
+		} else if !d.HasSubpackage(sub) {
 			d.Subpackages = append(d.Subpackages, sub)
 		}
 	}
@@ -219,19 +220,20 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		for _, v := range timps {
 			n := res.Stripv(v)
 			rt, sub := util.NormalizeName(n)
+			if sub != "" {
+				sub = "."
+			}
 			d := conf.Imports.Get(rt)
 			if d == nil {
 				d = conf.DevImports.Get(rt)
 			}
 			if d == nil {
 				nd := &cfg.Dependency{
-					Name: rt,
-				}
-				if sub != "" {
-					nd.Subpackages = []string{sub}
+					Name:        rt,
+					Subpackages: []string{sub},
 				}
 				conf.DevImports = append(conf.DevImports, nd)
-			} else if sub != "" && !d.HasSubpackage(sub) {
+			} else if !d.HasSubpackage(sub) {
 				d.Subpackages = append(d.Subpackages, sub)
 			}
 		}

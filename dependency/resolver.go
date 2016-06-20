@@ -464,7 +464,6 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 			continue
 		}
 		r.VersionHandler.Process(dep)
-
 		// Here, we want to import the package and see what imports it has.
 		msg.Debug("Trying to open %s", vdep)
 		var imps []string
@@ -859,8 +858,14 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 func sliceToQueue(deps []*cfg.Dependency, basepath string) *list.List {
 	l := list.New()
 	for _, e := range deps {
-		msg.Debug("Adding local Import %s to queue", e.Name)
-		l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name)))
+		for _, v := range e.Subpackages {
+			ip := e.Name
+			if v != "." && v != "" {
+				ip = ip + "/" + v
+			}
+			msg.Debug("Adding local Import %s to queue", ip)
+			l.PushBack(filepath.Join(basepath, filepath.FromSlash(ip)))
+		}
 	}
 	return l
 }
