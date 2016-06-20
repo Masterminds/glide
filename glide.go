@@ -691,7 +691,8 @@ func startup(c *cli.Context) error {
 	action.NoColor(c.Bool("no-color"))
 	action.Quiet(c.Bool("quiet"))
 	action.Init(c.String("yaml"), c.String("home"))
-	action.EnsureGoVendor()
+//	action.EnsureGoVendor()
+	action.CheckGoVendor()
 	return nil
 }
 

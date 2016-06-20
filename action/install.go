@@ -76,6 +76,8 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 			msg.Err("Unable to strip vendor directories: %s", err)
 		}
 	}
+
+	installer.Cleanup()
 }
 
 // LoadLockfile loads the contents of a glide.lock file.

@@ -105,6 +105,8 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 			msg.Err("Unable to strip vendor directories: %s", err)
 		}
 	}
+
+	installer.Cleanup()
 }
 
 func writeLock(conf, confcopy *cfg.Config, base string) {

@@ -60,12 +60,13 @@ func EnsureConfig() *cfg.Config {
 }
 
 // EnsureGoVendor ensures that the Go version is correct.
-func EnsureGoVendor() {
+func EnsureGoVendor() bool {
 	// 6l was removed in 1.5, when vendoring was introduced.
 	cmd := exec.Command(goExecutable(), "tool", "6l")
 	if _, err := cmd.CombinedOutput(); err == nil {
 		msg.Warn("You must install the Go 1.5 or greater toolchain to work with Glide.\n")
-		os.Exit(1)
+//		os.Exit(1)
+		return false
 	}
 
 	// Check if this is go15, which requires GO15VENDOREXPERIMENT
@@ -78,18 +79,21 @@ func EnsureGoVendor() {
 		// This works with 1.5 and 1.6.
 		cmd = exec.Command(goExecutable(), "env", "GO15VENDOREXPERIMENT")
 		if out, err := cmd.CombinedOutput(); err != nil {
-			msg.Err("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
-			os.Exit(1)
+			msg.Warn("Error looking for $GOVENDOREXPERIMENT: %s.\n", err)
+//			os.Exit(1)
+			return false
 		} else if strings.TrimSpace(string(out)) != "1" {
-			msg.Err("To use Glide, you must set GO15VENDOREXPERIMENT=1")
-			os.Exit(1)
+			msg.Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1")
+//			os.Exit(1)
+			return false
 		}
 	}
 
 	// In the case where vendoring is explicitly disabled, balk.
 	if os.Getenv("GO15VENDOREXPERIMENT") == "0" {
-		msg.Err("To use Glide, you must set GO15VENDOREXPERIMENT=1")
-		os.Exit(1)
+		msg.Warn("To use Glide, you must set GO15VENDOREXPERIMENT=1")
+//		os.Exit(1)
+		return false
 	}
 
 	// Verify the setup isn't for the old version of glide. That is, this is
@@ -102,20 +106,55 @@ _vendor was set as your GOPATH. As of Go 1.5 the go tools
 recognize the vendor directory as a location for these
 files. Glide has embraced this. Please remove the _vendor
 directory or move the _vendor/src/ directory to vendor/.` + "\n")
-		os.Exit(1)
+//		os.Exit(1)
+		return false
 	}
+	
+	return true
 }
 
 // EnsureVendorDir ensures that a vendor/ directory is present in the cwd.
 func EnsureVendorDir() {
-	fi, err := os.Stat(gpath.VendorDir)
+	var vendorDir string
+	if gpath.UseGoVendor {
+		vendorDir = gpath.VendorDir
+	} else {
+		vendorDir = gpath.GoPathVendorDir
+	}
+	fi, err := os.Stat(vendorDir)
 	if err != nil {
-		msg.Debug("Creating %s", gpath.VendorDir)
-		if err := os.MkdirAll(gpath.VendorDir, os.ModeDir|0755); err != nil {
-			msg.Die("Could not create %s: %s", gpath.VendorDir, err)
+		msg.Debug("Creating %s", vendorDir)
+		if err := os.MkdirAll(vendorDir, os.ModeDir|0755); err != nil {
+			msg.Die("Could not create %s: %s", vendorDir, err)
 		}
 	} else if !fi.IsDir() {
 		msg.Die("Vendor is not a directory")
+	}
+	
+	if !gpath.UseGoVendor {
+		// create symblic link to gpath.GoPathVendorDir to make glide work as normal
+		fi, err := os.Lstat(gpath.VendorDir)
+		if err != nil || (fi.Mode() & os.ModeSymlink) != 0 {
+			var symlinkOk = false
+			if err == nil && (fi.Mode() & os.ModeSymlink) != 0 {
+				if p, err := os.Readlink(gpath.VendorDir); err == nil && p == gpath.GoPathVendorDir {
+					symlinkOk = true
+				} else {
+					msg.Debug("Remove symlink %s -> %s", gpath.VendorDir, p)
+					if err := os.Remove(gpath.VendorDir); err != nil {
+						msg.Err("Could not remove symlink %s: %s", gpath.VendorDir, err)
+					}
+				}
+			}
+			if !symlinkOk {
+				msg.Debug("Creating symlink %s -> %s", gpath.VendorDir, gpath.GoPathVendorDir)
+				if err := os.Symlink(gpath.GoPathVendorDir, gpath.VendorDir); err != nil {
+					msg.Die("Could not create symlink %s: %s", gpath.VendorDir, err)
+				}
+			}
+		} else {
+			msg.Die("%s exists but not a symlink", gpath.VendorDir)
+		}
 	}
 }
 

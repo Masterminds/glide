@@ -131,4 +131,6 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 			msg.Err("Unable to strip vendor directories: %s", err)
 		}
 	}
+	
+	installer.Cleanup()
 }
