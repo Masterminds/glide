@@ -201,26 +201,38 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	}
 	for _, v := range imps {
 		n := res.Stripv(v)
-		d := conf.Imports.Get(n)
+		rt, sub := util.NormalizeName(n)
+		d := conf.Imports.Get(rt)
 		if d == nil {
 			nd := &cfg.Dependency{
-				Name: n,
+				Name: rt,
+			}
+			if sub != "" {
+				nd.Subpackages = []string{sub}
 			}
 			conf.Imports = append(conf.Imports, nd)
+		} else if sub != "" && !d.HasSubpackage(sub) {
+			d.Subpackages = append(d.Subpackages, sub)
 		}
 	}
 	if i.ResolveTest {
 		for _, v := range timps {
 			n := res.Stripv(v)
-			d := conf.Imports.Get(n)
+			rt, sub := util.NormalizeName(n)
+			d := conf.Imports.Get(rt)
 			if d == nil {
-				d = conf.DevImports.Get(n)
+				d = conf.DevImports.Get(rt)
 			}
 			if d == nil {
 				nd := &cfg.Dependency{
 					Name: n,
 				}
+				if sub != "" {
+					nd.Subpackages = []string{sub}
+				}
 				conf.DevImports = append(conf.DevImports, nd)
+			} else if sub != "" && !d.HasSubpackage(sub) {
+				d.Subpackages = append(d.Subpackages, sub)
 			}
 		}
 	}
@@ -400,7 +412,6 @@ type MissingPackageHandler struct {
 // folder. It will attempt to get it from the remote location info.
 func (m *MissingPackageHandler) NotFound(pkg string, addTest bool) (bool, error) {
 	root := util.GetRootFromPackage(pkg)
-
 	// Skip any references to the root package.
 	if root == m.Config.Name {
 		return false, nil
@@ -498,7 +509,6 @@ func (m *MissingPackageHandler) OnGopath(pkg string, addTest bool) (bool, error)
 // is available.
 func (m *MissingPackageHandler) InVendor(pkg string, addTest bool) error {
 	root := util.GetRootFromPackage(pkg)
-
 	// Skip any references to the root package.
 	if root == m.Config.Name {
 		return nil

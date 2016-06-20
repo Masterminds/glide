@@ -36,7 +36,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 	}
 	updated.Add(dep.Name)
 
-	msg.Info("Fetching updates for %s.\n", dep.Name)
+	msg.Info("Fetching updates for %s.", dep.Name)
 
 	if filterArchOs(dep) {
 		msg.Info("%s is not used for %s/%s.\n", dep.Name, runtime.GOOS, runtime.GOARCH)
