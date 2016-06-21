@@ -2,7 +2,6 @@ package dependency
 
 import (
 	"container/list"
-	"fmt"
 	"runtime"
 	//"go/build"
 	"os"
@@ -865,7 +864,6 @@ func sliceToQueue(deps []*cfg.Dependency, basepath string) *list.List {
 				if v != "." && v != "" {
 					ip = ip + "/" + v
 				}
-				fmt.Println(ip)
 				msg.Debug("Adding local Import %s to queue", ip)
 				l.PushBack(filepath.Join(basepath, filepath.FromSlash(ip)))
 			}

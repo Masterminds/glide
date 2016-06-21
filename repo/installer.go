@@ -124,6 +124,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 		return newConf, nil
 	}
 
+	msg.Info("Downloading dependencies. Please wait...")
+
 	ConcurrentUpdate(newConf.Imports, cwd, i, newConf)
 	ConcurrentUpdate(newConf.DevImports, cwd, i, newConf)
 	return newConf, nil
@@ -136,6 +138,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 func (i *Installer) Checkout(conf *cfg.Config) error {
 
 	dest := i.VendorPath()
+
+	msg.Info("Downloading dependencies. Please wait...")
 
 	if err := ConcurrentUpdate(conf.Imports, dest, i, conf); err != nil {
 		return err
@@ -254,6 +258,8 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		}
 	}
 
+	msg.Info("Downloading dependencies. Please wait...")
+
 	err = ConcurrentUpdate(conf.Imports, vpath, i, conf)
 	if err != nil {
 		return err
@@ -318,8 +324,6 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.C
 	var wg sync.WaitGroup
 	var lock sync.Mutex
 	var returnErr error
-
-	msg.Info("Downloading dependencies. Please wait...")
 
 	for ii := 0; ii < concurrentWorkers; ii++ {
 		go func(ch <-chan *cfg.Dependency) {

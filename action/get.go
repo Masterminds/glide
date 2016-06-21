@@ -217,7 +217,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 		if dep.Reference != "" {
 			msg.Info("--> Adding %s to your configuration with the version %s", dep.Name, dep.Reference)
 		} else {
-			msg.Info("--> Adding %s to your configuration %s", dep.Name)
+			msg.Info("--> Adding %s to your configuration", dep.Name)
 		}
 
 		if testDeps {
