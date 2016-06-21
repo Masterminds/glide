@@ -199,19 +199,21 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	if err != nil {
 		msg.Die("Failed to resolve local packages: %s", err)
 	}
+	var deps cfg.Dependencies
+	var tdeps cfg.Dependencies
 	for _, v := range imps {
 		n := res.Stripv(v)
 		rt, sub := util.NormalizeName(n)
-		if sub != "" {
+		if sub == "" {
 			sub = "."
 		}
-		d := conf.Imports.Get(rt)
+		d := deps.Get(rt)
 		if d == nil {
 			nd := &cfg.Dependency{
 				Name:        rt,
 				Subpackages: []string{sub},
 			}
-			conf.Imports = append(conf.Imports, nd)
+			deps = append(deps, nd)
 		} else if !d.HasSubpackage(sub) {
 			d.Subpackages = append(d.Subpackages, sub)
 		}
@@ -220,33 +222,33 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		for _, v := range timps {
 			n := res.Stripv(v)
 			rt, sub := util.NormalizeName(n)
-			if sub != "" {
+			if sub == "" {
 				sub = "."
 			}
-			d := conf.Imports.Get(rt)
+			d := deps.Get(rt)
 			if d == nil {
-				d = conf.DevImports.Get(rt)
+				d = tdeps.Get(rt)
 			}
 			if d == nil {
 				nd := &cfg.Dependency{
 					Name:        rt,
 					Subpackages: []string{sub},
 				}
-				conf.DevImports = append(conf.DevImports, nd)
+				tdeps = append(tdeps, nd)
 			} else if !d.HasSubpackage(sub) {
 				d.Subpackages = append(d.Subpackages, sub)
 			}
 		}
 	}
 
-	_, err = allPackages(conf.Imports, res, false)
+	_, err = allPackages(deps, res, false)
 	if err != nil {
 		msg.Die("Failed to retrieve a list of dependencies: %s", err)
 	}
 
 	if i.ResolveTest {
 		msg.Debug("Resolving test dependencies")
-		_, err = allPackages(conf.DevImports, res, true)
+		_, err = allPackages(tdeps, res, true)
 		if err != nil {
 			msg.Die("Failed to retrieve a list of test dependencies: %s", err)
 		}
