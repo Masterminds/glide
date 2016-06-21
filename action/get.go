@@ -18,7 +18,7 @@ import (
 // Get fetches one or more dependencies and installs.
 //
 // This includes resolving dependency resolution and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor, nonInteract bool) {
+func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor, nonInteract, testDeps bool) {
 	if installer.UseCache {
 		cache.SystemLock()
 	}
@@ -33,7 +33,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	}
 
 	// Add the packages to the config.
-	if count, err2 := addPkgsToConfig(conf, names, insecure, nonInteract); err2 != nil {
+	if count, err2 := addPkgsToConfig(conf, names, insecure, nonInteract, testDeps); err2 != nil {
 		msg.Die("Failed to get new packages: %s", err2)
 	} else if count == 0 {
 		msg.Warn("Nothing to do")
@@ -43,7 +43,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	// Fetch the new packages. Can't resolve versions via installer.Update if
 	// get is called while the vendor/ directory is empty so we checkout
 	// everything.
-	err = installer.Checkout(conf, false)
+	err = installer.Checkout(conf)
 	if err != nil {
 		msg.Die("Failed to checkout packages: %s", err)
 	}
@@ -68,7 +68,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 	}
 
 	// Set Reference
-	if err := repo.SetReference(confcopy); err != nil {
+	if err := repo.SetReference(confcopy, installer.ResolveTest); err != nil {
 		msg.Err("Failed to set references: %s", err)
 	}
 
@@ -112,7 +112,7 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 	if err != nil {
 		msg.Die("Failed to generate config hash. Unable to generate lock file.")
 	}
-	lock := cfg.NewLockfile(confcopy.Imports, hash)
+	lock := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
 	if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 		msg.Die("Failed to write glide lock file: %s", err)
 	}
@@ -127,7 +127,7 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 // - separates repo from packages
 // - sets up insecure repo URLs where necessary
 // - generates a list of subpackages
-func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract bool) (int, error) {
+func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, testDeps bool) (int, error) {
 
 	if len(names) == 1 {
 		msg.Info("Preparing to install %d package.", len(names))
@@ -152,17 +152,38 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract boo
 
 		if conf.HasDependency(root) {
 
+			var moved bool
+			var dep *cfg.Dependency
+			// Move from DevImports to Imports
+			if !testDeps && !conf.Imports.Has(root) && conf.DevImports.Has(root) {
+				dep = conf.DevImports.Get(root)
+				conf.Imports = append(conf.Imports, dep)
+				conf.DevImports = conf.DevImports.Remove(root)
+				moved = true
+				numAdded++
+				msg.Info("--> Moving %s from testImport to import", root)
+			} else if testDeps && conf.Imports.Has(root) {
+				msg.Warn("--> Test dependency %s already listed as import", root)
+			}
+
 			// Check if the subpackage is present.
 			if subpkg != "" {
-				dep := conf.Imports.Get(root)
+				if dep == nil {
+					dep = conf.Imports.Get(root)
+					if dep == nil && testDeps {
+						dep = conf.DevImports.Get(root)
+					}
+				}
 				if dep.HasSubpackage(subpkg) {
-					msg.Warn("--> Package %q is already in glide.yaml. Skipping", name)
+					if !moved {
+						msg.Warn("--> Package %q is already in glide.yaml. Skipping", name)
+					}
 				} else {
 					dep.Subpackages = append(dep.Subpackages, subpkg)
 					msg.Info("--> Adding sub-package %s to existing import %s", subpkg, root)
 					numAdded++
 				}
-			} else {
+			} else if !moved {
 				msg.Warn("--> Package %q is already in glide.yaml. Skipping", root)
 			}
 			continue
@@ -196,10 +217,14 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract boo
 		if dep.Reference != "" {
 			msg.Info("--> Adding %s to your configuration with the version %s", dep.Name, dep.Reference)
 		} else {
-			msg.Info("--> Adding %s to your configuration %s", dep.Name)
+			msg.Info("--> Adding %s to your configuration", dep.Name)
 		}
 
-		conf.Imports = append(conf.Imports, dep)
+		if testDeps {
+			conf.DevImports = append(conf.DevImports, dep)
+		} else {
+			conf.Imports = append(conf.Imports, dep)
+		}
 		numAdded++
 	}
 	return numAdded, nil

@@ -108,15 +108,19 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		msg.Die("Error creating a dependency resolver: %s", err)
 	}
 
+	// When creating resolve the test dependencies as well as the application ones.
+	r.ResolveTest = true
+
 	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}}
 	r.Handler = h
 
-	sortable, err := r.ResolveLocal(false)
+	sortable, testSortable, err := r.ResolveLocal(false)
 	if err != nil {
 		msg.Die("Error resolving local dependencies: %s", err)
 	}
 
 	sort.Strings(sortable)
+	sort.Strings(testSortable)
 
 	vpath := r.VendorDir
 	if !strings.HasSuffix(vpath, "/") {
@@ -127,7 +131,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
 
-		if !config.HasDependency(root) && root != config.Name {
+		if !config.Imports.Has(root) && root != config.Name {
 			msg.Info("--> Found reference to %s\n", n)
 			d := &cfg.Dependency{
 				Name: root,
@@ -136,12 +140,39 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 				d.Subpackages = []string{subpkg}
 			}
 			config.Imports = append(config.Imports, d)
-		} else if config.HasDependency(root) {
+		} else if config.Imports.Has(root) {
 			if len(subpkg) > 0 {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
 				if !d.HasSubpackage(subpkg) {
 					msg.Info("--> Adding sub-package %s to %s\n", subpkg, root)
+					d.Subpackages = append(d.Subpackages, subpkg)
+				}
+			}
+		}
+	}
+
+	for _, pa := range testSortable {
+		n := strings.TrimPrefix(pa, vpath)
+		root, subpkg := util.NormalizeName(n)
+
+		if config.Imports.Has(root) && root != config.Name {
+			msg.Debug("--> Found test reference to %s already listed as an import", n)
+		} else if !config.DevImports.Has(root) && root != config.Name {
+			msg.Info("--> Found test reference to %s", n)
+			d := &cfg.Dependency{
+				Name: root,
+			}
+			if len(subpkg) > 0 {
+				d.Subpackages = []string{subpkg}
+			}
+			config.DevImports = append(config.DevImports, d)
+		} else if config.DevImports.Has(root) {
+			if len(subpkg) > 0 {
+				subpkg = strings.TrimPrefix(subpkg, "/")
+				d := config.DevImports.Get(root)
+				if !d.HasSubpackage(subpkg) {
+					msg.Info("--> Adding test sub-package %s to %s\n", subpkg, root)
 					d.Subpackages = append(d.Subpackages, subpkg)
 				}
 			}

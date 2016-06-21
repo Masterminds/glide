@@ -59,7 +59,7 @@ func walkDeps(b *util.BuildCtxt, base, myName string) []string {
 			// declared. This is often because of an example with a package
 			// or main but +build ignore as a build tag. In that case we
 			// try to brute force the packages with a slower scan.
-			imps, err = dependency.IterativeScan(path)
+			imps, _, err = dependency.IterativeScan(path)
 			if err != nil {
 				msg.Err("Error walking dependencies for %s: %s", path, err)
 				return err

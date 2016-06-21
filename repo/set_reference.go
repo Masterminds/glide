@@ -10,14 +10,14 @@ import (
 
 // SetReference is a command to set the VCS reference (commit id, tag, etc) for
 // a project.
-func SetReference(conf *cfg.Config) error {
+func SetReference(conf *cfg.Config, resolveTest bool) error {
 
 	cwd, err := gpath.Vendor()
 	if err != nil {
 		return err
 	}
 
-	if len(conf.Imports) == 0 {
+	if len(conf.Imports) == 0 && len(conf.DevImports) == 0 {
 		msg.Info("No references set.\n")
 		return nil
 	}
@@ -46,6 +46,15 @@ func SetReference(conf *cfg.Config) error {
 		if !conf.HasIgnore(dep.Name) {
 			wg.Add(1)
 			in <- dep
+		}
+	}
+
+	if resolveTest {
+		for _, dep := range conf.DevImports {
+			if !conf.HasIgnore(dep.Name) {
+				wg.Add(1)
+				in <- dep
+			}
 		}
 	}
 
