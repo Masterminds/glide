@@ -298,7 +298,7 @@ func (d Dependencies) Get(name string) *Dependency {
 	return nil
 }
 
-// Has checks if a dependency is on a list of dependencies such as import or devimport
+// Has checks if a dependency is on a list of dependencies such as import or testImport
 func (d Dependencies) Has(name string) bool {
 	for _, dep := range d {
 		if dep.Name == name {

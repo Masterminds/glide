@@ -37,7 +37,7 @@ import:
   - package: github.com/Masterminds/cookoo/color
   - package: github.com/Masterminds/cookoo/convert
 
-devimport:
+testImport:
   - package: github.com/kylelemons/go-gypsy
 `
 

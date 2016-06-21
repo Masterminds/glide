@@ -25,6 +25,8 @@ The `glide.yaml` file contains information about the project and the dependent p
     - package: github.com/codegangsta/cli
     - package: github.com/Masterminds/semver
       version: ^1.0.0
+    testImport:
+    - package: github.com/arschles/assert
 
 These elements are:
 
