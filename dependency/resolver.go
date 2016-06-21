@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"container/list"
+	"fmt"
 	"runtime"
 	//"go/build"
 	"os"
@@ -858,14 +859,21 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 func sliceToQueue(deps []*cfg.Dependency, basepath string) *list.List {
 	l := list.New()
 	for _, e := range deps {
-		for _, v := range e.Subpackages {
-			ip := e.Name
-			if v != "." && v != "" {
-				ip = ip + "/" + v
+		if len(e.Subpackages) > 0 {
+			for _, v := range e.Subpackages {
+				ip := e.Name
+				if v != "." && v != "" {
+					ip = ip + "/" + v
+				}
+				fmt.Println(ip)
+				msg.Debug("Adding local Import %s to queue", ip)
+				l.PushBack(filepath.Join(basepath, filepath.FromSlash(ip)))
 			}
-			msg.Debug("Adding local Import %s to queue", ip)
-			l.PushBack(filepath.Join(basepath, filepath.FromSlash(ip)))
+		} else {
+			msg.Debug("Adding local Import %s to queue", e.Name)
+			l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name)))
 		}
+
 	}
 	return l
 }
