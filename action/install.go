@@ -32,69 +32,87 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 
 	// Create the SourceManager for this run
 	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
+	defer sm.Release()
 	if err != nil {
-		msg.Die(err.Error())
+		msg.Err(err.Error())
+		return
 	}
 
-	opts := vsolver.SolveOpts{
+	args := vsolver.SolveArgs{
 		N:    vsolver.ProjectName(conf.ProjectName),
 		Root: filepath.Dir(vend),
 		M:    conf,
 	}
 
+	opts := vsolver.SolveOpts{
+		Trace:       true,
+		TraceLogger: log.New(os.Stdout, "", 0),
+	}
+
+	var s vsolver.Solver
 	if gpath.HasLock(base) {
-		opts.L, err = LoadLockfile(base, conf)
+		args.L, err = LoadLockfile(base, conf)
 		if err != nil {
-			sm.Release()
-			msg.Die("Could not load lockfile.")
+			msg.Err("Could not load lockfile.")
+			return
 		}
+
+		s, err = vsolver.Prepare(args, opts, sm)
+		if err != nil {
+			msg.Err("Could not set up solver: %s", err)
+			return
+		}
+		digest, err := s.HashInputs()
+
 		// Check if digests match, and warn if they don't
-		if bytes.Equal(opts.L.InputHash(), opts.HashInputs()) {
+		if bytes.Equal(digest, args.L.InputHash()) {
 			if so {
-				sm.Release()
-				msg.Die("glide.yaml is out of sync with glide.lock")
+				msg.Err("glide.yaml is out of sync with glide.lock")
+				return
 			} else {
 				msg.Warn("glide.yaml is out of sync with glide.lock!")
 			}
 		}
-		err = writeVendor(vend, opts.L, sm)
+		err = writeVendor(vend, args.L, sm, sv)
 		if err != nil {
-			sm.Release()
-			msg.Die(err.Error())
+			msg.Err(err.Error())
+			return
 		}
 	} else if io || so {
-		sm.Release()
-		msg.Die("No glide.lock file could be found.")
+		msg.Err("No glide.lock file could be found.")
+		return
 	} else {
-		// There is no lock, so we solve first
-		l := log.New(os.Stdout, "", 0)
-		s := vsolver.NewSolver(sm, l)
-		r, err := s.Solve(opts)
+		// There is no lock, so we have to solve first
+		s, err = vsolver.Prepare(args, opts, sm)
+		if err != nil {
+			msg.Err("Could not set up solver: %s", err)
+			return
+		}
+
+		r, err := s.Solve()
 		if err != nil {
 			// TODO better error handling
-			sm.Release()
-			msg.Die(err.Error())
+			msg.Err(err.Error())
+			return
 		}
 
-		err = writeVendor(vend, r, sm)
+		err = writeVendor(vend, r, sm, sv)
 		if err != nil {
-			sm.Release()
-			msg.Die(err.Error())
+			msg.Err(err.Error())
+			return
 		}
 	}
-
-	sm.Release()
 }
 
 // TODO This will almost certainly need to be renamed and move somewhere else
-func writeVendor(vendor string, l vsolver.Lock, sm vsolver.SourceManager) error {
+func writeVendor(vendor string, l vsolver.Lock, sm vsolver.SourceManager, strip bool) error {
 	td, err := ioutil.TempDir(os.TempDir(), "glide")
 	if err != nil {
 		return fmt.Errorf("Error while creating temp dir for vendor directory: %s", err)
 	}
 	defer os.RemoveAll(td)
 
-	err = vsolver.CreateVendorTree(td, l, sm)
+	err = vsolver.CreateVendorTree(td, l, sm, strip)
 	if err != nil {
 		return fmt.Errorf("Error while generating vendor tree: %s", err)
 	}

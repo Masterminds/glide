@@ -32,11 +32,15 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
+	args := vsolver.SolveArgs{
+		N:    vsolver.ProjectName(conf.ProjectName),
+		Root: filepath.Dir(vend),
+		M:    conf,
+	}
+
 	opts := vsolver.SolveOpts{
-		N:     vsolver.ProjectName(conf.ProjectName),
-		Root:  filepath.Dir(vend),
-		M:     conf,
-		Trace: true,
+		Trace:       true,
+		TraceLogger: log.New(os.Stdout, "", 0),
 	}
 
 	if len(projs) == 0 {
@@ -52,9 +56,9 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	if gpath.HasLock(base) {
-		opts.L, err = LoadLockfile(base, conf)
+		args.L, err = LoadLockfile(base, conf)
 		if err != nil {
-			opts.L = nil
+			args.L = nil
 			msg.Warn("Could not load lockfile; all projects will be updated. %s", err)
 		}
 	}
@@ -67,16 +71,21 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		return
 	}
 
-	l := log.New(os.Stdout, "", 0)
-	s := vsolver.NewSolver(sm, l)
-	r, err := s.Solve(opts)
+	// Prepare a solver. This validates our args and opts.
+	s, err := vsolver.Prepare(args, opts, sm)
+	if err != nil {
+		msg.Err("Could not set up solver: %s", err)
+		return
+	}
+
+	r, err := s.Solve()
 	if err != nil {
 		// TODO better error handling
 		msg.Err(err.Error())
 		return
 	}
 
-	err = writeVendor(vend, r, sm)
+	err = writeVendor(vend, r, sm, sv)
 	if err != nil {
 		msg.Err(err.Error())
 		return
@@ -110,8 +119,8 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	wl := true
-	if opts.L != nil {
-		f1, err := opts.L.(*cfg.Lockfile).Fingerprint()
+	if args.L != nil {
+		f1, err := args.L.(*cfg.Lockfile).Fingerprint()
 		f2, err2 := lf.Fingerprint()
 		if err == nil && err2 == nil && f1 == f2 {
 			wl = false
@@ -127,7 +136,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		msg.Info("Versions did not change. Skipping glide.lock update.")
 	}
 
-	err = writeVendor(vend, r, sm)
+	err = writeVendor(vend, r, sm, sv)
 	if err != nil {
 		msg.Err(err.Error())
 	}

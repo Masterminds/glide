@@ -398,7 +398,6 @@ func (b *bridge) listPackages(id ProjectIdentifier, v Version) (PackageTree, err
 			err:   err,
 		}
 	}
-	panic("wut")
 
 	return b.crp.ptree, b.crp.err
 }

@@ -81,7 +81,7 @@ func (lf *Lockfile) Projects() []vsolver.LockedProject {
 			v = vsolver.NewBranch(l.Version)
 		}
 
-		lp[k] = vsolver.NewLockedProject(vsolver.ProjectName(l.Name), v, l.Repository, l.Name)
+		lp[k] = vsolver.NewLockedProject(vsolver.ProjectName(l.Name), v, l.Repository, l.Name, nil)
 	}
 
 	return lp
