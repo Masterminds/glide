@@ -98,4 +98,3 @@ func buildPath(path string) error {
 	}
 	return err
 }
-

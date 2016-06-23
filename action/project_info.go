@@ -6,13 +6,14 @@ import (
 	"github.com/Masterminds/glide/msg"
 )
 
+// Info prints information about a project based on a passed in format.
 func Info(format string) {
 	conf := EnsureConfig()
 	var buffer bytes.Buffer
 	varInit := false
-	for _, var_format := range format {
+	for _, varfmt := range format {
 		if varInit {
-			switch var_format {
+			switch varfmt {
 			case 'n':
 				buffer.WriteString(conf.Name)
 			case 'd':
@@ -22,15 +23,15 @@ func Info(format string) {
 			case 'l':
 				buffer.WriteString(conf.License)
 			default:
-				msg.Die("Invalid format %s", string(var_format))
+				msg.Die("Invalid format %s", string(varfmt))
 			}
 		} else {
-			switch var_format {
+			switch varfmt {
 			case '%':
 				varInit = true
 				continue
 			default:
-				buffer.WriteString(string(var_format))
+				buffer.WriteString(string(varfmt))
 			}
 		}
 		varInit = false
