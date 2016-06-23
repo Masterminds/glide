@@ -1,7 +1,6 @@
 package action
 
 import (
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cache"
@@ -31,9 +30,16 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 		return
 	}
 	// Load lockfile
-	lock, err := LoadLockfile(base, conf)
+	lock, err := cfg.ReadLockFile(filepath.Join(base, gpath.LockFile))
 	if err != nil {
 		msg.Die("Could not load lockfile.")
+	}
+	// Verify lockfile hasn't changed
+	hash, err := conf.Hash()
+	if err != nil {
+		msg.Die("Could not load lockfile.")
+	} else if hash != lock.Hash {
+		msg.Warn("Lock file may be out of date. Hash check of YAML failed. You may need to run 'update'")
 	}
 
 	// Delete unused packages
@@ -76,29 +82,4 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 			msg.Err("Unable to strip vendor directories: %s", err)
 		}
 	}
-}
-
-// LoadLockfile loads the contents of a glide.lock file.
-//
-// TODO: This should go in another package.
-func LoadLockfile(base string, conf *cfg.Config) (*cfg.Lockfile, error) {
-	yml, err := ioutil.ReadFile(filepath.Join(base, gpath.LockFile))
-	if err != nil {
-		return nil, err
-	}
-	lock, err := cfg.LockfileFromYaml(yml)
-	if err != nil {
-		return nil, err
-	}
-
-	hash, err := conf.Hash()
-	if err != nil {
-		return nil, err
-	}
-
-	if hash != lock.Hash {
-		msg.Warn("Lock file may be out of date. Hash check of YAML failed. You may need to run 'update'")
-	}
-
-	return lock, nil
 }

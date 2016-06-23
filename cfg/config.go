@@ -390,6 +390,19 @@ type dep struct {
 	Os          []string `yaml:"os,omitempty"`
 }
 
+// DependencyFromLock converts a Lock to a Dependency
+func DependencyFromLock(lock *Lock) *Dependency {
+	return &Dependency{
+		Name:        lock.Name,
+		Reference:   lock.Version,
+		Repository:  lock.Repository,
+		VcsType:     lock.VcsType,
+		Subpackages: lock.Subpackages,
+		Arch:        lock.Arch,
+		Os:          lock.Os,
+	}
+}
+
 // UnmarshalYAML is a hook for gopkg.in/yaml.v2 in the unmarshaling process
 func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	newDep := &dep{}
