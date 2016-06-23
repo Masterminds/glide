@@ -19,7 +19,7 @@ type Lockfile struct {
 	Hash       string    `yaml:"hash"`
 	Updated    time.Time `yaml:"updated"`
 	Imports    Locks     `yaml:"imports"`
-	DevImports Locks     `yaml:"devImports"`
+	DevImports Locks     `yaml:"testImports"`
 }
 
 // LockfileFromYaml returns an instance of Lockfile from YAML
@@ -172,11 +172,12 @@ func (l *Lock) Clone() *Lock {
 }
 
 // NewLockfile is used to create an instance of Lockfile.
-func NewLockfile(ds Dependencies, hash string) *Lockfile {
+func NewLockfile(ds, tds Dependencies, hash string) *Lockfile {
 	lf := &Lockfile{
-		Hash:    hash,
-		Updated: time.Now(),
-		Imports: make([]*Lock, len(ds)),
+		Hash:       hash,
+		Updated:    time.Now(),
+		Imports:    make([]*Lock, len(ds)),
+		DevImports: make([]*Lock, len(tds)),
 	}
 
 	for i := 0; i < len(ds); i++ {
@@ -192,6 +193,20 @@ func NewLockfile(ds Dependencies, hash string) *Lockfile {
 	}
 
 	sort.Sort(lf.Imports)
+
+	for i := 0; i < len(tds); i++ {
+		lf.DevImports[i] = &Lock{
+			Name:        tds[i].Name,
+			Version:     tds[i].Pin,
+			Repository:  tds[i].Repository,
+			VcsType:     tds[i].VcsType,
+			Subpackages: tds[i].Subpackages,
+			Arch:        tds[i].Arch,
+			Os:          tds[i].Os,
+		}
+	}
+
+	sort.Sort(lf.DevImports)
 
 	return lf
 }

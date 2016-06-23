@@ -27,6 +27,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	}
 
 	msg.Info("Found Gomfile in %s", gpath.StripBasepath(dir))
+	msg.Info("--> Parsing Gomfile metadata...")
 	buf := []*cfg.Dependency{}
 
 	goms, err := parseGomfile(path)

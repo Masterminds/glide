@@ -28,7 +28,7 @@ func List(basedir string, deep bool, format string) {
 	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}}
 	r.Handler = h
 
-	localPkgs, err := r.ResolveLocal(deep)
+	localPkgs, _, err := r.ResolveLocal(deep)
 	if err != nil {
 		msg.Die("Error listing dependencies: %s", err)
 	}

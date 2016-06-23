@@ -59,7 +59,7 @@ func walkDeps(b *util.BuildCtxt, base, myName string) []string {
 			// declared. This is often because of an example with a package
 			// or main but +build ignore as a build tag. In that case we
 			// try to brute force the packages with a slower scan.
-			imps, err = dependency.IterativeScan(path)
+			imps, _, err = dependency.IterativeScan(path)
 			if err != nil {
 				msg.Err("Error walking dependencies for %s: %s", path, err)
 				return err
@@ -172,10 +172,11 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		// where Google products are playing with each other.
 		// https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
 		info.Loc = dependency.LocAppengine
-	} else if name == "context" {
-		// context is a package being added to the Go 1.7 standard library. Some
-		// packages, such as golang.org/x/net are importing it with build flags
-		// in files for go1.7. Need to detect this and handle it.
+	} else if name == "context" || name == "net/http/httptrace" {
+		// context and net/http/httptrace are packages being added to
+		// the Go 1.7 standard library. Some packages, such as golang.org/x/net
+		// are importing it with build flags in files for go1.7. Need to detect
+		// this and handle it.
 		info.Loc = dependency.LocGoroot
 	}
 

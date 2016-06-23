@@ -53,7 +53,7 @@ type Config struct {
 
 	// DevImports contains the test or other development imports for a project.
 	// See the Dependency type for more details on how this is recorded.
-	DevImports Dependencies `yaml:"devimport,omitempty"`
+	DevImports Dependencies `yaml:"testImport,omitempty"`
 }
 
 // A transitive representation of a dependency for importing and exporting to yaml.
@@ -79,7 +79,7 @@ type cf struct {
 	Ignore      []string     `yaml:"ignore,omitempty"`
 	Exclude     []string     `yaml:"excludeDirs,omitempty"`
 	Imports     Dependencies `yaml:"import"`
-	DevImports  Dependencies `yaml:"devimport,omitempty"`
+	DevImports  Dependencies `yaml:"testImport,omitempty"`
 }
 
 // ConfigFromYaml returns an instance of Config from YAML
@@ -369,6 +369,33 @@ func (d Dependencies) Get(name string) *Dependency {
 		}
 	}
 	return nil
+}
+
+// Has checks if a dependency is on a list of dependencies such as import or testImport
+func (d Dependencies) Has(name string) bool {
+	for _, dep := range d {
+		if dep.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// Remove removes a dependency from a list of dependencies
+func (d Dependencies) Remove(name string) Dependencies {
+	found := -1
+	for i, dep := range d {
+		if dep.Name == name {
+			found = i
+		}
+	}
+
+	if found >= 0 {
+		copy(d[found:], d[found+1:])
+		d[len(d)-1] = nil
+		return d[:len(d)-1]
+	}
+	return d
 }
 
 // Clone performs a deep clone of Dependencies

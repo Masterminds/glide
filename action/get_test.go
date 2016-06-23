@@ -24,7 +24,7 @@ func TestAddPkgsToConfig(t *testing.T) {
 		"github.com/Masterminds/semver",
 	}
 
-	addPkgsToConfig(conf, names, false)
+	addPkgsToConfig(conf, names, false, true, false)
 
 	if !conf.HasDependency("github.com/Masterminds/semver") {
 		t.Error("addPkgsToConfig failed to add github.com/Masterminds/semver")

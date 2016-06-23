@@ -35,7 +35,7 @@ func init() {
 // Note, there are cases where multiple packages are in the same directory. This
 // usually happens with an example that has a main package and a +build tag
 // of ignore. This is a bit of a hack. It causes UseAllFiles to have errors.
-func IterativeScan(path string) ([]string, error) {
+func IterativeScan(path string) ([]string, []string, error) {
 
 	// TODO(mattfarina): Add support for release tags.
 
@@ -44,6 +44,7 @@ func IterativeScan(path string) ([]string, error) {
 	tgs = append(tgs, "")
 
 	var pkgs []string
+	var testPkgs []string
 	for _, tt := range tgs {
 
 		// split the tag combination to look at permutations.
@@ -84,7 +85,7 @@ func IterativeScan(path string) ([]string, error) {
 
 		b, err := util.GetBuildContext()
 		if err != nil {
-			return []string{}, err
+			return []string{}, []string{}, err
 		}
 
 		// Make sure use all files is off
@@ -110,7 +111,7 @@ func IterativeScan(path string) ([]string, error) {
 			continue
 		} else if err != nil {
 			msg.Debug("Problem parsing package at %s for %s %s", path, ops, arch)
-			return []string{}, err
+			return []string{}, []string{}, err
 		}
 
 		for _, dep := range pk.Imports {
@@ -124,9 +125,21 @@ func IterativeScan(path string) ([]string, error) {
 				pkgs = append(pkgs, dep)
 			}
 		}
+
+		for _, dep := range pk.TestImports {
+			found := false
+			for _, p := range pkgs {
+				if p == dep {
+					found = true
+				}
+			}
+			if !found {
+				testPkgs = append(testPkgs, dep)
+			}
+		}
 	}
 
-	return pkgs, nil
+	return pkgs, testPkgs, nil
 }
 
 func readBuildTags(p string) ([]string, error) {

@@ -26,6 +26,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	}
 
 	msg.Info("Found GB manifest file in %s", gpath.StripBasepath(dir))
+	msg.Info("--> Parsing GB metadata...")
 	buf := []*cfg.Dependency{}
 	file, err := os.Open(path)
 	if err != nil {

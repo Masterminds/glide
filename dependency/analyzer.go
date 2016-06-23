@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/gb"
@@ -46,8 +45,8 @@ func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Ma
 		return nil, nil, err
 	}
 
-	// The happy path of finding both a glide manifest and lock file failed.
-	// Now, we begin our descent, in which we attempt to divine exactly *which*
+	// The happy path of finding a glide manifest and/or lock file failed. Now,
+	// we begin our descent: we must attempt to divine just exactly *which*
 	// circle of hell we're in.
 
 	// Try godep first
@@ -82,15 +81,10 @@ func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Ma
 		return nil, nil, err
 	}
 
-	// Finally, infer from source
-	m, l, err = a.inferFromSource(ctx, pn)
-	if err == nil {
-		return m, l, nil
-	} else if _, ok := err.(notApplicable); !ok {
-		return nil, nil, err
-	}
-
-	return nil, nil, fmt.Errorf("No usable project data found")
+	// If none of our parsers matched, but none had actual errors, then we just
+	// go hands-off; vsolver itself will do the source analysis and use the Any
+	// constraint for all discovered package.
+	return nil, nil, nil
 }
 
 func (a Analyzer) lookForGlide(root string) (vsolver.Manifest, vsolver.Lock, error) {
@@ -177,37 +171,4 @@ func (a Analyzer) lookForGom(root string) (vsolver.Manifest, vsolver.Lock, error
 	}
 
 	return gom.AsMetadataPair(root)
-}
-
-func (a Analyzer) inferFromSource(ctx build.Context, pn vsolver.ProjectName) (vsolver.Manifest, vsolver.Lock, error) {
-	root := filepath.Join(ctx.GOPATH, "src", string(pn))
-	r, err := NewResolver(root)
-	if err != nil {
-		return nil, nil, notApplicable{}
-	}
-	//r.BuildContext = ctx
-
-	ext, err := r.ResolveLocal(false)
-	if err != nil {
-		return nil, nil, notApplicable{} // TODO a real err here?
-	}
-
-	m := vsolver.SimpleManifest{
-		N: pn,
-	}
-
-	for _, s := range ext {
-		// TODO the local resolver creates a vendor path, which is not at all
-		// what we want. For now, just trim it off
-		s = strings.TrimPrefix(s, filepath.Join(root, "vendor")+string(filepath.Separator))
-
-		m.P = append(m.P, vsolver.ProjectDep{
-			Ident: vsolver.ProjectIdentifier{
-				LocalName: vsolver.ProjectName(s),
-			},
-			Constraint: vsolver.Any(),
-		})
-	}
-
-	return m, nil, nil
 }

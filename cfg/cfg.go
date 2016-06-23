@@ -58,6 +58,6 @@
 //          when the type cannot be detected from the name. For example, a repo
 //          ending in .git or on GitHub can be detected to be Git. For a repo on
 //          Bitbucket we can contact the API to discover the type.
-//    - devImport: A list of development packages. Each package has the same details
-//      as those listed under import.
+//    - testImport: A list of development packages not already listed under import.
+//      Each package has the same details as those listed under import.
 package cfg

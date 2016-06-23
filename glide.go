@@ -40,6 +40,7 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/glide/action"
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
@@ -49,7 +50,6 @@ import (
 
 	"fmt"
 	"os"
-	"os/user"
 )
 
 var version = "0.11.0-dev"
@@ -92,12 +92,16 @@ func main() {
 			Usage: "Quiet (no info or debug messages)",
 		},
 		cli.BoolFlag{
+			Name:  "verbose",
+			Usage: "Print detailed informational messages",
+		},
+		cli.BoolFlag{
 			Name:  "debug",
-			Usage: "Print Debug messages (verbose)",
+			Usage: "Print debug verbose informational messages",
 		},
 		cli.StringFlag{
 			Name:   "home",
-			Value:  defaultGlideDir(),
+			Value:  gpath.Home(),
 			Usage:  "The location of Glide files",
 			EnvVar: "GLIDE_HOME",
 		},
@@ -111,6 +115,7 @@ func main() {
 		action.Plugin(command, os.Args)
 	}
 	app.Before = startup
+	app.After = shutdown
 	app.Commands = commands()
 
 	// Detect errors from the Before and After calls and exit on them.
@@ -145,9 +150,24 @@ func commands() []cli.Command {
 					Name:  "skip-import",
 					Usage: "When initializing skip importing from other package managers.",
 				},
+				cli.BoolFlag{
+					Name:  "non-interactive",
+					Usage: "Disable interactive prompts.",
+				},
 			},
 			Action: func(c *cli.Context) {
-				action.Create(".", c.Bool("skip-import"))
+				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"))
+			},
+		},
+		{
+			Name:      "config-wizard",
+			ShortName: "cw",
+			Usage:     "Wizard that makes optional suggestions to improve config in a glide.yaml file.",
+			Description: `Glide will analyze a projects glide.yaml file and the imported
+		projects to find ways the glide.yaml file can potentially be improved. It
+		will then interactively make suggestions that you can skip or accept.`,
+			Action: func(c *cli.Context) {
+				action.ConfigWizard(".")
 			},
 		},
 		{
@@ -182,6 +202,10 @@ func commands() []cli.Command {
    will be removed when most Godeps users have migrated to using the vendor
    folder.`,
 			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "test",
+					Usage: "Add test dependencies.",
+				},
 				cli.BoolFlag{
 					Name:  "insecure",
 					Usage: "Use http:// rather than https:// to retrieve pacakges.",
@@ -220,11 +244,19 @@ func commands() []cli.Command {
 				},
 				cli.BoolFlag{
 					Name:  "strip-vcs, s",
-					Usage: "Removes version control metada (e.g, .git directory) from the vendor folder.",
+					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
 					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+				},
+				cli.BoolFlag{
+					Name:  "non-interactive",
+					Usage: "Disable interactive prompts.",
+				},
+				cli.BoolFlag{
+					Name:  "skip-test",
+					Usage: "Resolve dependencies in test files.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -249,9 +281,10 @@ func commands() []cli.Command {
 				inst.UseCacheGopath = c.Bool("cache-gopath")
 				inst.UpdateVendored = c.Bool("update-vendored")
 				inst.ResolveAllFiles = c.Bool("all-dependencies")
+				inst.ResolveTest = !c.Bool("skip-test")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"), c.Bool("non-interactive"), c.Bool("test"))
 			},
 		},
 		{
@@ -410,6 +443,10 @@ Example:
 					Name:  "strip-vendor, v",
 					Usage: "Removes nested vendor and Godeps/_workspace directories.",
 				},
+				cli.BoolFlag{
+					Name:  "skip-test",
+					Usage: "Resolve dependencies in test files.",
+				},
 			},
 			Action: func(c *cli.Context) {
 				installer := repo.NewInstaller()
@@ -476,6 +513,10 @@ Example:
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
 					Usage: "Removes nested vendor and Godeps/_workspace directories.",
+				},
+				cli.BoolFlag{
+					Name:  "skip-test",
+					Usage: "Resolve dependencies in test files.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -569,6 +610,14 @@ Example:
 			},
 		},
 		{
+			Name:      "cache-clear",
+			ShortName: "cc",
+			Usage:     "Clears the Glide cache.",
+			Action: func(c *cli.Context) {
+				action.CacheClear()
+			},
+		},
+		{
 			Name:  "about",
 			Usage: "Learn about Glide",
 			Action: func(c *cli.Context) {
@@ -578,24 +627,22 @@ Example:
 	}
 }
 
-func defaultGlideDir() string {
-	c, err := user.Current()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(c.HomeDir, ".glide")
-}
-
 // startup sets up the base environment.
 //
 // It does not assume the presence of a Glide.yaml file or vendor/ directory,
 // so it can be used by any Glide command.
 func startup(c *cli.Context) error {
 	action.Debug(c.Bool("debug"))
+	action.Verbose(c.Bool("verbose"))
 	action.NoColor(c.Bool("no-color"))
 	action.Quiet(c.Bool("quiet"))
 	action.Init(c.String("yaml"), c.String("home"))
 	action.EnsureGoVendor()
+	return nil
+}
+
+func shutdown(c *cli.Context) error {
+	cache.SystemUnlock()
 	return nil
 }
 

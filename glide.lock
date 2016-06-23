@@ -15,4 +15,4 @@ imports:
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/sdboyer/vsolver
   version: 674ae37b77efb0dd38736220e1f61d32e0bd3b69
-devImports: []
+testImports: []

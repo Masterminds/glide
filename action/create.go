@@ -25,7 +25,7 @@ import (
 // If skipImport is set to true, this will not attempt to import from an existing
 // GPM, Godep, or GB project if one should exist. However, it will still attempt
 // to read the local source to determine required packages.
-func Create(base string, skipImport bool) {
+func Create(base string, skipImport, nonInteractive bool) {
 	glidefile := gpath.GlideFile
 	// Guard against overwrites.
 	guardYAML(glidefile)
@@ -33,8 +33,27 @@ func Create(base string, skipImport bool) {
 	// Guess deps
 	conf := guessDeps(base, skipImport)
 	// Write YAML
+	msg.Info("Writing configuration file (%s)", glidefile)
 	if err := conf.WriteFile(glidefile); err != nil {
 		msg.Die("Could not save %s: %s", glidefile, err)
+	}
+
+	var res bool
+	if !nonInteractive {
+		msg.Info("Would you like Glide to help you find ways to improve your glide.yaml configuration?")
+		msg.Info("If you want to revisit this step you can use the config-wizard command at any time.")
+		msg.Info("Yes (Y) or No (N)?")
+		res = msg.PromptUntilYorN()
+		if res {
+			ConfigWizard(base)
+		}
+	}
+
+	if !res {
+		msg.Info("You can now edit the glide.yaml file. Consider:")
+		msg.Info("--> Using versions and ranges. See https://glide.sh/docs/versions/")
+		msg.Info("--> Adding additional metadata. See https://glide.sh/docs/glide.yaml/")
+		msg.Info("--> Running the config-wizard command to improve the versions in your configuration")
 	}
 }
 
@@ -73,29 +92,14 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 
 	// Attempt to import from other package managers.
 	if !skipImport {
-		msg.Info("Attempting to import from other package managers (use --skip-import to skip)")
-		deps := []*cfg.Dependency{}
-		absBase, err := filepath.Abs(base)
-		if err != nil {
-			msg.Die("Failed to resolve location of %s: %s", base, err)
-		}
+		guessImportDeps(base, config)
+	}
 
-		if d, ok := guessImportGodep(absBase); ok {
-			msg.Info("Importing Godep configuration")
-			msg.Warn("Godep uses commit id versions. Consider using Semantic Versions with Glide")
-			deps = d
-		} else if d, ok := guessImportGPM(absBase); ok {
-			msg.Info("Importing GPM configuration")
-			deps = d
-		} else if d, ok := guessImportGB(absBase); ok {
-			msg.Info("Importing GB configuration")
-			deps = d
-		}
-
-		for _, i := range deps {
-			msg.Info("Found imported reference to %s\n", i.Name)
-			config.Imports = append(config.Imports, i)
-		}
+	importLen := len(config.Imports)
+	if importLen == 0 {
+		msg.Info("Scanning code to look for dependencies")
+	} else {
+		msg.Info("Scanning code to look for dependencies not found in import")
 	}
 
 	// Resolve dependencies by looking at the tree.
@@ -104,15 +108,19 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		msg.Die("Error creating a dependency resolver: %s", err)
 	}
 
+	// When creating resolve the test dependencies as well as the application ones.
+	r.ResolveTest = true
+
 	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}}
 	r.Handler = h
 
-	sortable, err := r.ResolveLocal(false)
+	sortable, testSortable, err := r.ResolveLocal(false)
 	if err != nil {
 		msg.Die("Error resolving local dependencies: %s", err)
 	}
 
 	sort.Strings(sortable)
+	sort.Strings(testSortable)
 
 	vpath := r.VendorDir
 	if !strings.HasSuffix(vpath, "/") {
@@ -123,8 +131,8 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
 
-		if !config.HasDependency(root) {
-			msg.Info("Found reference to %s\n", n)
+		if !config.Imports.Has(root) && root != config.ProjectName {
+			msg.Info("--> Found reference to %s\n", n)
 			d := &cfg.Dependency{
 				Name: root,
 			}
@@ -132,19 +140,81 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 				d.Subpackages = []string{subpkg}
 			}
 			config.Imports = append(config.Imports, d)
-		} else {
+		} else if config.Imports.Has(root) {
 			if len(subpkg) > 0 {
 				subpkg = strings.TrimPrefix(subpkg, "/")
 				d := config.Imports.Get(root)
 				if !d.HasSubpackage(subpkg) {
-					msg.Info("Adding sub-package %s to %s\n", subpkg, root)
+					msg.Info("--> Adding sub-package %s to %s\n", subpkg, root)
 					d.Subpackages = append(d.Subpackages, subpkg)
 				}
 			}
 		}
 	}
 
+	for _, pa := range testSortable {
+		n := strings.TrimPrefix(pa, vpath)
+		root, subpkg := util.NormalizeName(n)
+
+		if config.Imports.Has(root) && root != config.ProjectName {
+			msg.Debug("--> Found test reference to %s already listed as an import", n)
+		} else if !config.DevImports.Has(root) && root != config.ProjectName {
+			msg.Info("--> Found test reference to %s", n)
+			d := &cfg.Dependency{
+				Name: root,
+			}
+			if len(subpkg) > 0 {
+				d.Subpackages = []string{subpkg}
+			}
+			config.DevImports = append(config.DevImports, d)
+		} else if config.DevImports.Has(root) {
+			if len(subpkg) > 0 {
+				subpkg = strings.TrimPrefix(subpkg, "/")
+				d := config.DevImports.Get(root)
+				if !d.HasSubpackage(subpkg) {
+					msg.Info("--> Adding test sub-package %s to %s\n", subpkg, root)
+					d.Subpackages = append(d.Subpackages, subpkg)
+				}
+			}
+		}
+	}
+
+	if len(config.Imports) == importLen && importLen != 0 {
+		msg.Info("--> Code scanning found no additional imports")
+	}
+
 	return config
+}
+
+func guessImportDeps(base string, config *cfg.Config) {
+	msg.Info("Attempting to import from other package managers (use --skip-import to skip)")
+	deps := []*cfg.Dependency{}
+	absBase, err := filepath.Abs(base)
+	if err != nil {
+		msg.Die("Failed to resolve location of %s: %s", base, err)
+	}
+
+	if d, ok := guessImportGodep(absBase); ok {
+		msg.Info("Importing Godep configuration")
+		msg.Warn("Godep uses commit id versions. Consider using Semantic Versions with Glide")
+		deps = d
+	} else if d, ok := guessImportGPM(absBase); ok {
+		msg.Info("Importing GPM configuration")
+		deps = d
+	} else if d, ok := guessImportGB(absBase); ok {
+		msg.Info("Importing GB configuration")
+		deps = d
+	}
+
+	for _, i := range deps {
+		if i.Reference == "" {
+			msg.Info("--> Found imported reference to %s", i.Name)
+		} else {
+			msg.Info("--> Found imported reference to %s at revision %s", i.Name, i.Reference)
+		}
+
+		config.Imports = append(config.Imports, i)
+	}
 }
 
 func guessImportGodep(dir string) ([]*cfg.Dependency, bool) {
