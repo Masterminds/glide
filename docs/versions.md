@@ -27,7 +27,7 @@ The `x`, `X`, and `*` characters can be used as a wildcard character. This works
 
 * `1.2.x` is equivalent to `>= 1.2.0, < 1.3.0`
 * `>= 1.2.x` is equivalent to `>= 1.2.0`
-* `<= 2.x` is equivalent to `<= 3`
+* `<= 2.x` is equivalent to `< 3`
 * `*` is equivalent to `>= 0.0.0`
 
 ## Tilde Range Comparisons (Patch)
