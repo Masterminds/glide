@@ -58,6 +58,7 @@ type Installer struct {
 	Updated *UpdateTracker
 }
 
+// NewInstaller returns an Installer instance ready to use. This is the constructor.
 func NewInstaller() *Installer {
 	i := &Installer{}
 	i.Updated = NewUpdateTracker()

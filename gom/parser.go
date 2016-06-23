@@ -16,10 +16,10 @@ import (
 var qx = `'[^']*'|"[^"]*"`
 var kx = `:[a-z][a-z0-9_]*`
 var ax = `(?:\s*` + kx + `\s*|,\s*` + kx + `\s*)`
-var re_group = regexp.MustCompile(`\s*group\s+((?:` + kx + `\s*|,\s*` + kx + `\s*)*)\s*do\s*$`)
-var re_end = regexp.MustCompile(`\s*end\s*$`)
-var re_gom = regexp.MustCompile(`^\s*gom\s+(` + qx + `)\s*((?:,\s*` + kx + `\s*=>\s*(?:` + qx + `|\s*\[\s*` + ax + `*\s*\]\s*))*)$`)
-var re_options = regexp.MustCompile(`(,\s*` + kx + `\s*=>\s*(?:` + qx + `|\s*\[\s*` + ax + `*\s*\]\s*)\s*)`)
+var reGroup = regexp.MustCompile(`\s*group\s+((?:` + kx + `\s*|,\s*` + kx + `\s*)*)\s*do\s*$`)
+var reEnd = regexp.MustCompile(`\s*end\s*$`)
+var reGom = regexp.MustCompile(`^\s*gom\s+(` + qx + `)\s*((?:,\s*` + kx + `\s*=>\s*(?:` + qx + `|\s*\[\s*` + ax + `*\s*\]\s*))*)$`)
+var reOptions = regexp.MustCompile(`(,\s*` + kx + `\s*=>\s*(?:` + qx + `|\s*\[\s*` + ax + `*\s*\]\s*)\s*)`)
 
 func unquote(name string) string {
 	name = strings.TrimSpace(name)
@@ -32,13 +32,13 @@ func unquote(name string) string {
 }
 
 func parseOptions(line string, options map[string]interface{}) {
-	ss := re_options.FindAllStringSubmatch(line, -1)
-	re_a := regexp.MustCompile(ax)
+	ss := reOptions.FindAllStringSubmatch(line, -1)
+	reA := regexp.MustCompile(ax)
 	for _, s := range ss {
 		kvs := strings.SplitN(strings.TrimSpace(s[0])[1:], "=>", 2)
 		kvs[0], kvs[1] = strings.TrimSpace(kvs[0]), strings.TrimSpace(kvs[1])
 		if kvs[1][0] == '[' {
-			as := re_a.FindAllStringSubmatch(kvs[1][1:len(kvs[1])-1], -1)
+			as := reA.FindAllStringSubmatch(kvs[1][1:len(kvs[1])-1], -1)
 			a := []string{}
 			for i := range as {
 				it := strings.TrimSpace(as[i][0])
@@ -57,6 +57,7 @@ func parseOptions(line string, options map[string]interface{}) {
 	}
 }
 
+// Gom represents configuration from Gom.
 type Gom struct {
 	name    string
 	options map[string]interface{}
@@ -95,14 +96,14 @@ func parseGomfile(filename string) ([]Gom, error) {
 		name := ""
 		options := make(map[string]interface{})
 		var items []string
-		if re_group.MatchString(line) {
-			envs = strings.Split(re_group.FindStringSubmatch(line)[1], ",")
+		if reGroup.MatchString(line) {
+			envs = strings.Split(reGroup.FindStringSubmatch(line)[1], ",")
 			for i := range envs {
 				envs[i] = strings.TrimSpace(envs[i])[1:]
 			}
 			valid = true
 			continue
-		} else if re_end.MatchString(line) {
+		} else if reEnd.MatchString(line) {
 			if !valid {
 				skip--
 				if skip < 0 {
@@ -114,8 +115,8 @@ func parseGomfile(filename string) ([]Gom, error) {
 			continue
 		} else if skip > 0 {
 			continue
-		} else if re_gom.MatchString(line) {
-			items = re_gom.FindStringSubmatch(line)[1:]
+		} else if reGom.MatchString(line) {
+			items = reGom.FindStringSubmatch(line)[1:]
 			name = unquote(items[0])
 			parseOptions(items[1], options)
 		} else {
@@ -126,5 +127,4 @@ func parseGomfile(filename string) ([]Gom, error) {
 		}
 		goms = append(goms, Gom{name, options})
 	}
-	return goms, nil
 }
