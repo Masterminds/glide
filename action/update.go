@@ -58,8 +58,8 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	if gpath.HasLock(base) {
 		args.L, err = LoadLockfile(base, conf)
 		if err != nil {
-			args.L = nil
-			msg.Warn("Could not load lockfile; all projects will be updated. %s", err)
+			msg.Err("Could not load lockfile, aborting: %s", err)
+			return
 		}
 	}
 
