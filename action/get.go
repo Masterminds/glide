@@ -2,7 +2,6 @@ package action
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,7 +10,6 @@ import (
 	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
-	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
@@ -32,6 +30,11 @@ func Get(names []string, installer *repo.Installer, insecure, stripVendor, nonIn
 	glidefile, err := gpath.Glide()
 	if err != nil {
 		msg.Die("Could not find Glide file: %s", err)
+	}
+
+	vend, err = gpath.Vendor()
+	if err != nil {
+		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
 	args := vsolver.SolveArgs{
@@ -68,7 +71,7 @@ func Get(names []string, installer *repo.Installer, insecure, stripVendor, nonIn
 	// deps to the manifest.
 
 	// Add the packages to the config.
-	if count, err2 := addPkgsToConfig(conf, names, insecure, nonInteract, testDeps); err2 != nil {
+	if count, err2 := addPkgsToConfig(conf, names, insecure, nonInteract, false); err2 != nil {
 		msg.Die("Failed to get new packages: %s", err2)
 	} else if count == 0 {
 		msg.Warn("Nothing to do")
@@ -78,60 +81,34 @@ func Get(names []string, installer *repo.Installer, insecure, stripVendor, nonIn
 	// Prepare a solver. This validates our args and opts.
 	s, err := vsolver.Prepare(args, opts, sm)
 	if err != nil {
-		return msg.Err("Aborted get - could not set up solver to reconcile dependencies: %s", err)
+		msg.Err("Aborted get - could not set up solver to reconcile dependencies: %s", err)
+		return
 	}
 
 	r, err := s.Solve()
 	if err != nil {
 		// TODO better error handling
-		return msg.Err("Failed to find a solution for all new dependencies: %s", err.Error())
+		msg.Err("Failed to find a solution for all new dependencies: %s", err.Error())
+		return
 	}
 
 	// Solve succeeded. Write out the yaml, lock, and vendor to a tmpdir, then mv
 	// them all into place iff all the writes worked
 
-	td, err := ioutil.TempDir(os.TempDir(), "glide")
-	if err != nil {
-		return msg.Err("Error while creating temp dir for vendor directory: %s", err)
+	gw := safeGroupWriter{
+		conf:        conf,
+		lock:        args.L,
+		resultLock:  r,
+		sm:          sm,
+		glidefile:   glidefile,
+		vendor:      vend,
+		stripVendor: stripVendor,
 	}
-	defer os.RemoveAll(td)
 
-	err = vsolver.CreateVendorTree(td, l, sm, strip)
-	if err != nil {
-		return msg.Err("Error while generating vendor tree: %s", err)
-	}
-
-	err = writeVendor(vend, r, sm, sv)
+	err = gw.writeAllSafe()
 	if err != nil {
 		msg.Err(err.Error())
 		return
-	}
-
-	// Write YAML
-	if err := conf.WriteFile(glidefile); err != nil {
-		msg.Die("Failed to write glide YAML file: %s", err)
-	}
-	if !skipRecursive {
-		// Write lock
-		if stripVendor {
-			confcopy = godep.RemoveGodepSubpackages(confcopy)
-		}
-		writeLock(conf, confcopy, base)
-	} else {
-		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
-	}
-
-	if strip {
-		msg.Info("Removing version control data from vendor directory...")
-		gpath.StripVcs()
-	}
-
-	if stripVendor {
-		msg.Info("Removing nested vendor and Godeps/_workspace directories...")
-		err := gpath.StripVendor()
-		if err != nil {
-			msg.Err("Unable to strip vendor directories: %s", err)
-		}
 	}
 }
 
