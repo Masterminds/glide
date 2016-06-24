@@ -165,7 +165,7 @@ func locksAreEquivalent(l1, l2 *cfg.Lockfile) bool {
 			return false
 		}
 
-		f1, err := l1.(*cfg.Lockfile).Fingerprint()
+		f1, err := l1.Fingerprint()
 		f2, err2 := l2.Fingerprint()
 		if err == nil && err2 == nil && f1 == f2 {
 			return true
@@ -213,7 +213,7 @@ func (gw safeGroupWriter) writeAllSafe() error {
 		if gw.lock == nil {
 			writeLock, writeVendor = true, true
 		} else {
-			rlf := LockfileFromSolverLock(gw.resultLock)
+			rlf := cfg.LockfileFromSolverLock(gw.resultLock)
 			if !locksAreEquivalent(rlf, gw.lock) {
 				writeLock, writeVendor = true, true
 			}
@@ -259,7 +259,7 @@ func (gw safeGroupWriter) writeAllSafe() error {
 				return fmt.Errorf("Failed to write glide lock file: %s", err)
 			}
 		} else {
-			rlf := LockfileFromSolverLock(gw.resultLock)
+			rlf := cfg.LockfileFromSolverLock(gw.resultLock)
 			if err := rlf.WriteFile(filepath.Join(td, gpath.LockFile)); err != nil {
 				return fmt.Errorf("Failed to write glide lock file: %s", err)
 			}
@@ -276,7 +276,7 @@ func (gw safeGroupWriter) writeAllSafe() error {
 	// Move the existing files and dirs to the temp dir while we put the new
 	// ones in, to provide insurance against errors for as long as possible
 	var fail bool
-	var failerr bool
+	var failerr error
 	type pathpair struct {
 		from, to string
 	}
@@ -328,7 +328,7 @@ func (gw safeGroupWriter) writeAllSafe() error {
 		if _, err := os.Stat(gw.vendor); err == nil {
 			// move out the old vendor dir. just do it into an adjacent dir, in
 			// order to mitigate the possibility of a pointless cross-filesystem move
-			vendorbak := gw.vendor + "-old"
+			vendorbak = gw.vendor + "-old"
 			if _, err := os.Stat(vendorbak); err == nil {
 				// Just in case that happens to exist...
 				vendorbak = filepath.Join(td, "vendor-old")
