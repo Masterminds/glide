@@ -73,7 +73,15 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 				msg.Warn("glide.yaml is out of sync with glide.lock!")
 			}
 		}
-		err = writeVendor(vend, args.L, sm, sv)
+
+		gw := safeGroupWriter{
+			resultLock:  args.L,
+			vendor:      vend,
+			sm:          sm,
+			stripVendor: sv,
+		}
+
+		err = gw.writeAllSafe()
 		if err != nil {
 			msg.Err(err.Error())
 			return
@@ -96,7 +104,14 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 			return
 		}
 
-		err = writeVendor(vend, r, sm, sv)
+		gw := safeGroupWriter{
+			resultLock:  r,
+			vendor:      vend,
+			sm:          sm,
+			stripVendor: sv,
+		}
+
+		err = gw.writeAllSafe()
 		if err != nil {
 			msg.Err(err.Error())
 			return
