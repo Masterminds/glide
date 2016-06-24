@@ -239,7 +239,7 @@ func commands() []cli.Command {
 				//inst.ResolveAllFiles = c.Bool("all-dependencies")
 				packages := []string(c.Args())
 				//insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("strip-vendor"), c.Bool("non-interactive"))
+				action.Get(packages, inst, c.Bool("strip-vendor"), c.Bool("non-interactive"))
 			},
 		},
 		{

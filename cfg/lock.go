@@ -23,7 +23,7 @@ type Lockfile struct {
 }
 
 // LockfileFromSolverLock transforms a vsolver.Lock into a glide *Lockfile.
-func LockfileFromSolverLock(r vsolver.Result) *Lockfile {
+func LockfileFromSolverLock(r vsolver.Lock) *Lockfile {
 	if r == nil {
 		return nil
 	}

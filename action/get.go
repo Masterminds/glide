@@ -21,7 +21,7 @@ import (
 // Get fetches one or more dependencies and installs.
 //
 // This includes a solver run and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure, stripVendor, nonInteract bool) {
+func Get(names []string, installer *repo.Installer, stripVendor, nonInteract bool) {
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
@@ -32,7 +32,7 @@ func Get(names []string, installer *repo.Installer, insecure, stripVendor, nonIn
 		msg.Die("Could not find Glide file: %s", err)
 	}
 
-	vend, err = gpath.Vendor()
+	vend, err := gpath.Vendor()
 	if err != nil {
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
@@ -71,7 +71,8 @@ func Get(names []string, installer *repo.Installer, insecure, stripVendor, nonIn
 	// deps to the manifest.
 
 	// Add the packages to the config.
-	if count, err2 := addPkgsToConfig(conf, names, insecure, nonInteract, false); err2 != nil {
+	//if count, err2 := addPkgsToConfig(conf, names, insecure, nonInteract, testDeps); err2 != nil {
+	if count, err2 := addPkgsToConfig(conf, names, false, nonInteract, false); err2 != nil {
 		msg.Die("Failed to get new packages: %s", err2)
 	} else if count == 0 {
 		msg.Warn("Nothing to do")
@@ -97,7 +98,7 @@ func Get(names []string, installer *repo.Installer, insecure, stripVendor, nonIn
 
 	gw := safeGroupWriter{
 		conf:        conf,
-		lock:        args.L,
+		lock:        args.L.(*cfg.Lockfile),
 		resultLock:  r,
 		sm:          sm,
 		glidefile:   glidefile,
