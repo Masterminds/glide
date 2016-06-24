@@ -67,6 +67,8 @@ func LockfileFromYaml(yml []byte) (*Lockfile, error) {
 
 // Marshal converts a Config instance to YAML
 func (lf *Lockfile) Marshal() ([]byte, error) {
+	sort.Sort(lf.Imports)
+	sort.Sort(lf.DevImports)
 	yml, err := yaml.Marshal(&lf)
 	if err != nil {
 		return []byte{}, err
