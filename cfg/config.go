@@ -561,12 +561,12 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 		// We do nothing here, as the way any gets represented is with no
 		// constraint information at all
 		// TODO for now, probably until we add first-class 'default branch'
-	} else {
-		// assume we have a semver range
-		// TODO really? vsolver doesn't expose a way of getting at this?
+	} else if d.Constraint != nil {
+		// The only other thing this could really be is a semver range. This
+		// will dump that up appropriately.
 		newDep.Reference = d.Constraint.String()
-		//return nil, fmt.Errorf("Unrecognized constraint, cannot serialize config yaml; %s", newDep.Name)
 	}
+	// Just ignore any other case
 
 	return newDep, nil
 }
