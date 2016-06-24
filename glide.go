@@ -235,6 +235,7 @@ func commands() []cli.Command {
 				//}
 
 				inst := repo.NewInstaller()
+				inst.Home = gpath.Home()
 				//inst.UseCacheGopath = c.Bool("cache-gopath")
 				//inst.ResolveAllFiles = c.Bool("all-dependencies")
 				packages := []string(c.Args())

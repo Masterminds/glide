@@ -201,7 +201,8 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 		}
 
 		dep := &cfg.Dependency{
-			Name: root,
+			Name:       root,
+			Constraint: vsolver.Any(),
 		}
 
 		// When retriving from an insecure location set the repo to the

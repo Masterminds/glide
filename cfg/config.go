@@ -562,7 +562,10 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 		// constraint information at all
 		// TODO for now, probably until we add first-class 'default branch'
 	} else {
-		return nil, fmt.Errorf("Unrecognized constraint, cannot serialize config yaml; %s", newDep.Name)
+		// assume we have a semver range
+		// TODO really? vsolver doesn't expose a way of getting at this?
+		newDep.Reference = d.Constraint.String()
+		//return nil, fmt.Errorf("Unrecognized constraint, cannot serialize config yaml; %s", newDep.Name)
 	}
 
 	return newDep, nil
