@@ -2,35 +2,70 @@ package action
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
+	"github.com/sdboyer/vsolver"
 )
 
 // Get fetches one or more dependencies and installs.
 //
-// This includes resolving dependency resolution and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor, nonInteract, testDeps bool) {
-	if installer.UseCache {
-		cache.SystemLock()
-	}
-
+// This includes a solver run and re-generating the lock file.
+func Get(names []string, installer *repo.Installer, insecure, stripVendor, nonInteract bool) {
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
 	conf := EnsureConfig()
+
 	glidefile, err := gpath.Glide()
 	if err != nil {
 		msg.Die("Could not find Glide file: %s", err)
 	}
+
+	args := vsolver.SolveArgs{
+		N:    vsolver.ProjectName(conf.ProjectName),
+		Root: filepath.Dir(glidefile),
+		M:    conf,
+	}
+
+	opts := vsolver.SolveOpts{
+		Trace:       true,
+		TraceLogger: log.New(os.Stdout, "", 0),
+	}
+
+	// We load the lock file early and bail out if there's a problem, because we
+	// don't want a get to just update all deps without the user explictly
+	// making that choice.
+	if gpath.HasLock(base) {
+		args.L, err = LoadLockfile(base, conf)
+		if err != nil {
+			msg.Err("Could not load lockfile; aborting get. Existing dependency versions cannot be safely preserved without a lock file. Error was: %s", err)
+			return
+		}
+	}
+
+	// Create the SourceManager for this run
+	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
+	defer sm.Release()
+	if err != nil {
+		msg.Err(err.Error())
+		return
+	}
+
+	// Now, with the easy/fast errors out of the way, dive into adding the new
+	// deps to the manifest.
 
 	// Add the packages to the config.
 	if count, err2 := addPkgsToConfig(conf, names, insecure, nonInteract, testDeps); err2 != nil {
@@ -40,43 +75,36 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 		return
 	}
 
-	// Fetch the new packages. Can't resolve versions via installer.Update if
-	// get is called while the vendor/ directory is empty so we checkout
-	// everything.
-	err = installer.Checkout(conf)
+	// Prepare a solver. This validates our args and opts.
+	s, err := vsolver.Prepare(args, opts, sm)
 	if err != nil {
-		msg.Die("Failed to checkout packages: %s", err)
+		return msg.Err("Aborted get - could not set up solver to reconcile dependencies: %s", err)
 	}
 
-	// Prior to resolving dependencies we need to start working with a clone
-	// of the conf because we'll be making real changes to it.
-	confcopy := conf.Clone()
-
-	if !skipRecursive {
-		// Get all repos and update them.
-		// TODO: Can we streamline this in any way? The reason that we update all
-		// of the dependencies is that we need to re-negotiate versions. For example,
-		// if an existing dependency has the constraint >1.0 and this new package
-		// adds the constraint <2.0, then this may re-resolve the existing dependency
-		// to be between 1.0 and 2.0. But changing that dependency may then result
-		// in that dependency's dependencies changing... so we sorta do the whole
-		// thing to be safe.
-		err = installer.Update(confcopy)
-		if err != nil {
-			msg.Die("Could not update packages: %s", err)
-		}
+	r, err := s.Solve()
+	if err != nil {
+		// TODO better error handling
+		return msg.Err("Failed to find a solution for all new dependencies: %s", err.Error())
 	}
 
-	// Set Reference
-	if err := repo.SetReference(confcopy, installer.ResolveTest); err != nil {
-		msg.Err("Failed to set references: %s", err)
+	// Solve succeeded. Write out the yaml, lock, and vendor to a tmpdir, then mv
+	// them all into place iff all the writes worked
+
+	td, err := ioutil.TempDir(os.TempDir(), "glide")
+	if err != nil {
+		return msg.Err("Error while creating temp dir for vendor directory: %s", err)
+	}
+	defer os.RemoveAll(td)
+
+	err = vsolver.CreateVendorTree(td, l, sm, strip)
+	if err != nil {
+		return msg.Err("Error while generating vendor tree: %s", err)
 	}
 
-	// VendoredCleanup
-	// When stripping VCS happens this will happen as well. No need for double
-	// effort.
-	if installer.UpdateVendored && !strip {
-		repo.VendoredCleanup(confcopy)
+	err = writeVendor(vend, r, sm, sv)
+	if err != nil {
+		msg.Err(err.Error())
+		return
 	}
 
 	// Write YAML
@@ -128,7 +156,7 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 // - sets up insecure repo URLs where necessary
 // - generates a list of subpackages
 func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, testDeps bool) (int, error) {
-
+	// TODO refactor this to take and use a vsolver.SourceManager
 	if len(names) == 1 {
 		msg.Info("Preparing to install %d package.", len(names))
 	} else {
