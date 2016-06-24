@@ -22,6 +22,42 @@ type Lockfile struct {
 	DevImports Locks     `yaml:"testImports"`
 }
 
+// LockfileFromSolverLock transforms a vsolver.Lock into a glide *Lockfile.
+func LockfileFromSolverLock(r vsolver.Result) *Lockfile {
+	if r == nil {
+		return nil
+	}
+
+	// Create and write out a new lock file from the result
+	lf := &Lockfile{
+		Hash:    hex.EncodeToString(r.InputHash()),
+		Updated: time.Now(),
+	}
+
+	for _, p := range r.Projects() {
+		pi := p.Ident()
+		l := &Lock{
+			Name:    string(pi.LocalName),
+			VcsType: "", // TODO allow this to be extracted from sm
+		}
+
+		if l.Name != pi.NetworkName && pi.NetworkName != "" {
+			l.Repository = pi.NetworkName
+		}
+
+		v := p.Version()
+		if pv, ok := v.(vsolver.PairedVersion); ok {
+			l.Version = pv.Underlying().String()
+		} else {
+			l.Version = v.String()
+		}
+
+		lf.Imports = append(lf.Imports, l)
+	}
+
+	return lf
+}
+
 // LockfileFromYaml returns an instance of Lockfile from YAML
 func LockfileFromYaml(yml []byte) (*Lockfile, error) {
 	lock := &Lockfile{}
