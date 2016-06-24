@@ -1,18 +1,18 @@
-hash: 99e6a11a55e3c1f9468ec71c1476197c53fc893c25038490b618f0501e1d8c90
-updated: 2016-06-22T21:18:31.254392336-04:00
+hash: 607480f548198f86c4f4a5946960053afa74db4cd2d5c62b51d5954470922d3a
+updated: 2016-06-24T15:23:14.128213581-04:00
 imports:
-- name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
-- name: github.com/Masterminds/semver
-  version: 0a2c9fc0eee2c4cbb9526877c4a54da047fdcadd
-- name: github.com/sdboyer/vsolver
-  version: e6c1195a646979f7cf0c6ae9c8034349a8e9ea03
 - name: github.com/armon/go-radix
   version: 4239b77079c7b5d1243b7b4736304ce8ddb6f0f2
-- name: github.com/termie/go-shutil
-  version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
-- name: github.com/Masterminds/vcs
-  version: 7af28b64c5ec41b1558f5514fd938379822c237c
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
+- name: github.com/Masterminds/semver
+  version: 0a2c9fc0eee2c4cbb9526877c4a54da047fdcadd
+- name: github.com/Masterminds/vcs
+  version: 7af28b64c5ec41b1558f5514fd938379822c237c
+- name: github.com/sdboyer/vsolver
+  version: 41ed3fc78392de9c882444546e038bf6724ca416
+- name: github.com/termie/go-shutil
+  version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
 testImports: []
