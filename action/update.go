@@ -1,11 +1,9 @@
 package action
 
 import (
-	"encoding/hex"
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/dependency"
@@ -85,59 +83,17 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		return
 	}
 
-	err = writeVendor(vend, r, sm, sv)
+	gw := safeGroupWriter{
+		lock:        args.L.(*cfg.Lockfile),
+		resultLock:  r,
+		sm:          sm,
+		vendor:      vend,
+		stripVendor: sv,
+	}
+
+	err = gw.writeAllSafe()
 	if err != nil {
 		msg.Err(err.Error())
 		return
-	}
-
-	// Create and write out a new lock file from the result
-	lf := &cfg.Lockfile{
-		Hash:    hex.EncodeToString(r.InputHash()),
-		Updated: time.Now(),
-	}
-
-	for _, p := range r.Projects() {
-		pi := p.Ident()
-		l := &cfg.Lock{
-			Name:    string(pi.LocalName),
-			VcsType: "", // TODO allow this to be extracted from sm
-		}
-
-		if l.Name != pi.NetworkName && pi.NetworkName != "" {
-			l.Repository = pi.NetworkName
-		}
-
-		v := p.Version()
-		if pv, ok := v.(vsolver.PairedVersion); ok {
-			l.Version = pv.Underlying().String()
-		} else {
-			l.Version = v.String()
-		}
-
-		lf.Imports = append(lf.Imports, l)
-	}
-
-	wl := true
-	if args.L != nil {
-		f1, err := args.L.(*cfg.Lockfile).Fingerprint()
-		f2, err2 := lf.Fingerprint()
-		if err == nil && err2 == nil && f1 == f2 {
-			wl = false
-		}
-	}
-
-	if wl {
-		if err := lf.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
-			msg.Err("Could not write lock file to %s: %s", base, err)
-			return
-		}
-	} else {
-		msg.Info("Versions did not change. Skipping glide.lock update.")
-	}
-
-	err = writeVendor(vend, r, sm, sv)
-	if err != nil {
-		msg.Err(err.Error())
 	}
 }
