@@ -381,14 +381,5 @@ func LoadLockfile(base string, conf *cfg.Config) (*cfg.Lockfile, error) {
 		return nil, err
 	}
 
-	hash, err := conf.Hash()
-	if err != nil {
-		return nil, err
-	}
-
-	if hash != lock.Hash {
-		msg.Warn("Lock file may be out of date. Hash check of YAML failed. You may need to run 'update'")
-	}
-
 	return lock, nil
 }
