@@ -119,40 +119,6 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 	}
 }
 
-// TODO This will almost certainly need to be renamed and move somewhere else
-func writeVendor(vendor string, l vsolver.Lock, sm vsolver.SourceManager, strip bool) error {
-	td, err := ioutil.TempDir(os.TempDir(), "glide")
-	if err != nil {
-		return fmt.Errorf("Error while creating temp dir for vendor directory: %s", err)
-	}
-	defer os.RemoveAll(td)
-
-	err = vsolver.CreateVendorTree(td, l, sm, strip)
-	if err != nil {
-		return fmt.Errorf("Error while generating vendor tree: %s", err)
-	}
-
-	// Move the existing vendor dir to somewhere safe while we put the new one
-	// in order to provide insurance against errors for as long as possible
-	td2, err := ioutil.TempDir(filepath.Dir(vendor), "vendor")
-	if err != nil {
-		return fmt.Errorf("Error creating swap dir for existing vendor directory: %s", err)
-	}
-
-	err = os.Rename(vendor, td2)
-	defer os.RemoveAll(td2)
-	if err != nil {
-		return fmt.Errorf("Error moving existing vendor into swap dir: %s", err)
-	}
-
-	err = os.Rename(td, vendor)
-	if err != nil {
-		return fmt.Errorf("Error while moving generated vendor directory into place: %s", err)
-	}
-
-	return nil
-}
-
 // locksAreEquivalent compares the fingerprints between two locks to determine
 // if they're equivalent.
 //
@@ -187,8 +153,10 @@ type safeGroupWriter struct {
 
 // writeAllSafe writes out some combination of config yaml, lock, and a vendor
 // tree, to a temp dir, then moves them into place if and only if all the write
-// operations succeeded. This helps to ensure glide doesn't exit with a partial
-// write, resulting in an undefined state.
+// operations succeeded. It also does its best to roll back if any moves fail.
+//
+// This helps to ensure glide doesn't exit with a partial write, resulting in an
+// undefined disk state.
 //
 // - If a gw.conf is provided, it will be written to gw.glidefile
 // - If gw.lock is provided without a gw.resultLock, it will be written to
