@@ -111,8 +111,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 
 	msg.Info("Downloading dependencies. Please wait...")
 
-	ConcurrentUpdate(newConf.Imports, cwd, i, newConf)
-	ConcurrentUpdate(newConf.DevImports, cwd, i, newConf)
+	LazyConcurrentUpdate(newConf.Imports, cwd, i, newConf)
+	LazyConcurrentUpdate(newConf.DevImports, cwd, i, newConf)
 	return newConf, nil
 }
 
@@ -300,6 +300,43 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	}
 
 	return conf.Imports
+}
+
+// LazyConcurrentUpdate updates only deps that are not already checkout out at the right version.
+//
+// This is only safe when updating from a lock file.
+func LazyConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.Config) error {
+
+	newDeps := []*cfg.Dependency{}
+	for _, dep := range deps {
+		destPath := filepath.Join(i.VendorPath(), dep.Name)
+
+		// Get a VCS object for this directory
+		repo, err := dep.GetRepo(destPath)
+		if err != nil {
+			newDeps = append(newDeps, dep)
+			continue
+		}
+
+		ver, err := repo.Version()
+		if err != nil {
+			newDeps = append(newDeps, dep)
+			continue
+		}
+
+		if ver == dep.Reference {
+			msg.Info("--> Found desired version %s %s!", dep.Name, dep.Reference)
+			continue
+		}
+
+		msg.Debug("--> Queue %s for update (%s != %s).", dep.Name, ver, dep.Reference)
+		newDeps = append(newDeps, dep)
+	}
+	if len(newDeps) > 0 {
+		return ConcurrentUpdate(newDeps, cwd, i, c)
+	}
+
+	return nil
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
