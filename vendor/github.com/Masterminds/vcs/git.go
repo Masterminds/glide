@@ -14,6 +14,10 @@ import (
 // NewGitRepo creates a new instance of GitRepo. The remote and local directories
 // need to be passed in.
 func NewGitRepo(remote, local string) (*GitRepo, error) {
+	ins := depInstalled("git")
+	if !ins {
+		return nil, NewLocalError("git is not installed", nil, "")
+	}
 	ltype, err := DetectVcsFromFS(local)
 
 	// Found a VCS other than Git. Need to report an error.

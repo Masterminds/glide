@@ -14,6 +14,10 @@ var hgDetectURL = regexp.MustCompile("default = (?P<foo>.+)\n")
 // NewHgRepo creates a new instance of HgRepo. The remote and local directories
 // need to be passed in.
 func NewHgRepo(remote, local string) (*HgRepo, error) {
+	ins := depInstalled("hg")
+	if !ins {
+		return nil, NewLocalError("hg is not installed", nil, "")
+	}
 	ltype, err := DetectVcsFromFS(local)
 
 	// Found a VCS other than Hg. Need to report an error.
@@ -84,11 +88,7 @@ func (s *HgRepo) Init() error {
 
 // Update performs a Mercurial pull to an existing checkout.
 func (s *HgRepo) Update() error {
-	out, err := s.RunFromDir("hg", "update")
-	if err != nil {
-		return NewRemoteError("Unable to update repository", err, string(out))
-	}
-	return nil
+	return s.UpdateVersion(``)
 }
 
 // UpdateVersion sets the version of a package currently checked out via Hg.
@@ -97,7 +97,11 @@ func (s *HgRepo) UpdateVersion(version string) error {
 	if err != nil {
 		return NewLocalError("Unable to update checked out version", err, string(out))
 	}
-	out, err = s.RunFromDir("hg", "update", version)
+	if len(strings.TrimSpace(version)) > 0 {
+		out, err = s.RunFromDir("hg", "update", version)
+	} else {
+		out, err = s.RunFromDir("hg", "update")
+	}
 	if err != nil {
 		return NewLocalError("Unable to update checked out version", err, string(out))
 	}
