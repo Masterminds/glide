@@ -2,21 +2,23 @@ package vcs
 
 import (
 	"encoding/xml"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 )
-
-var svnDetectURL = regexp.MustCompile("URL: (?P<foo>.+)\n")
 
 // NewSvnRepo creates a new instance of SvnRepo. The remote and local directories
 // need to be passed in. The remote location should include the branch for SVN.
 // For example, if the package is https://github.com/Masterminds/cookoo/ the remote
 // should be https://github.com/Masterminds/cookoo/trunk for the trunk branch.
 func NewSvnRepo(remote, local string) (*SvnRepo, error) {
+	ins := depInstalled("svn")
+	if !ins {
+		return nil, NewLocalError("svn is not installed", nil, "")
+	}
 	ltype, err := DetectVcsFromFS(local)
 
 	// Found a VCS other than Svn. Need to report an error.
@@ -39,15 +41,18 @@ func NewSvnRepo(remote, local string) (*SvnRepo, error) {
 			return nil, NewLocalError("Unable to retrieve local repo information", err, string(out))
 		}
 
-		m := svnDetectURL.FindStringSubmatch(string(out))
-		if m[1] != "" && m[1] != remote {
+		detectedRemote, err := detectRemoteFromInfoCommand(string(out))
+		if err != nil {
+			return nil, NewLocalError("Unable to retrieve local repo information", err, string(out))
+		}
+		if detectedRemote != "" && remote != "" && detectedRemote != remote {
 			return nil, ErrWrongRemote
 		}
 
 		// If no remote was passed in but one is configured for the locally
 		// checked out Svn repo use that one.
-		if remote == "" && m[1] != "" {
-			r.setRemote(m[1])
+		if remote == "" && detectedRemote != "" {
+			r.setRemote(detectedRemote)
 		}
 	}
 
@@ -185,12 +190,15 @@ func (s *SvnRepo) Date() (time.Time, error) {
 
 // CheckLocal verifies the local location is an SVN repo.
 func (s *SvnRepo) CheckLocal() bool {
-	if _, err := os.Stat(s.LocalPath() + "/.svn"); err == nil {
-		return true
+	sep := fmt.Sprintf("%c", os.PathSeparator)
+	psplit := strings.Split(s.LocalPath(), sep)
+	for i := 0; i < len(psplit); i++ {
+		path := fmt.Sprintf("%s%s", sep, filepath.Join(psplit[0:(len(psplit)-(i))]...))
+		if _, err := os.Stat(filepath.Join(path, ".svn")); err == nil {
+			return true
+		}
 	}
-
 	return false
-
 }
 
 // Tags returns []string{} as there are no formal tags in SVN. Tags are a
@@ -343,4 +351,25 @@ func (s *SvnRepo) isUnableToCreateDir(err error) bool {
 	}
 
 	return false
+}
+
+// detectRemoteFromInfoCommand finds the remote url from the `svn info`
+// command's output without using  a regex. We avoid regex because URLs
+// are notoriously complex to accurately match with a regex and
+// splitting strings is less complex and often faster
+func detectRemoteFromInfoCommand(infoOut string) (string, error) {
+	sBytes := []byte(infoOut)
+	urlIndex := strings.Index(infoOut, "URL: ")
+	if urlIndex == -1 {
+		return "", fmt.Errorf("Remote not specified in svn info")
+	}
+	urlEndIndex := strings.Index(string(sBytes[urlIndex:]), "\n")
+	if urlEndIndex == -1 {
+		urlEndIndex = strings.Index(string(sBytes[urlIndex:]), "\r")
+		if urlEndIndex == -1 {
+			return "", fmt.Errorf("Unable to parse remote URL for svn info")
+		}
+	}
+
+	return string(sBytes[(urlIndex + 5):(urlIndex + urlEndIndex)]), nil
 }

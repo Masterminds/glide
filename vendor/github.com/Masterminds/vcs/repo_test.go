@@ -60,3 +60,15 @@ func TestTypeSwitch(t *testing.T) {
 		t.Errorf("Not detecting repo switch from SVN to Git")
 	}
 }
+
+func TestDepInstalled(t *testing.T) {
+	i := depInstalled("git")
+	if i != true {
+		t.Error("depInstalled not finding installed dep.")
+	}
+
+	i = depInstalled("thisreallyisntinstalled")
+	if i != false {
+		t.Error("depInstalled finding not installed dep.")
+	}
+}
