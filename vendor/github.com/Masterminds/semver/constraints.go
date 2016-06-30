@@ -312,8 +312,6 @@ func constraintCaret(v *Version, c *constraint) bool {
 	return true
 }
 
-type rwfunc func(i string) string
-
 var constraintRangeRegex *regexp.Regexp
 
 const cvRegex string = `v?([0-9|x|X|\*]+)(\.[0-9|x|X|\*]+)?(\.[0-9|x|X|\*]+)?` +
@@ -321,8 +319,12 @@ const cvRegex string = `v?([0-9|x|X|\*]+)(\.[0-9|x|X|\*]+)?(\.[0-9|x|X|\*]+)?` +
 	`(\+([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?`
 
 func isX(x string) bool {
-	l := strings.ToLower(x)
-	return l == "x" || l == "*"
+	switch x {
+	case "x", "*", "X":
+		return true
+	default:
+		return false
+	}
 }
 
 func rewriteRange(i string) string {

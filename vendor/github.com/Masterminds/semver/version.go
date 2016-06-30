@@ -152,12 +152,6 @@ func (v *Version) Equal(o *Version) bool {
 // Versions are compared by X.Y.Z. Build metadata is ignored. Prerelease is
 // lower than the version without a prerelease.
 func (v *Version) Compare(o *Version) int {
-
-	// Fastpath if both versions are the same.
-	if v.String() == o.String() {
-		return 0
-	}
-
 	// Compare the major, minor, and patch version for differences. If a
 	// difference is found return the comparison.
 	if d := compareSegment(v.Major(), o.Major()); d != 0 {
