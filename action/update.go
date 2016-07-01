@@ -117,7 +117,10 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 
 	if strip {
 		msg.Info("Removing version control data from vendor directory...")
-		gpath.StripVcs()
+		err := gpath.StripVcs()
+		if err != nil {
+			msg.Err("Unable to strip version control data: %s", err)
+		}
 	}
 
 	if stripVendor {
