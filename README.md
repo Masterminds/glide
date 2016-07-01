@@ -89,7 +89,11 @@ sudo add-apt-repository ppa:masterminds/glide && sudo apt-get update
 sudo apt-get install glide
 ```
 
-[Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac, Linux and Windows.
+[Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac, Linux, Windows among other systems.
+You can install (or update) with our shell script.
+```
+curl -s https://glide.sh/install.sh | sh
+```
 
 To build from source you can:
 
