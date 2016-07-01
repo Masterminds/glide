@@ -38,9 +38,9 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	}
 
 	args := vsolver.SolveArgs{
-		N:    vsolver.ProjectName(conf.ProjectName),
-		Root: filepath.Dir(glidefile),
-		M:    conf,
+		Name:     vsolver.ProjectName(conf.ProjectName),
+		Root:     filepath.Dir(glidefile),
+		Manifest: conf,
 	}
 
 	opts := vsolver.SolveOpts{
@@ -52,7 +52,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	// don't want a get to just update all deps without the user explictly
 	// making that choice.
 	if gpath.HasLock(base) {
-		args.L, err = LoadLockfile(base, conf)
+		args.Lock, err = LoadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile; aborting get. Existing dependency versions cannot be safely preserved without a lock file. Error was: %s", err)
 			return
@@ -60,7 +60,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	}
 
 	// Create the SourceManager for this run
-	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
+	sm, err := vsolver.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())
@@ -98,7 +98,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 
 	gw := safeGroupWriter{
 		conf:        conf,
-		lock:        args.L.(*cfg.Lockfile),
+		lock:        args.Lock.(*cfg.Lockfile),
 		resultLock:  r,
 		sm:          sm,
 		glidefile:   glidefile,

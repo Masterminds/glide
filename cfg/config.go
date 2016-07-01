@@ -162,15 +162,15 @@ func (c *Config) HasDependency(name string) bool {
 	return false
 }
 
-// GetDependencies lists all the normal dependencies described in a glide
-// manifest in a way vsolver will understand.
-func (c *Config) GetDependencies() []vsolver.ProjectDep {
+// DependencyConstraints lists all the non-test dependency constraints
+// described in a glide manifest in a way vsolver will understand.
+func (c *Config) DependencyConstraints() []vsolver.ProjectDep {
 	return depsToVSolver(c.Imports)
 }
 
-// GetDevDependencies lists all the development dependencies described in a glide
-// manifest in a way vsolver will understand.
-func (c *Config) GetDevDependencies() []vsolver.ProjectDep {
+// TestDependencyConstraints lists all the test dependency constraints described
+// in a glide manifest in a way vsolver will understand.
+func (c *Config) TestDependencyConstraints() []vsolver.ProjectDep {
 	return depsToVSolver(c.DevImports)
 }
 

@@ -31,7 +31,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
+	sm, err := vsolver.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())
@@ -39,9 +39,9 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 	}
 
 	args := vsolver.SolveArgs{
-		N:    vsolver.ProjectName(conf.ProjectName),
-		Root: filepath.Dir(vend),
-		M:    conf,
+		Name:     vsolver.ProjectName(conf.ProjectName),
+		Root:     filepath.Dir(vend),
+		Manifest: conf,
 	}
 
 	opts := vsolver.SolveOpts{
@@ -51,7 +51,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 
 	var s vsolver.Solver
 	if gpath.HasLock(base) {
-		args.L, err = LoadLockfile(base, conf)
+		args.Lock, err = LoadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile.")
 			return
@@ -65,7 +65,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 		digest, err := s.HashInputs()
 
 		// Check if digests match, and warn if they don't
-		if bytes.Equal(digest, args.L.InputHash()) {
+		if bytes.Equal(digest, args.Lock.InputHash()) {
 			if so {
 				msg.Err("glide.yaml is out of sync with glide.lock")
 				return
@@ -75,7 +75,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 		}
 
 		gw := safeGroupWriter{
-			resultLock:  args.L,
+			resultLock:  args.Lock,
 			vendor:      vend,
 			sm:          sm,
 			stripVendor: sv,

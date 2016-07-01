@@ -31,9 +31,9 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	args := vsolver.SolveArgs{
-		N:    vsolver.ProjectName(conf.ProjectName),
-		Root: filepath.Dir(vend),
-		M:    conf,
+		Name:     vsolver.ProjectName(conf.ProjectName),
+		Root:     filepath.Dir(vend),
+		Manifest: conf,
 	}
 
 	opts := vsolver.SolveOpts{
@@ -54,7 +54,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	if gpath.HasLock(base) {
-		args.L, err = LoadLockfile(base, conf)
+		args.Lock, err = LoadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile, aborting: %s", err)
 			return
@@ -62,7 +62,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := vsolver.NewSourceManager(filepath.Join(installer.Home, "cache"), base, false, dependency.Analyzer{})
+	sm, err := vsolver.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())
@@ -84,7 +84,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	gw := safeGroupWriter{
-		lock:        args.L.(*cfg.Lockfile),
+		lock:        args.Lock.(*cfg.Lockfile),
 		resultLock:  r,
 		sm:          sm,
 		vendor:      vend,
