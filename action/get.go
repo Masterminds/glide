@@ -95,7 +95,10 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 
 	if strip {
 		msg.Info("Removing version control data from vendor directory...")
-		gpath.StripVcs()
+		err := gpath.StripVcs()
+		if err != nil {
+			msg.Err("Unable to strip version control data: %s", err)
+		}
 	}
 
 	if stripVendor {
