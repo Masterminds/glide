@@ -10,7 +10,7 @@ imports:
 - name: github.com/Masterminds/vcs
   version: 7af28b64c5ec41b1558f5514fd938379822c237c
 - name: github.com/sdboyer/vsolver
-  version: 41ed3fc78392de9c882444546e038bf6724ca416
+  version: 4a1c3dd00ed484b3e87b4668b357e531b36baaa8
 - name: github.com/termie/go-shutil
   version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
 - name: gopkg.in/yaml.v2

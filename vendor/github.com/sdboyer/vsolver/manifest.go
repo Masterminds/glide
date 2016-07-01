@@ -2,11 +2,8 @@ package vsolver
 
 // Manifest represents the data from a manifest file (or however the
 // implementing tool chooses to store it) at a particular version that is
-// relevant to the satisfiability solving process:
-//
-// - A list of dependencies: project name, and a constraint
-// - A list of development-time dependencies (e.g. for testing - only
-// the root project's are incorporated)
+// relevant to the satisfiability solving process. That means constraints on
+// dependencies, both for normal dependencies and for tests.
 //
 // Finding a solution that satisfies the constraints expressed by all of these
 // dependencies (and those from all other projects, transitively), is what the
@@ -18,8 +15,8 @@ package vsolver
 // from consideration in the solving algorithm.
 type Manifest interface {
 	Name() ProjectName
-	GetDependencies() []ProjectDep
-	GetDevDependencies() []ProjectDep
+	DependencyConstraints() []ProjectDep
+	TestDependencyConstraints() []ProjectDep
 }
 
 // SimpleManifest is a helper for tools to enumerate manifest data. It's
@@ -27,9 +24,9 @@ type Manifest interface {
 // the fly for projects with no manifest metadata, or metadata through a foreign
 // tool's idioms.
 type SimpleManifest struct {
-	N  ProjectName
-	P  []ProjectDep
-	DP []ProjectDep
+	N        ProjectName
+	Deps     []ProjectDep
+	TestDeps []ProjectDep
 }
 
 var _ Manifest = SimpleManifest{}
@@ -40,13 +37,13 @@ func (m SimpleManifest) Name() ProjectName {
 }
 
 // GetDependencies returns the project's dependencies.
-func (m SimpleManifest) GetDependencies() []ProjectDep {
-	return m.P
+func (m SimpleManifest) DependencyConstraints() []ProjectDep {
+	return m.Deps
 }
 
 // GetDependencies returns the project's test dependencies.
-func (m SimpleManifest) GetDevDependencies() []ProjectDep {
-	return m.DP
+func (m SimpleManifest) TestDependencyConstraints() []ProjectDep {
+	return m.TestDeps
 }
 
 // prepManifest ensures a manifest is prepared and safe for use by the solver.
@@ -67,22 +64,22 @@ func prepManifest(m Manifest, n ProjectName) Manifest {
 		}
 	}
 
-	deps := m.GetDependencies()
-	ddeps := m.GetDevDependencies()
+	deps := m.DependencyConstraints()
+	ddeps := m.TestDependencyConstraints()
 
 	rm := SimpleManifest{
-		N:  m.Name(),
-		P:  make([]ProjectDep, len(deps)),
-		DP: make([]ProjectDep, len(ddeps)),
+		N:        m.Name(),
+		Deps:     make([]ProjectDep, len(deps)),
+		TestDeps: make([]ProjectDep, len(ddeps)),
 	}
 
 	for k, d := range deps {
 		d.Ident = d.Ident.normalize()
-		rm.P[k] = d
+		rm.Deps[k] = d
 	}
 	for k, d := range ddeps {
 		d.Ident = d.Ident.normalize()
-		rm.DP[k] = d
+		rm.TestDeps[k] = d
 	}
 
 	return rm

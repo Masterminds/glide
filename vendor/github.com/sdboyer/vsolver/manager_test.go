@@ -40,7 +40,7 @@ func TestSourceManagerInit(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create temp dir: %s", err)
 	}
-	_, err = NewSourceManager(cpath, bd, false, dummyAnalyzer{})
+	_, err = NewSourceManager(dummyAnalyzer{}, cpath, bd, false)
 
 	if err != nil {
 		t.Errorf("Unexpected error on SourceManager creation: %s", err)
@@ -52,12 +52,12 @@ func TestSourceManagerInit(t *testing.T) {
 		}
 	}()
 
-	_, err = NewSourceManager(cpath, bd, false, dummyAnalyzer{})
+	_, err = NewSourceManager(dummyAnalyzer{}, cpath, bd, false)
 	if err == nil {
 		t.Errorf("Creating second SourceManager should have failed due to file lock contention")
 	}
 
-	sm, err := NewSourceManager(cpath, bd, true, dummyAnalyzer{})
+	sm, err := NewSourceManager(dummyAnalyzer{}, cpath, bd, true)
 	defer sm.Release()
 	if err != nil {
 		t.Errorf("Creating second SourceManager should have succeeded when force flag was passed, but failed with err %s", err)
@@ -78,7 +78,7 @@ func TestProjectManagerInit(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create temp dir: %s", err)
 	}
-	sm, err := NewSourceManager(cpath, bd, false, dummyAnalyzer{})
+	sm, err := NewSourceManager(dummyAnalyzer{}, cpath, bd, false)
 
 	if err != nil {
 		t.Errorf("Unexpected error on SourceManager creation: %s", err)
@@ -186,7 +186,7 @@ func TestProjectManagerInit(t *testing.T) {
 	}
 
 	// Check upstream existence flag
-	if !pms.pm.CheckExistence(ExistsUpstream) {
+	if !pms.pm.CheckExistence(existsUpstream) {
 		t.Errorf("ExistsUpstream flag not being correctly set the project")
 	}
 }
@@ -202,7 +202,7 @@ func TestRepoVersionFetching(t *testing.T) {
 		t.Errorf("Failed to create temp dir: %s", err)
 	}
 
-	smi, err := NewSourceManager(cpath, bd, false, dummyAnalyzer{})
+	smi, err := NewSourceManager(dummyAnalyzer{}, cpath, bd, false)
 	if err != nil {
 		t.Errorf("Unexpected error on SourceManager creation: %s", err)
 		t.FailNow()
@@ -224,7 +224,7 @@ func TestRepoVersionFetching(t *testing.T) {
 			t.Errorf("Unexpected error on ProjectManager creation: %s", err)
 			t.FailNow()
 		}
-		pms[k] = pmi.pm.(*projectManager)
+		pms[k] = pmi.pm
 	}
 
 	defer func() {
@@ -240,7 +240,7 @@ func TestRepoVersionFetching(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error getting version pairs from git repo: %s", err)
 	}
-	if exbits != ExistsUpstream {
+	if exbits != existsUpstream {
 		t.Errorf("git pair fetch should only set upstream existence bits, but got %v", exbits)
 	}
 	if len(vlist) != 3 {
@@ -267,7 +267,7 @@ func TestRepoVersionFetching(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error getting version pairs from hg repo: %s", err)
 	}
-	if exbits != ExistsUpstream|ExistsInCache {
+	if exbits != existsUpstream|existsInCache {
 		t.Errorf("hg pair fetch should set upstream and cache existence bits, but got %v", exbits)
 	}
 	if len(vlist) != 2 {
@@ -289,7 +289,7 @@ func TestRepoVersionFetching(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error getting version pairs from bzr repo: %s", err)
 	}
-	if exbits != ExistsUpstream|ExistsInCache {
+	if exbits != existsUpstream|existsInCache {
 		t.Errorf("bzr pair fetch should set upstream and cache existence bits, but got %v", exbits)
 	}
 	if len(vlist) != 1 {
@@ -314,7 +314,7 @@ func TestGetInfoListVersionsOrdering(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create temp dir: %s", err)
 	}
-	sm, err := NewSourceManager(cpath, bd, false, dummyAnalyzer{})
+	sm, err := NewSourceManager(dummyAnalyzer{}, cpath, bd, false)
 
 	if err != nil {
 		t.Errorf("Unexpected error on SourceManager creation: %s", err)
@@ -332,7 +332,7 @@ func TestGetInfoListVersionsOrdering(t *testing.T) {
 
 	pn := ProjectName("github.com/Masterminds/VCSTestRepo")
 
-	_, err = sm.GetProjectInfo(pn, NewVersion("1.0.0"))
+	_, _, err = sm.GetProjectInfo(pn, NewVersion("1.0.0"))
 	if err != nil {
 		t.Errorf("Unexpected error from GetInfoAt %s", err)
 	}

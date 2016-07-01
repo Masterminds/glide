@@ -64,14 +64,14 @@ type bimodalIdentifier struct {
 
 type ProjectName string
 
-type ProjectAtom struct {
-	Ident   ProjectIdentifier
-	Version Version
+type atom struct {
+	id ProjectIdentifier
+	v  Version
 }
 
 type atomWithPackages struct {
-	atom ProjectAtom
-	pl   []string
+	a  atom
+	pl []string
 }
 
 type ProjectDep struct {
@@ -105,15 +105,7 @@ type completeDep struct {
 	pl []string
 }
 
-type Dependency struct {
-	Depender ProjectAtom
-	Dep      completeDep
-}
-
-// ProjectInfo holds manifest and lock for a ProjectName at a Version
-type ProjectInfo struct {
-	N ProjectName
-	V Version
-	Manifest
-	Lock
+type dependency struct {
+	depender atom
+	dep      completeDep
 }

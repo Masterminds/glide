@@ -68,7 +68,7 @@ func nsvrSplit(info string) (id ProjectIdentifier, version string, revision Revi
 //
 // Splits the input string on a space, and uses the first two elements as the
 // project name and constraint body, respectively.
-func mksvpa(info string) ProjectAtom {
+func mksvpa(info string) atom {
 	id, ver, rev := nsvrSplit(info)
 
 	_, err := semver.NewVersion(ver)
@@ -83,9 +83,9 @@ func mksvpa(info string) ProjectAtom {
 		v = v.(UnpairedVersion).Is(rev)
 	}
 
-	return ProjectAtom{
-		Ident:   id,
-		Version: v,
+	return atom{
+		id: id,
+		v:  v,
 	}
 }
 
@@ -132,13 +132,13 @@ type depspec struct {
 // First string is broken out into the name/semver of the main package.
 func dsv(pi string, deps ...string) depspec {
 	pa := mksvpa(pi)
-	if string(pa.Ident.LocalName) != pa.Ident.NetworkName {
+	if string(pa.id.LocalName) != pa.id.NetworkName {
 		panic("alternate source on self makes no sense")
 	}
 
 	ds := depspec{
-		n: pa.Ident.LocalName,
-		v: pa.Version,
+		n: pa.id.LocalName,
+		v: pa.v,
 	}
 
 	for _, dep := range deps {
@@ -161,7 +161,7 @@ func mklock(pairs ...string) fixLock {
 	l := make(fixLock, 0)
 	for _, s := range pairs {
 		pa := mksvpa(s)
-		l = append(l, NewLockedProject(pa.Ident.LocalName, pa.Version, pa.Ident.netName(), "", nil))
+		l = append(l, NewLockedProject(pa.id.LocalName, pa.v, pa.id.netName(), "", nil))
 	}
 
 	return l
@@ -173,7 +173,7 @@ func mkrevlock(pairs ...string) fixLock {
 	l := make(fixLock, 0)
 	for _, s := range pairs {
 		pa := mksvpa(s)
-		l = append(l, NewLockedProject(pa.Ident.LocalName, pa.Version.(PairedVersion).Underlying(), pa.Ident.netName(), "", nil))
+		l = append(l, NewLockedProject(pa.id.LocalName, pa.v.(PairedVersion).Underlying(), pa.id.netName(), "", nil))
 	}
 
 	return l
@@ -863,37 +863,42 @@ type reachMap map[pident]map[string][]string
 type depspecSourceManager struct {
 	specs []depspec
 	rm    reachMap
+	ig    map[string]bool
 }
 
 type fixSM interface {
 	SourceManager
 	rootSpec() depspec
 	allSpecs() []depspec
+	ignore() map[string]bool
 }
 
 var _ fixSM = &depspecSourceManager{}
 
-func newdepspecSM(ds []depspec) *depspecSourceManager {
+func newdepspecSM(ds []depspec, ignore []string) *depspecSourceManager {
+	ig := make(map[string]bool)
+	if len(ignore) > 0 {
+		for _, pkg := range ignore {
+			ig[pkg] = true
+		}
+	}
+
 	return &depspecSourceManager{
 		specs: ds,
 		rm:    computeBasicReachMap(ds),
+		ig:    ig,
 	}
 }
 
-func (sm *depspecSourceManager) GetProjectInfo(n ProjectName, v Version) (ProjectInfo, error) {
+func (sm *depspecSourceManager) GetProjectInfo(n ProjectName, v Version) (Manifest, Lock, error) {
 	for _, ds := range sm.specs {
 		if n == ds.n && v.Matches(ds.v) {
-			return ProjectInfo{
-				N:        ds.n,
-				V:        ds.v,
-				Manifest: ds,
-				Lock:     dummyLock{},
-			}, nil
+			return ds, dummyLock{}, nil
 		}
 	}
 
 	// TODO proper solver-type errors
-	return ProjectInfo{}, fmt.Errorf("Project '%s' at version '%s' could not be found", n, v)
+	return nil, nil, fmt.Errorf("Project '%s' at version '%s' could not be found", n, v)
 }
 
 func (sm *depspecSourceManager) ExternalReach(n ProjectName, v Version) (map[string][]string, error) {
@@ -976,25 +981,27 @@ func (sm *depspecSourceManager) allSpecs() []depspec {
 	return sm.specs
 }
 
+func (sm *depspecSourceManager) ignore() map[string]bool {
+	return sm.ig
+}
+
 type depspecBridge struct {
 	*bridge
 }
 
 // override computeRootReach() on bridge to read directly out of the depspecs
-func (b *depspecBridge) computeRootReach(path string) ([]string, error) {
+func (b *depspecBridge) computeRootReach() ([]string, error) {
 	// This only gets called for the root project, so grab that one off the test
 	// source manager
 	dsm := b.sm.(fixSM)
 	root := dsm.rootSpec()
-	if string(root.n) != path {
-		return nil, fmt.Errorf("Expected only root project %q to computeRootReach(), got %q", root.n, path)
-	}
 
 	ptree, err := dsm.ListPackages(root.n, nil)
 	if err != nil {
 		return nil, err
 	}
-	return ptree.ListExternalImports(true, true)
+
+	return ptree.ListExternalImports(true, true, dsm.ignore())
 }
 
 // override verifyRoot() on bridge to prevent any filesystem interaction
@@ -1008,7 +1015,7 @@ func (b *depspecBridge) verifyRoot(path string) error {
 }
 
 func (b *depspecBridge) listPackages(id ProjectIdentifier, v Version) (PackageTree, error) {
-	return b.sm.ListPackages(b.key(id), v)
+	return b.sm.(fixSM).ListPackages(b.key(id), v)
 }
 
 // override deduceRemoteRepo on bridge to make all our pkg/project mappings work
@@ -1032,12 +1039,12 @@ var _ Lock = dummyLock{}
 var _ Lock = fixLock{}
 
 // impl Spec interface
-func (ds depspec) GetDependencies() []ProjectDep {
+func (ds depspec) DependencyConstraints() []ProjectDep {
 	return ds.deps
 }
 
 // impl Spec interface
-func (ds depspec) GetDevDependencies() []ProjectDep {
+func (ds depspec) TestDependencyConstraints() []ProjectDep {
 	return ds.devdeps
 }
 

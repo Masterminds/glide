@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -59,13 +60,13 @@ func solveBasicsAndCheck(fix basicFixture, t *testing.T) (res Result, err error)
 	if testing.Verbose() {
 		stderrlog.Printf("[[fixture %q]]", fix.n)
 	}
-	sm := newdepspecSM(fix.ds)
+	sm := newdepspecSM(fix.ds, nil)
 
 	args := SolveArgs{
-		Root: string(fix.ds[0].Name()),
-		N:    ProjectName(fix.ds[0].Name()),
-		M:    fix.ds[0],
-		L:    dummyLock{},
+		Root:     string(fix.ds[0].Name()),
+		Name:     ProjectName(fix.ds[0].Name()),
+		Manifest: fix.ds[0],
+		Lock:     dummyLock{},
 	}
 
 	o := SolveOpts{
@@ -74,7 +75,7 @@ func solveBasicsAndCheck(fix basicFixture, t *testing.T) (res Result, err error)
 	}
 
 	if fix.l != nil {
-		args.L = fix.l
+		args.Lock = fix.l
 	}
 
 	res, err = fixSolve(args, o, sm)
@@ -112,13 +113,14 @@ func solveBimodalAndCheck(fix bimodalFixture, t *testing.T) (res Result, err err
 	if testing.Verbose() {
 		stderrlog.Printf("[[fixture %q]]", fix.n)
 	}
-	sm := newbmSM(fix.ds)
+	sm := newbmSM(fix.ds, fix.ignore)
 
 	args := SolveArgs{
-		Root: string(fix.ds[0].Name()),
-		N:    ProjectName(fix.ds[0].Name()),
-		M:    fix.ds[0],
-		L:    dummyLock{},
+		Root:     string(fix.ds[0].Name()),
+		Name:     ProjectName(fix.ds[0].Name()),
+		Manifest: fix.ds[0],
+		Lock:     dummyLock{},
+		Ignore:   fix.ignore,
 	}
 
 	o := SolveOpts{
@@ -127,7 +129,7 @@ func solveBimodalAndCheck(fix bimodalFixture, t *testing.T) (res Result, err err
 	}
 
 	if fix.l != nil {
-		args.L = fix.l
+		args.Lock = fix.l
 	}
 
 	res, err = fixSolve(args, o, sm)
@@ -144,7 +146,7 @@ func fixtureSolveSimpleChecks(fix specfix, res Result, err error, t *testing.T) 
 		}
 
 		switch fail := err.(type) {
-		case *BadOptsFailure:
+		case *badOptsFailure:
 			t.Errorf("(fixture: %q) Unexpected bad opts failure solve error: %s", fix.name(), err)
 		case *noVersionError:
 			if errp[0] != string(fail.pn.LocalName) { // TODO identifierify
@@ -191,7 +193,7 @@ func fixtureSolveSimpleChecks(fix specfix, res Result, err error, t *testing.T) 
 		t.Errorf("(fixture: %q) Solver succeeded, but expected failure", fix.name())
 	} else {
 		r := res.(result)
-		if fix.maxTries() > 0 && r.att > fix.maxTries() {
+		if fix.maxTries() > 0 && r.Attempts() > fix.maxTries() {
 			t.Errorf("(fixture: %q) Solver completed in %v attempts, but expected %v or fewer", fix.name(), r.att, fix.maxTries())
 		}
 
@@ -199,7 +201,7 @@ func fixtureSolveSimpleChecks(fix specfix, res Result, err error, t *testing.T) 
 		rp := make(map[string]Version)
 		for _, p := range r.p {
 			pa := p.toAtom()
-			rp[string(pa.Ident.LocalName)] = pa.Version
+			rp[string(pa.id.LocalName)] = pa.v
 		}
 
 		fixlen, rlen := len(fix.result()), len(rp)
@@ -265,17 +267,17 @@ func TestRootLockNoVersionPairMatching(t *testing.T) {
 	pd.Constraint = Revision("foorev")
 	fix.ds[0].deps[0] = pd
 
-	sm := newdepspecSM(fix.ds)
+	sm := newdepspecSM(fix.ds, nil)
 
 	l2 := make(fixLock, 1)
 	copy(l2, fix.l)
 	l2[0].v = nil
 
 	args := SolveArgs{
-		Root: string(fix.ds[0].Name()),
-		N:    ProjectName(fix.ds[0].Name()),
-		M:    fix.ds[0],
-		L:    l2,
+		Root:     string(fix.ds[0].Name()),
+		Name:     ProjectName(fix.ds[0].Name()),
+		Manifest: fix.ds[0],
+		Lock:     l2,
 	}
 
 	res, err := fixSolve(args, SolveOpts{}, sm)
@@ -289,29 +291,29 @@ func getFailureCausingProjects(err error) (projs []string) {
 		projs = append(projs, string(e.pn.LocalName)) // TODO identifierify
 	case *disjointConstraintFailure:
 		for _, f := range e.failsib {
-			projs = append(projs, string(f.Depender.Ident.LocalName))
+			projs = append(projs, string(f.depender.id.LocalName))
 		}
 	case *versionNotAllowedFailure:
 		for _, f := range e.failparent {
-			projs = append(projs, string(f.Depender.Ident.LocalName))
+			projs = append(projs, string(f.depender.id.LocalName))
 		}
 	case *constraintNotAllowedFailure:
 		// No sane way of knowing why the currently selected version is
 		// selected, so do nothing
 	case *sourceMismatchFailure:
-		projs = append(projs, string(e.prob.Ident.LocalName))
+		projs = append(projs, string(e.prob.id.LocalName))
 		for _, c := range e.sel {
-			projs = append(projs, string(c.Depender.Ident.LocalName))
+			projs = append(projs, string(c.depender.id.LocalName))
 		}
 	case *checkeeHasProblemPackagesFailure:
-		projs = append(projs, string(e.goal.Ident.LocalName))
+		projs = append(projs, string(e.goal.id.LocalName))
 		for _, errdep := range e.failpkg {
 			for _, atom := range errdep.deppers {
-				projs = append(projs, string(atom.Ident.LocalName))
+				projs = append(projs, string(atom.id.LocalName))
 			}
 		}
 	case *depHasProblemPackagesFailure:
-		projs = append(projs, string(e.goal.Depender.Ident.LocalName), string(e.goal.Dep.Ident.LocalName))
+		projs = append(projs, string(e.goal.depender.id.LocalName), string(e.goal.dep.Ident.LocalName))
 	default:
 		panic("unknown failtype")
 	}
@@ -320,7 +322,7 @@ func getFailureCausingProjects(err error) (projs []string) {
 }
 
 func TestBadSolveOpts(t *testing.T) {
-	sm := newdepspecSM(basicFixtures[0].ds)
+	sm := newdepspecSM(basicFixtures[0].ds, nil)
 
 	o := SolveOpts{}
 	args := SolveArgs{}
@@ -329,8 +331,8 @@ func TestBadSolveOpts(t *testing.T) {
 		t.Errorf("Should have errored on missing manifest")
 	}
 
-	p, _ := sm.GetProjectInfo(basicFixtures[0].ds[0].n, basicFixtures[0].ds[0].v)
-	args.M = p.Manifest
+	m, _, _ := sm.GetProjectInfo(basicFixtures[0].ds[0].n, basicFixtures[0].ds[0].v)
+	args.Manifest = m
 	_, err = Prepare(args, o, sm)
 	if err == nil {
 		t.Errorf("Should have errored on empty root")
@@ -342,7 +344,7 @@ func TestBadSolveOpts(t *testing.T) {
 		t.Errorf("Should have errored on empty name")
 	}
 
-	args.N = "root"
+	args.Name = "root"
 	_, err = Prepare(args, o, sm)
 	if err != nil {
 		t.Errorf("Basic conditions satisfied, solve should have gone through, err was %s", err)
@@ -358,5 +360,29 @@ func TestBadSolveOpts(t *testing.T) {
 	_, err = Prepare(args, o, sm)
 	if err != nil {
 		t.Errorf("Basic conditions re-satisfied, solve should have gone through, err was %s", err)
+	}
+}
+
+func TestIgnoreDedupe(t *testing.T) {
+	fix := basicFixtures[0]
+
+	ig := []string{"foo", "foo", "bar"}
+	args := SolveArgs{
+		Root:     string(fix.ds[0].Name()),
+		Name:     ProjectName(fix.ds[0].Name()),
+		Manifest: fix.ds[0],
+		Ignore:   ig,
+	}
+
+	s, _ := Prepare(args, SolveOpts{}, newdepspecSM(basicFixtures[0].ds, nil))
+	ts := s.(*solver)
+
+	expect := map[string]bool{
+		"foo": true,
+		"bar": true,
+	}
+
+	if !reflect.DeepEqual(ts.ig, expect) {
+		t.Errorf("Expected solver's ignore list to be deduplicated map, got %s", ts.ig)
 	}
 }

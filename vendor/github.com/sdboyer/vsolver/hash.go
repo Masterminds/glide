@@ -25,12 +25,12 @@ func (s *solver) HashInputs() ([]byte, error) {
 	}
 
 	// Pass in magic root values, and the bridge will analyze the right thing
-	ptree, err := s.b.listPackages(ProjectIdentifier{LocalName: s.args.N}, nil)
+	ptree, err := s.b.listPackages(ProjectIdentifier{LocalName: s.args.Name}, nil)
 	if err != nil {
-		return nil, BadOptsFailure(fmt.Sprintf("Error while parsing imports under %s: %s", s.args.Root, err.Error()))
+		return nil, badOptsFailure(fmt.Sprintf("Error while parsing imports under %s: %s", s.args.Root, err.Error()))
 	}
 
-	d, dd := s.args.M.GetDependencies(), s.args.M.GetDevDependencies()
+	d, dd := s.args.Manifest.DependencyConstraints(), s.args.Manifest.TestDependencyConstraints()
 	p := make(sortedDeps, len(d))
 	copy(p, d)
 	p = append(p, dd...)
@@ -72,9 +72,24 @@ func (s *solver) HashInputs() ([]byte, error) {
 		}
 	}
 
+	// Add the package ignores, if any.
+	if len(s.ig) > 0 {
+		// Dump and sort the ignores
+		ig := make([]string, len(s.ig))
+		k := 0
+		for pkg := range s.ig {
+			ig[k] = pkg
+			k++
+		}
+		sort.Strings(ig)
+
+		for _, igp := range ig {
+			h.Write([]byte(igp))
+		}
+	}
+
 	// TODO overrides
 	// TODO aliases
-	// TODO ignores
 	return h.Sum(nil), nil
 }
 

@@ -15,8 +15,8 @@ import (
 
 var (
 	// With a random revision and no name, collisions are unlikely
-	nilpa = ProjectAtom{
-		Version: Revision(strconv.FormatInt(rand.Int63(), 36)),
+	nilpa = atom{
+		v: Revision(strconv.FormatInt(rand.Int63(), 36)),
 	}
 )
 
@@ -27,17 +27,22 @@ type SolveArgs struct {
 
 	// The 'name' of the project. Required. This should (must?) correspond to subpath of
 	// Root that exists under a GOPATH.
-	N ProjectName
+	Name ProjectName
 
 	// The root manifest. Required. This contains all the dependencies, constraints, and
 	// other controls available to the root project.
-	M Manifest
+	Manifest Manifest
 
 	// The root lock. Optional. Generally, this lock is the output of a previous solve run.
 	//
 	// If provided, the solver will attempt to preserve the versions specified
 	// in the lock, unless ToChange or ChangeAll settings indicate otherwise.
-	L Lock
+	Lock Lock
+
+	// A list of packages (import paths) to ignore. These can be in the root
+	// project, or from elsewhere. Ignoring a package means that both it and its
+	// imports will be disregarded by all relevant solver operations.
+	Ignore []string
 }
 
 // SolveOpts holds additional options that govern solving behavior.
@@ -115,11 +120,15 @@ type solver struct {
 	// removal.
 	unsel *unselected
 
+	// Map of packages to ignore. This is derived by converting SolveArgs.Ignore
+	// into a map during solver prep - which also, nicely, deduplicates it.
+	ig map[string]bool
+
 	// A list of all the currently active versionQueues in the solver. The set
 	// of projects represented here corresponds closely to what's in s.sel,
 	// although s.sel will always contain the root project, and s.versions never
 	// will.
-	versions []*versionQueue // TODO rename to pvq
+	versions []*versionQueue // TODO rename to vq
 
 	// A map of the ProjectName (local names) that should be allowed to change
 	chng map[ProjectName]struct{}
@@ -143,32 +152,49 @@ type Solver interface {
 	Solve() (Result, error)
 }
 
-// Prepare reads and validates the provided SolveArgs and SolveOpts.
+// Prepare readies a Solver for use.
 //
-// If a problem with the inputs is detected, an error is returned. Otherwise, a
+// This function reads and validates the provided SolveArgs and SolveOpts. If a
+// problem with the inputs is detected, an error is returned. Otherwise, a
 // Solver is returned, ready to hash and check inputs or perform a solving run.
-func Prepare(in SolveArgs, opts SolveOpts, sm SourceManager) (Solver, error) {
+func Prepare(args SolveArgs, opts SolveOpts, sm SourceManager) (Solver, error) {
 	// local overrides would need to be handled first.
 	// TODO local overrides! heh
 
-	if in.M == nil {
-		return nil, BadOptsFailure("Opts must include a manifest.")
+	if args.Manifest == nil {
+		return nil, badOptsFailure("Opts must include a manifest.")
 	}
-	if in.Root == "" {
-		return nil, BadOptsFailure("Opts must specify a non-empty string for the project root directory. If cwd is desired, use \".\"")
+	if args.Root == "" {
+		return nil, badOptsFailure("Opts must specify a non-empty string for the project root directory. If cwd is desired, use \".\"")
 	}
-	if in.N == "" {
-		return nil, BadOptsFailure("Opts must include a project name. This should be the intended root import path of the project.")
+	if args.Name == "" {
+		return nil, badOptsFailure("Opts must include a project name. This should be the intended root import path of the project.")
 	}
 	if opts.Trace && opts.TraceLogger == nil {
-		return nil, BadOptsFailure("Trace requested, but no logger provided.")
+		return nil, badOptsFailure("Trace requested, but no logger provided.")
+	}
+
+	// Ensure the ignore map is at least initialized
+	ig := make(map[string]bool)
+	if len(args.Ignore) > 0 {
+		for _, pkg := range args.Ignore {
+			ig[pkg] = true
+		}
 	}
 
 	s := &solver{
-		args: in,
+		args: args,
 		o:    opts,
-		b:    newBridge(in.N, in.Root, sm, opts.Downgrade),
-		tl:   opts.TraceLogger,
+		ig:   ig,
+		b: &bridge{
+			sm:       sm,
+			sortdown: opts.Downgrade,
+			name:     args.Name,
+			root:     args.Root,
+			ignore:   ig,
+			vlists:   make(map[ProjectName][]Version),
+		},
+		tl: opts.TraceLogger,
 	}
 
 	// Initialize maps
@@ -178,7 +204,7 @@ func Prepare(in SolveArgs, opts SolveOpts, sm SourceManager) (Solver, error) {
 
 	// Initialize stacks and queues
 	s.sel = &selection{
-		deps: make(map[ProjectIdentifier][]Dependency),
+		deps: make(map[ProjectIdentifier][]dependency),
 		sm:   s.b,
 	}
 	s.unsel = &unselected{
@@ -202,10 +228,10 @@ func (s *solver) Solve() (Result, error) {
 	}
 
 	// Prep safe, normalized versions of root manifest and lock data
-	s.rm = prepManifest(s.args.M, s.args.N)
+	s.rm = prepManifest(s.args.Manifest, s.args.Name)
 
-	if s.args.L != nil {
-		for _, lp := range s.args.L.Projects() {
+	if s.args.Lock != nil {
+		for _, lp := range s.args.Lock.Projects() {
 			s.rlm[lp.Ident().normalize()] = lp
 		}
 	}
@@ -250,7 +276,7 @@ func (s *solver) Solve() (Result, error) {
 }
 
 // solve is the top-level loop for the SAT solving process.
-func (s *solver) solve() (map[ProjectAtom]map[string]struct{}, error) {
+func (s *solver) solve() (map[atom]map[string]struct{}, error) {
 	// Main solving loop
 	for {
 		bmi, has := s.nextUnselected()
@@ -286,9 +312,9 @@ func (s *solver) solve() (map[ProjectAtom]map[string]struct{}, error) {
 			}
 
 			s.selectAtomWithPackages(atomWithPackages{
-				atom: ProjectAtom{
-					Ident:   queue.id,
-					Version: queue.current(),
+				a: atom{
+					id: queue.id,
+					v:  queue.current(),
 				},
 				pl: bmi.pl,
 			})
@@ -307,9 +333,9 @@ func (s *solver) solve() (map[ProjectAtom]map[string]struct{}, error) {
 			// queue and just use the version given in what came back from
 			// s.sel.selected().
 			nawp := atomWithPackages{
-				atom: ProjectAtom{
-					Ident:   bmi.id,
-					Version: awp.atom.Version,
+				a: atom{
+					id: bmi.id,
+					v:  awp.a.v,
 				},
 				pl: bmi.pl,
 			}
@@ -334,15 +360,15 @@ func (s *solver) solve() (map[ProjectAtom]map[string]struct{}, error) {
 
 	// Getting this far means we successfully found a solution. Combine the
 	// selected projects and packages.
-	projs := make(map[ProjectAtom]map[string]struct{})
+	projs := make(map[atom]map[string]struct{})
 
 	// Skip the first project. It's always the root, and that shouldn't be
 	// included in results.
 	for _, sel := range s.sel.projects[1:] {
-		pm, exists := projs[sel.a.atom]
+		pm, exists := projs[sel.a.a]
 		if !exists {
 			pm = make(map[string]struct{})
-			projs[sel.a.atom] = pm
+			projs[sel.a.a] = pm
 		}
 
 		for _, path := range sel.a.pl {
@@ -355,18 +381,18 @@ func (s *solver) solve() (map[ProjectAtom]map[string]struct{}, error) {
 // selectRoot is a specialized selectAtomWithPackages, used solely to initially
 // populate the queues at the beginning of a solve run.
 func (s *solver) selectRoot() error {
-	pa := ProjectAtom{
-		Ident: ProjectIdentifier{
-			LocalName: s.args.N,
+	pa := atom{
+		id: ProjectIdentifier{
+			LocalName: s.args.Name,
 		},
 		// This is a hack so that the root project doesn't have a nil version.
 		// It's sort of OK because the root never makes it out into the results.
 		// We may need a more elegant solution if we discover other side
 		// effects, though.
-		Version: Revision(""),
+		v: Revision(""),
 	}
 
-	ptree, err := s.b.listPackages(pa.Ident, nil)
+	ptree, err := s.b.listPackages(pa.id, nil)
 	if err != nil {
 		return err
 	}
@@ -379,8 +405,8 @@ func (s *solver) selectRoot() error {
 	}
 
 	a := atomWithPackages{
-		atom: pa,
-		pl:   list,
+		a:  pa,
+		pl: list,
 	}
 
 	// Push the root project onto the queue.
@@ -389,8 +415,8 @@ func (s *solver) selectRoot() error {
 
 	// If we're looking for root's deps, get it from opts and local root
 	// analysis, rather than having the sm do it
-	mdeps := append(s.rm.GetDependencies(), s.rm.GetDevDependencies()...)
-	reach, err := s.b.computeRootReach(s.args.Root)
+	mdeps := append(s.rm.DependencyConstraints(), s.rm.TestDependencyConstraints()...)
+	reach, err := s.b.computeRootReach()
 	if err != nil {
 		return err
 	}
@@ -402,7 +428,7 @@ func (s *solver) selectRoot() error {
 	}
 
 	for _, dep := range deps {
-		s.sel.pushDep(Dependency{Depender: pa, Dep: dep})
+		s.sel.pushDep(dependency{depender: pa, dep: dep})
 		// Add all to unselected queue
 		s.names[dep.Ident.LocalName] = dep.Ident.netName()
 		heap.Push(s.unsel, bimodalIdentifier{id: dep.Ident, pl: dep.pl})
@@ -414,23 +440,23 @@ func (s *solver) selectRoot() error {
 func (s *solver) getImportsAndConstraintsOf(a atomWithPackages) ([]completeDep, error) {
 	var err error
 
-	if s.rm.Name() == a.atom.Ident.LocalName {
+	if s.rm.Name() == a.a.id.LocalName {
 		panic("Should never need to recheck imports/constraints from root during solve")
 	}
 
 	// Work through the source manager to get project info and static analysis
 	// information.
-	info, err := s.b.getProjectInfo(a.atom)
+	m, _, err := s.b.getProjectInfo(a.a)
 	if err != nil {
 		return nil, err
 	}
 
-	ptree, err := s.b.listPackages(a.atom.Ident, a.atom.Version)
+	ptree, err := s.b.listPackages(a.a.id, a.a.v)
 	if err != nil {
 		return nil, err
 	}
 
-	allex, err := ptree.ExternalReach(false, false)
+	allex, err := ptree.ExternalReach(false, false, s.ig)
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +467,7 @@ func (s *solver) getImportsAndConstraintsOf(a atomWithPackages) ([]completeDep, 
 	// the list
 	for _, pkg := range a.pl {
 		if expkgs, exists := allex[pkg]; !exists {
-			return nil, fmt.Errorf("Package %s does not exist within project %s", pkg, a.atom.Ident.errString())
+			return nil, fmt.Errorf("package %s does not exist within project %s", pkg, a.a.id.errString())
 		} else {
 			for _, ex := range expkgs {
 				exmap[ex] = struct{}{}
@@ -456,7 +482,7 @@ func (s *solver) getImportsAndConstraintsOf(a atomWithPackages) ([]completeDep, 
 		k++
 	}
 
-	deps := info.GetDependencies()
+	deps := m.DependencyConstraints()
 	// TODO add overrides here...if we impl the concept (which we should)
 
 	return s.intersectConstraintsWithImports(deps, reach)
@@ -615,9 +641,9 @@ func (s *solver) findValidVersion(q *versionQueue, pl []string) error {
 	for {
 		cur := q.current()
 		err := s.checkProject(atomWithPackages{
-			atom: ProjectAtom{
-				Ident:   q.id,
-				Version: cur,
+			a: atom{
+				id: q.id,
+				v:  cur,
 			},
 			pl: pl,
 		})
@@ -636,7 +662,7 @@ func (s *solver) findValidVersion(q *versionQueue, pl []string) error {
 		}
 	}
 
-	s.fail(s.sel.getDependenciesOn(q.id)[0].Depender.Ident)
+	s.fail(s.sel.getDependenciesOn(q.id)[0].depender.id)
 
 	// Return a compound error of all the new errors encountered during this
 	// attempt to find a new, valid version
@@ -655,7 +681,7 @@ func (s *solver) findValidVersion(q *versionQueue, pl []string) error {
 //
 // If any of these three conditions are true (or if the id cannot be found in
 // the root lock), then no atom will be returned.
-func (s *solver) getLockVersionIfValid(id ProjectIdentifier) (ProjectAtom, error) {
+func (s *solver) getLockVersionIfValid(id ProjectIdentifier) (atom, error) {
 	// If the project is specifically marked for changes, then don't look for a
 	// locked version.
 	if _, explicit := s.chng[id.LocalName]; explicit || s.o.ChangeAll {
@@ -719,9 +745,9 @@ func (s *solver) getLockVersionIfValid(id ProjectIdentifier) (ProjectAtom, error
 
 	s.logSolve("using root lock's version of %s", id.errString())
 
-	return ProjectAtom{
-		Ident:   id,
-		Version: v,
+	return atom{
+		id: id,
+		v:  v,
 	}, nil
 }
 
@@ -762,7 +788,7 @@ func (s *solver) backtrack() bool {
 			awp, proj = s.unselectLast()
 		}
 
-		if !q.id.eq(awp.atom.Ident) {
+		if !q.id.eq(awp.a.id) {
 			panic("canary - version queue stack and selected project stack are out of alignment")
 		}
 
@@ -776,9 +802,9 @@ func (s *solver) backtrack() bool {
 				// Found one! Put it back on the selected queue and stop
 				// backtracking
 				s.selectAtomWithPackages(atomWithPackages{
-					atom: ProjectAtom{
-						Ident:   q.id,
-						Version: q.current(),
+					a: atom{
+						id: q.id,
+						v:  q.current(),
 					},
 					pl: awp.pl,
 				})
@@ -912,7 +938,7 @@ func (s *solver) fail(id ProjectIdentifier) {
 // new resultant deps to the unselected queue.
 func (s *solver) selectAtomWithPackages(a atomWithPackages) {
 	s.unsel.remove(bimodalIdentifier{
-		id: a.atom.Ident,
+		id: a.a.id,
 		pl: a.pl,
 	})
 
@@ -926,7 +952,7 @@ func (s *solver) selectAtomWithPackages(a atomWithPackages) {
 	}
 
 	for _, dep := range deps {
-		s.sel.pushDep(Dependency{Depender: a.atom, Dep: dep})
+		s.sel.pushDep(dependency{depender: a.a, dep: dep})
 		// Go through all the packages introduced on this dep, selecting only
 		// the ones where the only depper on them is what we pushed in. Then,
 		// put those into the unselected queue.
@@ -956,7 +982,7 @@ func (s *solver) selectAtomWithPackages(a atomWithPackages) {
 // order to enqueue the selection.
 func (s *solver) selectPackages(a atomWithPackages) {
 	s.unsel.remove(bimodalIdentifier{
-		id: a.atom.Ident,
+		id: a.a.id,
 		pl: a.pl,
 	})
 
@@ -970,7 +996,7 @@ func (s *solver) selectPackages(a atomWithPackages) {
 	}
 
 	for _, dep := range deps {
-		s.sel.pushDep(Dependency{Depender: a.atom, Dep: dep})
+		s.sel.pushDep(dependency{depender: a.a, dep: dep})
 		// Go through all the packages introduced on this dep, selecting only
 		// the ones where the only depper on them is what we pushed in. Then,
 		// put those into the unselected queue.
@@ -994,7 +1020,7 @@ func (s *solver) selectPackages(a atomWithPackages) {
 
 func (s *solver) unselectLast() (atomWithPackages, bool) {
 	awp, first := s.sel.popSelection()
-	heap.Push(s.unsel, bimodalIdentifier{id: awp.atom.Ident, pl: awp.pl})
+	heap.Push(s.unsel, bimodalIdentifier{id: awp.a.id, pl: awp.pl})
 
 	deps, err := s.getImportsAndConstraintsOf(awp)
 	if err != nil {
@@ -1078,15 +1104,15 @@ func tracePrefix(msg, sep, fsep string) string {
 }
 
 // simple (temporary?) helper just to convert atoms into locked projects
-func pa2lp(pa ProjectAtom, pkgs map[string]struct{}) LockedProject {
+func pa2lp(pa atom, pkgs map[string]struct{}) LockedProject {
 	lp := LockedProject{
-		pi: pa.Ident.normalize(), // shouldn't be necessary, but normalize just in case
+		pi: pa.id.normalize(), // shouldn't be necessary, but normalize just in case
 		// path is unnecessary duplicate information now, but if we ever allow
 		// nesting as a conflict resolution mechanism, it will become valuable
-		path: string(pa.Ident.LocalName),
+		path: string(pa.id.LocalName),
 	}
 
-	switch v := pa.Version.(type) {
+	switch v := pa.v.(type) {
 	case UnpairedVersion:
 		lp.v = v
 	case Revision:
@@ -1099,7 +1125,7 @@ func pa2lp(pa ProjectAtom, pkgs map[string]struct{}) LockedProject {
 	}
 
 	for pkg := range pkgs {
-		lp.pkgs = append(lp.pkgs, strings.TrimPrefix(pkg, string(pa.Ident.LocalName)+string(os.PathSeparator)))
+		lp.pkgs = append(lp.pkgs, strings.TrimPrefix(pkg, string(pa.id.LocalName)+string(os.PathSeparator)))
 	}
 	sort.Strings(lp.pkgs)
 
