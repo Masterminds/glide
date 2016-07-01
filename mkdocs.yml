@@ -8,5 +8,6 @@ pages:
 - Commands: commands.md
 - Resolving Imports: resolving-imports.md
 - Vendor Directories: vendor.md
+- Plugins: plugins.md
 - F.A.Q.: faq.md
 theme: readthedocs
