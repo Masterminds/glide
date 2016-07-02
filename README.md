@@ -76,6 +76,12 @@ to see this philosophy in action.*
 
 ## Install
 
+The easiest way to install glide:
+
+```
+go get github.com/Masterminds/glide
+```
+
 On Mac OS X you can install the latest release via [Homebrew](https://github.com/Homebrew/homebrew):
 
 ```
