@@ -1,3 +1,46 @@
+# Release 0.11.0 (2016-07-05)
+
+## Added
+- #461: Resolve test imports
+- #458: Wizard and version detection are now on `glide get`
+- #444: New config wizard helps you find versions and set ranges. Can be run from
+  `glide init` or as separate command
+- #438: Added ability to read symlink basedirs (thanks klnusbaum)
+- #436: Added .idea to .gitignore
+- #393 and #401: Added a PPA (https://github.com/Masterminds/glide-ppa) and instructions
+  on using it (thanks franciscocpg)
+- #390: Added support for custom Go executable name. Needed for environments like
+  appengine. Environment variable GLIDE_GO_EXECUTABLE (thanks dpmcnevin)
+- #382: `glide info` command takes a format string and returns info (thanks franciscocpg)
+- #365: glide list: support json output format (thanks chancez)
+
+## Changed
+- Tags are now in the form v[SemVer]. The change is the initial v on the tag.
+  This is to conform with other Go tools that require this.
+- #501: Updating the plugins documentation and adding listing
+- #500: Log an error if stripping version control data fails (thanks alexbrand)
+- #496: Updated to github.com/Masterminds/semver 1.1.1
+- #495: Updated to github.com/Masterminds/vcs 1.8.0
+- #494: Glide install skips fetch when it is up to date
+- #489: Make shared funcs for lockfile usage (thanks heewa)
+- #459: When a conflict occurs output the tag, if one exists, for the commit
+- #443: Updating message indentation to be uniform
+- #431: Updated the docs on subpackages
+- #433: The global shared cache was reworked in prep for future uses
+- #396: Don't update the lock file if nothing has changed
+
+## Fixed
+- #460: Sometimes ignored packages were written to lock file. Fixed.
+- #463: Fixed possible nil pointer issues
+- #453: Fix DeleteUnused flag which was not working (thanks s-urbaniak)
+- #432: Fixed issue with new net/http/httptrace std lib package
+- #392: Correctly normalize Windows package paths (thanks jrick)
+- #395: Creating the cache key did not handle SCP properly
+- #386: Fixed help text indentation
+- #383: Failed `glide get` had been updating files. No longer does this
+
+And thanks to so many for small documentation fixes.
+
 # Release 0.10.2 (2016-04-06)
 
 - Issue #362: Updated docs on how -update-vendored works to help avoid confusion.
