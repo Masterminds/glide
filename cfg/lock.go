@@ -109,14 +109,16 @@ func (lf *Lockfile) Projects() []vsolver.LockedProject {
 
 		// semver first
 		_, err := semver.NewVersion(l.Version)
-		if err != nil {
+		if err == nil {
+			v = vsolver.NewVersion(l.Version)
+		} else {
 			// Crappy heuristic to cover hg and git, but not bzr. Or (lol) svn
 			if len(l.Version) == 40 {
 				v = vsolver.Revision(l.Version)
+			} else {
+				// Otherwise, assume it's a branch
+				v = vsolver.NewBranch(l.Version)
 			}
-		} else {
-			// Otherwise, assume it's a branch
-			v = vsolver.NewBranch(l.Version)
 		}
 
 		lp[k] = vsolver.NewLockedProject(vsolver.ProjectName(l.Name), v, l.Repository, l.Name, nil)
