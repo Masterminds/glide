@@ -76,7 +76,13 @@ to see this philosophy in action.*
 
 ## Install
 
-On Mac OS X you can install the latest release via [Homebrew](https://github.com/Homebrew/homebrew):
+The easiest way to install the latest release on Mac or Linux is with the following script:
+
+```
+curl https://glide.sh/get | sh
+```
+
+On Mac OS X you can also install the latest release via [Homebrew](https://github.com/Homebrew/homebrew):
 
 ```
 $ brew install glide
