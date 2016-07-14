@@ -13,7 +13,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
-	"github.com/sdboyer/vsolver"
+	"github.com/sdboyer/gps"
 )
 
 // Install installs a vendor directory based on an existing Glide configuration.
@@ -31,33 +31,31 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := vsolver.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())
 		return
 	}
 
-	args := vsolver.SolveArgs{
-		Name:     vsolver.ProjectName(conf.ProjectName),
-		Root:     filepath.Dir(vend),
-		Manifest: conf,
-	}
-
-	opts := vsolver.SolveOpts{
+	params := gps.SolveParameters{
+		Name:        gps.ProjectName(conf.ProjectName),
+		Root:        filepath.Dir(vend),
+		Manifest:    conf,
+		Ignore:      conf.Ignore,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
 	}
 
-	var s vsolver.Solver
+	var s gps.Solver
 	if gpath.HasLock(base) {
-		args.Lock, err = LoadLockfile(base, conf)
+		params.Lock, err = LoadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile.")
 			return
 		}
 
-		s, err = vsolver.Prepare(args, opts, sm)
+		s, err = gps.Prepare(params, opts, sm)
 		if err != nil {
 			msg.Err("Could not set up solver: %s", err)
 			return
@@ -65,7 +63,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 		digest, err := s.HashInputs()
 
 		// Check if digests match, and warn if they don't
-		if bytes.Equal(digest, args.Lock.InputHash()) {
+		if bytes.Equal(digest, params.Lock.InputHash()) {
 			if so {
 				msg.Err("glide.yaml is out of sync with glide.lock")
 				return
@@ -75,7 +73,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 		}
 
 		gw := safeGroupWriter{
-			resultLock:  args.Lock,
+			resultLock:  params.Lock,
 			vendor:      vend,
 			sm:          sm,
 			stripVendor: sv,
@@ -91,7 +89,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 		return
 	} else {
 		// There is no lock, so we have to solve first
-		s, err = vsolver.Prepare(args, opts, sm)
+		s, err = gps.Prepare(params, sm)
 		if err != nil {
 			msg.Err("Could not set up solver: %s", err)
 			return
@@ -145,8 +143,8 @@ func locksAreEquivalent(l1, l2 *cfg.Lockfile) bool {
 type safeGroupWriter struct {
 	conf              *cfg.Config
 	lock              *cfg.Lockfile
-	resultLock        vsolver.Lock
-	sm                vsolver.SourceManager
+	resultLock        gps.Lock
+	sm                gps.SourceManager
 	glidefile, vendor string
 	stripVendor       bool
 }
@@ -235,7 +233,7 @@ func (gw safeGroupWriter) writeAllSafe() error {
 	}
 
 	if writeVendor {
-		err = vsolver.CreateVendorTree(filepath.Join(td, "vendor"), gw.resultLock, gw.sm, gw.stripVendor)
+		err = gps.CreateVendorTree(filepath.Join(td, "vendor"), gw.resultLock, gw.sm, gw.stripVendor)
 		if err != nil {
 			return fmt.Errorf("Error while generating vendor tree: %s", err)
 		}

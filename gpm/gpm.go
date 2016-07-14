@@ -79,7 +79,7 @@ func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
 		parts, ok := parseGodepsLine(scanner.Text())
 		if ok {
 			// Place no actual constraint on the project; rely instead on
-			// vsolver's 'preferred version' reasoning from deps' lock
+			// gps's 'preferred version' reasoning from deps' lock
 			// files...if we have one at all.
 			if len(parts) > 1 {
 				l.Imports = append(l.Imports, &cfg.Lock{Name: parts[0], Version: parts[1]})

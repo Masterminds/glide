@@ -128,7 +128,7 @@ func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
 			seen[pkg] = true
 
 			// Place no real *actual* constraint on the project; instead, we
-			// rely on vsolver using the 'preferred' version mechanism by
+			// rely on gps using the 'preferred' version mechanism by
 			// working from the lock file. Without this, users would end up with
 			// the same mind-numbing diamond dep problems as currently exist.
 			// This approach does make for an uncomfortably wide possibility

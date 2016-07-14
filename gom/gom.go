@@ -9,7 +9,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
-	"github.com/sdboyer/vsolver"
+	"github.com/sdboyer/gps"
 )
 
 // Has returns true if this dir has a Gomfile.
@@ -92,7 +92,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 }
 
 // AsMetadataPair attempts to extract manifest and lock data from gom metadata.
-func AsMetadataPair(dir string) (vsolver.Manifest, vsolver.Lock, error) {
+func AsMetadataPair(dir string) (gps.Manifest, gps.Lock, error) {
 	path := filepath.Join(dir, "Gomfile")
 	if _, err := os.Stat(path); err != nil {
 		return nil, nil, err
@@ -103,9 +103,9 @@ func AsMetadataPair(dir string) (vsolver.Manifest, vsolver.Lock, error) {
 		return nil, nil, err
 	}
 
-	var l vsolver.SimpleLock
-	m := vsolver.SimpleManifest{
-		N: vsolver.ProjectName(dir),
+	var l gps.SimpleLock
+	m := gps.SimpleManifest{
+		N: gps.ProjectName(dir),
 	}
 
 	for _, gom := range goms {
@@ -130,9 +130,9 @@ func AsMetadataPair(dir string) (vsolver.Manifest, vsolver.Lock, error) {
 
 		pkg, _ := util.NormalizeName(gom.name)
 
-		dep := vsolver.ProjectDep{
-			Ident: vsolver.ProjectIdentifier{
-				LocalName: vsolver.ProjectName(pkg),
+		dep := gps.ProjectDep{
+			Ident: gps.ProjectIdentifier{
+				LocalName: gps.ProjectName(pkg),
 			},
 		}
 
@@ -142,37 +142,37 @@ func AsMetadataPair(dir string) (vsolver.Manifest, vsolver.Lock, error) {
 		//   - Branch
 		//   - Revision
 
-		var v vsolver.UnpairedVersion
+		var v gps.UnpairedVersion
 		if val, ok := gom.options["tag"]; ok {
 			body := val.(string)
-			v = vsolver.NewVersion(body)
-			c, err := vsolver.NewSemverConstraint(body)
+			v = gps.NewVersion(body)
+			c, err := gps.NewSemverConstraint(body)
 			if err != nil {
-				c = vsolver.NewVersion(body)
+				c = gps.NewVersion(body)
 			}
 			dep.Constraint = c
 		} else if val, ok := gom.options["branch"]; ok {
 			body := val.(string)
-			v = vsolver.NewBranch(body)
-			dep.Constraint = vsolver.NewBranch(body)
+			v = gps.NewBranch(body)
+			dep.Constraint = gps.NewBranch(body)
 		}
 
 		if val, ok := gom.options["commit"]; ok {
 			body := val.(string)
 			if v != nil {
-				v.Is(vsolver.Revision(body))
-				l = append(l, vsolver.NewLockedProject(vsolver.ProjectName(dir), v, dir, dir, nil))
+				v.Is(gps.Revision(body))
+				l = append(l, gps.NewLockedProject(gps.ProjectName(dir), v, dir, dir, nil))
 			} else {
 				// As with the other third-party system integrations, we're
 				// going to choose not to put revisions into a manifest, even
 				// though gom has a lot more information than most and the
 				// argument could be made for it.
-				dep.Constraint = vsolver.Any()
-				l = append(l, vsolver.NewLockedProject(vsolver.ProjectName(dir), vsolver.Revision(body), dir, dir, nil))
+				dep.Constraint = gps.Any()
+				l = append(l, gps.NewLockedProject(gps.ProjectName(dir), gps.Revision(body), dir, dir, nil))
 			}
 		} else if v != nil {
 			// This is kinda uncomfortable - lock w/no immut - but OK
-			l = append(l, vsolver.NewLockedProject(vsolver.ProjectName(dir), v, dir, dir, nil))
+			l = append(l, gps.NewLockedProject(gps.ProjectName(dir), v, dir, dir, nil))
 		}
 
 		// TODO We ignore GOOS, GOARCH for now

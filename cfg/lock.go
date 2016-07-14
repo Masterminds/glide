@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/sdboyer/vsolver"
+	"github.com/sdboyer/gps"
 
 	"gopkg.in/yaml.v2"
 )
@@ -22,8 +22,8 @@ type Lockfile struct {
 	DevImports Locks     `yaml:"testImports"`
 }
 
-// LockfileFromSolverLock transforms a vsolver.Lock into a glide *Lockfile.
-func LockfileFromSolverLock(r vsolver.Lock) *Lockfile {
+// LockfileFromSolverLock transforms a gps.Lock into a glide *Lockfile.
+func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 	if r == nil {
 		return nil
 	}
@@ -46,7 +46,7 @@ func LockfileFromSolverLock(r vsolver.Lock) *Lockfile {
 		}
 
 		v := p.Version()
-		if pv, ok := v.(vsolver.PairedVersion); ok {
+		if pv, ok := v.(gps.PairedVersion); ok {
 			l.Version = pv.Underlying().String()
 		} else {
 			l.Version = v.String()
@@ -99,29 +99,29 @@ func (lf *Lockfile) InputHash() []byte {
 }
 
 // Projects returns the list of projects enumerated in the lock file.
-func (lf *Lockfile) Projects() []vsolver.LockedProject {
+func (lf *Lockfile) Projects() []gps.LockedProject {
 	all := append(lf.Imports, lf.DevImports...)
-	lp := make([]vsolver.LockedProject, len(all))
+	lp := make([]gps.LockedProject, len(all))
 
 	for k, l := range all {
 		// TODO guess the version type. ugh
-		var v vsolver.Version
+		var v gps.Version
 
 		// semver first
 		_, err := semver.NewVersion(l.Version)
 		if err == nil {
-			v = vsolver.NewVersion(l.Version)
+			v = gps.NewVersion(l.Version)
 		} else {
 			// Crappy heuristic to cover hg and git, but not bzr. Or (lol) svn
 			if len(l.Version) == 40 {
-				v = vsolver.Revision(l.Version)
+				v = gps.Revision(l.Version)
 			} else {
 				// Otherwise, assume it's a branch
-				v = vsolver.NewBranch(l.Version)
+				v = gps.NewBranch(l.Version)
 			}
 		}
 
-		lp[k] = vsolver.NewLockedProject(vsolver.ProjectName(l.Name), v, l.Repository, l.Name, nil)
+		lp[k] = gps.NewLockedProject(gps.ProjectName(l.Name), v, l.Repository, l.Name, nil)
 	}
 
 	return lp

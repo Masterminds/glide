@@ -10,7 +10,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
-	"github.com/sdboyer/vsolver"
+	"github.com/sdboyer/gps"
 )
 
 // Update updates repos and the lock file from the main glide yaml.
@@ -30,13 +30,14 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
-	args := vsolver.SolveArgs{
-		Name:     vsolver.ProjectName(conf.ProjectName),
+	args := gps.SolveArgs{
+		Name:     gps.ProjectName(conf.ProjectName),
 		Root:     filepath.Dir(vend),
 		Manifest: conf,
+		Ignore:   conf.Ignore,
 	}
 
-	opts := vsolver.SolveOpts{
+	opts := gps.SolveOpts{
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
 	}
@@ -49,7 +50,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 			if !conf.HasDependency(p) {
 				msg.Die("Cannot update %s, as it is not listed as dependency in glide.yaml.", p)
 			}
-			opts.ToChange = append(opts.ToChange, vsolver.ProjectName(p))
+			opts.ToChange = append(opts.ToChange, gps.ProjectName(p))
 		}
 	}
 
@@ -62,15 +63,15 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := vsolver.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
-	defer sm.Release()
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
 	if err != nil {
 		msg.Err(err.Error())
 		return
 	}
+	defer sm.Release()
 
 	// Prepare a solver. This validates our args and opts.
-	s, err := vsolver.Prepare(args, opts, sm)
+	s, err := gps.Prepare(args, opts, sm)
 	if err != nil {
 		msg.Err("Could not set up solver: %s", err)
 		return

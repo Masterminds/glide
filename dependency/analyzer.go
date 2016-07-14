@@ -13,7 +13,7 @@ import (
 	"github.com/Masterminds/glide/gom"
 	"github.com/Masterminds/glide/gpm"
 	gpath "github.com/Masterminds/glide/path"
-	"github.com/sdboyer/vsolver"
+	"github.com/sdboyer/gps"
 )
 
 type notApplicable struct{}
@@ -22,12 +22,12 @@ func (notApplicable) Error() string {
 	return ""
 }
 
-// Analyzer implements vsolver.ProjectAnalyzer. We inject the Analyzer into a
-// vsolver.SourceManager, and it reports manifest and lock information to the
+// Analyzer implements gps.ProjectAnalyzer. We inject the Analyzer into a
+// gps.SourceManager, and it reports manifest and lock information to the
 // SourceManager on request.
 type Analyzer struct{}
 
-func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Manifest, vsolver.Lock, error) {
+func (a Analyzer) GetInfo(ctx build.Context, pn gps.ProjectName) (gps.Manifest, gps.Lock, error) {
 	// For now, at least, we do not search above the root path provided by
 	// the SourceManager.
 	root := filepath.Join(ctx.GOPATH, "src", string(pn))
@@ -82,12 +82,12 @@ func (a Analyzer) GetInfo(ctx build.Context, pn vsolver.ProjectName) (vsolver.Ma
 	}
 
 	// If none of our parsers matched, but none had actual errors, then we just
-	// go hands-off; vsolver itself will do the source analysis and use the Any
+	// go hands-off; gps itself will do the source analysis and use the Any
 	// constraint for all discovered package.
 	return nil, nil, nil
 }
 
-func (a Analyzer) lookForGlide(root string) (vsolver.Manifest, vsolver.Lock, error) {
+func (a Analyzer) lookForGlide(root string) (gps.Manifest, gps.Lock, error) {
 	mpath := filepath.Join(root, gpath.GlideFile)
 	if _, err := os.Lstat(mpath); err != nil {
 		return nil, nil, notApplicable{}
@@ -126,7 +126,7 @@ func (a Analyzer) lookForGlide(root string) (vsolver.Manifest, vsolver.Lock, err
 	return m, l, nil
 }
 
-func (a Analyzer) lookForGodep(root string) (vsolver.Manifest, vsolver.Lock, error) {
+func (a Analyzer) lookForGodep(root string) (gps.Manifest, gps.Lock, error) {
 	if !godep.Has(root) {
 		return nil, nil, notApplicable{}
 	}
@@ -139,7 +139,7 @@ func (a Analyzer) lookForGodep(root string) (vsolver.Manifest, vsolver.Lock, err
 	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
 }
 
-func (a Analyzer) lookForGPM(root string) (vsolver.Manifest, vsolver.Lock, error) {
+func (a Analyzer) lookForGPM(root string) (gps.Manifest, gps.Lock, error) {
 	if !gpm.Has(root) {
 		return nil, nil, notApplicable{}
 	}
@@ -152,7 +152,7 @@ func (a Analyzer) lookForGPM(root string) (vsolver.Manifest, vsolver.Lock, error
 	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
 }
 
-func (a Analyzer) lookForGb(root string) (vsolver.Manifest, vsolver.Lock, error) {
+func (a Analyzer) lookForGb(root string) (gps.Manifest, gps.Lock, error) {
 	if !gpm.Has(root) {
 		return nil, nil, notApplicable{}
 	}
@@ -165,7 +165,7 @@ func (a Analyzer) lookForGb(root string) (vsolver.Manifest, vsolver.Lock, error)
 	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
 }
 
-func (a Analyzer) lookForGom(root string) (vsolver.Manifest, vsolver.Lock, error) {
+func (a Analyzer) lookForGom(root string) (gps.Manifest, gps.Lock, error) {
 	if !gpm.Has(root) {
 		return nil, nil, notApplicable{}
 	}

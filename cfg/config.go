@@ -10,7 +10,7 @@ import (
 
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/vcs"
-	"github.com/sdboyer/vsolver"
+	"github.com/sdboyer/gps"
 	"gopkg.in/yaml.v2"
 )
 
@@ -163,21 +163,21 @@ func (c *Config) HasDependency(name string) bool {
 }
 
 // DependencyConstraints lists all the non-test dependency constraints
-// described in a glide manifest in a way vsolver will understand.
-func (c *Config) DependencyConstraints() []vsolver.ProjectDep {
+// described in a glide manifest in a way gps will understand.
+func (c *Config) DependencyConstraints() []gps.ProjectDep {
 	return depsToVSolver(c.Imports)
 }
 
 // TestDependencyConstraints lists all the test dependency constraints described
-// in a glide manifest in a way vsolver will understand.
-func (c *Config) TestDependencyConstraints() []vsolver.ProjectDep {
+// in a glide manifest in a way gps will understand.
+func (c *Config) TestDependencyConstraints() []gps.ProjectDep {
 	return depsToVSolver(c.DevImports)
 }
 
-func depsToVSolver(deps Dependencies) []vsolver.ProjectDep {
-	cp := make([]vsolver.ProjectDep, len(deps))
+func depsToVSolver(deps Dependencies) []gps.ProjectDep {
+	cp := make([]gps.ProjectDep, len(deps))
 	for k, d := range deps {
-		var c vsolver.Constraint
+		var c gps.Constraint
 		var err error
 
 		// Support both old and new. TODO handle this earlier
@@ -187,26 +187,26 @@ func depsToVSolver(deps Dependencies) []vsolver.ProjectDep {
 			// TODO need to differentiate types of constraints so that we don't have
 			// this ambiguity
 			// Try semver first
-			c, err = vsolver.NewSemverConstraint(d.Reference)
+			c, err = gps.NewSemverConstraint(d.Reference)
 			if err != nil {
 				// Not a semver constraint. Super crappy heuristic that'll cover hg
 				// and git revs, but not bzr (svn, you say? lol, madame. lol)
 				if len(d.Reference) == 40 {
-					c = vsolver.Revision(d.Reference)
+					c = gps.Revision(d.Reference)
 				} else {
 					// Otherwise, assume a branch. This also sucks, because it could
 					// very well be a shitty, non-semver tag.
-					c = vsolver.NewBranch(d.Reference)
+					c = gps.NewBranch(d.Reference)
 				}
 			}
 		}
 
-		id := vsolver.ProjectIdentifier{
-			LocalName:   vsolver.ProjectName(d.Name),
+		id := gps.ProjectIdentifier{
+			LocalName:   gps.ProjectName(d.Name),
 			NetworkName: d.Repository,
 		}
 
-		cp[k] = vsolver.ProjectDep{
+		cp[k] = gps.ProjectDep{
 			Ident:      id,
 			Constraint: c,
 		}
@@ -216,8 +216,8 @@ func depsToVSolver(deps Dependencies) []vsolver.ProjectDep {
 }
 
 // Name returns the name of the project given in the manifest.
-func (c *Config) Name() vsolver.ProjectName {
-	return vsolver.ProjectName(c.ProjectName)
+func (c *Config) Name() gps.ProjectName {
+	return gps.ProjectName(c.ProjectName)
 }
 
 // HasIgnore returns true if the given name is listed on the ignore list.
@@ -441,7 +441,7 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
 	Name             string             `yaml:"package"`
-	Constraint       vsolver.Constraint `yaml:"-"` // TODO temporary, for experimenting; reconcile with other data
+	Constraint       gps.Constraint `yaml:"-"` // TODO temporary, for experimenting; reconcile with other data
 	Reference        string             `yaml:"version,omitempty"`
 	Pin              string             `yaml:"-"`
 	Repository       string             `yaml:"repo,omitempty"`
@@ -484,12 +484,12 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		// TODO this covers git & hg; bzr and svn (??) need love
 		if len(r) == 40 {
 			if _, err := hex.DecodeString(r); err == nil {
-				d.Constraint = vsolver.Revision(r)
+				d.Constraint = gps.Revision(r)
 			}
 		} else {
-			d.Constraint, err = vsolver.NewSemverConstraint(r)
+			d.Constraint, err = gps.NewSemverConstraint(r)
 			if err != nil {
-				d.Constraint = vsolver.NewVersion(r)
+				d.Constraint = gps.NewVersion(r)
 			}
 		}
 
@@ -497,14 +497,14 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, r, err)
 		}
 	} else if newDep.Branch != "" {
-		d.Constraint = vsolver.NewBranch(newDep.Branch)
+		d.Constraint = gps.NewBranch(newDep.Branch)
 
 		if err != nil {
 			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Branch, err)
 		}
 	} else {
 		// TODO this is just for now - need a default branch constraint type
-		d.Constraint = vsolver.Any()
+		d.Constraint = gps.Any()
 	}
 
 	d.Repository = newDep.Repository
@@ -548,7 +548,7 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	}
 
 	// Pull out the correct type of constraint
-	if v, ok := d.Constraint.(vsolver.Version); ok {
+	if v, ok := d.Constraint.(gps.Version); ok {
 		switch v.Type() {
 		case "any":
 			// Do nothing; nothing here is taken as 'any'
@@ -557,7 +557,7 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 		case "revision", "semver", "version":
 			newDep.Reference = v.String()
 		}
-	} else if vsolver.IsAny(d.Constraint) {
+	} else if gps.IsAny(d.Constraint) {
 		// We do nothing here, as the way any gets represented is with no
 		// constraint information at all
 		// TODO for now, probably until we add first-class 'default branch'

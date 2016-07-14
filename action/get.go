@@ -15,7 +15,7 @@ import (
 	"github.com/Masterminds/glide/repo"
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
-	"github.com/sdboyer/vsolver"
+	"github.com/sdboyer/gps"
 )
 
 // Get fetches one or more dependencies and installs.
@@ -37,13 +37,14 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
-	args := vsolver.SolveArgs{
-		Name:     vsolver.ProjectName(conf.ProjectName),
+	args := gps.SolveArgs{
+		Name:     gps.ProjectName(conf.ProjectName),
 		Root:     filepath.Dir(glidefile),
 		Manifest: conf,
+		Ignore:   conf.Ignore,
 	}
 
-	opts := vsolver.SolveOpts{
+	opts := gps.SolveOpts{
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
 	}
@@ -60,7 +61,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	}
 
 	// Create the SourceManager for this run
-	sm, err := vsolver.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())
@@ -80,7 +81,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	}
 
 	// Prepare a solver. This validates our args and opts.
-	s, err := vsolver.Prepare(args, opts, sm)
+	s, err := gps.Prepare(args, opts, sm)
 	if err != nil {
 		msg.Err("Aborted get - could not set up solver to reconcile dependencies: %s", err)
 		return
@@ -134,7 +135,7 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 // - sets up insecure repo URLs where necessary
 // - generates a list of subpackages
 func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, testDeps bool) (int, error) {
-	// TODO refactor this to take and use a vsolver.SourceManager
+	// TODO refactor this to take and use a gps.SourceManager
 	if len(names) == 1 {
 		msg.Info("Preparing to install %d package.", len(names))
 	} else {
@@ -202,7 +203,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 
 		dep := &cfg.Dependency{
 			Name:       root,
-			Constraint: vsolver.Any(),
+			Constraint: gps.Any(),
 		}
 
 		// When retriving from an insecure location set the repo to the
