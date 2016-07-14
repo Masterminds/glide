@@ -1,5 +1,5 @@
-hash: 607480f548198f86c4f4a5946960053afa74db4cd2d5c62b51d5954470922d3a
-updated: 2016-06-24T15:23:14.128213581-04:00
+hash: 0653c17bcbf6f1df79990f3d2211dbcbc920ca528c513b00f5cab0a508c984ab
+updated: 2016-06-30T10:51:49.633776379-04:00
 imports:
 - name: github.com/armon/go-radix
   version: 4239b77079c7b5d1243b7b4736304ce8ddb6f0f2
@@ -8,7 +8,7 @@ imports:
 - name: github.com/Masterminds/semver
   version: 0a2c9fc0eee2c4cbb9526877c4a54da047fdcadd
 - name: github.com/Masterminds/vcs
-  version: 7af28b64c5ec41b1558f5514fd938379822c237c
+  version: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
 - name: github.com/sdboyer/gps
   version: a868c10855893c21ed05d0f50d6f9acb12b6366d
 - name: github.com/termie/go-shutil

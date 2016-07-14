@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -58,12 +59,40 @@ func TestVCSLookup(t *testing.T) {
 			t.Errorf("Error detecting VCS from URL(%s): %s", u, err)
 		}
 
-		if err != nil && err != ErrCannotDetectVCS && c.work == false {
+		if err != nil &&
+			err != ErrCannotDetectVCS &&
+			!strings.HasSuffix(err.Error(), "Not Found") &&
+			!strings.HasSuffix(err.Error(), "Access Denied") &&
+			c.work == false {
 			t.Errorf("Unexpected error returned (%s): %s", u, err)
 		}
 
 		if c.work == true && ty != c.t {
 			t.Errorf("Incorrect VCS type returned(%s)", u)
 		}
+	}
+}
+
+func TestNotFound(t *testing.T) {
+	_, _, err := detectVcsFromRemote("https://mattfarina.com/notfound")
+	if err == nil || !strings.HasSuffix(err.Error(), " Not Found") {
+		t.Errorf("Failed to find not found repo")
+	}
+
+	_, err = NewRepo("https://mattfarina.com/notfound", "")
+	if err == nil || !strings.HasSuffix(err.Error(), " Not Found") {
+		t.Errorf("Failed to find not found repo")
+	}
+}
+
+func TestAccessDenied(t *testing.T) {
+	_, _, err := detectVcsFromRemote("https://bitbucket.org/mattfarina/private-repo-for-vcs-testing")
+	if err == nil || err.Error() != "Access Denied" {
+		t.Errorf("Failed to detect access denied")
+	}
+
+	_, err = NewRepo("https://bitbucket.org/mattfarina/private-repo-for-vcs-testing", "")
+	if err == nil || err.Error() != "Access Denied" {
+		t.Errorf("Failed to detect access denied")
 	}
 }

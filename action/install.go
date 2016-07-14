@@ -49,7 +49,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 
 	var s gps.Solver
 	if gpath.HasLock(base) {
-		params.Lock, err = LoadLockfile(base, conf)
+		params.Lock, err = loadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile.")
 			return
@@ -334,10 +334,8 @@ func (gw safeGroupWriter) writeAllSafe() error {
 	return nil
 }
 
-// LoadLockfile loads the contents of a glide.lock file.
-//
-// TODO: This should go in another package.
-func LoadLockfile(base string, conf *cfg.Config) (*cfg.Lockfile, error) {
+// loadLockfile loads the contents of a glide.lock file.
+func loadLockfile(base string, conf *cfg.Config) (*cfg.Lockfile, error) {
 	yml, err := ioutil.ReadFile(filepath.Join(base, gpath.LockFile))
 	if err != nil {
 		return nil, err

@@ -52,7 +52,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	if gpath.HasLock(base) {
-		params.Lock, err = LoadLockfile(base, conf)
+		params.Lock, err = loadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile, aborting: %s", err)
 			return

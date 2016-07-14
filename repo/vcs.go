@@ -203,14 +203,14 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 		}
 
 		ver := dep.Reference
-		// Referenes in Git can begin with a ^ which is similar to semver.
+		// References in Git can begin with a ^ which is similar to semver.
 		// If there is a ^ prefix we assume it's a semver constraint rather than
 		// part of the git/VCS commit id.
 		if repo.IsReference(ver) && !strings.HasPrefix(ver, "^") {
 			msg.Info("--> Setting version for %s to %s.\n", dep.Name, ver)
 		} else {
 
-			// Create the constraing first to make sure it's valid before
+			// Create the constraint first to make sure it's valid before
 			// working on the repo.
 			constraint, err := semver.NewConstraint(ver)
 

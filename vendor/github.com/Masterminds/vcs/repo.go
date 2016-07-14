@@ -257,3 +257,11 @@ NextVar:
 	}
 	return out
 }
+
+func depInstalled(name string) bool {
+	if _, err := exec.LookPath(name); err != nil {
+		return false
+	}
+
+	return true
+}

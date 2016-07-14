@@ -50,7 +50,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	// don't want a get to just update all deps without the user explictly
 	// making that choice.
 	if gpath.HasLock(base) {
-		params.Lock, err = LoadLockfile(base, conf)
+		params.Lock, err = loadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile; aborting get. Existing dependency versions cannot be safely preserved without a lock file. Error was: %s", err)
 			return

@@ -1,4 +1,18 @@
-1.7.0 (2016-05-05)
+# 1.8.0 (2016-06-29)
+
+## Added
+- #43: Detect when tool (e.g., git, svn, etc) not installed
+- #49: Detect access denied and not found situations
+
+## Changed
+- #48: Updated Go Report Gard url to new format
+- Refactored SVN handling to detect when not in a top level directory
+- Updating tagging to v[SemVer] structure for compatibility with other tools.
+
+## Fixed
+- #45: Fixed hg's update method so that it pulls from remote before updates
+
+# 1.7.0 (2016-05-05)
 
 - Adds a glide.yaml file with some limited information.
 - Implements #37: Ability to export source as a directory.
