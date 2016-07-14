@@ -9,8 +9,8 @@ imports:
   version: 0a2c9fc0eee2c4cbb9526877c4a54da047fdcadd
 - name: github.com/Masterminds/vcs
   version: 7af28b64c5ec41b1558f5514fd938379822c237c
-- name: github.com/sdboyer/vsolver
-  version: 4a1c3dd00ed484b3e87b4668b357e531b36baaa8
+- name: github.com/sdboyer/gps
+  version: a868c10855893c21ed05d0f50d6f9acb12b6366d
 - name: github.com/termie/go-shutil
   version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
 - name: gopkg.in/yaml.v2
