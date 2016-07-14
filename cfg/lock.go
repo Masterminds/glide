@@ -37,7 +37,7 @@ func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 	for _, p := range r.Projects() {
 		pi := p.Ident()
 		l := &Lock{
-			Name:    string(pi.LocalName),
+			Name:    string(pi.ProjectRoot),
 			VcsType: "", // TODO allow this to be extracted from sm
 		}
 
@@ -121,7 +121,7 @@ func (lf *Lockfile) Projects() []gps.LockedProject {
 			}
 		}
 
-		lp[k] = gps.NewLockedProject(gps.ProjectName(l.Name), v, l.Repository, l.Name, nil)
+		lp[k] = gps.NewLockedProject(gps.ProjectRoot(l.Name), v, l.Repository, nil)
 	}
 
 	return lp

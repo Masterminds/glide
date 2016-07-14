@@ -104,9 +104,7 @@ func AsMetadataPair(dir string) (gps.Manifest, gps.Lock, error) {
 	}
 
 	var l gps.SimpleLock
-	m := gps.SimpleManifest{
-		N: gps.ProjectName(dir),
-	}
+	m := gps.SimpleManifest{}
 
 	for _, gom := range goms {
 		// Do we need to skip this dependency?
@@ -130,9 +128,9 @@ func AsMetadataPair(dir string) (gps.Manifest, gps.Lock, error) {
 
 		pkg, _ := util.NormalizeName(gom.name)
 
-		dep := gps.ProjectDep{
+		dep := gps.ProjectConstraint{
 			Ident: gps.ProjectIdentifier{
-				LocalName: gps.ProjectName(pkg),
+				ProjectRoot: gps.ProjectRoot(pkg),
 			},
 		}
 
@@ -161,18 +159,18 @@ func AsMetadataPair(dir string) (gps.Manifest, gps.Lock, error) {
 			body := val.(string)
 			if v != nil {
 				v.Is(gps.Revision(body))
-				l = append(l, gps.NewLockedProject(gps.ProjectName(dir), v, dir, dir, nil))
+				l = append(l, gps.NewLockedProject(gps.ProjectRoot(dir), v, dir, nil))
 			} else {
 				// As with the other third-party system integrations, we're
 				// going to choose not to put revisions into a manifest, even
 				// though gom has a lot more information than most and the
 				// argument could be made for it.
 				dep.Constraint = gps.Any()
-				l = append(l, gps.NewLockedProject(gps.ProjectName(dir), gps.Revision(body), dir, dir, nil))
+				l = append(l, gps.NewLockedProject(gps.ProjectRoot(dir), gps.Revision(body), dir, nil))
 			}
 		} else if v != nil {
 			// This is kinda uncomfortable - lock w/no immut - but OK
-			l = append(l, gps.NewLockedProject(gps.ProjectName(dir), v, dir, dir, nil))
+			l = append(l, gps.NewLockedProject(gps.ProjectRoot(dir), v, dir, nil))
 		}
 
 		// TODO We ignore GOOS, GOARCH for now

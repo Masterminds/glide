@@ -89,7 +89,7 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 	// Create a config setup based on the Lockfile data to process with
 	// existing commands.
 	newConf := &cfg.Config{}
-	newConf.ProjectName = conf.ProjectName
+	newConf.ProjectRoot = conf.ProjectRoot
 
 	newConf.Imports = make(cfg.Dependencies, len(lock.Imports))
 	for k, v := range lock.Imports {
@@ -421,7 +421,7 @@ type MissingPackageHandler struct {
 func (m *MissingPackageHandler) NotFound(pkg string, addTest bool) (bool, error) {
 	root := util.GetRootFromPackage(pkg)
 	// Skip any references to the root package.
-	if root == m.Config.ProjectName {
+	if root == m.Config.ProjectRoot {
 		return false, nil
 	}
 
@@ -488,7 +488,7 @@ func (m *MissingPackageHandler) OnGopath(pkg string, addTest bool) (bool, error)
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == m.Config.ProjectName {
+	if root == m.Config.ProjectRoot {
 		return false, nil
 	}
 
@@ -518,7 +518,7 @@ func (m *MissingPackageHandler) OnGopath(pkg string, addTest bool) (bool, error)
 func (m *MissingPackageHandler) InVendor(pkg string, addTest bool) error {
 	root := util.GetRootFromPackage(pkg)
 	// Skip any references to the root package.
-	if root == m.Config.ProjectName {
+	if root == m.Config.ProjectRoot {
 		return nil
 	}
 
@@ -578,7 +578,7 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == d.Config.ProjectName {
+	if root == d.Config.ProjectRoot {
 		return nil
 	}
 
@@ -615,7 +615,7 @@ func (d *VersionHandler) SetVersion(pkg string, addTest bool) (e error) {
 	root := util.GetRootFromPackage(pkg)
 
 	// Skip any references to the root package.
-	if root == d.Config.ProjectName {
+	if root == d.Config.ProjectRoot {
 		return nil
 	}
 

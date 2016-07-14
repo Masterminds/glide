@@ -18,7 +18,7 @@ import (
 type Config struct {
 
 	// Name is the name of the package or application.
-	ProjectName string `yaml:"package"`
+	ProjectRoot string `yaml:"package"`
 
 	// Description is a short description for a package, application, or library.
 	// This description is similar but different to a Go package description as
@@ -104,7 +104,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&newConfig); err != nil {
 		return err
 	}
-	c.ProjectName = newConfig.Name
+	c.ProjectRoot = newConfig.Name
 	c.Description = newConfig.Description
 	c.Home = newConfig.Home
 	c.License = newConfig.License
@@ -123,7 +123,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name:        c.ProjectName,
+		Name:        c.ProjectRoot,
 		Description: c.Description,
 		Home:        c.Home,
 		License:     c.License,
@@ -164,18 +164,18 @@ func (c *Config) HasDependency(name string) bool {
 
 // DependencyConstraints lists all the non-test dependency constraints
 // described in a glide manifest in a way gps will understand.
-func (c *Config) DependencyConstraints() []gps.ProjectDep {
+func (c *Config) DependencyConstraints() []gps.ProjectConstraint {
 	return depsToVSolver(c.Imports)
 }
 
 // TestDependencyConstraints lists all the test dependency constraints described
 // in a glide manifest in a way gps will understand.
-func (c *Config) TestDependencyConstraints() []gps.ProjectDep {
+func (c *Config) TestDependencyConstraints() []gps.ProjectConstraint {
 	return depsToVSolver(c.DevImports)
 }
 
-func depsToVSolver(deps Dependencies) []gps.ProjectDep {
-	cp := make([]gps.ProjectDep, len(deps))
+func depsToVSolver(deps Dependencies) []gps.ProjectConstraint {
+	cp := make([]gps.ProjectConstraint, len(deps))
 	for k, d := range deps {
 		var c gps.Constraint
 		var err error
@@ -202,11 +202,11 @@ func depsToVSolver(deps Dependencies) []gps.ProjectDep {
 		}
 
 		id := gps.ProjectIdentifier{
-			LocalName:   gps.ProjectName(d.Name),
+			ProjectRoot: gps.ProjectRoot(d.Name),
 			NetworkName: d.Repository,
 		}
 
-		cp[k] = gps.ProjectDep{
+		cp[k] = gps.ProjectConstraint{
 			Ident:      id,
 			Constraint: c,
 		}
@@ -216,8 +216,8 @@ func depsToVSolver(deps Dependencies) []gps.ProjectDep {
 }
 
 // Name returns the name of the project given in the manifest.
-func (c *Config) Name() gps.ProjectName {
-	return gps.ProjectName(c.ProjectName)
+func (c *Config) Name() gps.ProjectRoot {
+	return gps.ProjectRoot(c.ProjectRoot)
 }
 
 // HasIgnore returns true if the given name is listed on the ignore list.
@@ -249,7 +249,7 @@ func (c *Config) HasExclude(ex string) bool {
 // Clone performs a deep clone of the Config instance
 func (c *Config) Clone() *Config {
 	n := &Config{}
-	n.ProjectName = c.ProjectName
+	n.ProjectRoot = c.ProjectRoot
 	n.Description = c.Description
 	n.Home = c.Home
 	n.License = c.License
@@ -290,7 +290,7 @@ func (c *Config) DeDupe() error {
 	// If the name on the config object is part of the imports remove it.
 	found := -1
 	for i, dep := range c.Imports {
-		if dep.Name == c.ProjectName {
+		if dep.Name == c.ProjectRoot {
 			found = i
 		}
 	}
@@ -300,7 +300,7 @@ func (c *Config) DeDupe() error {
 
 	found = -1
 	for i, dep := range c.DevImports {
-		if dep.Name == c.ProjectName {
+		if dep.Name == c.ProjectRoot {
 			found = i
 		}
 	}
@@ -440,16 +440,16 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
-	Name             string             `yaml:"package"`
+	Name             string         `yaml:"package"`
 	Constraint       gps.Constraint `yaml:"-"` // TODO temporary, for experimenting; reconcile with other data
-	Reference        string             `yaml:"version,omitempty"`
-	Pin              string             `yaml:"-"`
-	Repository       string             `yaml:"repo,omitempty"`
-	VcsType          string             `yaml:"vcs,omitempty"`
-	Subpackages      []string           `yaml:"subpackages,omitempty"`
-	Arch             []string           `yaml:"arch,omitempty"`
-	Os               []string           `yaml:"os,omitempty"`
-	UpdateAsVendored bool               `yaml:"-"`
+	Reference        string         `yaml:"version,omitempty"`
+	Pin              string         `yaml:"-"`
+	Repository       string         `yaml:"repo,omitempty"`
+	VcsType          string         `yaml:"vcs,omitempty"`
+	Subpackages      []string       `yaml:"subpackages,omitempty"`
+	Arch             []string       `yaml:"arch,omitempty"`
+	Os               []string       `yaml:"os,omitempty"`
+	UpdateAsVendored bool           `yaml:"-"`
 }
 
 // A transitive representation of a dependency for importing and exploting to yaml.

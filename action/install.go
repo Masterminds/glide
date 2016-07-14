@@ -31,7 +31,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), false)
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())
@@ -39,8 +39,8 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 	}
 
 	params := gps.SolveParameters{
-		Name:        gps.ProjectName(conf.ProjectName),
-		Root:        filepath.Dir(vend),
+		RootDir:     filepath.Dir(vend),
+		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
 		Manifest:    conf,
 		Ignore:      conf.Ignore,
 		Trace:       true,
@@ -55,7 +55,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 			return
 		}
 
-		s, err = gps.Prepare(params, opts, sm)
+		s, err = gps.Prepare(params, sm)
 		if err != nil {
 			msg.Err("Could not set up solver: %s", err)
 			return

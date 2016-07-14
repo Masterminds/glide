@@ -2,7 +2,6 @@ package dependency
 
 import (
 	"fmt"
-	"go/build"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,11 +26,7 @@ func (notApplicable) Error() string {
 // SourceManager on request.
 type Analyzer struct{}
 
-func (a Analyzer) GetInfo(ctx build.Context, pn gps.ProjectName) (gps.Manifest, gps.Lock, error) {
-	// For now, at least, we do not search above the root path provided by
-	// the SourceManager.
-	root := filepath.Join(ctx.GOPATH, "src", string(pn))
-
+func (a Analyzer) GetInfo(root string, pn gps.ProjectRoot) (gps.Manifest, gps.Lock, error) {
 	// this check should be unnecessary, but keeping it for now as a canary
 	if _, err := os.Lstat(root); err != nil {
 		return nil, nil, fmt.Errorf("No directory exists at %s; cannot produce ProjectInfo", root)
@@ -136,7 +131,7 @@ func (a Analyzer) lookForGodep(root string) (gps.Manifest, gps.Lock, error) {
 		return nil, nil, err
 	}
 
-	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
+	return &cfg.Config{ProjectRoot: root, Imports: d}, l, nil
 }
 
 func (a Analyzer) lookForGPM(root string) (gps.Manifest, gps.Lock, error) {
@@ -149,7 +144,7 @@ func (a Analyzer) lookForGPM(root string) (gps.Manifest, gps.Lock, error) {
 		return nil, nil, err
 	}
 
-	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
+	return &cfg.Config{ProjectRoot: root, Imports: d}, l, nil
 }
 
 func (a Analyzer) lookForGb(root string) (gps.Manifest, gps.Lock, error) {
@@ -162,7 +157,7 @@ func (a Analyzer) lookForGb(root string) (gps.Manifest, gps.Lock, error) {
 		return nil, nil, err
 	}
 
-	return &cfg.Config{ProjectName: root, Imports: d}, l, nil
+	return &cfg.Config{ProjectRoot: root, Imports: d}, l, nil
 }
 
 func (a Analyzer) lookForGom(root string) (gps.Manifest, gps.Lock, error) {

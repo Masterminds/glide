@@ -30,32 +30,29 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
-	args := gps.SolveArgs{
-		Name:     gps.ProjectName(conf.ProjectName),
-		Root:     filepath.Dir(vend),
-		Manifest: conf,
-		Ignore:   conf.Ignore,
-	}
-
-	opts := gps.SolveOpts{
+	params := gps.SolveParameters{
+		RootDir:     filepath.Dir(vend),
+		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
+		Manifest:    conf,
+		Ignore:      conf.Ignore,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
 	}
 
 	if len(projs) == 0 {
-		opts.ChangeAll = true
+		params.ChangeAll = true
 	} else {
-		opts.ChangeAll = false
+		params.ChangeAll = false
 		for _, p := range projs {
 			if !conf.HasDependency(p) {
 				msg.Die("Cannot update %s, as it is not listed as dependency in glide.yaml.", p)
 			}
-			opts.ToChange = append(opts.ToChange, gps.ProjectName(p))
+			params.ToChange = append(params.ToChange, gps.ProjectRoot(p))
 		}
 	}
 
 	if gpath.HasLock(base) {
-		args.Lock, err = LoadLockfile(base, conf)
+		params.Lock, err = LoadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile, aborting: %s", err)
 			return
@@ -63,15 +60,15 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), false)
 	if err != nil {
 		msg.Err(err.Error())
 		return
 	}
 	defer sm.Release()
 
-	// Prepare a solver. This validates our args and opts.
-	s, err := gps.Prepare(args, opts, sm)
+	// Prepare a solver. This validates our params.
+	s, err := gps.Prepare(params, sm)
 	if err != nil {
 		msg.Err("Could not set up solver: %s", err)
 		return
@@ -85,7 +82,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	gw := safeGroupWriter{
-		lock:        args.Lock.(*cfg.Lockfile),
+		lock:        params.Lock.(*cfg.Lockfile),
 		resultLock:  r,
 		sm:          sm,
 		vendor:      vend,

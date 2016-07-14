@@ -48,8 +48,8 @@ func EnsureConfig() *cfg.Config {
 		b, err = filepath.Rel(b, cwd)
 		if err == nil {
 			name := buildContext.PackageName(b)
-			if name != conf.ProjectName {
-				msg.Warn("The name listed in the config file (%s) does not match the current location (%s)", conf.ProjectName, name)
+			if name != conf.ProjectRoot {
+				msg.Warn("The name listed in the config file (%s) does not match the current location (%s)", conf.ProjectRoot, name)
 			}
 		} else {
 			msg.Warn("Problem finding the config file path (%s) relative to the current directory (%s): %s", b, cwd, err)

@@ -37,14 +37,11 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
-	args := gps.SolveArgs{
-		Name:     gps.ProjectName(conf.ProjectName),
-		Root:     filepath.Dir(glidefile),
-		Manifest: conf,
-		Ignore:   conf.Ignore,
-	}
-
-	opts := gps.SolveOpts{
+	params := gps.SolveParameters{
+		RootDir:     filepath.Dir(glidefile),
+		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
+		Manifest:    conf,
+		Ignore:      conf.Ignore,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
 	}
@@ -53,7 +50,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	// don't want a get to just update all deps without the user explictly
 	// making that choice.
 	if gpath.HasLock(base) {
-		args.Lock, err = LoadLockfile(base, conf)
+		params.Lock, err = LoadLockfile(base, conf)
 		if err != nil {
 			msg.Err("Could not load lockfile; aborting get. Existing dependency versions cannot be safely preserved without a lock file. Error was: %s", err)
 			return
@@ -61,7 +58,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	}
 
 	// Create the SourceManager for this run
-	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), base, false)
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), false)
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())
@@ -80,8 +77,8 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 		return
 	}
 
-	// Prepare a solver. This validates our args and opts.
-	s, err := gps.Prepare(args, opts, sm)
+	// Prepare a solver. This validates our params.
+	s, err := gps.Prepare(params, sm)
 	if err != nil {
 		msg.Err("Aborted get - could not set up solver to reconcile dependencies: %s", err)
 		return
@@ -99,7 +96,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 
 	gw := safeGroupWriter{
 		conf:        conf,
-		lock:        args.Lock.(*cfg.Lockfile),
+		lock:        params.Lock.(*cfg.Lockfile),
 		resultLock:  r,
 		sm:          sm,
 		glidefile:   glidefile,
