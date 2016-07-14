@@ -1,12 +1,12 @@
-hash: 0653c17bcbf6f1df79990f3d2211dbcbc920ca528c513b00f5cab0a508c984ab
-updated: 2016-06-30T10:51:49.633776379-04:00
+hash: 7b0d46d2b21d5d8ff24023a402285f87b14b9f554ae52913cc7ea08bfd17453d
+updated: 2016-07-13T23:09:11.03428654-04:00
 imports:
 - name: github.com/armon/go-radix
   version: 4239b77079c7b5d1243b7b4736304ce8ddb6f0f2
 - name: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/Masterminds/semver
-  version: 0a2c9fc0eee2c4cbb9526877c4a54da047fdcadd
+  version: b3ef6b1808e9889dfb8767ce7068db923a3d07de
 - name: github.com/Masterminds/vcs
   version: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
 - name: github.com/sdboyer/gps

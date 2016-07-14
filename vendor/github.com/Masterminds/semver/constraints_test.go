@@ -166,11 +166,28 @@ func TestConstraintCheck(t *testing.T) {
 		{"<=1.1", "0.1.0", true},
 		{"<=1.1", "1.1.0", true},
 		{"<=1.1", "1.1.1", false},
+		{"<=1.1-alpha1", "1.1", false},
+		{"<=2.x", "3.0.0", false},
+		{"<=2.x", "2.9.9", true},
+		{"<2.x", "2.0.0", false},
+		{"<2.x", "1.9.9", true},
+		{">=2.x", "3.0.0", true},
+		{">=2.x", "2.9.9", true},
+		{">=2.x", "1.9.9", false},
+		{">2.x", "3.0.0", true},
+		{">2.x", "2.9.9", false},
+		{">2.x", "1.9.9", false},
+		// TODO these are all pending the changes in #10
+		//{"<=2.x-beta1", "3.0.0-alpha2", false},
+		//{">2.x-beta1", "3.0.0-alpha2", true},
 		//{"<2.0.0", "2.0.0-alpha1", false},
 		//{"<=2.0.0", "2.0.0-alpha1", true},
 	}
 
 	for _, tc := range tests {
+		if testing.Verbose() {
+			t.Logf("Testing if %q allows %q", tc.constraint, tc.version)
+		}
 		c, err := parseConstraint(tc.constraint)
 		if err != nil {
 			t.Errorf("err: %s", err)
@@ -185,7 +202,11 @@ func TestConstraintCheck(t *testing.T) {
 
 		a := c.Matches(v) == nil
 		if a != tc.check {
-			t.Errorf("Constraint '%s' failing", tc.constraint)
+			if tc.check {
+				t.Errorf("%q should have matched %q", tc.constraint, tc.version)
+			} else {
+				t.Errorf("%q should not have matched %q", tc.constraint, tc.version)
+			}
 		}
 	}
 }
@@ -304,10 +325,12 @@ func TestConstraintsCheck(t *testing.T) {
 		{"<1.1", "0.1.0", true},
 		{"<1.1", "1.1.0", false},
 		{"<1.1", "1.1.1", false},
-		{"<1.x", "1.1.1", true},
+		{"<1.x", "1.1.1", false},
+		{"<1.x", "0.9.1", true},
 		{"<1.x", "2.1.1", false},
 		{"<1.1.x", "1.2.1", false},
-		{"<1.1.x", "1.1.500", true},
+		{"<1.1.x", "1.1.500", false},
+		{"<1.1.x", "1.0.500", true},
 		{"<1.2.x", "1.1.1", true},
 		{">=1.1", "4.1.0", true},
 		{">=1.1", "1.1.0", true},

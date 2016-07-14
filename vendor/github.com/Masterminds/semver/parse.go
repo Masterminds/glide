@@ -67,9 +67,9 @@ func parseConstraint(c string) (Constraint, error) {
 		}
 		return v, nil
 	case ">":
-		return expandGreater(v, false), nil
+		return expandGreater(v, wildMinor, wildPatch, false), nil
 	case ">=", "=>":
-		return expandGreater(v, true), nil
+		return expandGreater(v, wildMinor, wildPatch, true), nil
 	case "<":
 		return expandLess(v, wildMinor, wildPatch, false), nil
 	case "<=", "=<":
@@ -158,7 +158,28 @@ func expandNeq(v *Version, wildMinor, wildPatch bool) Constraint {
 	return Union(lr, hr)
 }
 
-func expandGreater(v *Version, eq bool) Constraint {
+func expandGreater(v *Version, wildMinor, wildPatch, eq bool) Constraint {
+	if (wildMinor || wildPatch) && !eq {
+		// wildcards negate the meaning of prerelease and other info
+		v = &Version{
+			major: v.major,
+			minor: v.minor,
+			patch: v.patch,
+		}
+
+		// Not equal but with wildcards is the weird case - we have to bump up
+		// the next version AND make it equal
+		if wildMinor {
+			v.major++
+		} else {
+			v.minor++
+		}
+		return rangeConstraint{
+			min:        v,
+			includeMin: true,
+		}
+	}
+
 	return rangeConstraint{
 		min:        v,
 		includeMin: eq,
@@ -166,19 +187,26 @@ func expandGreater(v *Version, eq bool) Constraint {
 }
 
 func expandLess(v *Version, wildMinor, wildPatch, eq bool) Constraint {
-	v2 := &Version{
-		major: v.major,
-		minor: v.minor,
-		patch: v.patch,
-	}
-	if wildMinor {
-		v2.major++
-	} else if wildPatch {
-		v2.minor++
+	if eq && (wildMinor || wildPatch) {
+		// wildcards negate the meaning of prerelease and other info
+		v = &Version{
+			major: v.major,
+			minor: v.minor,
+			patch: v.patch,
+		}
+		if wildMinor {
+			v.major++
+		} else if wildPatch {
+			v.minor++
+		}
+		return rangeConstraint{
+			max:        v,
+			includeMax: false,
+		}
 	}
 
 	return rangeConstraint{
-		max:        v2,
+		max:        v,
 		includeMax: eq,
 	}
 }
