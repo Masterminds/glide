@@ -82,11 +82,11 @@ func stripGodepWorkspaceHandler(path string, info os.FileInfo, err error) error 
 
 func rewriteGodepfilesHandler(path string, info os.FileInfo, err error) error {
 	name := info.Name()
-	if name == "testdata" || name == "vendor" {
-		return filepath.SkipDir
-	}
 
 	if info.IsDir() {
+		if name == "testdata" || name == "vendor" {
+			return filepath.SkipDir
+		}
 		return nil
 	}
 
