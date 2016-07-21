@@ -1,3 +1,8 @@
+# Release 0.11.1 (2016-07-21)
+
+## Fixed
+- #505: Ignored dependency showing up in testImport
+
 # Release 0.11.0 (2016-07-05)
 
 ## Added
