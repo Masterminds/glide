@@ -24,7 +24,7 @@ build-all:
 	gox -verbose \
 	-ldflags "-X main.version=${VERSION}" \
 	-os="linux darwin windows " \
-	-arch="amd64 386" \
+	-arch="amd64 386 armv5 armv6 armv7" \
 	-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
 
 dist: build-all
