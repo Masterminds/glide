@@ -34,6 +34,18 @@ func (lf *Lockfile) Marshal() ([]byte, error) {
 	return yml, nil
 }
 
+// MarshalYAML is a hook for gopkg.in/yaml.v2.
+// It sorts import subpackages lexicographically for reproducibility.
+func (lf *Lockfile) MarshalYAML() (interface{}, error) {
+	for _, imp := range lf.Imports {
+		sort.Strings(imp.Subpackages)
+	}
+	for _, imp := range lf.DevImports {
+		sort.Strings(imp.Subpackages)
+	}
+	return lf, nil
+}
+
 // WriteFile writes a Glide lock file.
 //
 // This is a convenience function that marshals the YAML and then writes it to
