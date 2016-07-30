@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/Masterminds/vcs"
 )
 
 // Messenger provides the underlying implementation that displays output to
@@ -175,7 +177,6 @@ func (m *Messenger) Msg(msg string, args ...interface{}) {
 	// When operations in Glide are happening concurrently messaging needs to be
 	// locked to avoid displaying one message in the middle of another one.
 	m.Lock()
-	defer m.Unlock()
 
 	// Get rid of the annoying fact that messages need \n at the end, but do
 	// it in a backward compatible way.
@@ -187,6 +188,24 @@ func (m *Messenger) Msg(msg string, args ...interface{}) {
 		fmt.Fprint(m.Stderr, msg)
 	} else {
 		fmt.Fprintf(m.Stderr, msg, args...)
+	}
+
+	m.Unlock()
+
+	if len(args) != 0 {
+		if err, ok := args[len(args)-1].(error); ok {
+			m.printErrorAsDebug(err)
+		}
+	}
+}
+
+func (m *Messenger) printErrorAsDebug(err error) {
+	// TODO: It'd be nice if the error was an interface, not a struct
+	switch t := err.(type) {
+	case *vcs.LocalError:
+		m.Debug("Output was: %s", strings.TrimSpace(t.Out()))
+	case *vcs.RemoteError:
+		m.Debug("Output was: %s", strings.TrimSpace(t.Out()))
 	}
 }
 
