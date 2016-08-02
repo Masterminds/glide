@@ -1,3 +1,11 @@
+# Unreleased
+
+## Added
+- #533: Log VCS output with debug (`--debug` switch) when there was a VCS error (thanks @atombender)
+
+## Changed
+- #521: Sort subpackages for glide.yaml and glide.lock to avoid spurious diffs
+
 # Release 0.11.1 (2016-07-21)
 
 ## Fixed
