@@ -177,7 +177,7 @@ func (m *Messenger) Msg(msg string, args ...interface{}) {
 	// When operations in Glide are happening concurrently messaging needs to be
 	// locked to avoid displaying one message in the middle of another one.
 	m.Lock()
-
+	defer m.Unlock()
 	// Get rid of the annoying fact that messages need \n at the end, but do
 	// it in a backward compatible way.
 	if !strings.HasSuffix(msg, "\n") {
@@ -190,22 +190,19 @@ func (m *Messenger) Msg(msg string, args ...interface{}) {
 		fmt.Fprintf(m.Stderr, msg, args...)
 	}
 
-	m.Unlock()
-
-	if len(args) != 0 {
+	// If an arg is a vcs error print the output if in debug mode. This is
+	// capured here rather than calling Debug because concurrent operations
+	// could cause other messages to appear between the initial error and the
+	// debug output by unlocking and calling Debug.
+	if len(args) != 0 && !m.Quiet && m.IsDebugging {
 		if err, ok := args[len(args)-1].(error); ok {
-			m.printErrorAsDebug(err)
+			switch t := err.(type) {
+			case *vcs.LocalError:
+				fmt.Fprintf(m.Stderr, "[DEBUG]\tOutput was: %s", strings.TrimSpace(t.Out()))
+			case *vcs.RemoteError:
+				fmt.Fprintf(m.Stderr, "[DEBUG]\tOutput was: %s", strings.TrimSpace(t.Out()))
+			}
 		}
-	}
-}
-
-func (m *Messenger) printErrorAsDebug(err error) {
-	// TODO: It'd be nice if the error was an interface, not a struct
-	switch t := err.(type) {
-	case *vcs.LocalError:
-		m.Debug("Output was: %s", strings.TrimSpace(t.Out()))
-	case *vcs.RemoteError:
-		m.Debug("Output was: %s", strings.TrimSpace(t.Out()))
 	}
 }
 
