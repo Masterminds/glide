@@ -31,11 +31,18 @@ func TestNormalizeName(t *testing.T) {
 			extra: "",
 		},
 		{
+			input: "otherurl/example/root/sub",
+			root:  "otherurl/example/root",
+			extra: "sub",
+		},
+		{
 			input: "net",
 			root:  "net",
 			extra: "",
 		},
 	}
+	remotePackageCache["otherurl/example/root"] = "otherurl/example/root"
+
 	for _, test := range packages {
 		root, extra := NormalizeName(test.input)
 		if root != test.root {
