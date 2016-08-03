@@ -5,6 +5,8 @@
 
 ## Changed
 - #521: Sort subpackages for glide.yaml and glide.lock to avoid spurious diffs
+- #487: Skip lookup of subpackage location when parent repo is already known.
+  This skips unnecessary network requests (thanks @hori-ryota)
 
 # Release 0.11.1 (2016-07-21)
 
