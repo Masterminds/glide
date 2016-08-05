@@ -8,6 +8,9 @@
 - #487: Skip lookup of subpackage location when parent repo is already known.
   This skips unnecessary network requests (thanks @hori-ryota)
 
+## Fixed
+- #535: Resolve vendor directory symlinks (thanks @Fugiman)
+
 # Release 0.11.1 (2016-07-21)
 
 ## Fixed
