@@ -91,7 +91,11 @@ func Vendor() (string, error) {
 			return gopath, nil
 		}
 
-		gopath = filepath.Join(filepath.Dir(gopath), p)
+		if filepath.IsAbs(p) {
+			gopath = p
+		} else {
+			gopath = filepath.Join(filepath.Dir(gopath), p)
+		}
 
 		info, err = os.Lstat(gopath)
 		if err != nil {
