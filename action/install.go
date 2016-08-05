@@ -42,14 +42,6 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 		msg.Warn("Lock file may be out of date. Hash check of YAML failed. You may need to run 'update'")
 	}
 
-	// Delete unused packages
-	if installer.DeleteUnused {
-		// It's unclear whether this should operate off of the lock, or off
-		// of the glide.yaml file. I'd think that doing this based on the
-		// lock would be much more reliable.
-		dependency.DeleteUnused(conf)
-	}
-
 	// Install
 	newConf, err := installer.Install(lock, conf)
 	if err != nil {
@@ -61,6 +53,13 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 	// Set reference
 	if err := repo.SetReference(newConf, installer.ResolveTest); err != nil {
 		msg.Err("Failed to set references: %s (Skip to cleanup)", err)
+	}
+
+	// Delete unused packages
+	if installer.DeleteUnused {
+		// newConf is calculated based on the lock file so it should be
+		// accurate to the project list.
+		dependency.DeleteUnused(newConf)
 	}
 
 	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.

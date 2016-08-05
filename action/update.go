@@ -24,11 +24,6 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 	EnsureVendorDir()
 	conf := EnsureConfig()
 
-	// Delete unused packages
-	if installer.DeleteUnused {
-		dependency.DeleteUnused(conf)
-	}
-
 	// Try to check out the initial dependencies.
 	if err := installer.Checkout(conf); err != nil {
 		msg.Die("Failed to do initial checkout of config: %s", err)
@@ -59,6 +54,12 @@ func Update(installer *repo.Installer, skipRecursive, strip, stripVendor bool) {
 			msg.Err("Failed to set references: %s (Skip to cleanup)", err)
 		}
 	}
+
+	// Delete unused packages
+	if installer.DeleteUnused {
+		dependency.DeleteUnused(confcopy)
+	}
+
 	// Vendored cleanup
 	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.
 	// When stripping VCS happens this will happen as well. No need for double
