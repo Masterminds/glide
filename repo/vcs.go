@@ -339,12 +339,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 				branch := findCurrentBranch(repo)
 				if branch != "" {
 					// we know the default branch so we can store it in the cache
-					var loc string
-					if dep.Repository != "" {
-						loc = dep.Repository
-					} else {
-						loc = "https://" + dep.Name
-					}
+					loc := dep.Remote()
 					key, err := cp.Key(loc)
 					if err == nil {
 						msg.Debug("Saving default branch for %s", repo.Remote())
@@ -370,12 +365,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 	// If opting in to caching attempt to put it in the cache folder
 	if cache {
 		// Check if the cache has a viable version and try to use that.
-		var loc string
-		if dep.Repository != "" {
-			loc = dep.Repository
-		} else {
-			loc = "https://" + dep.Name
-		}
+		loc := dep.Remote()
 		key, err := cp.Key(loc)
 		if err == nil {
 			location, err := cp.Location()
@@ -398,12 +388,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 				branch := findCurrentBranch(repo)
 				if branch != "" {
 					// we know the default branch so we can store it in the cache
-					var loc string
-					if dep.Repository != "" {
-						loc = dep.Repository
-					} else {
-						loc = "https://" + dep.Name
-					}
+					loc := dep.Remote()
 					key, err := cp.Key(loc)
 					if err == nil {
 						msg.Debug("Saving default branch for %s", repo.Remote())
@@ -449,12 +434,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 	if cache {
 		if branch := findCurrentBranch(repo); branch != "" {
 			// we know the default branch so we can store it in the cache
-			var loc string
-			if dep.Repository != "" {
-				loc = dep.Repository
-			} else {
-				loc = "https://" + dep.Name
-			}
+			loc := dep.Remote()
 			key, err := cp.Key(loc)
 			if err == nil {
 				msg.Debug("Saving default branch for %s", repo.Remote())

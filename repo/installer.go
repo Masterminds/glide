@@ -358,12 +358,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.C
 			for {
 				select {
 				case dep := <-ch:
-					var loc string
-					if dep.Repository != "" {
-						loc = dep.Repository
-					} else {
-						loc = "https://" + dep.Name
-					}
+					loc := dep.Remote()
 					key, err := cache.Key(loc)
 					if err != nil {
 						msg.Die(err.Error())

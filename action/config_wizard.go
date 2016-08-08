@@ -67,12 +67,7 @@ func ConfigWizard(base string) {
 
 	var changes int
 	for _, dep := range deps {
-		var remote string
-		if dep.Repository != "" {
-			remote = dep.Repository
-		} else {
-			remote = "https://" + dep.Name
-		}
+		remote := dep.Remote()
 
 		// First check, ask if the tag should be used instead of the commit id for it.
 		cur := cache.MemCurrent(remote)
@@ -262,12 +257,7 @@ func wizardFindVersions(d *cfg.Dependency) {
 		msg.Debug("Problem detecting cache location: %s", err)
 		return
 	}
-	var remote string
-	if d.Repository != "" {
-		remote = d.Repository
-	} else {
-		remote = "https://" + d.Name
-	}
+	remote := d.Remote()
 
 	key, err := cache.Key(remote)
 	if err != nil {

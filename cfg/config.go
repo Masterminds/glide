@@ -460,6 +460,16 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	return newDep, nil
 }
 
+// Remote returns the remote location to fetch source from. This location is
+// the central place where overrides happen from.
+func (d *Dependency) Remote() string {
+	if d.Repository != "" {
+		return d.Repository
+	}
+
+	return "https://" + d.Name
+}
+
 // GetRepo retrieves a Masterminds/vcs repo object configured for the root
 // of the package being retrieved.
 func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
