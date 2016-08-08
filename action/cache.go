@@ -9,21 +9,15 @@ import (
 
 // CacheClear clears the Glide cache
 func CacheClear() {
-	l, err := cache.Location()
-	if err != nil {
-		msg.Die("Unable to clear the cache: %s", err)
-	}
+	l := cache.Location()
 
-	err = os.RemoveAll(l)
+	err := os.RemoveAll(l)
 	if err != nil {
 		msg.Die("Unable to clear the cache: %s", err)
 	}
 
 	cache.SetupReset()
-	err = cache.Setup()
-	if err != nil {
-		msg.Die("Unable to clear the cache: %s", err)
-	}
+	cache.Setup()
 
 	msg.Info("Glide cache has been cleared.")
 }

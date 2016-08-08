@@ -368,10 +368,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 		loc := dep.Remote()
 		key, err := cp.Key(loc)
 		if err == nil {
-			location, err := cp.Location()
-			if err != nil {
-				return err
-			}
+			location := cp.Location()
 			d := filepath.Join(location, "src", key)
 
 			repo, err := dep.GetRepo(d)

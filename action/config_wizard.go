@@ -37,10 +37,7 @@ func ConfigWizard(base string) {
 
 	conf := EnsureConfig()
 
-	err = cache.Setup()
-	if err != nil {
-		msg.Die("Problem setting up cache: %s", err)
-	}
+	cache.Setup()
 
 	msg.Info("Looking for dependencies to make suggestions on")
 	msg.Info("--> Scanning for dependencies not using version ranges")
@@ -252,11 +249,7 @@ func wizardLookInto(d *cfg.Dependency) bool {
 var createGitParseVersion = regexp.MustCompile(`(?m-s)(?:tags)/(\S+)$`)
 
 func wizardFindVersions(d *cfg.Dependency) {
-	l, err := cache.Location()
-	if err != nil {
-		msg.Debug("Problem detecting cache location: %s", err)
-		return
-	}
+	l := cache.Location()
 	remote := d.Remote()
 
 	key, err := cache.Key(remote)
