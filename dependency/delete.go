@@ -28,6 +28,9 @@ func DeleteUnused(conf *cfg.Config) error {
 	for _, dep := range conf.Imports {
 		pkgList = append(pkgList, dep.Name)
 	}
+	for _, dep := range conf.DevImports {
+		pkgList = append(pkgList, dep.Name)
+	}
 
 	var searchPath string
 	var markForDelete []string

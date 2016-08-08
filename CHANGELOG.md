@@ -9,6 +9,7 @@
   This skips unnecessary network requests (thanks @hori-ryota)
 
 ## Fixed
+- #529: --delete flag deleted and re-downloaded transitive dependencies
 - #535: Resolve vendor directory symlinks (thanks @Fugiman)
 
 # Release 0.11.1 (2016-07-21)
