@@ -155,8 +155,9 @@ func commands() []cli.Command {
 					Usage: "Disable interactive prompts.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"))
+				return nil
 			},
 		},
 		{
@@ -166,8 +167,9 @@ func commands() []cli.Command {
 			Description: `Glide will analyze a projects glide.yaml file and the imported
 		projects to find ways the glide.yaml file can potentially be improved. It
 		will then interactively make suggestions that you can skip or accept.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.ConfigWizard(".")
+				return nil
 			},
 		},
 		{
@@ -259,7 +261,7 @@ func commands() []cli.Command {
 					Usage: "Resolve dependencies in test files.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
 					msg.Die("--strip-vendor cannot be used without --strip-vcs")
 				}
@@ -285,6 +287,7 @@ func commands() []cli.Command {
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
 				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"), c.Bool("non-interactive"), c.Bool("test"))
+				return nil
 			},
 		},
 		{
@@ -303,7 +306,7 @@ func commands() []cli.Command {
 					Usage: "Also delete from vendor/ any packages that are no longer used.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! At least one package name is required.")
 					os.Exit(1)
@@ -317,6 +320,7 @@ func commands() []cli.Command {
 				inst.Force = c.Bool("force")
 				packages := []string(c.Args())
 				action.Remove(packages, inst)
+				return nil
 			},
 		},
 		{
@@ -332,8 +336,9 @@ func commands() []cli.Command {
 							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 						},
 					},
-					Action: func(c *cli.Context) {
+					Action: func(c *cli.Context) error {
 						action.ImportGodep(c.String("file"))
+						return nil
 					},
 				},
 				{
@@ -345,8 +350,9 @@ func commands() []cli.Command {
 							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 						},
 					},
-					Action: func(c *cli.Context) {
+					Action: func(c *cli.Context) error {
 						action.ImportGPM(c.String("file"))
+						return nil
 					},
 				},
 				{
@@ -358,8 +364,9 @@ func commands() []cli.Command {
 							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 						},
 					},
-					Action: func(c *cli.Context) {
+					Action: func(c *cli.Context) error {
 						action.ImportGB(c.String("file"))
+						return nil
 					},
 				},
 				{
@@ -371,8 +378,9 @@ func commands() []cli.Command {
 							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 						},
 					},
-					Action: func(c *cli.Context) {
+					Action: func(c *cli.Context) error {
 						action.ImportGom(c.String("file"))
+						return nil
 					},
 				},
 			},
@@ -381,8 +389,9 @@ func commands() []cli.Command {
 			Name:        "name",
 			Usage:       "Print the name of this project.",
 			Description: `Read the glide.yaml file and print the name given on the 'package' line.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Name()
+				return nil
 			},
 		},
 		{
@@ -404,8 +413,9 @@ Example:
 					Usage: "Specify this to prevent nv from append '/...' to all directories.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.NoVendor(c.String("dir"), true, !c.Bool("no-subdir"))
+				return nil
 			},
 		},
 		{
@@ -413,8 +423,9 @@ Example:
 			Usage: "Rebuild ('go build') the dependencies",
 			Description: `This rebuilds the packages' '.a' files. On some systems
 	this can improve performance on subsequent 'go run' and 'go build' calls.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Rebuild()
+				return nil
 			},
 		},
 		{
@@ -470,7 +481,7 @@ Example:
 					Usage: "Resolve dependencies in test files.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
 					msg.Die("--strip-vendor cannot be used without --strip-vcs")
 				}
@@ -486,6 +497,7 @@ Example:
 				installer.ResolveTest = !c.Bool("skip-test")
 
 				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+				return nil
 			},
 		},
 		{
@@ -582,7 +594,7 @@ Example:
 					Usage: "Resolve dependencies in test files.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
 					msg.Die("--strip-vendor cannot be used without --strip-vcs")
 				}
@@ -604,6 +616,8 @@ Example:
 				installer.ResolveTest = !c.Bool("skip-test")
 
 				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+
+				return nil
 			},
 		},
 		{
@@ -615,8 +629,9 @@ Example:
    It ignores testdata/ and directories that begin with . or _. Packages in
    vendor/ are only included if they are referenced by the main project or
    one of its dependencies.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Tree(".", false)
+				return nil
 			},
 		},
 		{
@@ -629,8 +644,9 @@ Example:
 
    Directories that begin with . or _ are ignored, as are testdata directories. Packages in
    vendor are only included if they are used by the project.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.List(".", true, c.String("output"))
+				return nil
 			},
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -674,27 +690,30 @@ Example:
 
        glide info -f "%n - %d - %h - %l"
           prints 'foo - Some example description - https://example.com - MIT'`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if c.IsSet("format") {
 					action.Info(c.String("format"))
 				} else {
 					cli.ShowCommandHelp(c, c.Command.Name)
 				}
+				return nil
 			},
 		},
 		{
 			Name:      "cache-clear",
 			ShortName: "cc",
 			Usage:     "Clears the Glide cache.",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.CacheClear()
+				return nil
 			},
 		},
 		{
 			Name:  "about",
 			Usage: "Learn about Glide",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.About()
+				return nil
 			},
 		},
 	}
