@@ -108,19 +108,20 @@ func VcsUpdate(dep *cfg.Dependency, force bool, updated *UpdateTracker) error {
 				return fmt.Errorf("%s contains uncommitted changes. Skipping update", dep.Name)
 			}
 
-			if dep.Reference == "" {
-				dep.Reference = defaultBranch(repo)
+			ver := dep.Reference
+			if ver == "" {
+				ver = defaultBranch(repo)
 			}
 			// Check if the current version is a tag or commit id. If it is
 			// and that version is already checked out we can skip updating
 			// which is faster than going out to the Internet to perform
 			// an update.
-			if dep.Reference != "" {
+			if ver != "" {
 				version, err := repo.Version()
 				if err != nil {
 					return err
 				}
-				ib, err := isBranch(dep.Reference, repo)
+				ib, err := isBranch(ver, repo)
 				if err != nil {
 					return err
 				}
@@ -128,7 +129,7 @@ func VcsUpdate(dep *cfg.Dependency, force bool, updated *UpdateTracker) error {
 				// If the current version equals the ref and it's not a
 				// branch it's a tag or commit id so we can skip
 				// performing an update.
-				if version == dep.Reference && !ib {
+				if version == ver && !ib {
 					msg.Debug("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
 					return nil
 				}

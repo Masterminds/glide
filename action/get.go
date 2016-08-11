@@ -18,7 +18,7 @@ import (
 // Get fetches one or more dependencies and installs.
 //
 // This includes resolving dependency resolution and re-generating the lock file.
-func Get(names []string, installer *repo.Installer, insecure, skipRecursive, strip, stripVendor, nonInteract, testDeps bool) {
+func Get(names []string, installer *repo.Installer, insecure, skipRecursive, stripVendor, nonInteract, testDeps bool) {
 	if installer.UseCache {
 		cache.SystemLock()
 	}
@@ -72,11 +72,9 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 		msg.Err("Failed to set references: %s", err)
 	}
 
-	// VendoredCleanup
-	// When stripping VCS happens this will happen as well. No need for double
-	// effort.
-	if installer.UpdateVendored && !strip {
-		repo.VendoredCleanup(confcopy)
+	err = installer.Export(confcopy)
+	if err != nil {
+		msg.Die("Unable to export dependencies to vendor directory: %s", err)
 	}
 
 	// Write YAML
@@ -91,14 +89,6 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 		writeLock(conf, confcopy, base)
 	} else {
 		msg.Warn("Skipping lockfile generation because full dependency tree is not being calculated")
-	}
-
-	if strip {
-		msg.Info("Removing version control data from vendor directory...")
-		err := gpath.StripVcs()
-		if err != nil {
-			msg.Err("Unable to strip version control data: %s", err)
-		}
 	}
 
 	if stripVendor {

@@ -225,28 +225,33 @@ func commands() []cli.Command {
 					Usage: "This will resolve all dependencies for all packages, not just those directly used.",
 				},
 				cli.BoolFlag{
-					Name:  "update-vendored, u",
-					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Name:   "update-vendored, u",
+					Usage:  "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache",
-					Usage: "When downloading dependencies attempt to cache them.",
+					Name:   "cache",
+					Usage:  "When downloading dependencies attempt to cache them.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache-gopath",
-					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Name:   "cache-gopath",
+					Usage:  "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "use-gopath",
-					Usage: "Copy dependencies from the GOPATH if they exist there.",
+					Name:   "use-gopath",
+					Usage:  "Copy dependencies from the GOPATH if they exist there.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "resolve-current",
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
 				cli.BoolFlag{
-					Name:  "strip-vcs, s",
-					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Name:   "strip-vcs, s",
+					Usage:  "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -262,8 +267,26 @@ func commands() []cli.Command {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
-					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+				if c.Bool("delete") {
+					msg.Warn("The --delete flag is deprecated. This now works by default.")
+				}
+				if c.Bool("update-vendored") {
+					msg.Warn("The --update-vendored flag is deprecated. This now works by default.")
+				}
+				if c.String("file") != "" {
+					msg.Warn("The --flag flag is deprecated.")
+				}
+				if c.Bool("cache") {
+					msg.Warn("The --cache flag is deprecated. This now works by default.")
+				}
+				if c.Bool("cache-gopath") {
+					msg.Warn("The --cache-gopath flag is deprecated.")
+				}
+				if c.Bool("use-gopath") {
+					msg.Warn("The --use-gopath flag is deprecated. Please see overrides.")
+				}
+				if c.Bool("strip-vcs") {
+					msg.Warn("The --strip-vcs flag is deprecated. This now works by default.")
 				}
 
 				if len(c.Args()) < 1 {
@@ -278,15 +301,11 @@ func commands() []cli.Command {
 
 				inst := repo.NewInstaller()
 				inst.Force = c.Bool("force")
-				inst.UseCache = c.Bool("cache")
-				inst.UseGopath = c.Bool("use-gopath")
-				inst.UseCacheGopath = c.Bool("cache-gopath")
-				inst.UpdateVendored = c.Bool("update-vendored")
 				inst.ResolveAllFiles = c.Bool("all-dependencies")
 				inst.ResolveTest = !c.Bool("skip-test")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"), c.Bool("non-interactive"), c.Bool("test"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vendor"), c.Bool("non-interactive"), c.Bool("test"))
 				return nil
 			},
 		},
