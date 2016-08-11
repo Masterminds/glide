@@ -1,18 +1,18 @@
 package action
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
-	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
 )
 
 // Install installs a vendor directory based on an existing Glide configuration.
-func Install(installer *repo.Installer, strip, stripVendor bool) {
+func Install(installer *repo.Installer, stripVendor bool) {
 	if installer.UseCache {
 		cache.SystemLock()
 	}
@@ -39,6 +39,9 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 	if err != nil {
 		msg.Die("Could not load lockfile.")
 	} else if hash != lock.Hash {
+		fmt.Println(hash, lock.Hash)
+		foo, _ := conf.Marshal()
+		fmt.Println(string(foo))
 		msg.Warn("Lock file may be out of date. Hash check of YAML failed. You may need to run 'update'")
 	}
 
@@ -55,26 +58,9 @@ func Install(installer *repo.Installer, strip, stripVendor bool) {
 		msg.Err("Failed to set references: %s (Skip to cleanup)", err)
 	}
 
-	// Delete unused packages
-	if installer.DeleteUnused {
-		// newConf is calculated based on the lock file so it should be
-		// accurate to the project list.
-		dependency.DeleteUnused(newConf)
-	}
-
-	// VendoredCleanup. This should ONLY be run if UpdateVendored was specified.
-	// When stripping VCS happens this will happen as well. No need for double
-	// effort.
-	if installer.UpdateVendored && !strip {
-		repo.VendoredCleanup(newConf)
-	}
-
-	if strip {
-		msg.Info("Removing version control data from vendor directory...")
-		err := gpath.StripVcs()
-		if err != nil {
-			msg.Err("Unable to strip version control data: %s", err)
-		}
+	err = installer.Export(newConf)
+	if err != nil {
+		msg.Die("Unable to export dependencies to vendor directory: %s", err)
 	}
 
 	if stripVendor {

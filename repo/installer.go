@@ -82,11 +82,6 @@ func (i *Installer) VendorPath() string {
 // Install installs the dependencies from a Lockfile.
 func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, error) {
 
-	cwd, err := gpath.Vendor()
-	if err != nil {
-		return conf, err
-	}
-
 	// Create a config setup based on the Lockfile data to process with
 	// existing commands.
 	newConf := &cfg.Config{}
@@ -111,8 +106,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 
 	msg.Info("Downloading dependencies. Please wait...")
 
-	LazyConcurrentUpdate(newConf.Imports, cwd, i, newConf)
-	LazyConcurrentUpdate(newConf.DevImports, cwd, i, newConf)
+	LazyConcurrentUpdate(newConf.Imports, i, newConf)
+	LazyConcurrentUpdate(newConf.DevImports, i, newConf)
 	return newConf, nil
 }
 
@@ -122,16 +117,14 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 // vendor directory based on changed config.
 func (i *Installer) Checkout(conf *cfg.Config) error {
 
-	dest := i.VendorPath()
-
 	msg.Info("Downloading dependencies. Please wait...")
 
-	if err := ConcurrentUpdate(conf.Imports, dest, i, conf); err != nil {
+	if err := ConcurrentUpdate(conf.Imports, i, conf); err != nil {
 		return err
 	}
 
 	if i.ResolveTest {
-		return ConcurrentUpdate(conf.DevImports, dest, i, conf)
+		return ConcurrentUpdate(conf.DevImports, i, conf)
 	}
 
 	return nil
@@ -251,13 +244,13 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 	msg.Info("Downloading dependencies. Please wait...")
 
-	err = ConcurrentUpdate(conf.Imports, vpath, i, conf)
+	err = ConcurrentUpdate(conf.Imports, i, conf)
 	if err != nil {
 		return err
 	}
 
 	if i.ResolveTest {
-		err = ConcurrentUpdate(conf.DevImports, vpath, i, conf)
+		err = ConcurrentUpdate(conf.DevImports, i, conf)
 		if err != nil {
 			return err
 		}
@@ -390,7 +383,7 @@ func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 // LazyConcurrentUpdate updates only deps that are not already checkout out at the right version.
 //
 // This is only safe when updating from a lock file.
-func LazyConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.Config) error {
+func LazyConcurrentUpdate(deps []*cfg.Dependency, i *Installer, c *cfg.Config) error {
 
 	newDeps := []*cfg.Dependency{}
 	for _, dep := range deps {
@@ -418,14 +411,14 @@ func LazyConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *c
 		newDeps = append(newDeps, dep)
 	}
 	if len(newDeps) > 0 {
-		return ConcurrentUpdate(newDeps, cwd, i, c)
+		return ConcurrentUpdate(newDeps, i, c)
 	}
 
 	return nil
 }
 
 // ConcurrentUpdate takes a list of dependencies and updates in parallel.
-func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.Config) error {
+func ConcurrentUpdate(deps []*cfg.Dependency, i *Installer, c *cfg.Config) error {
 	done := make(chan struct{}, concurrentWorkers)
 	in := make(chan *cfg.Dependency, concurrentWorkers)
 	var wg sync.WaitGroup
