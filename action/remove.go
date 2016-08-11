@@ -1,6 +1,7 @@
 package action
 
 import (
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
@@ -9,6 +10,7 @@ import (
 
 // Remove removes a dependncy from the configuration.
 func Remove(packages []string, inst *repo.Installer) {
+	cache.SystemLock()
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()

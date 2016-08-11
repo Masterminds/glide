@@ -19,9 +19,7 @@ import (
 //
 // This includes resolving dependency resolution and re-generating the lock file.
 func Get(names []string, installer *repo.Installer, insecure, skipRecursive, stripVendor, nonInteract, testDeps bool) {
-	if installer.UseCache {
-		cache.SystemLock()
-	}
+	cache.SystemLock()
 
 	base := gpath.Basepath()
 	EnsureGopath()

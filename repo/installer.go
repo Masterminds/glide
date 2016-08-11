@@ -32,20 +32,6 @@ type Installer struct {
 	// Vendor contains the path to put the vendor packages
 	Vendor string
 
-	// Use a cache
-	UseCache bool
-	// Use Gopath to cache
-	UseCacheGopath bool
-	// Use Gopath as a source to read from
-	UseGopath bool
-
-	// UpdateVendored instructs the environment to update in a way that is friendly
-	// to packages that have been "vendored in" (e.g. are copies of source, not repos)
-	UpdateVendored bool
-
-	// DeleteUnused deletes packages that are unused, but found in the vendor dir.
-	DeleteUnused bool
-
 	// ResolveAllFiles enables a resolver that will examine the dependencies
 	// of every file of every package, rather than only following imported
 	// packages.
@@ -145,16 +131,11 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 	m := &MissingPackageHandler{
 		destination: vpath,
-
-		cache:          i.UseCache,
-		cacheGopath:    i.UseCacheGopath,
-		useGopath:      i.UseGopath,
-		home:           i.Home,
-		force:          i.Force,
-		updateVendored: i.UpdateVendored,
-		Config:         conf,
-		Use:            ic,
-		updated:        i.Updated,
+		home:        i.Home,
+		force:       i.Force,
+		Config:      conf,
+		Use:         ic,
+		updated:     i.Updated,
 	}
 
 	v := &VersionHandler{
@@ -502,12 +483,12 @@ func allPackages(deps []*cfg.Dependency, res *dependency.Resolver, addTest bool)
 //
 // When a package is found on the GOPATH, this notifies the user.
 type MissingPackageHandler struct {
-	destination                                          string
-	home                                                 string
-	cache, cacheGopath, useGopath, force, updateVendored bool
-	Config                                               *cfg.Config
-	Use                                                  *importCache
-	updated                                              *UpdateTracker
+	destination string
+	home        string
+	force       bool
+	Config      *cfg.Config
+	Use         *importCache
+	updated     *UpdateTracker
 }
 
 // NotFound attempts to retrieve a package when not found in the local vendor/
@@ -573,11 +554,6 @@ func (m *MissingPackageHandler) NotFound(pkg string, addTest bool) (bool, error)
 // vendor/ directory or download it from the internet. This is dependent if
 // useGopath on the installer is set to true to copy from the GOPATH.
 func (m *MissingPackageHandler) OnGopath(pkg string, addTest bool) (bool, error) {
-	// If useGopath is false, we fall back to the strategy of fetching from
-	// remote.
-	if !m.useGopath {
-		return m.NotFound(pkg, addTest)
-	}
 
 	root := util.GetRootFromPackage(pkg)
 

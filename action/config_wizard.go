@@ -18,6 +18,7 @@ import (
 // ConfigWizard reads configuration from a glide.yaml file and attempts to suggest
 // improvements. The wizard is interactive.
 func ConfigWizard(base string) {
+	cache.SystemLock()
 	_, err := gpath.Glide()
 	glidefile := gpath.GlideFile
 	if err != nil {

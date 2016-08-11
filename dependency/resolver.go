@@ -64,6 +64,7 @@ type MissingPackageHandler interface {
 type DefaultMissingPackageHandler struct {
 	Missing []string
 	Gopath  []string
+	Prefix  string
 }
 
 // NotFound prints a warning and then stores the package name in Missing.
@@ -88,7 +89,11 @@ func (d *DefaultMissingPackageHandler) InVendor(pkg string, addTest bool) error 
 	return nil
 }
 
+// PkgPath returns the path to the package
 func (d *DefaultMissingPackageHandler) PkgPath(pkg string) string {
+	if d.Prefix != "" {
+		return filepath.Join(d.Prefix, pkg)
+	}
 	return pkg
 }
 
@@ -486,9 +491,9 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 			// try to brute force the packages with a slower scan.
 			msg.Debug("Using Iterative Scanning for %s", dep)
 			if testDeps {
-				_, imps, err = IterativeScan(vdep)
+				_, imps, err = IterativeScan(r.Handler.PkgPath(dep))
 			} else {
-				imps, _, err = IterativeScan(vdep)
+				imps, _, err = IterativeScan(r.Handler.PkgPath(dep))
 			}
 
 			if err != nil {
@@ -496,7 +501,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 				continue
 			}
 		} else if err != nil {
-			msg.Debug("ImportDir error on %s: %s", vdep, err)
+			msg.Debug("ImportDir error on %s: %s", r.Handler.PkgPath(dep), err)
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Debug("No subpackages declared. Skipping %s.", dep)
 				continue
@@ -782,9 +787,9 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 		// or main but +build ignore as a build tag. In that case we
 		// try to brute force the packages with a slower scan.
 		if testDeps {
-			_, imps, err = IterativeScan(pkg)
+			_, imps, err = IterativeScan(r.Handler.PkgPath(pkg))
 		} else {
-			imps, _, err = IterativeScan(pkg)
+			imps, _, err = IterativeScan(r.Handler.PkgPath(pkg))
 		}
 
 		if err != nil {

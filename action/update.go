@@ -13,9 +13,7 @@ import (
 
 // Update updates repos and the lock file from the main glide yaml.
 func Update(installer *repo.Installer, skipRecursive, stripVendor bool) {
-	if installer.UseCache {
-		cache.SystemLock()
-	}
+	cache.SystemLock()
 
 	base := "."
 	EnsureGopath()

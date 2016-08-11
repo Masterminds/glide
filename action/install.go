@@ -13,9 +13,7 @@ import (
 
 // Install installs a vendor directory based on an existing Glide configuration.
 func Install(installer *repo.Installer, stripVendor bool) {
-	if installer.UseCache {
-		cache.SystemLock()
-	}
+	cache.SystemLock()
 
 	base := "."
 	// Ensure GOPATH
