@@ -368,7 +368,13 @@ func LazyConcurrentUpdate(deps []*cfg.Dependency, i *Installer, c *cfg.Config) e
 
 	newDeps := []*cfg.Dependency{}
 	for _, dep := range deps {
-		destPath := filepath.Join(i.VendorPath(), dep.Name)
+
+		key, err := cache.Key(dep.Remote())
+		if err != nil {
+			newDeps = append(newDeps, dep)
+			continue
+		}
+		destPath := filepath.Join(cache.Location(), "src", key)
 
 		// Get a VCS object for this directory
 		repo, err := dep.GetRepo(destPath)
@@ -382,10 +388,12 @@ func LazyConcurrentUpdate(deps []*cfg.Dependency, i *Installer, c *cfg.Config) e
 			newDeps = append(newDeps, dep)
 			continue
 		}
-
-		if ver == dep.Reference {
-			msg.Info("--> Found desired version %s %s!", dep.Name, dep.Reference)
-			continue
+		if dep.Reference != "" {
+			ci, err := repo.CommitInfo(dep.Reference)
+			if err == nil && ci.Commit == dep.Reference {
+				msg.Info("--> Found desired version locally %s %s!", dep.Name, dep.Reference)
+				continue
+			}
 		}
 
 		msg.Debug("--> Queue %s for update (%s != %s).", dep.Name, ver, dep.Reference)
