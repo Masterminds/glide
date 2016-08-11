@@ -266,6 +266,85 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	return nil
 }
 
+// Export from the cache to the vendor directory
+func (i *Installer) Export(conf *cfg.Config) error {
+	msg.Info("Removing existing vendor dependencies")
+	err := os.RemoveAll(i.VendorPath())
+	if err != nil {
+		return err
+	}
+	msg.Info("Exporting resolved dependencies to vendor directory")
+	done := make(chan struct{}, concurrentWorkers)
+	in := make(chan *cfg.Dependency, concurrentWorkers)
+	var wg sync.WaitGroup
+	var lock sync.Mutex
+	var returnErr error
+
+	for ii := 0; ii < concurrentWorkers; ii++ {
+		go func(ch <-chan *cfg.Dependency) {
+			for {
+				select {
+				case dep := <-ch:
+					loc := dep.Remote()
+					key, err := cache.Key(loc)
+					if err != nil {
+						msg.Die(err.Error())
+					}
+					cache.Lock(key)
+
+					cdir := filepath.Join(cache.Location(), "src", key)
+					repo, err := dep.GetRepo(cdir)
+					if err != nil {
+						msg.Die(err.Error())
+					}
+					msg.Info("--> Exporting %s", dep.Name)
+					if err := repo.ExportDir(filepath.Join(i.VendorPath(), filepath.ToSlash(dep.Name))); err != nil {
+						msg.Err("Export failed for %s: %s\n", dep.Name, err)
+						// Capture the error while making sure the concurrent
+						// operations don't step on each other.
+						lock.Lock()
+						if returnErr == nil {
+							returnErr = err
+						} else {
+							returnErr = cli.NewMultiError(returnErr, err)
+						}
+						lock.Unlock()
+					}
+					cache.Unlock(key)
+					wg.Done()
+				case <-done:
+					return
+				}
+			}
+		}(in)
+	}
+
+	for _, dep := range conf.Imports {
+		if !conf.HasIgnore(dep.Name) {
+			wg.Add(1)
+			in <- dep
+		}
+	}
+
+	if i.ResolveTest {
+		for _, dep := range conf.DevImports {
+			if !conf.HasIgnore(dep.Name) {
+				wg.Add(1)
+				in <- dep
+			}
+		}
+	}
+
+	wg.Wait()
+
+	// Close goroutines setting the version
+	for ii := 0; ii < concurrentWorkers; ii++ {
+		done <- struct{}{}
+	}
+
+	return returnErr
+}
+
 // List resolves the complete dependency tree and returns a list of dependencies.
 func (i *Installer) List(conf *cfg.Config) []*cfg.Dependency {
 	base := "."
@@ -364,8 +443,7 @@ func ConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *cfg.C
 						msg.Die(err.Error())
 					}
 					cache.Lock(key)
-					dest := filepath.Join(i.VendorPath(), dep.Name)
-					if err := VcsUpdate(dep, dest, i.Home, i.UseCache, i.UseCacheGopath, i.UseGopath, i.Force, i.UpdateVendored, i.Updated); err != nil {
+					if err := VcsUpdate(dep, i.Force, i.Updated); err != nil {
 						msg.Err("Update failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
@@ -492,7 +570,7 @@ func (m *MissingPackageHandler) NotFound(pkg string, addTest bool) (bool, error)
 			m.Config.Imports = append(m.Config.Imports, d)
 		}
 	}
-	if err := VcsGet(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath); err != nil {
+	if err := VcsGet(d); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -545,8 +623,6 @@ func (m *MissingPackageHandler) InVendor(pkg string, addTest bool) error {
 		return nil
 	}
 
-	dest := filepath.Join(m.destination, root)
-
 	d := m.Config.Imports.Get(root)
 	if d == nil && addTest {
 		d = m.Config.DevImports.Get(root)
@@ -567,11 +643,37 @@ func (m *MissingPackageHandler) InVendor(pkg string, addTest bool) error {
 		}
 	}
 
-	if err := VcsUpdate(d, dest, m.home, m.cache, m.cacheGopath, m.useGopath, m.force, m.updateVendored, m.updated); err != nil {
+	if err := VcsUpdate(d, m.force, m.updated); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// PkgPath resolves the location on the filesystem where the package should be.
+// This handles making sure to use the cache location.
+func (m *MissingPackageHandler) PkgPath(pkg string) string {
+	root, sub := util.NormalizeName(pkg)
+
+	d := m.Config.Imports.Get(root)
+	if d == nil {
+		d = m.Config.DevImports.Get(root)
+	}
+
+	if d == nil {
+		d, _ = m.Use.Get(root)
+
+		if d == nil {
+			d = &cfg.Dependency{Name: root}
+		}
+	}
+
+	key, err := cache.Key(d.Remote())
+	if err != nil {
+		msg.Die("Error generating cache key for %s", d.Name)
+	}
+
+	return filepath.Join(cache.Location(), "src", key, sub)
 }
 
 // VersionHandler handles setting the proper version in the VCS.
@@ -698,7 +800,7 @@ func (d *VersionHandler) SetVersion(pkg string, addTest bool) (e error) {
 		}
 	}
 
-	err := VcsVersion(dep, d.Destination)
+	err := VcsVersion(dep)
 	if err != nil {
 		msg.Warn("Unable to set version on %s to %s. Err: %s", root, dep.Reference, err)
 		e = err

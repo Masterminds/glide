@@ -1,5 +1,5 @@
-hash: 67c5571c33bfcb663d32d2b40b9ce1f2a05a3fa2e9f442077277c2782195729c
-updated: 2016-08-11T10:26:47.843225188-04:00
+hash: 84b989218da3e6a1480e6fa95864e838b1e676a970a14d65fffd33cf052a84fd
+updated: 2016-08-11T13:15:29.781819924-04:00
 imports:
 - name: github.com/codegangsta/cli
   version: 1efa31f08b9333f1bd4882d61f9d668a70cd902e
@@ -8,5 +8,5 @@ imports:
 - name: github.com/Masterminds/vcs
   version: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
 - name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
+  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
 testImports: []

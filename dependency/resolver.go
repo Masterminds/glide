@@ -51,6 +51,10 @@ type MissingPackageHandler interface {
 	//
 	// This can be used update a project found in the vendor/ folder.
 	InVendor(pkg string, addTest bool) error
+
+	// PkgPath is called to find the location locally to scan. This gives the
+	// handler to do things such as use a cached location.
+	PkgPath(pkg string) string
 }
 
 // DefaultMissingPackageHandler is the default handler for missing packages.
@@ -82,6 +86,10 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string, addTest bool) (bool,
 func (d *DefaultMissingPackageHandler) InVendor(pkg string, addTest bool) error {
 	msg.Info("Package %s found in vendor/ folder", pkg)
 	return nil
+}
+
+func (d *DefaultMissingPackageHandler) PkgPath(pkg string) string {
+	return pkg
 }
 
 // VersionHandler sets the version for a package when found while scanning.
@@ -470,7 +478,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 		// Here, we want to import the package and see what imports it has.
 		msg.Debug("Trying to open %s", vdep)
 		var imps []string
-		pkg, err := r.BuildContext.ImportDir(vdep, 0)
+		pkg, err := r.BuildContext.ImportDir(r.Handler.PkgPath(dep), 0)
 		if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
 			// If we got here it's because a package and multiple packages
 			// declared. This is often because of an example with a package
@@ -767,7 +775,7 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 	// FIXME: On error this should try to NotFound to the dependency, and then import
 	// it again.
 	var imps []string
-	p, err := r.BuildContext.ImportDir(pkg, 0)
+	p, err := r.BuildContext.ImportDir(r.Handler.PkgPath(pkg), 0)
 	if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
 		// If we got here it's because a package and multiple packages
 		// declared. This is often because of an example with a package

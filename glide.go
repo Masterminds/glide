@@ -520,30 +520,16 @@ Example:
    It will create a glide.yaml file from the Godeps data, and then update. This
    has no effect if '--no-recursive' is set.
 
-   If you are storing the outside dependencies in your version control system
-   (VCS), also known as vendoring, there are a few flags that may be useful.
-   The '--update-vendored' flag will cause Glide to update packages when VCS
-   information is unavailable. This can be used with the '--strip-vcs' flag which
-   will strip VCS data found in the vendor directory. This is useful for
-   removing VCS data from transitive dependencies and initial setups. The
-   '--strip-vendor' flag will remove any nested 'vendor' folders and
+   The '--strip-vendor' flag will remove any nested 'vendor' folders and
    'Godeps/_workspace' folders after an update (along with undoing any Godep
    import rewriting). Note, The Godeps specific functionality is deprecated and
    will be removed when most Godeps users have migrated to using the vendor
-   folder.
-
-   Note, Glide detects vendored dependencies. With the '--update-vendored' flag
-   Glide will update vendored dependencies leaving them in a vendored state.
-   Tertiary dependencies will not be vendored automatically unless the
-   '--strip-vcs' flag is used along with it.
-
-   By default, packages that are discovered are considered transient, and are
-   not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
-   to save the discovered dependencies to a YAML file.`,
+   folder.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "delete",
-					Usage: "Delete vendor packages not specified in config.",
+					Name:   "delete",
+					Usage:  "Delete vendor packages not specified in config.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "no-recursive, quick",
@@ -558,32 +544,38 @@ Example:
 					Usage: "This will resolve all dependencies for all packages, not just those directly used.",
 				},
 				cli.BoolFlag{
-					Name:  "update-vendored, u",
-					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Name:   "update-vendored, u",
+					Usage:  "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Hidden: true,
 				},
 				cli.StringFlag{
-					Name:  "file, f",
-					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+					Name:   "file, f",
+					Usage:  "Save all of the discovered dependencies to a Glide YAML file.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache",
-					Usage: "When downloading dependencies attempt to cache them.",
+					Name:   "cache",
+					Usage:  "When downloading dependencies attempt to cache them.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache-gopath",
-					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Name:   "cache-gopath",
+					Usage:  "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "use-gopath",
-					Usage: "Copy dependencies from the GOPATH if they exist there.",
+					Name:   "use-gopath",
+					Usage:  "Copy dependencies from the GOPATH if they exist there.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "resolve-current",
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
 				cli.BoolFlag{
-					Name:  "strip-vcs, s",
-					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Name:   "strip-vcs, s",
+					Usage:  "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -595,6 +587,28 @@ Example:
 				},
 			},
 			Action: func(c *cli.Context) error {
+				if c.Bool("delete") {
+					msg.Warn("The --delete flag is deprecated. This now works by default.")
+				}
+				if c.Bool("update-vendored") {
+					msg.Warn("The --update-vendored flag is deprecated. This now works by default.")
+				}
+				if c.String("file") != "" {
+					msg.Warn("The --flag flag is deprecated.")
+				}
+				if c.Bool("cache") {
+					msg.Warn("The --cache flag is deprecated. This now works by default.")
+				}
+				if c.Bool("cache-gopath") {
+					msg.Warn("The --cache-gopath flag is deprecated.")
+				}
+				if c.Bool("use-gopath") {
+					msg.Warn("The --use-gopath flag is deprecated. Please see overrides.")
+				}
+				if c.Bool("strip-vcs") {
+					msg.Warn("The --strip-vcs flag is deprecated. This now works by default.")
+				}
+
 				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
 					msg.Die("--strip-vendor cannot be used without --strip-vcs")
 				}
@@ -606,16 +620,11 @@ Example:
 
 				installer := repo.NewInstaller()
 				installer.Force = c.Bool("force")
-				installer.UseCache = c.Bool("cache")
-				installer.UseGopath = c.Bool("use-gopath")
-				installer.UseCacheGopath = c.Bool("cache-gopath")
-				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.ResolveAllFiles = c.Bool("all-dependencies")
 				installer.Home = c.GlobalString("home")
-				installer.DeleteUnused = c.Bool("delete")
 				installer.ResolveTest = !c.Bool("skip-test")
 
-				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vendor"))
 
 				return nil
 			},
