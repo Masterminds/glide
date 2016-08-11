@@ -104,8 +104,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 
 	newConf.DeDupe()
 
-	if len(newConf.Imports) == 0 {
-		msg.Info("No dependencies found. Nothing installed.\n")
+	if len(newConf.Imports) == 0 && len(newConf.DevImports) == 0 {
+		msg.Info("No dependencies found. Nothing installed.")
 		return newConf, nil
 	}
 
