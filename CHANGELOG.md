@@ -9,6 +9,7 @@
   This skips unnecessary network requests (thanks @hori-ryota)
 
 ## Fixed
+- #440: Fixed panic in `glide tree` when walking the filesystem (thanks @abhin4v)
 - #529: --delete flag deleted and re-downloaded transitive dependencies
 - #535: Resolve vendor directory symlinks (thanks @Fugiman)
 
