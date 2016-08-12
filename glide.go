@@ -760,6 +760,90 @@ Example:
 				return nil
 			},
 		},
+		{
+			Name:  "override",
+			Usage: "Manage overrides",
+			Description: `Overrides provide the ability to replace a repo location with
+   another location. This is useful when you want to have a cache for your
+   continious integration (CI) system or if you want to work on a dependency
+   in a local location, such as the GOPATH.
+
+   The overrides are stored in an overrides.yaml file in your GLIDE_HOME.
+
+   The three commands to manager overrides are 'list', 'set', and 'remove'.
+
+   Use 'set' in the form:
+
+       glide override set [original] [replacement]
+
+   or
+
+       glide override set [original] [replacement] --vcs [type]
+
+   for example,
+
+       glide override set https://github.com/example/foo https://git.example.com/example/foo.git
+
+       glide override set https://github.com/example/foo file:///path/to/local/repo --vcs git
+
+   Use 'remove' in the form:
+
+       glide override remove [original]
+
+   for example,
+
+       glide override remove https://github.com/example/foo`,
+			Subcommands: []cli.Command{
+				{
+					Name:  "list",
+					Usage: "List the current overrides",
+					Action: func(c *cli.Context) error {
+						return action.OverridesList()
+					},
+				},
+				{
+					Name:  "set",
+					Usage: "Set an override. This overwrites an existing entry if one exists",
+					Description: `Use 'set' in the form:
+
+       glide override set [original] [replacement]
+
+   or
+
+       glide override set [original] [replacement] --vcs [type]
+
+   for example,
+
+       glide override set https://github.com/example/foo https://git.example.com/example/foo.git
+
+       glide override set https://github.com/example/foo file:///path/to/local/repo --vcs git`,
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "vcs",
+							Usage: "The VCS type to use. Autodiscovery is attempted when not supplied. Can be one of git, svn, bzr, or hg",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						return action.OverridesSet(c.Args().Get(0), c.Args().Get(1), c.String("vcs"))
+					},
+				},
+				{
+					Name:      "remove",
+					ShortName: "rm",
+					Usage:     "Remove an override",
+					Description: `Use 'remove' in the form:
+
+       glide override remove [original]
+
+   for example,
+
+       glide override remove https://github.com/example/foo`,
+					Action: func(c *cli.Context) error {
+						return action.OverridesRemove(c.Args().Get(0))
+					},
+				},
+			},
+		},
 	}
 }
 

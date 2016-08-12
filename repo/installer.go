@@ -92,9 +92,13 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 
 	msg.Info("Downloading dependencies. Please wait...")
 
-	LazyConcurrentUpdate(newConf.Imports, i, newConf)
-	LazyConcurrentUpdate(newConf.DevImports, i, newConf)
-	return newConf, nil
+	err := LazyConcurrentUpdate(newConf.Imports, i, newConf)
+	if err != nil {
+		return newConf, err
+	}
+	err = LazyConcurrentUpdate(newConf.DevImports, i, newConf)
+
+	return newConf, err
 }
 
 // Checkout reads the config file and checks out all dependencies mentioned there.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
+	"github.com/Masterminds/glide/overrides"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 )
@@ -54,6 +55,11 @@ func EnsureConfig() *cfg.Config {
 		} else {
 			msg.Warn("Problem finding the config file path (%s) relative to the current directory (%s): %s", b, cwd, err)
 		}
+	}
+
+	err = overrides.Load()
+	if err != nil {
+		msg.Err("Unable to load overrides: %s", err)
 	}
 
 	return conf

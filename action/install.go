@@ -53,7 +53,7 @@ func Install(installer *repo.Installer, stripVendor bool) {
 
 	// Set reference
 	if err := repo.SetReference(newConf, installer.ResolveTest); err != nil {
-		msg.Err("Failed to set references: %s (Skip to cleanup)", err)
+		msg.Die("Failed to set references: %s (Skip to cleanup)", err)
 	}
 
 	err = installer.Export(newConf)
