@@ -45,6 +45,10 @@ func Display(b *util.BuildCtxt, basedir, myName string, level int, core bool, l 
 func walkDeps(b *util.BuildCtxt, base, myName string) []string {
 	externalDeps := []string{}
 	filepath.Walk(base, func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if !dependency.IsSrcDir(fi) {
 			if fi.IsDir() {
 				return filepath.SkipDir

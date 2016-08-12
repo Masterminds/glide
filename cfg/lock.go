@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"io/ioutil"
 	"sort"
 	"strings"
@@ -40,6 +41,27 @@ func (lf *Lockfile) MarshalYAML() (interface{}, error) {
 	for _, imp := range lf.Imports {
 		sort.Strings(imp.Subpackages)
 	}
+
+	// Ensure elements on testImport don't already exist on import.
+	var newDI Locks
+	var found bool
+	for _, imp := range lf.DevImports {
+		found = false
+		for i := 0; i < len(lf.Imports); i++ {
+			if lf.Imports[i].Name == imp.Name {
+				found = true
+				if lf.Imports[i].Version != imp.Version {
+					return lf, fmt.Errorf("Generating lock YAML produced conflicting versions of %s. import (%s), testImport (%s)", imp.Name, lf.Imports[i].Version, imp.Version)
+				}
+			}
+		}
+
+		if !found {
+			newDI = append(newDI, imp)
+		}
+	}
+	lf.DevImports = newDI
+
 	for _, imp := range lf.DevImports {
 		sort.Strings(imp.Subpackages)
 	}
@@ -169,7 +191,7 @@ func LockFromDependency(dep *Dependency) *Lock {
 }
 
 // NewLockfile is used to create an instance of Lockfile.
-func NewLockfile(ds, tds Dependencies, hash string) *Lockfile {
+func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 	lf := &Lockfile{
 		Hash:       hash,
 		Updated:    time.Now(),
@@ -183,13 +205,26 @@ func NewLockfile(ds, tds Dependencies, hash string) *Lockfile {
 
 	sort.Sort(lf.Imports)
 
+	var found bool
 	for i := 0; i < len(tds); i++ {
-		lf.DevImports[i] = LockFromDependency(tds[i])
+		found = false
+		for ii := 0; ii < len(ds); ii++ {
+			if ds[ii].Name == tds[i].Name {
+				found = true
+				if ds[ii].Reference != tds[i].Reference {
+					return &Lockfile{}, fmt.Errorf("Generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].Reference, tds[i].Reference)
+				}
+				break
+			}
+		}
+		if !found {
+			lf.DevImports[i] = LockFromDependency(tds[i])
+		}
 	}
 
 	sort.Sort(lf.DevImports)
 
-	return lf
+	return lf, nil
 }
 
 // LockfileFromMap takes a map of dependencies and generates a lock Lockfile instance.

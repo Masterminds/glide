@@ -71,7 +71,10 @@ func Update(installer *repo.Installer, skipRecursive, stripVendor bool) {
 		if err != nil {
 			msg.Die("Failed to generate config hash. Unable to generate lock file.")
 		}
-		lock := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
+		lock, err := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
+		if err != nil {
+			msg.Die("Failed to generate lock file: %s", err)
+		}
 		wl := true
 		if gpath.HasLock(base) {
 			yml, err := ioutil.ReadFile(filepath.Join(base, gpath.LockFile))
