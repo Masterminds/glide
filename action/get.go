@@ -115,7 +115,10 @@ func writeLock(conf, confcopy *cfg.Config, base string) {
 	if err != nil {
 		msg.Die("Failed to generate config hash. Unable to generate lock file.")
 	}
-	lock := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
+	lock, err := cfg.NewLockfile(confcopy.Imports, confcopy.DevImports, hash)
+	if err != nil {
+		msg.Die("Failed to generate lock file: %s", err)
+	}
 	if err := lock.WriteFile(filepath.Join(base, gpath.LockFile)); err != nil {
 		msg.Die("Failed to write glide lock file: %s", err)
 	}

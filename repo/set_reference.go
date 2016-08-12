@@ -3,9 +3,11 @@ package repo
 import (
 	"sync"
 
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
+	"github.com/codegangsta/cli"
 )
 
 // SetReference is a command to set the VCS reference (commit id, tag, etc) for
@@ -25,15 +27,39 @@ func SetReference(conf *cfg.Config, resolveTest bool) error {
 	done := make(chan struct{}, concurrentWorkers)
 	in := make(chan *cfg.Dependency, concurrentWorkers)
 	var wg sync.WaitGroup
+	var lock sync.Mutex
+	var returnErr error
 
 	for i := 0; i < concurrentWorkers; i++ {
 		go func(ch <-chan *cfg.Dependency) {
 			for {
 				select {
 				case dep := <-ch:
+					var loc string
+					if dep.Repository != "" {
+						loc = dep.Repository
+					} else {
+						loc = "https://" + dep.Name
+					}
+					key, err := cache.Key(loc)
+					if err != nil {
+						msg.Die(err.Error())
+					}
+					cache.Lock(key)
 					if err := VcsVersion(dep, cwd); err != nil {
 						msg.Err("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
+
+						// Capture the error while making sure the concurrent
+						// operations don't step on each other.
+						lock.Lock()
+						if returnErr == nil {
+							returnErr = err
+						} else {
+							returnErr = cli.NewMultiError(returnErr, err)
+						}
+						lock.Unlock()
 					}
+					cache.Unlock(key)
 					wg.Done()
 				case <-done:
 					return
@@ -66,5 +92,5 @@ func SetReference(conf *cfg.Config, resolveTest bool) error {
 	// close(done)
 	// close(in)
 
-	return nil
+	return returnErr
 }
