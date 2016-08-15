@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -246,12 +247,11 @@ func (i *Installer) Update(conf *cfg.Config) error {
 
 // Export from the cache to the vendor directory
 func (i *Installer) Export(conf *cfg.Config) error {
-	msg.Info("Removing existing vendor dependencies")
-	err := os.RemoveAll(i.VendorPath())
+	tempDir, err := ioutil.TempDir("", "glide-vendor")
 	if err != nil {
 		return err
 	}
-	msg.Info("Exporting resolved dependencies to vendor directory")
+	msg.Info("Exporting resolved dependencies...")
 	done := make(chan struct{}, concurrentWorkers)
 	in := make(chan *cfg.Dependency, concurrentWorkers)
 	var wg sync.WaitGroup
@@ -273,10 +273,14 @@ func (i *Installer) Export(conf *cfg.Config) error {
 					cdir := filepath.Join(cache.Location(), "src", key)
 					repo, err := dep.GetRepo(cdir)
 					if err != nil {
+						err2 := os.RemoveAll(tempDir)
+						if err2 != nil {
+							msg.Debug("Unable to delete temp vendor directory: %s", err2)
+						}
 						msg.Die(err.Error())
 					}
 					msg.Info("--> Exporting %s", dep.Name)
-					if err := repo.ExportDir(filepath.Join(i.VendorPath(), filepath.ToSlash(dep.Name))); err != nil {
+					if err := repo.ExportDir(filepath.Join(tempDir, filepath.ToSlash(dep.Name))); err != nil {
 						msg.Err("Export failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
@@ -320,7 +324,24 @@ func (i *Installer) Export(conf *cfg.Config) error {
 		done <- struct{}{}
 	}
 
-	return returnErr
+	if returnErr != nil {
+		err2 := os.RemoveAll(tempDir)
+		if err2 != nil {
+			msg.Debug("Unable to delete temp vendor directory: %s", err2)
+		}
+
+		return returnErr
+	}
+
+	msg.Info("Replacing existing vendor dependencies")
+	err = os.RemoveAll(i.VendorPath())
+	if err != nil {
+		return err
+	}
+
+	err = os.Rename(tempDir, i.VendorPath())
+	return err
+
 }
 
 // List resolves the complete dependency tree and returns a list of dependencies.
