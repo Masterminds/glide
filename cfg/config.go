@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Masterminds/glide/overrides"
+	"github.com/Masterminds/glide/mirrors"
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/vcs"
 	"gopkg.in/yaml.v2"
@@ -461,7 +461,7 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 }
 
 // Remote returns the remote location to fetch source from. This location is
-// the central place where overrides happen from.
+// the central place where mirrors can alter the location.
 func (d *Dependency) Remote() string {
 	var r string
 
@@ -471,7 +471,7 @@ func (d *Dependency) Remote() string {
 		r = "https://" + d.Name
 	}
 
-	f, nr, _ := overrides.Get(r)
+	f, nr, _ := mirrors.Get(r)
 	if f {
 		return nr
 	}
@@ -489,7 +489,7 @@ func (d *Dependency) Vcs() string {
 		r = "https://" + d.Name
 	}
 
-	f, _, nv := overrides.Get(r)
+	f, _, nv := mirrors.Get(r)
 	if f {
 		return nv
 	}

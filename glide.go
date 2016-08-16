@@ -761,62 +761,62 @@ Example:
 			},
 		},
 		{
-			Name:  "override",
-			Usage: "Manage overrides",
-			Description: `Overrides provide the ability to replace a repo location with
-   another location. This is useful when you want to have a cache for your
-   continious integration (CI) system or if you want to work on a dependency
-   in a local location, such as the GOPATH.
+			Name:  "mirror",
+			Usage: "Manage mirrors",
+			Description: `Mirrors provide the ability to replace a repo location with
+   another location that's a mirror of the original. This is useful when you want
+   to have a cache for your continious integration (CI) system or if you want to
+   work on a dependency in a local location.
 
-   The overrides are stored in an overrides.yaml file in your GLIDE_HOME.
+   The mirrors are stored in an mirrors.yaml file in your GLIDE_HOME.
 
-   The three commands to manager overrides are 'list', 'set', and 'remove'.
+   The three commands to manager mirrors are 'list', 'set', and 'remove'.
 
    Use 'set' in the form:
 
-       glide override set [original] [replacement]
+       glide mirror set [original] [replacement]
 
    or
 
-       glide override set [original] [replacement] --vcs [type]
+       glide mirror set [original] [replacement] --vcs [type]
 
    for example,
 
-       glide override set https://github.com/example/foo https://git.example.com/example/foo.git
+       glide mirror set https://github.com/example/foo https://git.example.com/example/foo.git
 
-       glide override set https://github.com/example/foo file:///path/to/local/repo --vcs git
+       glide mirror set https://github.com/example/foo file:///path/to/local/repo --vcs git
 
    Use 'remove' in the form:
 
-       glide override remove [original]
+       glide mirror remove [original]
 
    for example,
 
-       glide override remove https://github.com/example/foo`,
+       glide mirror remove https://github.com/example/foo`,
 			Subcommands: []cli.Command{
 				{
 					Name:  "list",
-					Usage: "List the current overrides",
+					Usage: "List the current mirrors",
 					Action: func(c *cli.Context) error {
-						return action.OverridesList()
+						return action.MirrorsList()
 					},
 				},
 				{
 					Name:  "set",
-					Usage: "Set an override. This overwrites an existing entry if one exists",
+					Usage: "Set a mirror. This overwrites an existing entry if one exists",
 					Description: `Use 'set' in the form:
 
-       glide override set [original] [replacement]
+       glide mirror set [original] [replacement]
 
    or
 
-       glide override set [original] [replacement] --vcs [type]
+       glide mirror set [original] [replacement] --vcs [type]
 
    for example,
 
-       glide override set https://github.com/example/foo https://git.example.com/example/foo.git
+       glide mirror set https://github.com/example/foo https://git.example.com/example/foo.git
 
-       glide override set https://github.com/example/foo file:///path/to/local/repo --vcs git`,
+       glide mirror set https://github.com/example/foo file:///path/to/local/repo --vcs git`,
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "vcs",
@@ -824,22 +824,22 @@ Example:
 						},
 					},
 					Action: func(c *cli.Context) error {
-						return action.OverridesSet(c.Args().Get(0), c.Args().Get(1), c.String("vcs"))
+						return action.MirrorsSet(c.Args().Get(0), c.Args().Get(1), c.String("vcs"))
 					},
 				},
 				{
 					Name:      "remove",
 					ShortName: "rm",
-					Usage:     "Remove an override",
+					Usage:     "Remove an mirror",
 					Description: `Use 'remove' in the form:
 
-       glide override remove [original]
+       glide mirror remove [original]
 
    for example,
 
-       glide override remove https://github.com/example/foo`,
+       glide mirror remove https://github.com/example/foo`,
 					Action: func(c *cli.Context) error {
-						return action.OverridesRemove(c.Args().Get(0))
+						return action.MirrorsRemove(c.Args().Get(0))
 					},
 				},
 			},

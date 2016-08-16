@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/mirrors"
 	"github.com/Masterminds/glide/msg"
-	"github.com/Masterminds/glide/overrides"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 )
@@ -57,9 +57,9 @@ func EnsureConfig() *cfg.Config {
 		}
 	}
 
-	err = overrides.Load()
+	err = mirrors.Load()
 	if err != nil {
-		msg.Err("Unable to load overrides: %s", err)
+		msg.Err("Unable to load mirrors: %s", err)
 	}
 
 	return conf

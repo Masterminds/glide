@@ -1,4 +1,4 @@
-package overrides
+package mirrors
 
 import "testing"
 
@@ -19,18 +19,18 @@ var ooutyml = `repos:
   vcs: git
 `
 
-func TestSortOverrides(t *testing.T) {
+func TestSortMirrors(t *testing.T) {
 	ov, err := FromYaml([]byte(oyml))
 	if err != nil {
-		t.Error("Unable to read overrides yaml")
+		t.Error("Unable to read mirrors yaml")
 	}
 
 	out, err := ov.Marshal()
 	if err != nil {
-		t.Error("Unable to marshal overrides yaml")
+		t.Error("Unable to marshal mirrors yaml")
 	}
 
 	if string(out) != ooutyml {
-		t.Error("Output overrides sorting failed")
+		t.Error("Output mirrors sorting failed")
 	}
 }
