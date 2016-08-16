@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/Masterminds/glide/util"
@@ -693,6 +694,7 @@ func stringArrayDeDupe(s []string, items ...string) []string {
 			s = append(s, item)
 		}
 	}
+	sort.Strings(s)
 	return s
 }
 

@@ -1,3 +1,25 @@
+# Unreleased
+
+## Added
+- #533: Log VCS output with debug (`--debug` switch) when there was a VCS error (thanks @atombender)
+
+## Changed
+- #521: Sort subpackages for glide.yaml and glide.lock to avoid spurious diffs
+- #487: Skip lookup of subpackage location when parent repo is already known.
+  This skips unnecessary network requests (thanks @hori-ryota)
+
+## Fixed
+- #517: Fixed failure to install testImport from lock when no imports present
+  or when same dependency on both import and testImport
+- #440: Fixed panic in `glide tree` when walking the filesystem (thanks @abhin4v)
+- #529: --delete flag deleted and re-downloaded transitive dependencies
+- #535: Resolve vendor directory symlinks (thanks @Fugiman)
+
+# Release 0.11.1 (2016-07-21)
+
+## Fixed
+- #505: Ignored dependency showing up in testImport
+
 # Release 0.11.0 (2016-07-05)
 
 ## Added

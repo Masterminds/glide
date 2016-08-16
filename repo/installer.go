@@ -104,8 +104,8 @@ func (i *Installer) Install(lock *cfg.Lockfile, conf *cfg.Config) (*cfg.Config, 
 
 	newConf.DeDupe()
 
-	if len(newConf.Imports) == 0 {
-		msg.Info("No dependencies found. Nothing installed.\n")
+	if len(newConf.Imports) == 0 && len(newConf.DevImports) == 0 {
+		msg.Info("No dependencies found. Nothing installed.")
 		return newConf, nil
 	}
 
@@ -192,6 +192,9 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	var tdeps cfg.Dependencies
 	for _, v := range imps {
 		n := res.Stripv(v)
+		if conf.HasIgnore(n) {
+			continue
+		}
 		rt, sub := util.NormalizeName(n)
 		if sub == "" {
 			sub = "."
@@ -210,6 +213,9 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	if i.ResolveTest {
 		for _, v := range timps {
 			n := res.Stripv(v)
+			if conf.HasIgnore(n) {
+				continue
+			}
 			rt, sub := util.NormalizeName(n)
 			if sub == "" {
 				sub = "."

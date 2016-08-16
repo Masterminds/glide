@@ -21,36 +21,44 @@ func TestStripVcs(t *testing.T) {
 	}()
 
 	// Make VCS directories.
-	gp := filepath.Join(tempDir, ".git")
+	v := filepath.Join(tempDir, VendorDir)
+	err = os.Mkdir(v, 0755)
+	if err != nil {
+		t.Error(err)
+	}
+
+	gp := filepath.Join(tempDir, VendorDir, ".git")
 	err = os.Mkdir(gp, 0755)
 	if err != nil {
 		t.Error(err)
 	}
 
-	bp := filepath.Join(tempDir, ".bzr")
+	bp := filepath.Join(tempDir, VendorDir, ".bzr")
 	err = os.Mkdir(bp, 0755)
 	if err != nil {
 		t.Error(err)
 	}
 
-	hp := filepath.Join(tempDir, ".hg")
+	hp := filepath.Join(tempDir, VendorDir, ".hg")
 	err = os.Mkdir(hp, 0755)
 	if err != nil {
 		t.Error(err)
 	}
 
-	sp := filepath.Join(tempDir, ".svn")
+	sp := filepath.Join(tempDir, VendorDir, ".svn")
 	err = os.Mkdir(sp, 0755)
 	if err != nil {
 		t.Error(err)
 	}
 
-	ov := VendorDir
-	VendorDir = tempDir
+	wd, _ := os.Getwd()
+	os.Chdir(tempDir)
 
-	StripVcs()
+	if err := StripVcs(); err != nil {
+		t.Errorf("Failed to strip vcs: %s", err)
+	}
 
-	VendorDir = ov
+	os.Chdir(wd)
 
 	if _, err := os.Stat(gp); !os.IsNotExist(err) {
 		t.Error(".git directory not deleted")

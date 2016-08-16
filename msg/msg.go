@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/Masterminds/vcs"
 )
 
 // Messenger provides the underlying implementation that displays output to
@@ -176,7 +178,6 @@ func (m *Messenger) Msg(msg string, args ...interface{}) {
 	// locked to avoid displaying one message in the middle of another one.
 	m.Lock()
 	defer m.Unlock()
-
 	// Get rid of the annoying fact that messages need \n at the end, but do
 	// it in a backward compatible way.
 	if !strings.HasSuffix(msg, "\n") {
@@ -187,6 +188,21 @@ func (m *Messenger) Msg(msg string, args ...interface{}) {
 		fmt.Fprint(m.Stderr, msg)
 	} else {
 		fmt.Fprintf(m.Stderr, msg, args...)
+	}
+
+	// If an arg is a vcs error print the output if in debug mode. This is
+	// capured here rather than calling Debug because concurrent operations
+	// could cause other messages to appear between the initial error and the
+	// debug output by unlocking and calling Debug.
+	if len(args) != 0 && !m.Quiet && m.IsDebugging {
+		if err, ok := args[len(args)-1].(error); ok {
+			switch t := err.(type) {
+			case *vcs.LocalError:
+				fmt.Fprintf(m.Stderr, "[DEBUG]\tOutput was: %s", strings.TrimSpace(t.Out()))
+			case *vcs.RemoteError:
+				fmt.Fprintf(m.Stderr, "[DEBUG]\tOutput was: %s", strings.TrimSpace(t.Out()))
+			}
+		}
 	}
 }
 
