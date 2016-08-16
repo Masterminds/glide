@@ -2,11 +2,15 @@ package cfg
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Masterminds/semver"
+	"github.com/sdboyer/gps"
 
 	"gopkg.in/yaml.v2"
 )
@@ -19,6 +23,42 @@ type Lockfile struct {
 	DevImports Locks     `yaml:"testImports"`
 }
 
+// LockfileFromSolverLock transforms a gps.Lock into a glide *Lockfile.
+func LockfileFromSolverLock(r gps.Lock) *Lockfile {
+	if r == nil {
+		return nil
+	}
+
+	// Create and write out a new lock file from the result
+	lf := &Lockfile{
+		Hash:    hex.EncodeToString(r.InputHash()),
+		Updated: time.Now(),
+	}
+
+	for _, p := range r.Projects() {
+		pi := p.Ident()
+		l := &Lock{
+			Name:    string(pi.ProjectRoot),
+			VcsType: "", // TODO allow this to be extracted from sm
+		}
+
+		if l.Name != pi.NetworkName && pi.NetworkName != "" {
+			l.Repository = pi.NetworkName
+		}
+
+		v := p.Version()
+		if pv, ok := v.(gps.PairedVersion); ok {
+			l.Version = pv.Underlying().String()
+		} else {
+			l.Version = v.String()
+		}
+
+		lf.Imports = append(lf.Imports, l)
+	}
+
+	return lf
+}
+
 // LockfileFromYaml returns an instance of Lockfile from YAML
 func LockfileFromYaml(yml []byte) (*Lockfile, error) {
 	lock := &Lockfile{}
@@ -28,6 +68,8 @@ func LockfileFromYaml(yml []byte) (*Lockfile, error) {
 
 // Marshal converts a Config instance to YAML
 func (lf *Lockfile) Marshal() ([]byte, error) {
+	sort.Sort(lf.Imports)
+	sort.Sort(lf.DevImports)
 	yml, err := yaml.Marshal(&lf)
 	if err != nil {
 		return []byte{}, err
@@ -78,6 +120,45 @@ func (lf *Lockfile) WriteFile(lockpath string) error {
 		return err
 	}
 	return ioutil.WriteFile(lockpath, o, 0666)
+}
+
+// InputHash returns the hash of the input arguments that resulted in this lock
+// file.
+func (lf *Lockfile) InputHash() []byte {
+	b, err := hex.DecodeString(lf.Hash)
+	if err != nil {
+		return nil
+	}
+	return b
+}
+
+// Projects returns the list of projects enumerated in the lock file.
+func (lf *Lockfile) Projects() []gps.LockedProject {
+	all := append(lf.Imports, lf.DevImports...)
+	lp := make([]gps.LockedProject, len(all))
+
+	for k, l := range all {
+		// TODO guess the version type. ugh
+		var v gps.Version
+
+		// semver first
+		_, err := semver.NewVersion(l.Version)
+		if err == nil {
+			v = gps.NewVersion(l.Version)
+		} else {
+			// Crappy heuristic to cover hg and git, but not bzr. Or (lol) svn
+			if len(l.Version) == 40 {
+				v = gps.Revision(l.Version)
+			} else {
+				// Otherwise, assume it's a branch
+				v = gps.NewBranch(l.Version)
+			}
+		}
+
+		lp[k] = gps.NewLockedProject(gps.ProjectRoot(l.Name), v, l.Repository, nil)
+	}
+
+	return lp
 }
 
 // Clone returns a clone of Lockfile

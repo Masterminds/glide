@@ -15,7 +15,7 @@ func Info(format string) {
 		if varInit {
 			switch varfmt {
 			case 'n':
-				buffer.WriteString(conf.Name)
+				buffer.WriteString(conf.ProjectRoot)
 			case 'd':
 				buffer.WriteString(conf.Description)
 			case 'h':

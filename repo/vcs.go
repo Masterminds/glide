@@ -234,7 +234,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 			sort.Sort(sort.Reverse(semver.Collection(semvers)))
 			found := false
 			for _, v := range semvers {
-				if constraint.Check(v) {
+				if constraint.Matches(v) == nil {
 					found = true
 					// If the constrint passes get the original reference
 					ver = v.Original()

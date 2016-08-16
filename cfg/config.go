@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/vcs"
+	"github.com/sdboyer/gps"
 	"gopkg.in/yaml.v2"
 )
 
@@ -17,7 +19,7 @@ import (
 type Config struct {
 
 	// Name is the name of the package or application.
-	Name string `yaml:"package"`
+	ProjectRoot string `yaml:"package"`
 
 	// Description is a short description for a package, application, or library.
 	// This description is similar but different to a Go package description as
@@ -56,6 +58,19 @@ type Config struct {
 }
 
 // A transitive representation of a dependency for importing and exporting to yaml.
+type cf1 struct {
+	Name        string       `yaml:"package"`
+	Description string       `yaml:"description,omitempty"`
+	Home        string       `yaml:"homepage,omitempty"`
+	License     string       `yaml:"license,omitempty"`
+	Owners      Owners       `yaml:"owners,omitempty"`
+	Ignore      []string     `yaml:"ignore,omitempty"`
+	Exclude     []string     `yaml:"excludeDirs,omitempty"`
+	Imports     Dependencies `yaml:"dependencies"`
+	DevImports  Dependencies `yaml:"testdependencies,omitempty"`
+}
+
+// Legacy representation of a glide.yaml file.
 type cf struct {
 	Name        string       `yaml:"package"`
 	Description string       `yaml:"description,omitempty"`
@@ -90,7 +105,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&newConfig); err != nil {
 		return err
 	}
-	c.Name = newConfig.Name
+	c.ProjectRoot = newConfig.Name
 	c.Description = newConfig.Description
 	c.Home = newConfig.Home
 	c.License = newConfig.License
@@ -109,7 +124,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name:        c.Name,
+		Name:        c.ProjectRoot,
 		Description: c.Description,
 		Home:        c.Home,
 		License:     c.License,
@@ -148,6 +163,71 @@ func (c *Config) HasDependency(name string) bool {
 	return false
 }
 
+// DependencyConstraints lists all the non-test dependency constraints
+// described in a glide manifest in a way gps will understand.
+func (c *Config) DependencyConstraints() []gps.ProjectConstraint {
+	return depsToVSolver(c.Imports)
+}
+
+// TestDependencyConstraints lists all the test dependency constraints described
+// in a glide manifest in a way gps will understand.
+func (c *Config) TestDependencyConstraints() []gps.ProjectConstraint {
+	return depsToVSolver(c.DevImports)
+}
+
+func depsToVSolver(deps Dependencies) []gps.ProjectConstraint {
+	cp := make([]gps.ProjectConstraint, len(deps))
+	for k, d := range deps {
+		var c gps.Constraint
+		var err error
+
+		// Support both old and new. TODO handle this earlier
+		if d.Constraint != nil {
+			c = d.Constraint
+		} else {
+			// TODO need to differentiate types of constraints so that we don't have
+			// this ambiguity
+			// Try semver first
+			c, err = gps.NewSemverConstraint(d.Reference)
+			if err != nil {
+				// Not a semver constraint. Super crappy heuristic that'll cover hg
+				// and git revs, but not bzr (svn, you say? lol, madame. lol)
+				if len(d.Reference) == 40 {
+					c = gps.Revision(d.Reference)
+				} else {
+					// Otherwise, assume a branch. This also sucks, because it could
+					// very well be a shitty, non-semver tag.
+					c = gps.NewBranch(d.Reference)
+				}
+			}
+		}
+
+		id := gps.ProjectIdentifier{
+			ProjectRoot: gps.ProjectRoot(d.Name),
+			NetworkName: d.Repository,
+		}
+
+		cp[k] = gps.ProjectConstraint{
+			Ident:      id,
+			Constraint: c,
+		}
+	}
+
+	return cp
+}
+
+func (c *Config) IgnorePackages() map[string]bool {
+	m := make(map[string]bool)
+	for _, ig := range c.Ignore {
+		m[ig] = true
+	}
+	return m
+}
+
+func (c *Config) Overrides() gps.ProjectConstraints {
+	return nil
+}
+
 // HasIgnore returns true if the given name is listed on the ignore list.
 func (c *Config) HasIgnore(name string) bool {
 	for _, v := range c.Ignore {
@@ -177,7 +257,7 @@ func (c *Config) HasExclude(ex string) bool {
 // Clone performs a deep clone of the Config instance
 func (c *Config) Clone() *Config {
 	n := &Config{}
-	n.Name = c.Name
+	n.ProjectRoot = c.ProjectRoot
 	n.Description = c.Description
 	n.Home = c.Home
 	n.License = c.License
@@ -218,7 +298,7 @@ func (c *Config) DeDupe() error {
 	// If the name on the config object is part of the imports remove it.
 	found := -1
 	for i, dep := range c.Imports {
-		if dep.Name == c.Name {
+		if dep.Name == c.ProjectRoot {
 			found = i
 		}
 	}
@@ -228,7 +308,7 @@ func (c *Config) DeDupe() error {
 
 	found = -1
 	for i, dep := range c.DevImports {
-		if dep.Name == c.Name {
+		if dep.Name == c.ProjectRoot {
 			found = i
 		}
 	}
@@ -368,21 +448,23 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
-	Name             string   `yaml:"package"`
-	Reference        string   `yaml:"version,omitempty"`
-	Pin              string   `yaml:"-"`
-	Repository       string   `yaml:"repo,omitempty"`
-	VcsType          string   `yaml:"vcs,omitempty"`
-	Subpackages      []string `yaml:"subpackages,omitempty"`
-	Arch             []string `yaml:"arch,omitempty"`
-	Os               []string `yaml:"os,omitempty"`
-	UpdateAsVendored bool     `yaml:"-"`
+	Name             string         `yaml:"package"`
+	Constraint       gps.Constraint `yaml:"-"` // TODO temporary, for experimenting; reconcile with other data
+	Reference        string         `yaml:"version,omitempty"`
+	Pin              string         `yaml:"-"`
+	Repository       string         `yaml:"repo,omitempty"`
+	VcsType          string         `yaml:"vcs,omitempty"`
+	Subpackages      []string       `yaml:"subpackages,omitempty"`
+	Arch             []string       `yaml:"arch,omitempty"`
+	Os               []string       `yaml:"os,omitempty"`
+	UpdateAsVendored bool           `yaml:"-"`
 }
 
 // A transitive representation of a dependency for importing and exploting to yaml.
 type dep struct {
 	Name        string   `yaml:"package"`
 	Reference   string   `yaml:"version,omitempty"`
+	Branch      string   `yaml:"branch,omitempty"`
 	Ref         string   `yaml:"ref,omitempty"`
 	Repository  string   `yaml:"repo,omitempty"`
 	VcsType     string   `yaml:"vcs,omitempty"`
@@ -413,15 +495,44 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	d.Name = newDep.Name
 	d.Reference = newDep.Reference
+
+	if d.Reference == "" && newDep.Ref != "" {
+		d.Reference = newDep.Ref
+	}
+
+	if d.Reference != "" {
+		r := d.Reference
+		// TODO this covers git & hg; bzr and svn (??) need love
+		if len(r) == 40 {
+			if _, err := hex.DecodeString(r); err == nil {
+				d.Constraint = gps.Revision(r)
+			}
+		} else {
+			d.Constraint, err = gps.NewSemverConstraint(r)
+			if err != nil {
+				d.Constraint = gps.NewVersion(r)
+			}
+		}
+
+		if err != nil {
+			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, r, err)
+		}
+	} else if newDep.Branch != "" {
+		d.Constraint = gps.NewBranch(newDep.Branch)
+
+		if err != nil {
+			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Branch, err)
+		}
+	} else {
+		// TODO this is just for now - need a default branch constraint type
+		d.Constraint = gps.Any()
+	}
+
 	d.Repository = newDep.Repository
 	d.VcsType = newDep.VcsType
 	d.Subpackages = newDep.Subpackages
 	d.Arch = newDep.Arch
 	d.Os = newDep.Os
-
-	if d.Reference == "" && newDep.Ref != "" {
-		d.Reference = newDep.Ref
-	}
 
 	// Make sure only legitimate VCS are listed.
 	d.VcsType = filterVcsType(d.VcsType)
@@ -447,15 +558,36 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 
 	// Make sure we only write the correct vcs type to file
 	t := filterVcsType(d.VcsType)
+
 	newDep := &dep{
 		Name:        d.Name,
-		Reference:   d.Reference,
 		Repository:  d.Repository,
 		VcsType:     t,
 		Subpackages: d.Subpackages,
 		Arch:        d.Arch,
 		Os:          d.Os,
 	}
+
+	// Pull out the correct type of constraint
+	if v, ok := d.Constraint.(gps.Version); ok {
+		switch v.Type() {
+		case "any":
+			// Do nothing; nothing here is taken as 'any'
+		case "branch":
+			newDep.Branch = v.String()
+		case "revision", "semver", "version":
+			newDep.Reference = v.String()
+		}
+	} else if gps.IsAny(d.Constraint) {
+		// We do nothing here, as the way any gets represented is with no
+		// constraint information at all
+		// TODO for now, probably until we add first-class 'default branch'
+	} else if d.Constraint != nil {
+		// The only other thing this could really be is a semver range. This
+		// will dump that up appropriately.
+		newDep.Reference = d.Constraint.String()
+	}
+	// Just ignore any other case
 
 	return newDep, nil
 }
@@ -497,6 +629,7 @@ func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 func (d *Dependency) Clone() *Dependency {
 	return &Dependency{
 		Name:             d.Name,
+		Constraint:       d.Constraint,
 		Reference:        d.Reference,
 		Pin:              d.Pin,
 		Repository:       d.Repository,

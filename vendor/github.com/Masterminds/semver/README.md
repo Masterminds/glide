@@ -7,15 +7,13 @@ The `semver` package provides the ability to work with [Semantic Versions](http:
 * Check if a semantic version fits within a set of constraints
 * Optionally work with a `v` prefix
 
-[![Build Status](https://travis-ci.org/Masterminds/semver.svg)](https://travis-ci.org/Masterminds/semver) [![Build status](https://ci.appveyor.com/api/projects/status/jfk66lib7hb985k8/branch/master?svg=true&passingText=windows%20build%20passing&failingText=windows%20build%20failing)](https://ci.appveyor.com/project/mattfarina/semver/branch/master) [![GoDoc](https://godoc.org/github.com/Masterminds/semver?status.png)](https://godoc.org/github.com/Masterminds/semver) [![Go Report Card](https://goreportcard.com/badge/github.com/Masterminds/semver)](https://goreportcard.com/report/github.com/Masterminds/semver)
+[![Build Status](https://travis-ci.org/Masterminds/semver.svg)](https://travis-ci.org/Masterminds/semver) [![Build status](https://ci.appveyor.com/api/projects/status/jfk66lib7hb985k8/branch/master?svg=true&passingText=windows%20build%20passing&failingText=windows%20build%20failing)](https://ci.appveyor.com/project/mattfarina/semver/branch/master) [![GoDoc](https://godoc.org/github.com/Masterminds/semver?status.png)](https://godoc.org/github.com/Masterminds/semver) [![Go Report Card](http://goreportcard.com/badge/Masterminds/semver)](http://goreportcard.com/report/Masterminds/semver)
 
 ## Parsing Semantic Versions
 
 To parse a semantic version use the `NewVersion` function. For example,
 
-```go
     v, err := semver.NewVersion("1.2.3-beta.1+build345")
-```
 
 If there is an error the version wasn't parseable. The version object has methods
 to get the parts of the version, compare it to other versions, convert the
@@ -27,7 +25,6 @@ please see the [documentation](https://godoc.org/github.com/Masterminds/semver).
 A set of versions can be sorted using the [`sort`](https://golang.org/pkg/sort/)
 package from the standard library. For example,
 
-```go
     raw := []string{"1.2.3", "1.0", "1.3", "2", "0.4.2",}
     vs := make([]*semver.Version, len(raw))
 	for i, r := range raw {
@@ -40,14 +37,12 @@ package from the standard library. For example,
 	}
 
 	sort.Sort(semver.Collection(vs))
-```
 
 ## Checking Version Constraints
 
 Checking a version against version constraints is one of the most featureful
 parts of the package.
 
-```go
     c, err := semver.NewConstraint(">= 1.2.3")
     if err != nil {
         // Handle constraint not being parseable.
@@ -59,7 +54,6 @@ parts of the package.
     }
     // Check if the version meets the constraints. The a variable will be true.
     a := c.Check(v)
-```
 
 ## Basic Comparisons
 
@@ -125,7 +119,6 @@ In addition to testing a version against a constraint, a version can be validate
 against a constraint. When validation fails a slice of errors containing why a
 version didn't meet the constraint is returned. For example,
 
-```go
     c, err := semver.NewConstraint("<= 1.2.3, >= 1.4")
     if err != nil {
         // Handle constraint not being parseable.
@@ -146,7 +139,6 @@ version didn't meet the constraint is returned. For example,
         // "1.3 is greater than 1.2.3"
         // "1.3 is less than 1.4"
     }
-```
 
 # Contribute
 
