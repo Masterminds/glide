@@ -12,6 +12,7 @@ import (
 	"github.com/Masterminds/glide/gom"
 	"github.com/Masterminds/glide/gpm"
 	gpath "github.com/Masterminds/glide/path"
+	"github.com/Masterminds/semver"
 	"github.com/sdboyer/gps"
 )
 
@@ -26,7 +27,13 @@ func (notApplicable) Error() string {
 // SourceManager on request.
 type Analyzer struct{}
 
-func (a Analyzer) GetInfo(root string, pn gps.ProjectRoot) (gps.Manifest, gps.Lock, error) {
+func (a Analyzer) Info() (name string, version *semver.Version) {
+	name = "glide"
+	version, _ = semver.NewVersion("0.0.1")
+	return
+}
+
+func (a Analyzer) DeriveManifestAndLock(root string, pn gps.ProjectRoot) (gps.Manifest, gps.Lock, error) {
 	// this check should be unnecessary, but keeping it for now as a canary
 	if _, err := os.Lstat(root); err != nil {
 		return nil, nil, fmt.Errorf("No directory exists at %s; cannot produce ProjectInfo", root)

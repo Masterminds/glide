@@ -216,9 +216,16 @@ func depsToVSolver(deps Dependencies) []gps.ProjectConstraint {
 	return cp
 }
 
-// Name returns the name of the project given in the manifest.
-func (c *Config) Name() gps.ProjectRoot {
-	return gps.ProjectRoot(c.ProjectRoot)
+func (c *Config) IgnorePackages() map[string]bool {
+	m := make(map[string]bool)
+	for _, ig := range c.Ignore {
+		m[ig] = true
+	}
+	return m
+}
+
+func (c *Config) Overrides() gps.ProjectConstraints {
+	return nil
 }
 
 // HasIgnore returns true if the given name is listed on the ignore list.

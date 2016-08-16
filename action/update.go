@@ -34,7 +34,6 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		RootDir:     filepath.Dir(vend),
 		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
 		Manifest:    conf,
-		Ignore:      conf.Ignore,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
 	}

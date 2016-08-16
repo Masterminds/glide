@@ -41,7 +41,6 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 		RootDir:     filepath.Dir(glidefile),
 		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
 		Manifest:    conf,
-		Ignore:      conf.Ignore,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
 	}

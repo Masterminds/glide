@@ -42,7 +42,6 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 		RootDir:     filepath.Dir(vend),
 		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
 		Manifest:    conf,
-		Ignore:      conf.Ignore,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
 	}
@@ -233,7 +232,7 @@ func (gw safeGroupWriter) writeAllSafe() error {
 	}
 
 	if writeVendor {
-		err = gps.CreateVendorTree(filepath.Join(td, "vendor"), gw.resultLock, gw.sm, gw.stripVendor)
+		err = gps.WriteDepTree(filepath.Join(td, "vendor"), gw.resultLock, gw.sm, gw.stripVendor)
 		if err != nil {
 			return fmt.Errorf("Error while generating vendor tree: %s", err)
 		}
