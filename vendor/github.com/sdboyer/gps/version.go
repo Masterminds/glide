@@ -16,6 +16,7 @@ import "github.com/Masterminds/semver"
 // hiding behind the interface.
 type Version interface {
 	Constraint
+
 	// Indicates the type of version - Revision, Branch, Version, or Semver
 	Type() string
 }
@@ -24,8 +25,15 @@ type Version interface {
 // underlying Revision.
 type PairedVersion interface {
 	Version
+
 	// Underlying returns the immutable Revision that identifies this Version.
 	Underlying() Revision
+
+	// Unpair returns the surface-level UnpairedVersion that half of the pair.
+	//
+	// It does NOT modify the original PairedVersion
+	Unpair() UnpairedVersion
+
 	// Ensures it is impossible to be both a PairedVersion and an
 	// UnpairedVersion
 	_pair(int)
@@ -380,6 +388,10 @@ func (v versionPair) Underlying() Revision {
 	return v.r
 }
 
+func (v versionPair) Unpair() UnpairedVersion {
+	return v.v
+}
+
 func (v versionPair) Matches(v2 Version) bool {
 	switch tv2 := v2.(type) {
 	case versionTypeUnion:
@@ -470,8 +482,6 @@ func compareVersionType(l, r Version) int {
 			return 0
 		case branchVersion, plainVersion, semVersion:
 			return 1
-		default:
-			panic("unknown version type")
 		}
 	case branchVersion:
 		switch r.(type) {
@@ -481,8 +491,6 @@ func compareVersionType(l, r Version) int {
 			return 0
 		case plainVersion, semVersion:
 			return 1
-		default:
-			panic("unknown version type")
 		}
 
 	case plainVersion:
@@ -493,8 +501,6 @@ func compareVersionType(l, r Version) int {
 			return 0
 		case semVersion:
 			return 1
-		default:
-			panic("unknown version type")
 		}
 
 	case semVersion:
@@ -503,10 +509,7 @@ func compareVersionType(l, r Version) int {
 			return -1
 		case semVersion:
 			return 0
-		default:
-			panic("unknown version type")
 		}
-	default:
-		panic("unknown version type")
 	}
+	panic("unknown version type")
 }

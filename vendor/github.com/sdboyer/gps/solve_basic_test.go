@@ -81,6 +81,16 @@ func nvrSplit(info string) (id ProjectIdentifier, version string, revision Revis
 // should be provided in this case. It is an error (and will panic) to try to
 // pass a revision with an underlying revision.
 func mkAtom(info string) atom {
+	// if info is "root", special case it to use the root "version"
+	if info == "root" {
+		return atom{
+			id: ProjectIdentifier{
+				ProjectRoot: ProjectRoot("root"),
+			},
+			v: rootRev,
+		}
+	}
+
 	id, ver, rev := nvrSplit(info)
 
 	var v Version
@@ -113,7 +123,7 @@ func mkAtom(info string) atom {
 	}
 }
 
-// mkPDep splits the input string on a space, and uses the first two elements
+// mkPCstrnt splits the input string on a space, and uses the first two elements
 // as the project identifier and constraint body, respectively.
 //
 // The constraint body may have a leading character indicating the type of
@@ -124,7 +134,7 @@ func mkAtom(info string) atom {
 //  r: create a revision.
 //
 // If no leading character is used, a semver constraint is assumed.
-func mkPDep(info string) ProjectConstraint {
+func mkPCstrnt(info string) ProjectConstraint {
 	id, ver, rev := nvrSplit(info)
 
 	var c Constraint
@@ -161,6 +171,21 @@ func mkPDep(info string) ProjectConstraint {
 	return ProjectConstraint{
 		Ident:      id,
 		Constraint: c,
+	}
+}
+
+// mkCDep composes a completeDep struct from the inputs.
+//
+// The only real work here is passing the initial string to mkPDep. All the
+// other args are taken as package names.
+func mkCDep(pdep string, pl ...string) completeDep {
+	pc := mkPCstrnt(pdep)
+	return completeDep{
+		workingConstraint: workingConstraint{
+			Ident:      pc.Ident,
+			Constraint: pc.Constraint,
+		},
+		pl: pl,
 	}
 }
 
@@ -204,10 +229,51 @@ func mkDepspec(pi string, deps ...string) depspec {
 			sl = &ds.deps
 		}
 
-		*sl = append(*sl, mkPDep(dep))
+		*sl = append(*sl, mkPCstrnt(dep))
 	}
 
 	return ds
+}
+
+func mkDep(atom, pdep string, pl ...string) dependency {
+	return dependency{
+		depender: mkAtom(atom),
+		dep:      mkCDep(pdep, pl...),
+	}
+}
+
+func mkADep(atom, pdep string, c Constraint, pl ...string) dependency {
+	return dependency{
+		depender: mkAtom(atom),
+		dep: completeDep{
+			workingConstraint: workingConstraint{
+				Ident: ProjectIdentifier{
+					ProjectRoot: ProjectRoot(pdep),
+					NetworkName: pdep,
+				},
+				Constraint: c,
+			},
+			pl: pl,
+		},
+	}
+}
+
+// mkPI creates a ProjectIdentifier with the ProjectRoot as the provided
+// string, and with the NetworkName normalized to be the same.
+func mkPI(root string) ProjectIdentifier {
+	return ProjectIdentifier{
+		ProjectRoot: ProjectRoot(root),
+		NetworkName: root,
+	}
+}
+
+// mkSVC creates a new semver constraint, panicking if an error is returned.
+func mkSVC(body string) Constraint {
+	c, err := NewSemverConstraint(body)
+	if err != nil {
+		panic(fmt.Sprintf("Error while trying to create semver constraint from %s: %s", body, err.Error()))
+	}
+	return c
 }
 
 // mklock makes a fixLock, suitable to act as a lock file
@@ -287,10 +353,11 @@ type pident struct {
 
 type specfix interface {
 	name() string
+	rootmanifest() RootManifest
 	specs() []depspec
 	maxTries() int
-	expectErrs() []string
 	solution() map[string]Version
+	failure() error
 }
 
 // A basicFixture is a declarative test fixture that can cover a wide variety of
@@ -320,8 +387,10 @@ type basicFixture struct {
 	downgrade bool
 	// lock file simulator, if one's to be used at all
 	l fixLock
-	// projects expected to have errors, if any
-	errp []string
+	// solve failure expected, if any
+	fail error
+	// overrides, if any
+	ovr ProjectConstraints
 	// request up/downgrade to all projects
 	changeall bool
 }
@@ -338,12 +407,20 @@ func (f basicFixture) maxTries() int {
 	return f.maxAttempts
 }
 
-func (f basicFixture) expectErrs() []string {
-	return f.errp
-}
-
 func (f basicFixture) solution() map[string]Version {
 	return f.r
+}
+
+func (f basicFixture) rootmanifest() RootManifest {
+	return simpleRootManifest{
+		c:   f.ds[0].deps,
+		tc:  f.ds[0].devdeps,
+		ovr: f.ovr,
+	}
+}
+
+func (f basicFixture) failure() error {
+	return f.fail
 }
 
 // A table of basicFixtures, used in the basic solving test set.
@@ -448,8 +525,21 @@ var basicFixtures = map[string]basicFixture{
 			mkDepspec("foo 1.0.0", "bar from baz 1.0.0"),
 			mkDepspec("bar 1.0.0"),
 		},
-		// TODO(sdboyer) ugh; do real error comparison instead of shitty abstraction
-		errp: []string{"foo", "foo", "root"},
+		fail: &noVersionError{
+			pn: mkPI("foo"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("1.0.0"),
+					f: &sourceMismatchFailure{
+						shared:   ProjectRoot("bar"),
+						current:  "bar",
+						mismatch: "baz",
+						prob:     mkAtom("foo 1.0.0"),
+						sel:      []dependency{mkDep("root", "foo 1.0.0", "foo")},
+					},
+				},
+			},
+		},
 	},
 	// fixtures with locks
 	"with compatible locked dependency": {
@@ -679,7 +769,27 @@ var basicFixtures = map[string]basicFixture{
 			mkDepspec("foo 2.0.0"),
 			mkDepspec("foo 2.1.3"),
 		},
-		errp: []string{"foo", "root"},
+		fail: &noVersionError{
+			pn: mkPI("foo"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("2.1.3"),
+					f: &versionNotAllowedFailure{
+						goal:       mkAtom("foo 2.1.3"),
+						failparent: []dependency{mkDep("root", "foo ^1.0.0", "foo")},
+						c:          mkSVC("^1.0.0"),
+					},
+				},
+				{
+					v: NewVersion("2.0.0"),
+					f: &versionNotAllowedFailure{
+						goal:       mkAtom("foo 2.0.0"),
+						failparent: []dependency{mkDep("root", "foo ^1.0.0", "foo")},
+						c:          mkSVC("^1.0.0"),
+					},
+				},
+			},
+		},
 	},
 	"no version that matches combined constraint": {
 		ds: []depspec{
@@ -689,7 +799,27 @@ var basicFixtures = map[string]basicFixture{
 			mkDepspec("shared 2.5.0"),
 			mkDepspec("shared 3.5.0"),
 		},
-		errp: []string{"shared", "foo", "bar"},
+		fail: &noVersionError{
+			pn: mkPI("shared"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("3.5.0"),
+					f: &versionNotAllowedFailure{
+						goal:       mkAtom("shared 3.5.0"),
+						failparent: []dependency{mkDep("foo 1.0.0", "shared >=2.0.0, <3.0.0", "shared")},
+						c:          mkSVC(">=2.9.0, <3.0.0"),
+					},
+				},
+				{
+					v: NewVersion("2.5.0"),
+					f: &versionNotAllowedFailure{
+						goal:       mkAtom("shared 2.5.0"),
+						failparent: []dependency{mkDep("bar 1.0.0", "shared >=2.9.0, <4.0.0", "shared")},
+						c:          mkSVC(">=2.9.0, <3.0.0"),
+					},
+				},
+			},
+		},
 	},
 	"disjoint constraints": {
 		ds: []depspec{
@@ -699,8 +829,20 @@ var basicFixtures = map[string]basicFixture{
 			mkDepspec("shared 2.0.0"),
 			mkDepspec("shared 4.0.0"),
 		},
-		//errp: []string{"shared", "foo", "bar"}, // dart's has this...
-		errp: []string{"foo", "bar"},
+		fail: &noVersionError{
+			pn: mkPI("foo"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("1.0.0"),
+					f: &disjointConstraintFailure{
+						goal:      mkDep("foo 1.0.0", "shared <=2.0.0", "shared"),
+						failsib:   []dependency{mkDep("bar 1.0.0", "shared >3.0.0", "shared")},
+						nofailsib: nil,
+						c:         mkSVC(">3.0.0"),
+					},
+				},
+			},
+		},
 	},
 	"no valid solution": {
 		ds: []depspec{
@@ -710,8 +852,26 @@ var basicFixtures = map[string]basicFixture{
 			mkDepspec("b 1.0.0", "a 2.0.0"),
 			mkDepspec("b 2.0.0", "a 1.0.0"),
 		},
-		errp:        []string{"b", "a"},
-		maxAttempts: 2,
+		fail: &noVersionError{
+			pn: mkPI("b"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("2.0.0"),
+					f: &versionNotAllowedFailure{
+						goal:       mkAtom("b 2.0.0"),
+						failparent: []dependency{mkDep("a 1.0.0", "b 1.0.0", "b")},
+						c:          mkSVC("1.0.0"),
+					},
+				},
+				{
+					v: NewVersion("1.0.0"),
+					f: &constraintNotAllowedFailure{
+						goal: mkDep("b 1.0.0", "a 2.0.0", "a"),
+						v:    NewVersion("1.0.0"),
+					},
+				},
+			},
+		},
 	},
 	"no version that matches while backtracking": {
 		ds: []depspec{
@@ -719,7 +879,19 @@ var basicFixtures = map[string]basicFixture{
 			mkDepspec("a 1.0.0"),
 			mkDepspec("b 1.0.0"),
 		},
-		errp: []string{"b", "root"},
+		fail: &noVersionError{
+			pn: mkPI("b"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("1.0.0"),
+					f: &versionNotAllowedFailure{
+						goal:       mkAtom("b 1.0.0"),
+						failparent: []dependency{mkDep("root", "b >1.0.0", "b")},
+						c:          mkSVC(">1.0.0"),
+					},
+				},
+			},
+		},
 	},
 	// The latest versions of a and b disagree on c. An older version of either
 	// will resolve the problem. This test validates that b, which is farther
@@ -829,8 +1001,19 @@ var basicFixtures = map[string]basicFixture{
 			mkDepspec("bar 3.0.0"),
 			mkDepspec("none 1.0.0"),
 		},
-		errp:        []string{"none", "foo"},
-		maxAttempts: 1,
+		fail: &noVersionError{
+			pn: mkPI("none"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("1.0.0"),
+					f: &versionNotAllowedFailure{
+						goal:       mkAtom("none 1.0.0"),
+						failparent: []dependency{mkDep("foo 1.0.0", "none 2.0.0", "none")},
+						c:          mkSVC("2.0.0"),
+					},
+				},
+			},
+		},
 	},
 	// If there"s a disjoint constraint on a package, then selecting other
 	// versions of it is a waste of time: no possible versions can match. We
@@ -866,6 +1049,59 @@ var basicFixtures = map[string]basicFixture{
 			"foo r123abc",
 		),
 	},
+	// Some basic override checks
+	"override root's own constraint": {
+		ds: []depspec{
+			mkDepspec("root 0.0.0", "a *", "b *"),
+			mkDepspec("a 1.0.0", "b 1.0.0"),
+			mkDepspec("a 2.0.0", "b 1.0.0"),
+			mkDepspec("b 1.0.0"),
+		},
+		ovr: ProjectConstraints{
+			ProjectRoot("a"): ProjectProperties{
+				Constraint: NewVersion("1.0.0"),
+			},
+		},
+		r: mksolution(
+			"a 1.0.0",
+			"b 1.0.0",
+		),
+	},
+	"override dep's constraint": {
+		ds: []depspec{
+			mkDepspec("root 0.0.0", "a *"),
+			mkDepspec("a 1.0.0", "b 1.0.0"),
+			mkDepspec("a 2.0.0", "b 1.0.0"),
+			mkDepspec("b 1.0.0"),
+			mkDepspec("b 2.0.0"),
+		},
+		ovr: ProjectConstraints{
+			ProjectRoot("b"): ProjectProperties{
+				Constraint: NewVersion("2.0.0"),
+			},
+		},
+		r: mksolution(
+			"a 2.0.0",
+			"b 2.0.0",
+		),
+	},
+	"overridden mismatched net addrs, alt in dep, back to default": {
+		ds: []depspec{
+			mkDepspec("root 1.0.0", "foo 1.0.0", "bar 1.0.0"),
+			mkDepspec("foo 1.0.0", "bar from baz 1.0.0"),
+			mkDepspec("bar 1.0.0"),
+		},
+		ovr: ProjectConstraints{
+			ProjectRoot("bar"): ProjectProperties{
+				NetworkName: "bar",
+			},
+		},
+		r: mksolution(
+			"foo 1.0.0",
+			"bar 1.0.0",
+		),
+	},
+
 	// TODO(sdboyer) decide how to refactor the solver in order to re-enable these.
 	// Checking for revision existence is important...but kinda obnoxious.
 	//{
@@ -966,37 +1202,43 @@ func newdepspecSM(ds []depspec, ignore []string) *depspecSourceManager {
 	}
 }
 
-func (sm *depspecSourceManager) GetProjectInfo(n ProjectRoot, v Version) (Manifest, Lock, error) {
+func (sm *depspecSourceManager) GetManifestAndLock(id ProjectIdentifier, v Version) (Manifest, Lock, error) {
 	for _, ds := range sm.specs {
-		if n == ds.n && v.Matches(ds.v) {
+		if id.ProjectRoot == ds.n && v.Matches(ds.v) {
 			return ds, dummyLock{}, nil
 		}
 	}
 
 	// TODO(sdboyer) proper solver-type errors
-	return nil, nil, fmt.Errorf("Project %s at version %s could not be found", n, v)
+	return nil, nil, fmt.Errorf("Project %s at version %s could not be found", id.errString(), v)
 }
 
-func (sm *depspecSourceManager) ExternalReach(n ProjectRoot, v Version) (map[string][]string, error) {
-	id := pident{n: n, v: v}
-	if m, exists := sm.rm[id]; exists {
+func (sm *depspecSourceManager) AnalyzerInfo() (string, *semver.Version) {
+	return "depspec-sm-builtin", sv("v1.0.0")
+}
+
+func (sm *depspecSourceManager) ExternalReach(id ProjectIdentifier, v Version) (map[string][]string, error) {
+	pid := pident{n: id.ProjectRoot, v: v}
+	if m, exists := sm.rm[pid]; exists {
 		return m, nil
 	}
-	return nil, fmt.Errorf("No reach data for %s at version %s", n, v)
+	return nil, fmt.Errorf("No reach data for %s at version %s", id.errString(), v)
 }
 
-func (sm *depspecSourceManager) ListExternal(n ProjectRoot, v Version) ([]string, error) {
+func (sm *depspecSourceManager) ListExternal(id ProjectIdentifier, v Version) ([]string, error) {
 	// This should only be called for the root
-	id := pident{n: n, v: v}
-	if r, exists := sm.rm[id]; exists {
-		return r[string(n)], nil
+	pid := pident{n: id.ProjectRoot, v: v}
+	if r, exists := sm.rm[pid]; exists {
+		return r[string(id.ProjectRoot)], nil
 	}
-	return nil, fmt.Errorf("No reach data for %s at version %s", n, v)
+	return nil, fmt.Errorf("No reach data for %s at version %s", id.errString(), v)
 }
 
-func (sm *depspecSourceManager) ListPackages(n ProjectRoot, v Version) (PackageTree, error) {
-	id := pident{n: n, v: v}
-	if r, exists := sm.rm[id]; exists {
+func (sm *depspecSourceManager) ListPackages(id ProjectIdentifier, v Version) (PackageTree, error) {
+	pid := pident{n: id.ProjectRoot, v: v}
+	n := id.ProjectRoot
+
+	if r, exists := sm.rm[pid]; exists {
 		ptree := PackageTree{
 			ImportRoot: string(n),
 			Packages: map[string]PackageOrErr{
@@ -1015,35 +1257,35 @@ func (sm *depspecSourceManager) ListPackages(n ProjectRoot, v Version) (PackageT
 	return PackageTree{}, fmt.Errorf("Project %s at version %s could not be found", n, v)
 }
 
-func (sm *depspecSourceManager) ListVersions(name ProjectRoot) (pi []Version, err error) {
+func (sm *depspecSourceManager) ListVersions(id ProjectIdentifier) (pi []Version, err error) {
 	for _, ds := range sm.specs {
 		// To simulate the behavior of the real SourceManager, we do not return
 		// revisions from ListVersions().
-		if _, isrev := ds.v.(Revision); !isrev && name == ds.n {
+		if _, isrev := ds.v.(Revision); !isrev && id.ProjectRoot == ds.n {
 			pi = append(pi, ds.v)
 		}
 	}
 
 	if len(pi) == 0 {
-		err = fmt.Errorf("Project %s could not be found", name)
+		err = fmt.Errorf("Project %s could not be found", id.errString())
 	}
 
 	return
 }
 
-func (sm *depspecSourceManager) RevisionPresentIn(name ProjectRoot, r Revision) (bool, error) {
+func (sm *depspecSourceManager) RevisionPresentIn(id ProjectIdentifier, r Revision) (bool, error) {
 	for _, ds := range sm.specs {
-		if name == ds.n && r == ds.v {
+		if id.ProjectRoot == ds.n && r == ds.v {
 			return true, nil
 		}
 	}
 
-	return false, fmt.Errorf("Project %s has no revision %s", name, r)
+	return false, fmt.Errorf("Project %s has no revision %s", id.errString(), r)
 }
 
-func (sm *depspecSourceManager) RepoExists(name ProjectRoot) (bool, error) {
+func (sm *depspecSourceManager) SourceExists(id ProjectIdentifier) (bool, error) {
 	for _, ds := range sm.specs {
-		if name == ds.n {
+		if id.ProjectRoot == ds.n {
 			return true, nil
 		}
 	}
@@ -1051,14 +1293,24 @@ func (sm *depspecSourceManager) RepoExists(name ProjectRoot) (bool, error) {
 	return false, nil
 }
 
-func (sm *depspecSourceManager) VendorCodeExists(name ProjectRoot) (bool, error) {
+func (sm *depspecSourceManager) VendorCodeExists(id ProjectIdentifier) (bool, error) {
 	return false, nil
 }
 
 func (sm *depspecSourceManager) Release() {}
 
-func (sm *depspecSourceManager) ExportProject(n ProjectRoot, v Version, to string) error {
+func (sm *depspecSourceManager) ExportProject(id ProjectIdentifier, v Version, to string) error {
 	return fmt.Errorf("dummy sm doesn't support exporting")
+}
+
+func (sm *depspecSourceManager) DeduceProjectRoot(ip string) (ProjectRoot, error) {
+	for _, ds := range sm.allSpecs() {
+		n := string(ds.n)
+		if ip == n || strings.HasPrefix(ip, n+"/") {
+			return ProjectRoot(n), nil
+		}
+	}
+	return "", fmt.Errorf("Could not find %s, or any parent, in list of known fixtures", ip)
 }
 
 func (sm *depspecSourceManager) rootSpec() depspec {
@@ -1084,7 +1336,7 @@ func (b *depspecBridge) computeRootReach() ([]string, error) {
 	dsm := b.sm.(fixSM)
 	root := dsm.rootSpec()
 
-	ptree, err := dsm.ListPackages(root.n, nil)
+	ptree, err := dsm.ListPackages(mkPI(string(root.n)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1102,23 +1354,8 @@ func (b *depspecBridge) verifyRootDir(path string) error {
 	return nil
 }
 
-func (b *depspecBridge) listPackages(id ProjectIdentifier, v Version) (PackageTree, error) {
-	return b.sm.(fixSM).ListPackages(b.key(id), v)
-}
-
-// override deduceRemoteRepo on bridge to make all our pkg/project mappings work
-// as expected
-func (b *depspecBridge) deduceRemoteRepo(path string) (*remoteRepo, error) {
-	for _, ds := range b.sm.(fixSM).allSpecs() {
-		n := string(ds.n)
-		if path == n || strings.HasPrefix(path, n+"/") {
-			return &remoteRepo{
-				Base:   n,
-				RelPkg: strings.TrimPrefix(path, n+"/"),
-			}, nil
-		}
-	}
-	return nil, fmt.Errorf("Could not find %s, or any parent, in list of known fixtures", path)
+func (b *depspecBridge) ListPackages(id ProjectIdentifier, v Version) (PackageTree, error) {
+	return b.sm.(fixSM).ListPackages(id, v)
 }
 
 // enforce interfaces

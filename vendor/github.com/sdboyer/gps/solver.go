@@ -11,6 +11,8 @@ import (
 	"github.com/armon/go-radix"
 )
 
+var rootRev = Revision("")
+
 // SolveParameters hold all arguments to a solver run.
 //
 // Only RootDir and ImportRoot are absolutely required. A nil Manifest is
@@ -40,11 +42,12 @@ type SolveParameters struct {
 	// A non-empty string is required.
 	ImportRoot ProjectRoot
 
-	// The root manifest. This contains all the dependencies, constraints, and
-	// other controls available to the root project.
+	// The root manifest. This contains all the dependency constraints
+	// associated with normal Manifests, as well as the particular controls
+	// afforded only to the root project.
 	//
 	// May be nil, but for most cases, that would be unwise.
-	Manifest Manifest
+	Manifest RootManifest
 
 	// The root lock. Optional. Generally, this lock is the output of a previous
 	// solve run.
@@ -52,11 +55,6 @@ type SolveParameters struct {
 	// If provided, the solver will attempt to preserve the versions specified
 	// in the lock, unless ToChange or ChangeAll settings indicate otherwise.
 	Lock Lock
-
-	// A list of packages (import paths) to ignore. These can be in the root
-	// project, or from elsewhere. Ignoring a package means that both it and its
-	// imports will be disregarded by all relevant solver operations.
-	Ignore []string
 
 	// ToChange is a list of project names that should be changed - that is, any
 	// versions specified for those projects in the root lock file should be
@@ -88,8 +86,8 @@ type SolveParameters struct {
 	TraceLogger *log.Logger
 }
 
-// solver is a CDCL-style SAT solver with satisfiability conditions hardcoded to
-// the needs of the Go package management problem space.
+// solver is a CDCL-style constraint solver with satisfiability conditions
+// hardcoded to the needs of the Go package management problem space.
 type solver struct {
 	// The current number of attempts made over the course of this solve. This
 	// number increments each time the algorithm completes a backtrack and
@@ -149,7 +147,12 @@ type solver struct {
 
 	// A map of the ProjectRoot (local names) that are currently selected, and
 	// the network name to which they currently correspond.
+	// TODO(sdboyer) i think this is cruft and can be removed
 	names map[ProjectRoot]string
+
+	// A ProjectConstraints map containing the validated (guaranteed non-empty)
+	// overrides declared by the root manifest.
+	ovr ProjectConstraints
 
 	// A map of the names listed in the root's lock.
 	rlm map[ProjectIdentifier]LockedProject
@@ -162,9 +165,19 @@ type solver struct {
 }
 
 // A Solver is the main workhorse of gps: given a set of project inputs, it
-// performs a constraint solving analysis to develop a complete Result that can
-// be used as a lock file, and to populate a vendor directory.
+// performs a constraint solving analysis to develop a complete Solution, or
+// else fail with an informative error.
+//
+// If a Solution is found, an implementing tool may persist it - typically into
+// what a "lock file" - and/or use it to write out a directory tree of
+// dependencies, suitable to be a vendor directory, via CreateVendorTree.
 type Solver interface {
+	// HashInputs produces a hash digest representing the unique inputs to this
+	// solver. It is guaranteed that, if the hash digest is equal to the digest
+	// from a previous Solution.InputHash(), that that Solution is valid for
+	// this Solver's inputs.
+	//
+	// In such a case, it may not be necessary to run Solve() at all.
 	HashInputs() ([]byte, error)
 	Solve() (Solution, error)
 }
@@ -175,9 +188,6 @@ type Solver interface {
 // with the inputs is detected, an error is returned. Otherwise, a Solver is
 // returned, ready to hash and check inputs or perform a solving run.
 func Prepare(params SolveParameters, sm SourceManager) (Solver, error) {
-	// local overrides would need to be handled first.
-	// TODO(sdboyer) local overrides! heh
-
 	if sm == nil {
 		return nil, badOptsFailure("must provide non-nil SourceManager")
 	}
@@ -192,21 +202,41 @@ func Prepare(params SolveParameters, sm SourceManager) (Solver, error) {
 	}
 
 	if params.Manifest == nil {
-		params.Manifest = SimpleManifest{}
-	}
-
-	// Ensure the ignore map is at least initialized
-	ig := make(map[string]bool)
-	if len(params.Ignore) > 0 {
-		for _, pkg := range params.Ignore {
-			ig[pkg] = true
-		}
+		params.Manifest = simpleRootManifest{}
 	}
 
 	s := &solver{
 		params: params,
-		ig:     ig,
+		ig:     params.Manifest.IgnorePackages(),
+		ovr:    params.Manifest.Overrides(),
 		tl:     params.TraceLogger,
+	}
+
+	// Ensure the ignore and overrides maps are at least initialized
+	if s.ig == nil {
+		s.ig = make(map[string]bool)
+	}
+	if s.ovr == nil {
+		s.ovr = make(ProjectConstraints)
+	}
+
+	// Validate no empties in the overrides map
+	var eovr []string
+	for pr, pp := range s.ovr {
+		if pp.Constraint == nil && pp.NetworkName == "" {
+			eovr = append(eovr, string(pr))
+		}
+	}
+
+	if eovr != nil {
+		// Maybe it's a little nitpicky to do this (we COULD proceed; empty
+		// overrides have no effect), but this errs on the side of letting the
+		// tool/user know there's bad input. Purely as a principle, that seems
+		// preferable to silently allowing progress with icky input.
+		if len(eovr) > 1 {
+			return nil, badOptsFailure(fmt.Sprintf("Overrides lacked any non-zero properties for multiple project roots: %s", strings.Join(eovr, " ")))
+		}
+		return nil, badOptsFailure(fmt.Sprintf("An override was declared for %s, but without any non-zero properties", eovr[0]))
 	}
 
 	// Set up the bridge and ensure the root dir is in good, working order
@@ -260,36 +290,33 @@ func (s *solver) Solve() (Solution, error) {
 	// Prime the queues with the root project
 	err := s.selectRoot()
 	if err != nil {
-		// TODO(sdboyer) this properly with errs, yar
 		return nil, err
 	}
 
-	// Log initial step
-	s.logSolve()
 	all, err := s.solve()
 
-	// Solver finished with an err; return that and we're done
-	if err != nil {
-		return nil, err
+	var soln solution
+	if err == nil {
+		soln = solution{
+			att: s.attempts,
+		}
+
+		// An err here is impossible; it could only be caused by a parsing error
+		// of the root tree, but that necessarily succeeded back up
+		// selectRoot(), so we can ignore this err
+		soln.hd, _ = s.HashInputs()
+
+		// Convert ProjectAtoms into LockedProjects
+		soln.p = make([]LockedProject, len(all))
+		k := 0
+		for pa, pl := range all {
+			soln.p[k] = pa2lp(pa, pl)
+			k++
+		}
 	}
 
-	r := solution{
-		att: s.attempts,
-	}
-
-	// An err here is impossible at this point; we already know the root tree is
-	// fine
-	r.hd, _ = s.HashInputs()
-
-	// Convert ProjectAtoms into LockedProjects
-	r.p = make([]LockedProject, len(all))
-	k := 0
-	for pa, pl := range all {
-		r.p[k] = pa2lp(pa, pl)
-		k++
-	}
-
-	return r, nil
+	s.traceFinish(soln, err)
+	return soln, err
 }
 
 // solve is the top-level loop for the SAT solving process.
@@ -313,10 +340,11 @@ func (s *solver) solve() (map[atom]map[string]struct{}, error) {
 		if awp, is := s.sel.selected(bmi.id); !is {
 			// Analysis path for when we haven't selected the project yet - need
 			// to create a version queue.
-			s.logStart(bmi)
 			queue, err := s.createVersionQueue(bmi)
 			if err != nil {
 				// Err means a failure somewhere down the line; try backtracking.
+				s.traceStartBacktrack(bmi, err, false)
+				//s.traceBacktrack(bmi, false)
 				if s.backtrack() {
 					// backtracking succeeded, move to the next unselected id
 					continue
@@ -328,15 +356,15 @@ func (s *solver) solve() (map[atom]map[string]struct{}, error) {
 				panic("canary - queue is empty, but flow indicates success")
 			}
 
-			s.selectAtomWithPackages(atomWithPackages{
+			awp := atomWithPackages{
 				a: atom{
 					id: queue.id,
 					v:  queue.current(),
 				},
 				pl: bmi.pl,
-			})
+			}
+			s.selectAtom(awp, false)
 			s.vqs = append(s.vqs, queue)
-			s.logSolve()
 		} else {
 			// We're just trying to add packages to an already-selected project.
 			// That means it's not OK to burn through the version queue for that
@@ -357,21 +385,21 @@ func (s *solver) solve() (map[atom]map[string]struct{}, error) {
 				pl: bmi.pl,
 			}
 
-			s.logStart(bmi) // TODO(sdboyer) different special start logger for this path
-			err := s.checkPackage(nawp)
+			s.traceCheckPkgs(bmi)
+			err := s.check(nawp, true)
 			if err != nil {
 				// Err means a failure somewhere down the line; try backtracking.
+				s.traceStartBacktrack(bmi, err, true)
 				if s.backtrack() {
 					// backtracking succeeded, move to the next unselected id
 					continue
 				}
 				return nil, err
 			}
-			s.selectPackages(nawp)
+			s.selectAtom(nawp, true)
 			// We don't add anything to the stack of version queues because the
 			// backtracker knows not to pop the vqstack if it backtracks
 			// across a pure-package addition.
-			s.logSolve()
 		}
 	}
 
@@ -406,10 +434,10 @@ func (s *solver) selectRoot() error {
 		// It's sort of OK because the root never makes it out into the results.
 		// We may need a more elegant solution if we discover other side
 		// effects, though.
-		v: Revision(""),
+		v: rootRev,
 	}
 
-	ptree, err := s.b.listPackages(pa.id, nil)
+	ptree, err := s.b.ListPackages(pa.id, nil)
 	if err != nil {
 		return err
 	}
@@ -432,7 +460,8 @@ func (s *solver) selectRoot() error {
 
 	// If we're looking for root's deps, get it from opts and local root
 	// analysis, rather than having the sm do it
-	mdeps := append(s.rm.DependencyConstraints(), s.rm.TestDependencyConstraints()...)
+	c, tc := s.rm.DependencyConstraints(), s.rm.TestDependencyConstraints()
+	mdeps := s.ovr.overrideAll(pcSliceToMap(c, tc).asSortedSlice())
 
 	// Err is not possible at this point, as it could only come from
 	// listPackages(), which if we're here already succeeded for root
@@ -451,6 +480,7 @@ func (s *solver) selectRoot() error {
 		heap.Push(s.unsel, bimodalIdentifier{id: dep.Ident, pl: dep.pl, fromRoot: true})
 	}
 
+	s.traceSelectRoot(ptree, deps)
 	return nil
 }
 
@@ -463,12 +493,12 @@ func (s *solver) getImportsAndConstraintsOf(a atomWithPackages) ([]completeDep, 
 
 	// Work through the source manager to get project info and static analysis
 	// information.
-	m, _, err := s.b.getProjectInfo(a.a)
+	m, _, err := s.b.GetManifestAndLock(a.a.id, a.a.v)
 	if err != nil {
 		return nil, err
 	}
 
-	ptree, err := s.b.listPackages(a.a.id, a.a.v)
+	ptree, err := s.b.ListPackages(a.a.id, a.a.v)
 	if err != nil {
 		return nil, err
 	}
@@ -505,8 +535,7 @@ func (s *solver) getImportsAndConstraintsOf(a atomWithPackages) ([]completeDep, 
 		k++
 	}
 
-	deps := m.DependencyConstraints()
-	// TODO(sdboyer) add overrides here...if we impl the concept (which we should)
+	deps := s.ovr.overrideAll(m.DependencyConstraints())
 
 	return s.intersectConstraintsWithImports(deps, reach)
 }
@@ -515,7 +544,7 @@ func (s *solver) getImportsAndConstraintsOf(a atomWithPackages) ([]completeDep, 
 // externally reached packages, and creates a []completeDep that is guaranteed
 // to include all packages named by import reach, using constraints where they
 // are available, or Any() where they are not.
-func (s *solver) intersectConstraintsWithImports(deps []ProjectConstraint, reach []string) ([]completeDep, error) {
+func (s *solver) intersectConstraintsWithImports(deps []workingConstraint, reach []string) ([]completeDep, error) {
 	// Create a radix tree with all the projects we know from the manifest
 	// TODO(sdboyer) make this smarter once we allow non-root inputs as 'projects'
 	xt := radix.New()
@@ -543,8 +572,8 @@ func (s *solver) intersectConstraintsWithImports(deps []ProjectConstraint, reach
 			// github.com/sdboyer/foo
 			// github.com/sdboyer/foobar/baz
 			//
-			// The latter would incorrectly be conflated in with the former. So,
-			// as we know we're operating on strings that describe paths, guard
+			// The latter would incorrectly be conflated with the former. So, as
+			// we know we're operating on strings that describe paths, guard
 			// against this case by verifying that either the input is the same
 			// length as the match (in which case we know they're equal), or
 			// that the next character is the is the PathSeparator.
@@ -552,13 +581,13 @@ func (s *solver) intersectConstraintsWithImports(deps []ProjectConstraint, reach
 				// Match is valid; put it in the dmap, either creating a new
 				// completeDep or appending it to the existing one for this base
 				// project/prefix.
-				dep := idep.(ProjectConstraint)
+				dep := idep.(workingConstraint)
 				if cdep, exists := dmap[dep.Ident.ProjectRoot]; exists {
 					cdep.pl = append(cdep.pl, rp)
 					dmap[dep.Ident.ProjectRoot] = cdep
 				} else {
 					dmap[dep.Ident.ProjectRoot] = completeDep{
-						ProjectConstraint: dep,
+						workingConstraint: dep,
 						pl:                []string{rp},
 					}
 				}
@@ -567,27 +596,27 @@ func (s *solver) intersectConstraintsWithImports(deps []ProjectConstraint, reach
 		}
 
 		// No match. Let the SourceManager try to figure out the root
-		root, err := s.b.deduceRemoteRepo(rp)
+		root, err := s.b.DeduceProjectRoot(rp)
 		if err != nil {
 			// Nothing we can do if we can't suss out a root
 			return nil, err
 		}
 
-		// Still no matches; make a new completeDep with an open constraint
-		pd := ProjectConstraint{
+		// Make a new completeDep with an open constraint, respecting overrides
+		pd := s.ovr.override(ProjectConstraint{
 			Ident: ProjectIdentifier{
-				ProjectRoot: ProjectRoot(root.Base),
-				NetworkName: root.Base,
+				ProjectRoot: root,
+				NetworkName: string(root),
 			},
 			Constraint: Any(),
-		}
+		})
 
 		// Insert the pd into the trie so that further deps from this
 		// project get caught by the prefix search
-		xt.Insert(root.Base, pd)
+		xt.Insert(string(root), pd)
 		// And also put the complete dep into the dmap
-		dmap[ProjectRoot(root.Base)] = completeDep{
-			ProjectConstraint: pd,
+		dmap[root] = completeDep{
+			workingConstraint: pd,
 			pl:                []string{rp},
 		}
 	}
@@ -610,7 +639,7 @@ func (s *solver) createVersionQueue(bmi bimodalIdentifier) (*versionQueue, error
 		return newVersionQueue(id, nil, nil, s.b)
 	}
 
-	exists, err := s.b.repoExists(id)
+	exists, err := s.b.SourceExists(id)
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +652,7 @@ func (s *solver) createVersionQueue(bmi bimodalIdentifier) (*versionQueue, error
 			// Project exists only in vendor (and in some manifest somewhere)
 			// TODO(sdboyer) mark this for special handling, somehow?
 		} else {
-			return nil, newSolveError(fmt.Sprintf("Project '%s' could not be located.", id), cannotResolve)
+			return nil, fmt.Errorf("Project '%s' could not be located.", id)
 		}
 	}
 
@@ -650,7 +679,7 @@ func (s *solver) createVersionQueue(bmi bimodalIdentifier) (*versionQueue, error
 				continue
 			}
 
-			_, l, err := s.b.getProjectInfo(dep.depender)
+			_, l, err := s.b.GetManifestAndLock(dep.depender.id, dep.depender.v)
 			if err != nil || l == nil {
 				// err being non-nil really shouldn't be possible, but the lock
 				// being nil is quite likely
@@ -715,6 +744,7 @@ func (s *solver) createVersionQueue(bmi bimodalIdentifier) (*versionQueue, error
 	}
 
 	// Having assembled the queue, search it for a valid version.
+	s.traceCheckQueue(q, bmi, false, 1)
 	return q, s.findValidVersion(q, bmi.pl)
 }
 
@@ -735,13 +765,14 @@ func (s *solver) findValidVersion(q *versionQueue, pl []string) error {
 
 	for {
 		cur := q.current()
-		err := s.checkProject(atomWithPackages{
+		s.traceInfo("try %s@%s", q.id.errString(), cur)
+		err := s.check(atomWithPackages{
 			a: atom{
 				id: q.id,
 				v:  cur,
 			},
 			pl: pl,
-		})
+		}, false)
 		if err == nil {
 			// we have a good version, can return safely
 			return nil
@@ -785,7 +816,7 @@ func (s *solver) getLockVersionIfValid(id ProjectIdentifier) (Version, error) {
 		// to be found and attempted in the repository. If it's only in vendor,
 		// though, then we have to try to use what's in the lock, because that's
 		// the only version we'll be able to get.
-		if exist, _ := s.b.repoExists(id); exist {
+		if exist, _ := s.b.SourceExists(id); exist {
 			return nil, nil
 		}
 
@@ -833,12 +864,9 @@ func (s *solver) getLockVersionIfValid(id ProjectIdentifier) (Version, error) {
 		}
 
 		if !found {
-			s.logSolve("%s in root lock, but current constraints disallow it", id.errString())
 			return nil, nil
 		}
 	}
-
-	s.logSolve("using root lock's version of %s", id.errString())
 
 	return v, nil
 }
@@ -865,46 +893,44 @@ func (s *solver) backtrack() bool {
 
 			// Pop selections off until we get to a project.
 			var proj bool
+			var awp atomWithPackages
 			for !proj {
-				_, proj = s.unselectLast()
+				awp, proj = s.unselectLast()
+				s.traceBacktrack(awp.bmi(), !proj)
 			}
 		}
 
 		// Grab the last versionQueue off the list of queues
 		q := s.vqs[len(s.vqs)-1]
-		// Walk back to the next project
-		var awp atomWithPackages
-		var proj bool
 
-		for !proj {
-			awp, proj = s.unselectLast()
+		// Walk back to the next project
+		awp, proj := s.unselectLast()
+		if !proj {
+			panic("canary - *should* be impossible to have a pkg-only selection here")
 		}
 
 		if !q.id.eq(awp.a.id) {
-			panic("canary - version queue stack and selected project stack are out of alignment")
+			panic("canary - version queue stack and selected project stack are misaligned")
 		}
 
 		// Advance the queue past the current version, which we know is bad
 		// TODO(sdboyer) is it feasible to make available the failure reason here?
 		if q.advance(nil) == nil && !q.isExhausted() {
 			// Search for another acceptable version of this failed dep in its queue
+			s.traceCheckQueue(q, awp.bmi(), true, 0)
 			if s.findValidVersion(q, awp.pl) == nil {
-				s.logSolve()
-
 				// Found one! Put it back on the selected queue and stop
 				// backtracking
-				s.selectAtomWithPackages(atomWithPackages{
-					a: atom{
-						id: q.id,
-						v:  q.current(),
-					},
-					pl: awp.pl,
-				})
+
+				// reusing the old awp is fine
+				awp.a.v = q.current()
+				s.selectAtom(awp, false)
 				break
 			}
 		}
 
-		s.logSolve("no more versions of %s, backtracking", q.id.errString())
+		s.traceBacktrack(awp.bmi(), false)
+		//s.traceInfo("no more versions of %s, backtracking", q.id.errString())
 
 		// No solution found; continue backtracking after popping the queue
 		// we just inspected off the list
@@ -975,8 +1001,8 @@ func (s *solver) unselectedComparator(i, j int) bool {
 	// We can safely ignore an err from ListVersions here because, if there is
 	// an actual problem, it'll be noted and handled somewhere else saner in the
 	// solving algorithm.
-	ivl, _ := s.b.listVersions(iname)
-	jvl, _ := s.b.listVersions(jname)
+	ivl, _ := s.b.ListVersions(iname)
+	jvl, _ := s.b.ListVersions(jname)
 	iv, jv := len(ivl), len(jvl)
 
 	// Packages with fewer versions to pick from are less likely to benefit from
@@ -1012,79 +1038,18 @@ func (s *solver) fail(id ProjectIdentifier) {
 	}
 }
 
-// selectAtomWithPackages handles the selection case where a new project is
-// being added to the selection queue, alongside some number of its contained
-// packages. This method pushes them onto the selection queue, then adds any
-// new resultant deps to the unselected queue.
-func (s *solver) selectAtomWithPackages(a atomWithPackages) {
-	s.unsel.remove(bimodalIdentifier{
-		id: a.a.id,
-		pl: a.pl,
-	})
-
-	s.sel.pushSelection(a, true)
-
-	deps, err := s.getImportsAndConstraintsOf(a)
-	if err != nil {
-		// This shouldn't be possible; other checks should have ensured all
-		// packages and deps are present for any argument passed to this method.
-		panic(fmt.Sprintf("canary - shouldn't be possible %s", err))
-	}
-
-	// If this atom has a lock, pull it out so that we can potentially inject
-	// preferred versions into any bmis we enqueue
-	_, l, _ := s.b.getProjectInfo(a.a)
-	var lmap map[ProjectIdentifier]Version
-	if l != nil {
-		lmap = make(map[ProjectIdentifier]Version)
-		for _, lp := range l.Projects() {
-			lmap[lp.Ident()] = lp.Version()
-		}
-	}
-
-	for _, dep := range deps {
-		s.sel.pushDep(dependency{depender: a.a, dep: dep})
-		// Go through all the packages introduced on this dep, selecting only
-		// the ones where the only depper on them is what we pushed in. Then,
-		// put those into the unselected queue.
-		rpm := s.sel.getRequiredPackagesIn(dep.Ident)
-		var newp []string
-		for _, pkg := range dep.pl {
-			if rpm[pkg] == 1 {
-				newp = append(newp, pkg)
-			}
-		}
-
-		if len(newp) > 0 {
-			bmi := bimodalIdentifier{
-				id: dep.Ident,
-				pl: newp,
-				// This puts in a preferred version if one's in the map, else
-				// drops in the zero value (nil)
-				prefv: lmap[dep.Ident],
-			}
-			heap.Push(s.unsel, bmi)
-		}
-
-		if s.sel.depperCount(dep.Ident) == 1 {
-			s.names[dep.Ident.ProjectRoot] = dep.Ident.netName()
-		}
-	}
-}
-
-// selectPackages handles the selection case where we're just adding some new
-// packages to a project that was already selected. After pushing the selection,
-// it adds any newly-discovered deps to the unselected queue.
+// selectAtom pulls an atom into the selection stack, alongside some of
+// its contained packages. New resultant dependency requirements are added to
+// the unselected priority queue.
 //
-// It also takes an atomWithPackages because we need that same information in
-// order to enqueue the selection.
-func (s *solver) selectPackages(a atomWithPackages) {
+// Behavior is slightly diffferent if pkgonly is true.
+func (s *solver) selectAtom(a atomWithPackages, pkgonly bool) {
 	s.unsel.remove(bimodalIdentifier{
 		id: a.a.id,
 		pl: a.pl,
 	})
 
-	s.sel.pushSelection(a, false)
+	s.sel.pushSelection(a, pkgonly)
 
 	deps, err := s.getImportsAndConstraintsOf(a)
 	if err != nil {
@@ -1095,7 +1060,7 @@ func (s *solver) selectPackages(a atomWithPackages) {
 
 	// If this atom has a lock, pull it out so that we can potentially inject
 	// preferred versions into any bmis we enqueue
-	_, l, _ := s.b.getProjectInfo(a.a)
+	_, l, _ := s.b.GetManifestAndLock(a.a.id, a.a.v)
 	var lmap map[ProjectIdentifier]Version
 	if l != nil {
 		lmap = make(map[ProjectIdentifier]Version)
@@ -1132,6 +1097,8 @@ func (s *solver) selectPackages(a atomWithPackages) {
 			s.names[dep.Ident.ProjectRoot] = dep.Ident.netName()
 		}
 	}
+
+	s.traceSelect(a, pkgonly)
 }
 
 func (s *solver) unselectLast() (atomWithPackages, bool) {
@@ -1156,67 +1123,6 @@ func (s *solver) unselectLast() (atomWithPackages, bool) {
 	}
 
 	return awp, first
-}
-
-func (s *solver) logStart(bmi bimodalIdentifier) {
-	if !s.params.Trace {
-		return
-	}
-
-	prefix := strings.Repeat("| ", len(s.vqs)+1)
-	// TODO(sdboyer) how...to list the packages in the limited space we have?
-	s.tl.Printf("%s\n", tracePrefix(fmt.Sprintf("? attempting %s (with %v packages)", bmi.id.errString(), len(bmi.pl)), prefix, prefix))
-}
-
-func (s *solver) logSolve(args ...interface{}) {
-	if !s.params.Trace {
-		return
-	}
-
-	preflen := len(s.vqs)
-	var msg string
-	if len(args) == 0 {
-		// Generate message based on current solver state
-		if len(s.vqs) == 0 {
-			msg = "✓ (root)"
-		} else {
-			vq := s.vqs[len(s.vqs)-1]
-			msg = fmt.Sprintf("✓ select %s at %s", vq.id.errString(), vq.current())
-		}
-	} else {
-		// Use longer prefix length for these cases, as they're the intermediate
-		// work
-		preflen++
-		switch data := args[0].(type) {
-		case string:
-			msg = tracePrefix(fmt.Sprintf(data, args[1:]), "| ", "| ")
-		case traceError:
-			// We got a special traceError, use its custom method
-			msg = tracePrefix(data.traceString(), "| ", "✗ ")
-		case error:
-			// Regular error; still use the x leader but default Error() string
-			msg = tracePrefix(data.Error(), "| ", "✗ ")
-		default:
-			// panic here because this can *only* mean a stupid internal bug
-			panic("canary - must pass a string as first arg to logSolve, or no args at all")
-		}
-	}
-
-	prefix := strings.Repeat("| ", preflen)
-	s.tl.Printf("%s\n", tracePrefix(msg, prefix, prefix))
-}
-
-func tracePrefix(msg, sep, fsep string) string {
-	parts := strings.Split(strings.TrimSuffix(msg, "\n"), "\n")
-	for k, str := range parts {
-		if k == 0 {
-			parts[k] = fmt.Sprintf("%s%s", fsep, str)
-		} else {
-			parts[k] = fmt.Sprintf("%s%s", sep, str)
-		}
-	}
-
-	return strings.Join(parts, "\n")
 }
 
 // simple (temporary?) helper just to convert atoms into locked projects

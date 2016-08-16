@@ -1,9 +1,12 @@
 package gps
 
-// checkProject performs all constraint checks on a new project (with packages)
-// that we want to select. It determines if selecting the atom would result in
-// a state where all solver requirements are still satisfied.
-func (s *solver) checkProject(a atomWithPackages) error {
+// check performs constraint checks on the provided atom. The set of checks
+// differ slightly depending on whether the atom is pkgonly, or if it's the
+// entire project being added for the first time.
+//
+// The goal is to determine whether selecting the atom would result in a state
+// where all the solver requirements are still satisfied.
+func (s *solver) check(a atomWithPackages, pkgonly bool) error {
 	pa := a.a
 	if nilpa == pa {
 		// This shouldn't be able to happen, but if it does, it unequivocally
@@ -11,95 +14,56 @@ func (s *solver) checkProject(a atomWithPackages) error {
 		panic("canary - checking version of empty ProjectAtom")
 	}
 
-	if err := s.checkAtomAllowable(pa); err != nil {
-		s.logSolve(err)
-		return err
+	// If we're pkgonly, then base atom was already determined to be allowable,
+	// so we can skip the checkAtomAllowable step.
+	if !pkgonly {
+		if err := s.checkAtomAllowable(pa); err != nil {
+			s.traceInfo(err)
+			return err
+		}
 	}
 
 	if err := s.checkRequiredPackagesExist(a); err != nil {
-		s.logSolve(err)
+		s.traceInfo(err)
 		return err
 	}
 
 	deps, err := s.getImportsAndConstraintsOf(a)
 	if err != nil {
 		// An err here would be from the package fetcher; pass it straight back
-		// TODO(sdboyer) can we logSolve this?
+		// TODO(sdboyer) can we traceInfo this?
 		return err
 	}
 
+	// TODO(sdboyer) this deps list contains only packages not already selected
+	// from the target atom (assuming one is selected at all). It's fine for
+	// now, but won't be good enough when we get around to doing static
+	// analysis.
 	for _, dep := range deps {
 		if err := s.checkIdentMatches(a, dep); err != nil {
-			s.logSolve(err)
+			s.traceInfo(err)
 			return err
 		}
 		if err := s.checkDepsConstraintsAllowable(a, dep); err != nil {
-			s.logSolve(err)
+			s.traceInfo(err)
 			return err
 		}
 		if err := s.checkDepsDisallowsSelected(a, dep); err != nil {
-			s.logSolve(err)
+			s.traceInfo(err)
 			return err
 		}
 		// TODO(sdboyer) decide how to refactor in order to re-enable this. Checking for
 		// revision existence is important...but kinda obnoxious.
 		//if err := s.checkRevisionExists(a, dep); err != nil {
-		//s.logSolve(err)
+		//s.traceInfo(err)
 		//return err
 		//}
 		if err := s.checkPackageImportsFromDepExist(a, dep); err != nil {
-			s.logSolve(err)
+			s.traceInfo(err)
 			return err
 		}
 
 		// TODO(sdboyer) add check that fails if adding this atom would create a loop
-	}
-
-	return nil
-}
-
-// checkPackages performs all constraint checks for new packages being added to
-// an already-selected project. It determines if selecting the packages would
-// result in a state where all solver requirements are still satisfied.
-func (s *solver) checkPackage(a atomWithPackages) error {
-	if nilpa == a.a {
-		// This shouldn't be able to happen, but if it does, it unequivocally
-		// indicates a logical bug somewhere, so blowing up is preferable
-		panic("canary - checking version of empty ProjectAtom")
-	}
-
-	// The base atom was already validated, so we can skip the
-	// checkAtomAllowable step.
-	deps, err := s.getImportsAndConstraintsOf(a)
-	if err != nil {
-		// An err here would be from the package fetcher; pass it straight back
-		// TODO(sdboyer) can we logSolve this?
-		return err
-	}
-
-	for _, dep := range deps {
-		if err := s.checkIdentMatches(a, dep); err != nil {
-			s.logSolve(err)
-			return err
-		}
-		if err := s.checkDepsConstraintsAllowable(a, dep); err != nil {
-			s.logSolve(err)
-			return err
-		}
-		if err := s.checkDepsDisallowsSelected(a, dep); err != nil {
-			s.logSolve(err)
-			return err
-		}
-		// TODO(sdboyer) decide how to refactor in order to re-enable this. Checking for
-		// revision existence is important...but kinda obnoxious.
-		//if err := s.checkRevisionExists(a, dep); err != nil {
-		//s.logSolve(err)
-		//return err
-		//}
-		if err := s.checkPackageImportsFromDepExist(a, dep); err != nil {
-			s.logSolve(err)
-			return err
-		}
 	}
 
 	return nil
@@ -135,7 +99,7 @@ func (s *solver) checkAtomAllowable(pa atom) error {
 // checkRequiredPackagesExist ensures that all required packages enumerated by
 // existing dependencies on this atom are actually present in the atom.
 func (s *solver) checkRequiredPackagesExist(a atomWithPackages) error {
-	ptree, err := s.b.listPackages(a.a.id, a.a.v)
+	ptree, err := s.b.ListPackages(a.a.id, a.a.v)
 	if err != nil {
 		// TODO(sdboyer) handle this more gracefully
 		return err
@@ -175,7 +139,7 @@ func (s *solver) checkRequiredPackagesExist(a atomWithPackages) error {
 // checkDepsConstraintsAllowable checks that the constraints of an atom on a
 // given dep are valid with respect to existing constraints.
 func (s *solver) checkDepsConstraintsAllowable(a atomWithPackages, cdep completeDep) error {
-	dep := cdep.ProjectConstraint
+	dep := cdep.workingConstraint
 	constraint := s.sel.getConstraint(dep.Ident)
 	// Ensure the constraint expressed by the dep has at least some possible
 	// intersection with the intersection of existing constraints.
@@ -208,7 +172,7 @@ func (s *solver) checkDepsConstraintsAllowable(a atomWithPackages, cdep complete
 // dep are not incompatible with the version of that dep that's already been
 // selected.
 func (s *solver) checkDepsDisallowsSelected(a atomWithPackages, cdep completeDep) error {
-	dep := cdep.ProjectConstraint
+	dep := cdep.workingConstraint
 	selected, exists := s.sel.selected(dep.Ident)
 	if exists && !s.b.matches(dep.Ident, dep.Constraint, selected.a.v) {
 		s.fail(dep.Ident)
@@ -229,7 +193,7 @@ func (s *solver) checkDepsDisallowsSelected(a atomWithPackages, cdep completeDep
 // identifiers with the same local name, but that disagree about where their
 // network source is.
 func (s *solver) checkIdentMatches(a atomWithPackages, cdep completeDep) error {
-	dep := cdep.ProjectConstraint
+	dep := cdep.workingConstraint
 	if cur, exists := s.names[dep.Ident.ProjectRoot]; exists {
 		if cur != dep.Ident.netName() {
 			deps := s.sel.getDependenciesOn(a.a.id)
@@ -255,13 +219,13 @@ func (s *solver) checkIdentMatches(a atomWithPackages, cdep completeDep) error {
 // checkPackageImportsFromDepExist ensures that, if the dep is already selected,
 // the newly-required set of packages being placed on it exist and are valid.
 func (s *solver) checkPackageImportsFromDepExist(a atomWithPackages, cdep completeDep) error {
-	sel, is := s.sel.selected(cdep.ProjectConstraint.Ident)
+	sel, is := s.sel.selected(cdep.workingConstraint.Ident)
 	if !is {
 		// dep is not already selected; nothing to do
 		return nil
 	}
 
-	ptree, err := s.b.listPackages(sel.a.id, sel.a.v)
+	ptree, err := s.b.ListPackages(sel.a.id, sel.a.v)
 	if err != nil {
 		// TODO(sdboyer) handle this more gracefully
 		return err
@@ -279,14 +243,15 @@ func (s *solver) checkPackageImportsFromDepExist(a atomWithPackages, cdep comple
 	for _, pkg := range cdep.pl {
 		perr, has := ptree.Packages[pkg]
 		if !has || perr.Err != nil {
-			e.pl = append(e.pl, pkg)
 			if has {
 				e.prob[pkg] = perr.Err
+			} else {
+				e.prob[pkg] = nil
 			}
 		}
 	}
 
-	if len(e.pl) > 0 {
+	if len(e.prob) > 0 {
 		return e
 	}
 	return nil
@@ -301,7 +266,7 @@ func (s *solver) checkRevisionExists(a atomWithPackages, cdep completeDep) error
 		return nil
 	}
 
-	present, _ := s.b.revisionPresentIn(cdep.Ident, r)
+	present, _ := s.b.RevisionPresentIn(cdep.Ident, r)
 	if present {
 		return nil
 	}

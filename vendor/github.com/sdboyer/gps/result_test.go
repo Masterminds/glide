@@ -48,12 +48,10 @@ func TestResultCreateVendorTree(t *testing.T) {
 	tmp := path.Join(os.TempDir(), "vsolvtest")
 	os.RemoveAll(tmp)
 
-	sm, err := NewSourceManager(naiveAnalyzer{}, path.Join(tmp, "cache"), false)
-	if err != nil {
-		t.Errorf("NewSourceManager errored unexpectedly: %q", err)
-	}
+	sm, clean := mkNaiveSM(t)
+	defer clean()
 
-	err = CreateVendorTree(path.Join(tmp, "export"), r, sm, true)
+	err := WriteDepTree(path.Join(tmp, "export"), r, sm, true)
 	if err != nil {
 		t.Errorf("Unexpected error while creating vendor tree: %s", err)
 	}
@@ -77,7 +75,7 @@ func BenchmarkCreateVendorTree(b *testing.B) {
 
 	// Prefetch the projects before timer starts
 	for _, lp := range r.p {
-		_, _, err := sm.GetProjectInfo(lp.Ident().ProjectRoot, lp.Version())
+		_, _, err := sm.GetManifestAndLock(lp.Ident(), lp.Version())
 		if err != nil {
 			b.Errorf("failed getting project info during prefetch: %s", err)
 			clean = false
@@ -93,7 +91,7 @@ func BenchmarkCreateVendorTree(b *testing.B) {
 			// ease manual inspection
 			os.RemoveAll(exp)
 			b.StartTimer()
-			err = CreateVendorTree(exp, r, sm, true)
+			err = WriteDepTree(exp, r, sm, true)
 			b.StopTimer()
 			if err != nil {
 				b.Errorf("unexpected error after %v iterations: %s", i, err)

@@ -75,14 +75,6 @@ type ProjectIdentifier struct {
 	NetworkName string
 }
 
-// A ProjectConstraint combines a ProjectIdentifier with a Constraint. It
-// indicates that, if packages contained in the ProjectIdentifier enter the
-// depgraph, they must do so at a version that is allowed by the Constraint.
-type ProjectConstraint struct {
-	Ident      ProjectIdentifier
-	Constraint Constraint
-}
-
 func (i ProjectIdentifier) less(j ProjectIdentifier) bool {
 	if i.ProjectRoot < j.ProjectRoot {
 		return true
@@ -134,6 +126,16 @@ func (i ProjectIdentifier) normalize() ProjectIdentifier {
 	return i
 }
 
+// ProjectProperties comprise the properties that can attached to a ProjectRoot.
+//
+// In general, these are declared in the context of a map of ProjectRoot to its
+// ProjectProperties; they make little sense without their corresponding
+// ProjectRoot.
+type ProjectProperties struct {
+	NetworkName string
+	Constraint  Constraint
+}
+
 // Package represents a Go package. It contains a subset of the information
 // go/build.Package does.
 type Package struct {
@@ -144,8 +146,6 @@ type Package struct {
 }
 
 // bimodalIdentifiers are used to track work to be done in the unselected queue.
-// TODO(sdboyer) marker for root, to know to ignore prefv...or can we do unselected queue
-// sorting only?
 type bimodalIdentifier struct {
 	id ProjectIdentifier
 	// List of packages required within/under the ProjectIdentifier
@@ -172,6 +172,18 @@ type atomWithPackages struct {
 	pl []string
 }
 
+// bmi converts an atomWithPackages into a bimodalIdentifier.
+//
+// This is mostly intended for (read-only) trace use, so the package list slice
+// is not copied. It is the callers responsibility to not modify the pl slice,
+// lest that backpropagate and cause inconsistencies.
+func (awp atomWithPackages) bmi() bimodalIdentifier {
+	return bimodalIdentifier{
+		id: awp.a.id,
+		pl: awp.pl,
+	}
+}
+
 //type byImportPath []Package
 
 //func (s byImportPath) Len() int           { return len(s) }
@@ -183,8 +195,8 @@ type atomWithPackages struct {
 // are the same) name, a constraint, and the actual packages needed that are
 // under that root.
 type completeDep struct {
-	// The base ProjectDep
-	ProjectConstraint
+	// The base workingConstraint
+	workingConstraint
 	// The specific packages required from the ProjectDep
 	pl []string
 }

@@ -320,7 +320,25 @@ var bimodalFixtures = map[string]bimodalFixture{
 				pkg("a"),
 			),
 		},
-		errp: []string{"a", "root", "a"},
+		fail: &noVersionError{
+			pn: mkPI("a"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("1.0.0"),
+					f: &checkeeHasProblemPackagesFailure{
+						goal: mkAtom("a 1.0.0"),
+						failpkg: map[string]errDeppers{
+							"a/foo": errDeppers{
+								err: nil, // nil indicates package is missing
+								deppers: []atom{
+									mkAtom("root"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	},
 	// Transitive deps from one project (a) get incrementally included as other
 	// deps incorporate its various packages, and fail with proper error when we
@@ -345,7 +363,21 @@ var bimodalFixtures = map[string]bimodalFixture{
 				pkg("d", "a/nonexistent"),
 			),
 		},
-		errp: []string{"d", "a", "d"},
+		fail: &noVersionError{
+			pn: mkPI("d"),
+			fails: []failedVersion{
+				{
+					v: NewVersion("1.0.0"),
+					f: &depHasProblemPackagesFailure{
+						goal: mkADep("d 1.0.0", "a", Any(), "a/nonexistent"),
+						v:    NewVersion("1.0.0"),
+						prob: map[string]error{
+							"a/nonexistent": nil,
+						},
+					},
+				},
+			},
+		},
 	},
 	// Check ignores on the root project
 	"ignore in double-subpkg": {
@@ -466,6 +498,66 @@ var bimodalFixtures = map[string]bimodalFixture{
 			"b 2.0.0 barrev",
 		),
 	},
+	"override unconstrained root import": {
+		ds: []depspec{
+			dsp(mkDepspec("root 0.0.0"),
+				pkg("root", "a")),
+			dsp(mkDepspec("a 1.0.0"),
+				pkg("a")),
+			dsp(mkDepspec("a 2.0.0"),
+				pkg("a")),
+		},
+		ovr: ProjectConstraints{
+			ProjectRoot("a"): ProjectProperties{
+				Constraint: NewVersion("1.0.0"),
+			},
+		},
+		r: mksolution(
+			"a 1.0.0",
+		),
+	},
+	"overridden mismatched net addrs, alt in dep": {
+		ds: []depspec{
+			dsp(mkDepspec("root 0.0.0"),
+				pkg("root", "foo")),
+			dsp(mkDepspec("foo 1.0.0", "bar from baz 1.0.0"),
+				pkg("foo", "bar")),
+			dsp(mkDepspec("bar 1.0.0"),
+				pkg("bar")),
+			dsp(mkDepspec("baz 1.0.0"),
+				pkg("bar")),
+		},
+		ovr: ProjectConstraints{
+			ProjectRoot("bar"): ProjectProperties{
+				NetworkName: "baz",
+			},
+		},
+		r: mksolution(
+			"foo 1.0.0",
+			"bar from baz 1.0.0",
+		),
+	},
+	"overridden mismatched net addrs, alt in root": {
+		ds: []depspec{
+			dsp(mkDepspec("root 0.0.0", "bar from baz 1.0.0"),
+				pkg("root", "foo")),
+			dsp(mkDepspec("foo 1.0.0"),
+				pkg("foo", "bar")),
+			dsp(mkDepspec("bar 1.0.0"),
+				pkg("bar")),
+			dsp(mkDepspec("baz 1.0.0"),
+				pkg("bar")),
+		},
+		ovr: ProjectConstraints{
+			ProjectRoot("bar"): ProjectProperties{
+				NetworkName: "baz",
+			},
+		},
+		r: mksolution(
+			"foo 1.0.0",
+			"bar from baz 1.0.0",
+		),
+	},
 }
 
 // tpkg is a representation of a single package. It has its own import path, as
@@ -493,8 +585,10 @@ type bimodalFixture struct {
 	// map of locks for deps, if any. keys should be of the form:
 	// "<project> <version>"
 	lm map[string]fixLock
-	// projects expected to have errors, if any
-	errp []string
+	// solve failure expected, if any
+	fail error
+	// overrides, if any
+	ovr ProjectConstraints
 	// request up/downgrade to all projects
 	changeall bool
 	// pkgs to ignore
@@ -513,12 +607,26 @@ func (f bimodalFixture) maxTries() int {
 	return f.maxAttempts
 }
 
-func (f bimodalFixture) expectErrs() []string {
-	return f.errp
-}
-
 func (f bimodalFixture) solution() map[string]Version {
 	return f.r
+}
+
+func (f bimodalFixture) rootmanifest() RootManifest {
+	m := simpleRootManifest{
+		c:   f.ds[0].deps,
+		tc:  f.ds[0].devdeps,
+		ovr: f.ovr,
+		ig:  make(map[string]bool),
+	}
+	for _, ig := range f.ignore {
+		m.ig[ig] = true
+	}
+
+	return m
+}
+
+func (f bimodalFixture) failure() error {
+	return f.fail
 }
 
 // bmSourceManager is an SM specifically for the bimodal fixtures. It composes
@@ -541,12 +649,12 @@ func newbmSM(bmf bimodalFixture) *bmSourceManager {
 	return sm
 }
 
-func (sm *bmSourceManager) ListPackages(n ProjectRoot, v Version) (PackageTree, error) {
+func (sm *bmSourceManager) ListPackages(id ProjectIdentifier, v Version) (PackageTree, error) {
 	for k, ds := range sm.specs {
 		// Cheat for root, otherwise we blow up b/c version is empty
-		if n == ds.n && (k == 0 || ds.v.Matches(v)) {
+		if id.ProjectRoot == ds.n && (k == 0 || ds.v.Matches(v)) {
 			ptree := PackageTree{
-				ImportRoot: string(n),
+				ImportRoot: string(id.ProjectRoot),
 				Packages:   make(map[string]PackageOrErr),
 			}
 			for _, pkg := range ds.pkgs {
@@ -563,13 +671,13 @@ func (sm *bmSourceManager) ListPackages(n ProjectRoot, v Version) (PackageTree, 
 		}
 	}
 
-	return PackageTree{}, fmt.Errorf("Project %s at version %s could not be found", n, v)
+	return PackageTree{}, fmt.Errorf("Project %s at version %s could not be found", id.errString(), v)
 }
 
-func (sm *bmSourceManager) GetProjectInfo(n ProjectRoot, v Version) (Manifest, Lock, error) {
+func (sm *bmSourceManager) GetManifestAndLock(id ProjectIdentifier, v Version) (Manifest, Lock, error) {
 	for _, ds := range sm.specs {
-		if n == ds.n && v.Matches(ds.v) {
-			if l, exists := sm.lm[string(n)+" "+v.String()]; exists {
+		if id.ProjectRoot == ds.n && v.Matches(ds.v) {
+			if l, exists := sm.lm[string(id.ProjectRoot)+" "+v.String()]; exists {
 				return ds, l, nil
 			}
 			return ds, dummyLock{}, nil
@@ -577,7 +685,7 @@ func (sm *bmSourceManager) GetProjectInfo(n ProjectRoot, v Version) (Manifest, L
 	}
 
 	// TODO(sdboyer) proper solver-type errors
-	return nil, nil, fmt.Errorf("Project %s at version %s could not be found", n, v)
+	return nil, nil, fmt.Errorf("Project %s at version %s could not be found", id.errString(), v)
 }
 
 // computeBimodalExternalMap takes a set of depspecs and computes an
@@ -601,10 +709,6 @@ func computeBimodalExternalMap(ds []depspec) map[pident]map[string][]string {
 		workmap := make(map[string]wm)
 
 		for _, pkg := range d.pkgs {
-			if !checkPrefixSlash(filepath.Clean(pkg.path), string(d.n)) {
-				panic(fmt.Sprintf("pkg %s is not a child of %s, cannot be a part of that project", pkg.path, d.n))
-			}
-
 			w := wm{
 				ex: make(map[string]bool),
 				in: make(map[string]bool),
