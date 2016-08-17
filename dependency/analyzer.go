@@ -138,7 +138,7 @@ func (a Analyzer) lookForGodep(root string) (gps.Manifest, gps.Lock, error) {
 		return nil, nil, err
 	}
 
-	return &cfg.Config{ProjectRoot: root, Imports: d}, l, nil
+	return &cfg.Config{Name: root, Imports: d}, l, nil
 }
 
 func (a Analyzer) lookForGPM(root string) (gps.Manifest, gps.Lock, error) {
@@ -151,7 +151,7 @@ func (a Analyzer) lookForGPM(root string) (gps.Manifest, gps.Lock, error) {
 		return nil, nil, err
 	}
 
-	return &cfg.Config{ProjectRoot: root, Imports: d}, l, nil
+	return &cfg.Config{Name: root, Imports: d}, l, nil
 }
 
 func (a Analyzer) lookForGb(root string) (gps.Manifest, gps.Lock, error) {
@@ -164,7 +164,7 @@ func (a Analyzer) lookForGb(root string) (gps.Manifest, gps.Lock, error) {
 		return nil, nil, err
 	}
 
-	return &cfg.Config{ProjectRoot: root, Imports: d}, l, nil
+	return &cfg.Config{Name: root, Imports: d}, l, nil
 }
 
 func (a Analyzer) lookForGom(root string) (gps.Manifest, gps.Lock, error) {

@@ -85,7 +85,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 	config := new(cfg.Config)
 
 	// Get the name of the top level package
-	config.ProjectRoot = name
+	config.Name = name
 
 	// Import by looking at other package managers and looking over the
 	// entire directory structure.
@@ -131,7 +131,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
 
-		if !config.Imports.Has(root) && root != config.ProjectRoot {
+		if !config.Imports.Has(root) && root != config.Name {
 			msg.Info("--> Found reference to %s\n", n)
 			d := &cfg.Dependency{
 				Name: root,
@@ -156,9 +156,9 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 		n := strings.TrimPrefix(pa, vpath)
 		root, subpkg := util.NormalizeName(n)
 
-		if config.Imports.Has(root) && root != config.ProjectRoot {
+		if config.Imports.Has(root) && root != config.Name {
 			msg.Debug("--> Found test reference to %s already listed as an import", n)
-		} else if !config.DevImports.Has(root) && root != config.ProjectRoot {
+		} else if !config.DevImports.Has(root) && root != config.Name {
 			msg.Info("--> Found test reference to %s", n)
 			d := &cfg.Dependency{
 				Name: root,

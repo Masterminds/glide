@@ -40,7 +40,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 
 	params := gps.SolveParameters{
 		RootDir:     filepath.Dir(vend),
-		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
+		ImportRoot:  gps.ProjectRoot(conf.Name),
 		Manifest:    conf,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),

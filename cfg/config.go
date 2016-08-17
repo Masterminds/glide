@@ -19,7 +19,7 @@ import (
 type Config struct {
 
 	// Name is the name of the package or application.
-	ProjectRoot string `yaml:"package"`
+	Name string `yaml:"package"`
 
 	// Description is a short description for a package, application, or library.
 	// This description is similar but different to a Go package description as
@@ -105,7 +105,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&newConfig); err != nil {
 		return err
 	}
-	c.ProjectRoot = newConfig.Name
+	c.Name = newConfig.Name
 	c.Description = newConfig.Description
 	c.Home = newConfig.Home
 	c.License = newConfig.License
@@ -124,7 +124,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (c *Config) MarshalYAML() (interface{}, error) {
 	newConfig := &cf{
-		Name:        c.ProjectRoot,
+		Name:        c.Name,
 		Description: c.Description,
 		Home:        c.Home,
 		License:     c.License,
@@ -257,7 +257,7 @@ func (c *Config) HasExclude(ex string) bool {
 // Clone performs a deep clone of the Config instance
 func (c *Config) Clone() *Config {
 	n := &Config{}
-	n.ProjectRoot = c.ProjectRoot
+	n.Name = c.Name
 	n.Description = c.Description
 	n.Home = c.Home
 	n.License = c.License
@@ -298,7 +298,7 @@ func (c *Config) DeDupe() error {
 	// If the name on the config object is part of the imports remove it.
 	found := -1
 	for i, dep := range c.Imports {
-		if dep.Name == c.ProjectRoot {
+		if dep.Name == c.Name {
 			found = i
 		}
 	}
@@ -308,7 +308,7 @@ func (c *Config) DeDupe() error {
 
 	found = -1
 	for i, dep := range c.DevImports {
-		if dep.Name == c.ProjectRoot {
+		if dep.Name == c.Name {
 			found = i
 		}
 	}
@@ -502,7 +502,7 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	if d.Reference != "" {
 		r := d.Reference
-		// TODO this covers git & hg; bzr and svn (??) need love
+		// TODO(sdboyer) this covers git & hg; bzr and svn (??) need love
 		if len(r) == 40 {
 			if _, err := hex.DecodeString(r); err == nil {
 				d.Constraint = gps.Revision(r)
@@ -524,7 +524,6 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Branch, err)
 		}
 	} else {
-		// TODO this is just for now - need a default branch constraint type
 		d.Constraint = gps.Any()
 	}
 

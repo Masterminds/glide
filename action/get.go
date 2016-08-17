@@ -39,7 +39,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 
 	params := gps.SolveParameters{
 		RootDir:     filepath.Dir(glidefile),
-		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
+		ImportRoot:  gps.ProjectRoot(conf.Name),
 		Manifest:    conf,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),

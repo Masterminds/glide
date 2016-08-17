@@ -32,7 +32,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 
 	params := gps.SolveParameters{
 		RootDir:     filepath.Dir(vend),
-		ImportRoot:  gps.ProjectRoot(conf.ProjectRoot),
+		ImportRoot:  gps.ProjectRoot(conf.Name),
 		Manifest:    conf,
 		Trace:       true,
 		TraceLogger: log.New(os.Stdout, "", 0),
