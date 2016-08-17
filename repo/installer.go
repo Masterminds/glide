@@ -248,6 +248,16 @@ func (i *Installer) Export(conf *cfg.Config) error {
 	if err != nil {
 		return err
 	}
+	// defer func() {
+	// 	err = os.RemoveAll(tempDir)
+	// 	if err != nil {
+	// 		msg.Err(err.Error())
+	// 	}
+	// }()
+
+	vp := filepath.Join(tempDir, "vendor")
+	err = os.MkdirAll(vp, 0755)
+
 	msg.Info("Exporting resolved dependencies...")
 	done := make(chan struct{}, concurrentWorkers)
 	in := make(chan *cfg.Dependency, concurrentWorkers)
@@ -270,14 +280,10 @@ func (i *Installer) Export(conf *cfg.Config) error {
 					cdir := filepath.Join(cache.Location(), "src", key)
 					repo, err := dep.GetRepo(cdir)
 					if err != nil {
-						err2 := os.RemoveAll(tempDir)
-						if err2 != nil {
-							msg.Debug("Unable to delete temp vendor directory: %s", err2)
-						}
 						msg.Die(err.Error())
 					}
 					msg.Info("--> Exporting %s", dep.Name)
-					if err := repo.ExportDir(filepath.Join(tempDir, filepath.ToSlash(dep.Name))); err != nil {
+					if err := repo.ExportDir(filepath.Join(vp, filepath.ToSlash(dep.Name))); err != nil {
 						msg.Err("Export failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.
@@ -300,6 +306,16 @@ func (i *Installer) Export(conf *cfg.Config) error {
 
 	for _, dep := range conf.Imports {
 		if !conf.HasIgnore(dep.Name) {
+			err = os.MkdirAll(filepath.Join(vp, filepath.ToSlash(dep.Name)), 0755)
+			if err != nil {
+				lock.Lock()
+				if returnErr == nil {
+					returnErr = err
+				} else {
+					returnErr = cli.NewMultiError(returnErr, err)
+				}
+				lock.Unlock()
+			}
 			wg.Add(1)
 			in <- dep
 		}
@@ -308,6 +324,16 @@ func (i *Installer) Export(conf *cfg.Config) error {
 	if i.ResolveTest {
 		for _, dep := range conf.DevImports {
 			if !conf.HasIgnore(dep.Name) {
+				err = os.MkdirAll(filepath.Join(vp, filepath.ToSlash(dep.Name)), 0755)
+				if err != nil {
+					lock.Lock()
+					if returnErr == nil {
+						returnErr = err
+					} else {
+						returnErr = cli.NewMultiError(returnErr, err)
+					}
+					lock.Unlock()
+				}
 				wg.Add(1)
 				in <- dep
 			}
@@ -322,11 +348,6 @@ func (i *Installer) Export(conf *cfg.Config) error {
 	}
 
 	if returnErr != nil {
-		err2 := os.RemoveAll(tempDir)
-		if err2 != nil {
-			msg.Debug("Unable to delete temp vendor directory: %s", err2)
-		}
-
 		return returnErr
 	}
 
@@ -336,7 +357,7 @@ func (i *Installer) Export(conf *cfg.Config) error {
 		return err
 	}
 
-	err = os.Rename(tempDir, i.VendorPath())
+	err = os.Rename(vp, i.VendorPath())
 	return err
 
 }
