@@ -36,8 +36,6 @@ func VcsUpdate(dep *cfg.Dependency, force bool, updated *UpdateTracker) error {
 	}
 	updated.Add(dep.Name)
 
-	msg.Info("--> Fetching updates for %s.", dep.Name)
-
 	if filterArchOs(dep) {
 		msg.Info("%s is not used for %s/%s.\n", dep.Name, runtime.GOOS, runtime.GOARCH)
 		return nil
@@ -52,12 +50,14 @@ func VcsUpdate(dep *cfg.Dependency, force bool, updated *UpdateTracker) error {
 
 	// If destination doesn't exist we need to perform an initial checkout.
 	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		msg.Info("--> Fetching %s.", dep.Name)
 		if err = VcsGet(dep); err != nil {
 			msg.Warn("Unable to checkout %s\n", dep.Name)
 			return err
 		}
 	} else {
 		// At this point we have a directory for the package.
+		msg.Info("--> Fetching updates for %s.", dep.Name)
 
 		// When the directory is not empty and has no VCS directory it's
 		// a vendored files situation.
