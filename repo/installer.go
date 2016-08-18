@@ -248,12 +248,12 @@ func (i *Installer) Export(conf *cfg.Config) error {
 	if err != nil {
 		return err
 	}
-	// defer func() {
-	// 	err = os.RemoveAll(tempDir)
-	// 	if err != nil {
-	// 		msg.Err(err.Error())
-	// 	}
-	// }()
+	defer func() {
+		err = os.RemoveAll(tempDir)
+		if err != nil {
+			msg.Err(err.Error())
+		}
+	}()
 
 	vp := filepath.Join(tempDir, "vendor")
 	err = os.MkdirAll(vp, 0755)
