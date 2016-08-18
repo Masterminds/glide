@@ -361,7 +361,7 @@ func (i *Installer) Export(conf *cfg.Config) error {
 
 	// When there are different physical devices we cannot rename cross device.
 	// Fall back to manual copy.
-	if strings.Contains(err.Error(), "invalid cross-device link") {
+	if err != nil && strings.Contains(err.Error(), "invalid cross-device link") {
 		msg.Debug("Cross link err, trying manual copy: %s", err)
 
 		err = gpath.CopyDir(vp, i.VendorPath())
