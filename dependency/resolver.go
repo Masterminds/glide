@@ -3,6 +3,7 @@ package dependency
 import (
 	"container/list"
 	"runtime"
+	"sort"
 	//"go/build"
 	"os"
 	"path/filepath"
@@ -303,7 +304,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 			}
 		} else {
 			imps = p.Imports
-			testImps = p.TestImports
+			testImps = dedupeStrings(p.TestImports, p.XTestImports)
 		}
 
 		// We are only looking for dependencies in vendor. No root, cgo, etc.
@@ -536,7 +537,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 			continue
 		} else {
 			if testDeps {
-				imps = pkg.TestImports
+				imps = dedupeStrings(pkg.TestImports, pkg.XTestImports)
 			} else {
 				imps = pkg.Imports
 			}
@@ -799,7 +800,7 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 		return []string{}, err
 	} else {
 		if testDeps {
-			imps = p.TestImports
+			imps = dedupeStrings(p.TestImports, p.XTestImports)
 		} else {
 			imps = p.Imports
 		}
@@ -1077,4 +1078,30 @@ func checkForBasedirSymlink(basedir string) (string, error) {
 	}
 
 	return basedir, nil
+}
+
+// helper func to merge, dedupe, and sort strings
+func dedupeStrings(s1, s2 []string) (r []string) {
+	dedupe := make(map[string]bool)
+
+	if len(s1) > 0 && len(s2) > 0 {
+		for _, i := range s1 {
+			dedupe[i] = true
+		}
+		for _, i := range s2 {
+			dedupe[i] = true
+		}
+
+		for i := range dedupe {
+			r = append(r, i)
+		}
+		// And then re-sort them
+		sort.Strings(r)
+	} else if len(s1) > 0 {
+		r = s1
+	} else if len(s2) > 0 {
+		r = s2
+	}
+
+	return
 }
