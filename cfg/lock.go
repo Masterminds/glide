@@ -218,7 +218,7 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 			}
 		}
 		if !found {
-			lf.DevImports[i] = LockFromDependency(tds[i])
+			lf.DevImports = append(lf.DevImports, LockFromDependency(tds[i]))
 		}
 	}
 
