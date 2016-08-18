@@ -105,6 +105,12 @@ func main() {
 			Usage:  "The location of Glide files",
 			EnvVar: "GLIDE_HOME",
 		},
+		cli.StringFlag{
+			Name:   "tmp",
+			Value:  "",
+			Usage:  "The temp directory to use. Defaults to systems temp",
+			EnvVar: "GLIDE_TMP",
+		},
 		cli.BoolFlag{
 			Name:  "no-color",
 			Usage: "Turn off colored output for log messages",
@@ -858,6 +864,7 @@ func startup(c *cli.Context) error {
 	action.Quiet(c.Bool("quiet"))
 	action.Init(c.String("yaml"), c.String("home"))
 	action.EnsureGoVendor()
+	gpath.Tmp = c.String("tmp")
 	return nil
 }
 
