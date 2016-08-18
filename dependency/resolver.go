@@ -51,6 +51,10 @@ type MissingPackageHandler interface {
 	//
 	// This can be used update a project found in the vendor/ folder.
 	InVendor(pkg string, addTest bool) error
+
+	// PkgPath is called to find the location locally to scan. This gives the
+	// handler to do things such as use a cached location.
+	PkgPath(pkg string) string
 }
 
 // DefaultMissingPackageHandler is the default handler for missing packages.
@@ -60,6 +64,7 @@ type MissingPackageHandler interface {
 type DefaultMissingPackageHandler struct {
 	Missing []string
 	Gopath  []string
+	Prefix  string
 }
 
 // NotFound prints a warning and then stores the package name in Missing.
@@ -82,6 +87,14 @@ func (d *DefaultMissingPackageHandler) OnGopath(pkg string, addTest bool) (bool,
 func (d *DefaultMissingPackageHandler) InVendor(pkg string, addTest bool) error {
 	msg.Info("Package %s found in vendor/ folder", pkg)
 	return nil
+}
+
+// PkgPath returns the path to the package
+func (d *DefaultMissingPackageHandler) PkgPath(pkg string) string {
+	if d.Prefix != "" {
+		return filepath.Join(d.Prefix, pkg)
+	}
+	return pkg
 }
 
 // VersionHandler sets the version for a package when found while scanning.
@@ -470,7 +483,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 		// Here, we want to import the package and see what imports it has.
 		msg.Debug("Trying to open %s", vdep)
 		var imps []string
-		pkg, err := r.BuildContext.ImportDir(vdep, 0)
+		pkg, err := r.BuildContext.ImportDir(r.Handler.PkgPath(dep), 0)
 		if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
 			// If we got here it's because a package and multiple packages
 			// declared. This is often because of an example with a package
@@ -478,9 +491,9 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 			// try to brute force the packages with a slower scan.
 			msg.Debug("Using Iterative Scanning for %s", dep)
 			if testDeps {
-				_, imps, err = IterativeScan(vdep)
+				_, imps, err = IterativeScan(r.Handler.PkgPath(dep))
 			} else {
-				imps, _, err = IterativeScan(vdep)
+				imps, _, err = IterativeScan(r.Handler.PkgPath(dep))
 			}
 
 			if err != nil {
@@ -488,7 +501,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 				continue
 			}
 		} else if err != nil {
-			msg.Debug("ImportDir error on %s: %s", vdep, err)
+			msg.Debug("ImportDir error on %s: %s", r.Handler.PkgPath(dep), err)
 			if strings.HasPrefix(err.Error(), "no buildable Go source") {
 				msg.Debug("No subpackages declared. Skipping %s.", dep)
 				continue
@@ -767,16 +780,16 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 	// FIXME: On error this should try to NotFound to the dependency, and then import
 	// it again.
 	var imps []string
-	p, err := r.BuildContext.ImportDir(pkg, 0)
+	p, err := r.BuildContext.ImportDir(r.Handler.PkgPath(pkg), 0)
 	if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
 		// If we got here it's because a package and multiple packages
 		// declared. This is often because of an example with a package
 		// or main but +build ignore as a build tag. In that case we
 		// try to brute force the packages with a slower scan.
 		if testDeps {
-			_, imps, err = IterativeScan(pkg)
+			_, imps, err = IterativeScan(r.Handler.PkgPath(pkg))
 		} else {
-			imps, _, err = IterativeScan(pkg)
+			imps, _, err = IterativeScan(r.Handler.PkgPath(pkg))
 		}
 
 		if err != nil {

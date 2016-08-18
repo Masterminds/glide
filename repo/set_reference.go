@@ -6,18 +6,12 @@ import (
 	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
-	gpath "github.com/Masterminds/glide/path"
 	"github.com/codegangsta/cli"
 )
 
 // SetReference is a command to set the VCS reference (commit id, tag, etc) for
 // a project.
 func SetReference(conf *cfg.Config, resolveTest bool) error {
-
-	cwd, err := gpath.Vendor()
-	if err != nil {
-		return err
-	}
 
 	if len(conf.Imports) == 0 && len(conf.DevImports) == 0 {
 		msg.Info("No references set.\n")
@@ -35,6 +29,7 @@ func SetReference(conf *cfg.Config, resolveTest bool) error {
 			for {
 				select {
 				case dep := <-ch:
+
 					var loc string
 					if dep.Repository != "" {
 						loc = dep.Repository
@@ -46,7 +41,7 @@ func SetReference(conf *cfg.Config, resolveTest bool) error {
 						msg.Die(err.Error())
 					}
 					cache.Lock(key)
-					if err := VcsVersion(dep, cwd); err != nil {
+					if err := VcsVersion(dep); err != nil {
 						msg.Err("Failed to set version on %s to %s: %s\n", dep.Name, dep.Reference, err)
 
 						// Capture the error while making sure the concurrent

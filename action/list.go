@@ -25,7 +25,7 @@ func List(basedir string, deep bool, format string) {
 	if err != nil {
 		msg.Die("Could not create a resolver: %s", err)
 	}
-	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}}
+	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}, Prefix: "vendor"}
 	r.Handler = h
 
 	localPkgs, _, err := r.ResolveLocal(deep)

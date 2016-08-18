@@ -1,6 +1,7 @@
 package action
 
 import (
+	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
@@ -9,6 +10,7 @@ import (
 
 // Remove removes a dependncy from the configuration.
 func Remove(packages []string, inst *repo.Installer) {
+	cache.SystemLock()
 	base := gpath.Basepath()
 	EnsureGopath()
 	EnsureVendorDir()
@@ -25,16 +27,15 @@ func Remove(packages []string, inst *repo.Installer) {
 	// Copy used to generate locks.
 	confcopy := conf.Clone()
 
-	confcopy.Imports = inst.List(confcopy)
+	//confcopy.Imports = inst.List(confcopy)
 
 	if err := repo.SetReference(confcopy, inst.ResolveTest); err != nil {
 		msg.Err("Failed to set references: %s", err)
 	}
 
-	// TODO: Right now, there is no flag to enable this, so this will never be
-	// run. I am not sure whether we should allow this in a rm op or not.
-	if inst.UpdateVendored {
-		repo.VendoredCleanup(confcopy)
+	err = inst.Export(confcopy)
+	if err != nil {
+		msg.Die("Unable to export dependencies to vendor directory: %s", err)
 	}
 
 	// Write glide.yaml

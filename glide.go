@@ -155,8 +155,9 @@ func commands() []cli.Command {
 					Usage: "Disable interactive prompts.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"))
+				return nil
 			},
 		},
 		{
@@ -166,8 +167,9 @@ func commands() []cli.Command {
 			Description: `Glide will analyze a projects glide.yaml file and the imported
 		projects to find ways the glide.yaml file can potentially be improved. It
 		will then interactively make suggestions that you can skip or accept.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.ConfigWizard(".")
+				return nil
 			},
 		},
 		{
@@ -223,28 +225,33 @@ func commands() []cli.Command {
 					Usage: "This will resolve all dependencies for all packages, not just those directly used.",
 				},
 				cli.BoolFlag{
-					Name:  "update-vendored, u",
-					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Name:   "update-vendored, u",
+					Usage:  "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache",
-					Usage: "When downloading dependencies attempt to cache them.",
+					Name:   "cache",
+					Usage:  "When downloading dependencies attempt to cache them.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache-gopath",
-					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Name:   "cache-gopath",
+					Usage:  "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "use-gopath",
-					Usage: "Copy dependencies from the GOPATH if they exist there.",
+					Name:   "use-gopath",
+					Usage:  "Copy dependencies from the GOPATH if they exist there.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "resolve-current",
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
 				cli.BoolFlag{
-					Name:  "strip-vcs, s",
-					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Name:   "strip-vcs, s",
+					Usage:  "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -259,9 +266,27 @@ func commands() []cli.Command {
 					Usage: "Resolve dependencies in test files.",
 				},
 			},
-			Action: func(c *cli.Context) {
-				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
-					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+			Action: func(c *cli.Context) error {
+				if c.Bool("delete") {
+					msg.Warn("The --delete flag is deprecated. This now works by default.")
+				}
+				if c.Bool("update-vendored") {
+					msg.Warn("The --update-vendored flag is deprecated. This now works by default.")
+				}
+				if c.String("file") != "" {
+					msg.Warn("The --flag flag is deprecated.")
+				}
+				if c.Bool("cache") {
+					msg.Warn("The --cache flag is deprecated. This now works by default.")
+				}
+				if c.Bool("cache-gopath") {
+					msg.Warn("The --cache-gopath flag is deprecated.")
+				}
+				if c.Bool("use-gopath") {
+					msg.Warn("The --use-gopath flag is deprecated. Please see overrides.")
+				}
+				if c.Bool("strip-vcs") {
+					msg.Warn("The --strip-vcs flag is deprecated. This now works by default.")
 				}
 
 				if len(c.Args()) < 1 {
@@ -276,15 +301,12 @@ func commands() []cli.Command {
 
 				inst := repo.NewInstaller()
 				inst.Force = c.Bool("force")
-				inst.UseCache = c.Bool("cache")
-				inst.UseGopath = c.Bool("use-gopath")
-				inst.UseCacheGopath = c.Bool("cache-gopath")
-				inst.UpdateVendored = c.Bool("update-vendored")
 				inst.ResolveAllFiles = c.Bool("all-dependencies")
 				inst.ResolveTest = !c.Bool("skip-test")
 				packages := []string(c.Args())
 				insecure := c.Bool("insecure")
-				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"), c.Bool("non-interactive"), c.Bool("test"))
+				action.Get(packages, inst, insecure, c.Bool("no-recursive"), c.Bool("strip-vendor"), c.Bool("non-interactive"), c.Bool("test"))
+				return nil
 			},
 		},
 		{
@@ -303,7 +325,7 @@ func commands() []cli.Command {
 					Usage: "Also delete from vendor/ any packages that are no longer used.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! At least one package name is required.")
 					os.Exit(1)
@@ -317,6 +339,7 @@ func commands() []cli.Command {
 				inst.Force = c.Bool("force")
 				packages := []string(c.Args())
 				action.Remove(packages, inst)
+				return nil
 			},
 		},
 		{
@@ -332,8 +355,9 @@ func commands() []cli.Command {
 							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 						},
 					},
-					Action: func(c *cli.Context) {
+					Action: func(c *cli.Context) error {
 						action.ImportGodep(c.String("file"))
+						return nil
 					},
 				},
 				{
@@ -345,8 +369,9 @@ func commands() []cli.Command {
 							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 						},
 					},
-					Action: func(c *cli.Context) {
+					Action: func(c *cli.Context) error {
 						action.ImportGPM(c.String("file"))
+						return nil
 					},
 				},
 				{
@@ -358,8 +383,9 @@ func commands() []cli.Command {
 							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 						},
 					},
-					Action: func(c *cli.Context) {
+					Action: func(c *cli.Context) error {
 						action.ImportGB(c.String("file"))
+						return nil
 					},
 				},
 				{
@@ -371,8 +397,9 @@ func commands() []cli.Command {
 							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
 						},
 					},
-					Action: func(c *cli.Context) {
+					Action: func(c *cli.Context) error {
 						action.ImportGom(c.String("file"))
+						return nil
 					},
 				},
 			},
@@ -381,8 +408,9 @@ func commands() []cli.Command {
 			Name:        "name",
 			Usage:       "Print the name of this project.",
 			Description: `Read the glide.yaml file and print the name given on the 'package' line.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Name()
+				return nil
 			},
 		},
 		{
@@ -404,8 +432,9 @@ Example:
 					Usage: "Specify this to prevent nv from append '/...' to all directories.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.NoVendor(c.String("dir"), true, !c.Bool("no-subdir"))
+				return nil
 			},
 		},
 		{
@@ -413,8 +442,9 @@ Example:
 			Usage: "Rebuild ('go build') the dependencies",
 			Description: `This rebuilds the packages' '.a' files. On some systems
 	this can improve performance on subsequent 'go run' and 'go build' calls.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Rebuild()
+				return nil
 			},
 		},
 		{
@@ -430,36 +460,43 @@ Example:
    from the lock file.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "delete",
-					Usage: "Delete vendor packages not specified in config.",
+					Name:   "delete",
+					Usage:  "Delete vendor packages not specified in config.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "force",
 					Usage: "If there was a change in the repo or VCS switch to new one. Warning: changes will be lost.",
 				},
 				cli.BoolFlag{
-					Name:  "update-vendored, u",
-					Usage: "Update vendored packages (without local VCS repo). Warning: this may destroy local modifications to vendor/.",
+					Name:   "update-vendored, u",
+					Usage:  "Update vendored packages (without local VCS repo). Warning: this may destroy local modifications to vendor/.",
+					Hidden: true,
 				},
 				cli.StringFlag{
-					Name:  "file, f",
-					Usage: "Save all of the discovered dependencies to a Glide YAML file. (DEPRECATED: This has no impact.)",
+					Name:   "file, f",
+					Usage:  "Save all of the discovered dependencies to a Glide YAML file. (DEPRECATED: This has no impact.)",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache",
-					Usage: "When downloading dependencies attempt to cache them.",
+					Name:   "cache",
+					Usage:  "When downloading dependencies attempt to cache them.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache-gopath",
-					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Name:   "cache-gopath",
+					Usage:  "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "use-gopath",
-					Usage: "Copy dependencies from the GOPATH if they exist there.",
+					Name:   "use-gopath",
+					Usage:  "Copy dependencies from the GOPATH if they exist there.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "strip-vcs, s",
-					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Name:   "strip-vcs, s",
+					Usage:  "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -470,22 +507,36 @@ Example:
 					Usage: "Resolve dependencies in test files.",
 				},
 			},
-			Action: func(c *cli.Context) {
-				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
-					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+			Action: func(c *cli.Context) error {
+				if c.Bool("delete") {
+					msg.Warn("The --delete flag is deprecated. This now works by default.")
+				}
+				if c.Bool("update-vendored") {
+					msg.Warn("The --update-vendored flag is deprecated. This now works by default.")
+				}
+				if c.String("file") != "" {
+					msg.Warn("The --flag flag is deprecated.")
+				}
+				if c.Bool("cache") {
+					msg.Warn("The --cache flag is deprecated. This now works by default.")
+				}
+				if c.Bool("cache-gopath") {
+					msg.Warn("The --cache-gopath flag is deprecated.")
+				}
+				if c.Bool("use-gopath") {
+					msg.Warn("The --use-gopath flag is deprecated. Please see overrides.")
+				}
+				if c.Bool("strip-vcs") {
+					msg.Warn("The --strip-vcs flag is deprecated. This now works by default.")
 				}
 
 				installer := repo.NewInstaller()
 				installer.Force = c.Bool("force")
-				installer.UseCache = c.Bool("cache")
-				installer.UseGopath = c.Bool("use-gopath")
-				installer.UseCacheGopath = c.Bool("cache-gopath")
-				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.Home = c.GlobalString("home")
-				installer.DeleteUnused = c.Bool("delete")
 				installer.ResolveTest = !c.Bool("skip-test")
 
-				action.Install(installer, c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+				action.Install(installer, c.Bool("strip-vendor"))
+				return nil
 			},
 		},
 		{
@@ -508,30 +559,16 @@ Example:
    It will create a glide.yaml file from the Godeps data, and then update. This
    has no effect if '--no-recursive' is set.
 
-   If you are storing the outside dependencies in your version control system
-   (VCS), also known as vendoring, there are a few flags that may be useful.
-   The '--update-vendored' flag will cause Glide to update packages when VCS
-   information is unavailable. This can be used with the '--strip-vcs' flag which
-   will strip VCS data found in the vendor directory. This is useful for
-   removing VCS data from transitive dependencies and initial setups. The
-   '--strip-vendor' flag will remove any nested 'vendor' folders and
+   The '--strip-vendor' flag will remove any nested 'vendor' folders and
    'Godeps/_workspace' folders after an update (along with undoing any Godep
    import rewriting). Note, The Godeps specific functionality is deprecated and
    will be removed when most Godeps users have migrated to using the vendor
-   folder.
-
-   Note, Glide detects vendored dependencies. With the '--update-vendored' flag
-   Glide will update vendored dependencies leaving them in a vendored state.
-   Tertiary dependencies will not be vendored automatically unless the
-   '--strip-vcs' flag is used along with it.
-
-   By default, packages that are discovered are considered transient, and are
-   not stored in the glide.yaml file. The --file=NAME.yaml flag allows you
-   to save the discovered dependencies to a YAML file.`,
+   folder.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "delete",
-					Usage: "Delete vendor packages not specified in config.",
+					Name:   "delete",
+					Usage:  "Delete vendor packages not specified in config.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "no-recursive, quick",
@@ -546,32 +583,38 @@ Example:
 					Usage: "This will resolve all dependencies for all packages, not just those directly used.",
 				},
 				cli.BoolFlag{
-					Name:  "update-vendored, u",
-					Usage: "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Name:   "update-vendored, u",
+					Usage:  "Update vendored packages (without local VCS repo). Warning, changes will be lost.",
+					Hidden: true,
 				},
 				cli.StringFlag{
-					Name:  "file, f",
-					Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+					Name:   "file, f",
+					Usage:  "Save all of the discovered dependencies to a Glide YAML file.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache",
-					Usage: "When downloading dependencies attempt to cache them.",
+					Name:   "cache",
+					Usage:  "When downloading dependencies attempt to cache them.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "cache-gopath",
-					Usage: "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Name:   "cache-gopath",
+					Usage:  "When downloading dependencies attempt to put them in the GOPATH, too.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
-					Name:  "use-gopath",
-					Usage: "Copy dependencies from the GOPATH if they exist there.",
+					Name:   "use-gopath",
+					Usage:  "Copy dependencies from the GOPATH if they exist there.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "resolve-current",
 					Usage: "Resolve dependencies for only the current system rather than all build modes.",
 				},
 				cli.BoolFlag{
-					Name:  "strip-vcs, s",
-					Usage: "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Name:   "strip-vcs, s",
+					Usage:  "Removes version control metadata (e.g, .git directory) from the vendor folder.",
+					Hidden: true,
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
@@ -582,9 +625,27 @@ Example:
 					Usage: "Resolve dependencies in test files.",
 				},
 			},
-			Action: func(c *cli.Context) {
-				if c.Bool("strip-vendor") && !c.Bool("strip-vcs") {
-					msg.Die("--strip-vendor cannot be used without --strip-vcs")
+			Action: func(c *cli.Context) error {
+				if c.Bool("delete") {
+					msg.Warn("The --delete flag is deprecated. This now works by default.")
+				}
+				if c.Bool("update-vendored") {
+					msg.Warn("The --update-vendored flag is deprecated. This now works by default.")
+				}
+				if c.String("file") != "" {
+					msg.Warn("The --flag flag is deprecated.")
+				}
+				if c.Bool("cache") {
+					msg.Warn("The --cache flag is deprecated. This now works by default.")
+				}
+				if c.Bool("cache-gopath") {
+					msg.Warn("The --cache-gopath flag is deprecated.")
+				}
+				if c.Bool("use-gopath") {
+					msg.Warn("The --use-gopath flag is deprecated. Please see overrides.")
+				}
+				if c.Bool("strip-vcs") {
+					msg.Warn("The --strip-vcs flag is deprecated. This now works by default.")
 				}
 
 				if c.Bool("resolve-current") {
@@ -594,16 +655,13 @@ Example:
 
 				installer := repo.NewInstaller()
 				installer.Force = c.Bool("force")
-				installer.UseCache = c.Bool("cache")
-				installer.UseGopath = c.Bool("use-gopath")
-				installer.UseCacheGopath = c.Bool("cache-gopath")
-				installer.UpdateVendored = c.Bool("update-vendored")
 				installer.ResolveAllFiles = c.Bool("all-dependencies")
 				installer.Home = c.GlobalString("home")
-				installer.DeleteUnused = c.Bool("delete")
 				installer.ResolveTest = !c.Bool("skip-test")
 
-				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vcs"), c.Bool("strip-vendor"))
+				action.Update(installer, c.Bool("no-recursive"), c.Bool("strip-vendor"))
+
+				return nil
 			},
 		},
 		{
@@ -615,8 +673,9 @@ Example:
    It ignores testdata/ and directories that begin with . or _. Packages in
    vendor/ are only included if they are referenced by the main project or
    one of its dependencies.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Tree(".", false)
+				return nil
 			},
 		},
 		{
@@ -629,8 +688,9 @@ Example:
 
    Directories that begin with . or _ are ignored, as are testdata directories. Packages in
    vendor are only included if they are used by the project.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.List(".", true, c.String("output"))
+				return nil
 			},
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -674,27 +734,114 @@ Example:
 
        glide info -f "%n - %d - %h - %l"
           prints 'foo - Some example description - https://example.com - MIT'`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if c.IsSet("format") {
 					action.Info(c.String("format"))
 				} else {
 					cli.ShowCommandHelp(c, c.Command.Name)
 				}
+				return nil
 			},
 		},
 		{
 			Name:      "cache-clear",
 			ShortName: "cc",
 			Usage:     "Clears the Glide cache.",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.CacheClear()
+				return nil
 			},
 		},
 		{
 			Name:  "about",
 			Usage: "Learn about Glide",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.About()
+				return nil
+			},
+		},
+		{
+			Name:  "mirror",
+			Usage: "Manage mirrors",
+			Description: `Mirrors provide the ability to replace a repo location with
+   another location that's a mirror of the original. This is useful when you want
+   to have a cache for your continious integration (CI) system or if you want to
+   work on a dependency in a local location.
+
+   The mirrors are stored in an mirrors.yaml file in your GLIDE_HOME.
+
+   The three commands to manager mirrors are 'list', 'set', and 'remove'.
+
+   Use 'set' in the form:
+
+       glide mirror set [original] [replacement]
+
+   or
+
+       glide mirror set [original] [replacement] --vcs [type]
+
+   for example,
+
+       glide mirror set https://github.com/example/foo https://git.example.com/example/foo.git
+
+       glide mirror set https://github.com/example/foo file:///path/to/local/repo --vcs git
+
+   Use 'remove' in the form:
+
+       glide mirror remove [original]
+
+   for example,
+
+       glide mirror remove https://github.com/example/foo`,
+			Subcommands: []cli.Command{
+				{
+					Name:  "list",
+					Usage: "List the current mirrors",
+					Action: func(c *cli.Context) error {
+						return action.MirrorsList()
+					},
+				},
+				{
+					Name:  "set",
+					Usage: "Set a mirror. This overwrites an existing entry if one exists",
+					Description: `Use 'set' in the form:
+
+       glide mirror set [original] [replacement]
+
+   or
+
+       glide mirror set [original] [replacement] --vcs [type]
+
+   for example,
+
+       glide mirror set https://github.com/example/foo https://git.example.com/example/foo.git
+
+       glide mirror set https://github.com/example/foo file:///path/to/local/repo --vcs git`,
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "vcs",
+							Usage: "The VCS type to use. Autodiscovery is attempted when not supplied. Can be one of git, svn, bzr, or hg",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						return action.MirrorsSet(c.Args().Get(0), c.Args().Get(1), c.String("vcs"))
+					},
+				},
+				{
+					Name:      "remove",
+					ShortName: "rm",
+					Usage:     "Remove an mirror",
+					Description: `Use 'remove' in the form:
+
+       glide mirror remove [original]
+
+   for example,
+
+       glide mirror remove https://github.com/example/foo`,
+					Action: func(c *cli.Context) error {
+						return action.MirrorsRemove(c.Args().Get(0))
+					},
+				},
 			},
 		},
 	}
