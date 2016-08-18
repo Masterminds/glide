@@ -15,6 +15,7 @@
   others are deprecated and no longer needed.
 
 ## Fixed
+- #542: Glide failed to detect some test dependencies (thanks @sdboyer)
 - #517: Fixed failure to install testImport from lock when no imports present
   or when same dependency on both import and testImport
 - #440: Fixed panic in `glide tree` when walking the filesystem (thanks @abhin4v)
