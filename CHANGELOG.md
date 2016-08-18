@@ -2,11 +2,17 @@
 
 ## Added
 - #533: Log VCS output with debug (`--debug` switch) when there was a VCS error (thanks @atombender)
+- #39: Added support for mirrors. See the mirror command and subcommands
 
 ## Changed
 - #521: Sort subpackages for glide.yaml and glide.lock to avoid spurious diffs
-- #487: Skip lookup of subpackage location when parent repo is already known.
+- #487: Skip lookup of subpackage location when parent repo is already known
   This skips unnecessary network requests (thanks @hori-ryota)
+- #492 and #547: Dependencies are now resolved in a global cache and exported to
+  vendor/ directories. This allows sharing of VCS data between projects without
+  upseting the GOPATH versions and is faster for projects vendoring dependencies.
+  Some flags including --update-vendored, --cache-gopath, --use-gopath, and some
+  others are deprecated and no longer needed.
 
 ## Fixed
 - #517: Fixed failure to install testImport from lock when no imports present
