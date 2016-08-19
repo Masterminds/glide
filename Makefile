@@ -12,6 +12,11 @@ install: build
 test:
 	${GLIDE_GO_EXECUTABLE} test . ./gb ./path ./action ./tree ./util ./godep ./godep/strip ./gpm ./cfg ./dependency ./importer ./msg ./repo ./mirrors
 
+integration-test:
+	${GLIDE_GO_EXECUTABLE} build
+	./glide up
+	./glide install
+
 clean:
 	rm -f ./glide.test
 	rm -f ./glide
@@ -36,4 +41,4 @@ dist: build-all
 	cd ..
 
 
-.PHONY: build test install clean bootstrap-dist build-all dist
+.PHONY: build test install clean bootstrap-dist build-all dist integration-test
