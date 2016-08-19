@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"container/list"
+	"errors"
 	"runtime"
 	"sort"
 	//"go/build"
@@ -502,8 +503,9 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 				continue
 			}
 		} else if err != nil {
+			errStr := err.Error()
 			msg.Debug("ImportDir error on %s: %s", r.Handler.PkgPath(dep), err)
-			if strings.HasPrefix(err.Error(), "no buildable Go source") {
+			if strings.HasPrefix(errStr, "no buildable Go source") {
 				msg.Debug("No subpackages declared. Skipping %s.", dep)
 				continue
 			} else if os.IsNotExist(err) && !foundErr && !foundQ {
@@ -530,6 +532,16 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 					// see if this is on GOPATH and copy it?
 					msg.Info("Not found in vendor/: %s (1)", dep)
 				}
+			} else if strings.Contains(errStr, "no such file or directory") {
+				r.hadError[dep] = true
+				msg.Err("Error scanning %s: %s", dep, err)
+				msg.Err("This error means the referenced package was not found.")
+				msg.Err("Missing file or directory errors usually occur when multiple packages")
+				msg.Err("share a common dependency and the first reference encountered by the scanner")
+				msg.Err("sets the version to one that does not contain a subpackage needed required")
+				msg.Err("by another package that uses the shared dependency. Try setting a")
+				msg.Err("version in your glide.yaml that works for all packages that share this")
+				msg.Err("dependency.")
 			} else {
 				r.hadError[dep] = true
 				msg.Err("Error scanning %s: %s", dep, err)
@@ -576,10 +588,10 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 					r.VersionHandler.SetVersion(imp, addTest)
 				} else if err != nil {
 					r.hadError[dep] = true
-					msg.Warn("Error looking for %s: %s", imp, err)
+					msg.Err("Error looking for %s: %s", imp, err)
 				} else {
 					r.hadError[dep] = true
-					msg.Info("Not found: %s (2)", imp)
+					msg.Err("Not found: %s (2)", imp)
 				}
 			case LocGopath:
 				msg.Debug("Found on GOPATH, not vendor: %s", imp)
@@ -594,6 +606,11 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 			}
 		}
 
+	}
+
+	if len(r.hadError) > 0 {
+		// Errors occured so we return.
+		return []string{}, errors.New("Error resolving imports")
 	}
 
 	// FIXME: From here to the end is a straight copy of the resolveList() func.
