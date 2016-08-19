@@ -45,11 +45,18 @@ func Load() error {
 		ov = &Mirrors{
 			Repos: make(MirrorRepos, 0),
 		}
-	} else {
-		ov, err = ReadMirrorsFile(op)
-		if err != nil {
-			return fmt.Errorf("Error reading existing mirrors.yaml file: %s", err)
+		return nil
+	} else if err != nil {
+		ov = &Mirrors{
+			Repos: make(MirrorRepos, 0),
 		}
+		return err
+	}
+
+	var err error
+	ov, err = ReadMirrorsFile(op)
+	if err != nil {
+		return fmt.Errorf("Error reading existing mirrors.yaml file: %s", err)
 	}
 
 	msg.Info("Loading mirrors from mirrors.yaml file")
