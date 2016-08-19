@@ -46,6 +46,8 @@ func TestResolveLocalDeep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	h := &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}, Prefix: "../vendor"}
+	r.Handler = h
 
 	l, _, err := r.ResolveLocal(true)
 	if err != nil {
@@ -62,6 +64,8 @@ func TestResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	h := &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}, Prefix: "../vendor"}
+	r.Handler = h
 
 	base := filepath.Join(os.Getenv("GOPATH"), "src/github.com/Masterminds/glide/vendor")
 	l, err := r.Resolve("github.com/codegangsta/cli", base)
@@ -91,6 +95,8 @@ func TestResolveAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("No new resolver: %s", err)
 	}
+	h := &DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}, Prefix: "../vendor"}
+	r.Handler = h
 	l, err := r.ResolveAll(deps, false)
 	if err != nil {
 		t.Fatalf("Failed to resolve: %s", err)
