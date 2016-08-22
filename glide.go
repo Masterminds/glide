@@ -1,39 +1,21 @@
-// Glide is a command line utility that manages Go project dependencies and
-// your GOPATH.
+// Glide is a command line utility that manages Go project dependencies.
 //
-// Dependencies are managed via a glide.yaml in the root of a project. The yaml
-//
-// Params:
-// 	- filename (string): The name of the glide YAML file. Default is glide.yaml.
-// 	- project (string): The name of the project. Default is 'main'.
-// file lets you specify projects, versions (tags, branches, or references),
-// and even alias one location in as other one. Aliasing is useful when supporting
-// forks without needing to rewrite the imports in a codebase.
+// Configureation of where to start is managed via a glide.yaml in the root of a
+// project. The yaml
 //
 // A glide.yaml file looks like:
 //
 //		package: github.com/Masterminds/glide
 //		imports:
-//			- package: github.com/Masterminds/cookoo
-//			  vcs: git
-//			  ref: 1.1.0
-//			  subpackages: **
-//			- package: github.com/kylelemons/go-gypsy
-//			  subpackages: yaml
+//		- package: github.com/Masterminds/cookoo
+//		- package: github.com/kylelemons/go-gypsy
+//		  subpackages:
+//		  - yaml
 //
 // Glide puts dependencies in a vendor directory. Go utilities require this to
-// be in your GOPATH. Glide makes this easy. Use the `glide in` command to enter
-// a shell (your default) with the GOPATH set to the projects vendor directory.
-// To leave this shell simply exit it.
+// be in your GOPATH. Glide makes this easy.
 //
-// If your .bashrc, .zshrc, or other startup shell sets your GOPATH you many need
-// to optionally set it using something like:
-//
-//		if [ "" = "${GOPATH}" ]; then
-//		  export GOPATH="/some/dir"
-//		fi
-//
-// For more information use the `glide help` command or see https://github.com/Masterminds/glide
+// For more information use the `glide help` command or see https://glide.sh
 package main
 
 import (
@@ -52,25 +34,23 @@ import (
 	"os"
 )
 
-var version = "0.11.0-dev"
+var version = "0.12.0-dev"
 
-const usage = `The lightweight vendor package manager for your Go projects.
+const usage = `Vendor Package Management for your Go projects.
 
-Each project should have a 'glide.yaml' file in the project directory. Files
-look something like this:
+   Each project should have a 'glide.yaml' file in the project directory. Files
+   look something like this:
 
-	package: github.com/Masterminds/glide
-	imports:
-		- package: github.com/Masterminds/cookoo
-		  vcs: git
-		  ref: 1.1.0
-		  subpackages: **
-		- package: github.com/kylelemons/go-gypsy
-		  subpackages: yaml
-			flatten: true
+       package: github.com/Masterminds/glide
+       imports:
+       - package: github.com/Masterminds/cookoo
+         version: 1.1.0
+       - package: github.com/kylelemons/go-gypsy
+         subpackages:
+         - yaml
 
-NOTE: As of Glide 0.5, the commands 'into', 'gopath', 'status', and 'env'
-no longer exist.
+   For more details on the 'glide.yaml' files see the documentation at
+   https://glide.sh/docs/glide.yaml
 `
 
 // VendorDir default vendor directory name
@@ -92,8 +72,9 @@ func main() {
 			Usage: "Quiet (no info or debug messages)",
 		},
 		cli.BoolFlag{
-			Name:  "verbose",
-			Usage: "Print detailed informational messages",
+			Name:   "verbose",
+			Usage:  "Print detailed informational messages",
+			Hidden: true,
 		},
 		cli.BoolFlag{
 			Name:  "debug",
@@ -184,27 +165,21 @@ func commands() []cli.Command {
 			Description: `Gets one or more package (like 'go get') and then adds that file
    to the glide.yaml file. Multiple package names can be specified on one line.
 
-   	$ glide get github.com/Masterminds/cookoo/web
+       $ glide get github.com/Masterminds/cookoo/web
 
    The above will install the project github.com/Masterminds/cookoo and add
    the subpackage 'web'.
 
    If a fetched dependency has a glide.yaml file, configuration from Godep,
-   GPM, or GB Glide that configuration will be used to find the dependencies
+   GPM, GOM, or GB Glide that configuration will be used to find the dependencies
    and versions to fetch. If those are not available the dependent packages will
    be fetched as either a version specified elsewhere or the latest version.
 
    When adding a new dependency Glide will perform an update to work out the
-   the versions to use from the dependency tree. This will generate an updated
-   glide.lock file with specific locked versions to use.
+   the versions for the dependencies of this dependency (transitive ones). This
+   will generate an updated glide.lock file with specific locked versions to use.
 
-   If you are storing the outside dependencies in your version control system
-   (VCS), also known as vendoring, there are a few flags that may be useful.
-   The '--update-vendored' flag will cause Glide to update packages when VCS
-   information is unavailable. This can be used with the '--strip-vcs' flag which
-   will strip VCS data found in the vendor directory. This is useful for
-   removing VCS data from transitive dependencies and initial setups. The
-   '--strip-vendor' flag will remove any nested 'vendor' folders and
+   The '--strip-vendor' flag will remove any nested 'vendor' folders and
    'Godeps/_workspace' folders after an update (along with undoing any Godep
    import rewriting). Note, The Godeps specific functionality is deprecated and
    will be removed when most Godeps users have migrated to using the vendor
@@ -261,7 +236,7 @@ func commands() []cli.Command {
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
-					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+					Usage: "Removes nested vendor and Godeps/_workspace directories.",
 				},
 				cli.BoolFlag{
 					Name:  "non-interactive",
@@ -320,11 +295,7 @@ func commands() []cli.Command {
 			ShortName: "rm",
 			Usage:     "Remove a package from the glide.yaml file, and regenerate the lock file.",
 			Description: `This takes one or more package names, and removes references from the glide.yaml file.
-   This will rebuild the glide lock file with the following constraints:
-
-   - Dependencies are re-negotiated. Any that are no longer used are left out of the lock.
-   - Minor version re-nogotiation is performed on remaining dependencies.
-   - No updates are peformed. You may want to run 'glide up' to accomplish that.`,
+   This will rebuild the glide lock file re-resolving the depencies.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "delete,d",
@@ -446,7 +417,7 @@ Example:
 		{
 			Name:  "rebuild",
 			Usage: "Rebuild ('go build') the dependencies",
-			Description: `This rebuilds the packages' '.a' files. On some systems
+			Description: `(Deprecated) This rebuilds the packages' '.a' files. On some systems
 	this can improve performance on subsequent 'go run' and 'go build' calls.`,
 			Action: func(c *cli.Context) error {
 				action.Rebuild()
@@ -506,7 +477,7 @@ Example:
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
-					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+					Usage: "Removes nested vendor and Godeps/_workspace directories.",
 				},
 				cli.BoolFlag{
 					Name:  "skip-test",
@@ -549,19 +520,19 @@ Example:
 			Name:      "update",
 			ShortName: "up",
 			Usage:     "Update a project's dependencies",
-			Description: `This uses the native VCS of each package to try to
-   pull the most applicable updates. Packages with fixed refs (Versions or
-   tags) will not be updated. Packages with no ref or with a branch ref will
-   be updated as expected.
+			Description: `This updates the dependencies by scanning the codebase
+   to determine the needed dependencies and fetching them following the rules
+   in the glide.yaml file. When no rules exist the tip of the default branch
+   is used. For more details see https://glide.sh/docs/glide.yaml
 
    If a dependency has a glide.yaml file, update will read that file and
-   update those dependencies accordingly. Those dependencies are maintained in
+   use the information contained there. Those dependencies are maintained in
    a the top level 'vendor/' directory. 'vendor/foo/bar' will have its
    dependencies stored in 'vendor/'. This behavior can be disabled with
    '--no-recursive'. When this behavior is skipped a glide.lock file is not
    generated because the full dependency tree cannot be known.
 
-   Glide will also import Godep, GB, and GPM files as it finds them in dependencies.
+   Glide will also import Godep, GB, GOM, and GPM files as it finds them in dependencies.
    It will create a glide.yaml file from the Godeps data, and then update. This
    has no effect if '--no-recursive' is set.
 
@@ -624,7 +595,7 @@ Example:
 				},
 				cli.BoolFlag{
 					Name:  "strip-vendor, v",
-					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
+					Usage: "Removes nested vendor and Godeps/_workspace directories.",
 				},
 				cli.BoolFlag{
 					Name:  "skip-test",
@@ -672,13 +643,16 @@ Example:
 		},
 		{
 			Name:  "tree",
-			Usage: "Tree prints the dependencies of this project as a tree.",
+			Usage: "(Deprecated) Tree prints the dependencies of this project as a tree.",
 			Description: `This scans a project's source files and builds a tree
    representation of the import graph.
 
    It ignores testdata/ and directories that begin with . or _. Packages in
    vendor/ are only included if they are referenced by the main project or
-   one of its dependencies.`,
+   one of its dependencies.
+
+   Note, for large projects this can display a large list tens of thousands of
+   lines long.`,
 			Action: func(c *cli.Context) error {
 				action.Tree(".", false)
 				return nil
@@ -771,7 +745,7 @@ Example:
 			Usage: "Manage mirrors",
 			Description: `Mirrors provide the ability to replace a repo location with
    another location that's a mirror of the original. This is useful when you want
-   to have a cache for your continious integration (CI) system or if you want to
+   to have a cache for your continuous integration (CI) system or if you want to
    work on a dependency in a local location.
 
    The mirrors are stored in an mirrors.yaml file in your GLIDE_HOME.

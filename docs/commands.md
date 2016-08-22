@@ -4,25 +4,40 @@ The following are the Glide commands, most of which are to help yoy manage your 
 
 ## glide create (aliased to init)
 
-Initializes a new workspace. Among other things, this creates a `glide.yaml` file while attempting to guess the packages and versions to put in it. For example, if your project is using Godep it will use the versions specified there. Glide is smart enough to scan your codebase and detect the imports being used whether they are specified with another package manager or not.
+Initialize a new workspace. Among other things, this creates a `glide.yaml` file
+while attempting to guess the packages and versions to put in it. For example,
+if your project is using Godep it will use the versions specified there. Glide
+is smart enough to scan your codebase and detect the imports being used whether
+they are specified with another package manager or not.
 
-    $ glide init
-    [INFO] Generating a YAML configuration file and guessing the dependencies
-    [INFO] Attempting to import from other package managers (use --skip-import to skip)
-    [INFO] Found reference to github.com/BurntSushi/toml
-    [INFO] Found reference to github.com/Masterminds/semver
-    [INFO] Found reference to github.com/Masterminds/sprig
-    [INFO] Found reference to github.com/Masterminds/vcs
-    [INFO] Found reference to github.com/aokoli/goutils
-    [INFO] Found reference to github.com/codegangsta/cli
-    [INFO] Found reference to github.com/deis/pkg/prettyprint
-    [INFO] Found reference to github.com/ghodss/yaml
-    [INFO] Found reference to github.com/google/go-github/github
-    [INFO] Found reference to github.com/pborman/uuid
-    [INFO] Found reference to golang.org/x/crypto/nacl/box
-    [INFO] Adding sub-package ssh/terminal to golang.org/x/crypto
-    [INFO] Found reference to gopkg.in/yaml.v2
-    ...
+    $ glide create
+    [INFO]	Generating a YAML configuration file and guessing the dependencies
+    [INFO]	Attempting to import from other package managers (use --skip-import to skip)
+    [INFO]	Scanning code to look for dependencies
+    [INFO]	--> Found reference to github.com/Masterminds/semver
+    [INFO]	--> Found reference to github.com/Masterminds/vcs
+    [INFO]	--> Found reference to github.com/codegangsta/cli
+    [INFO]	--> Found reference to gopkg.in/yaml.v2
+    [INFO]	Writing configuration file (glide.yaml)
+    [INFO]	Would you like Glide to help you find ways to improve your glide.yaml configuration?
+    [INFO]	If you want to revisit this step you can use the config-wizard command at any time.
+    [INFO]	Yes (Y) or No (N)?
+    n
+    [INFO]	You can now edit the glide.yaml file. Consider:
+    [INFO]	--> Using versions and ranges. See https://glide.sh/docs/versions/
+    [INFO]	--> Adding additional metadata. See https://glide.sh/docs/glide.yaml/
+    [INFO]	--> Running the config-wizard command to improve the versions in your configuration
+
+The `config-wizard`, noted here, can be run here or manually run at a later time.
+This wizard helps you figure out versions and ranges you can use for your
+dependencies.
+
+### glide config-wizard
+
+This runs a wizard that scans your dependencies and retrieves information on them
+to offer up suggestions that you can interactively choose. For example, it can
+discover if a dependency uses semantic versions and help you choose the version
+ranges to use.
 
 ## glide get [package name]
 
@@ -37,29 +52,25 @@ The `glide get` command can have a [version or range](versions.md) passed in wit
 
     $ glide get github.com/Masterminds/cookoo#^1.2.3
 
-The version is separated from the package name by an anchor (`#`).
+The version is separated from the package name by an anchor (`#`). If no version or range is specified and the dependency uses Semantic Versions Glide will prompt you to ask if you want to use them.
 
 ## glide update (aliased to up)
 
-Download or update all of the libraries listed in the `glide.yaml` file and put them in the `vendor` directory. It will also recursively walk through the dependency packages doing the same thing if no `vendor` directory exists.
+Download or update all of the libraries listed in the `glide.yaml` file and put
+them in the `vendor` directory. It will also recursively walk through the
+dependency packages to fetch anything that's needed and read in any configuration.
 
     $ glide up
 
-This will recurse over the packages looking for other projects managed by Glide, Godep, GB, Gom, and GPM. When one is found those packages will be installed as needed.
+This will recurse over the packages looking for other projects managed by Glide,
+Godep, gb, gom, and GPM. When one is found those packages will be installed as needed.
 
-A `glide.lock` file will be created or updated with the dependencies pinned to specific versions. For example, if in the `glide.yaml` file a version was specified as a range (e.g., `^1.2.3`) it will be set to a specific commit id in the `glide.lock` file. That allows for reproducible installs (see `glide install`).
+A `glide.lock` file will be created or updated with the dependencies pinned to
+specific versions. For example, if in the `glide.yaml` file a version was
+specified as a range (e.g., `^1.2.3`) it will be set to a specific commit id in
+the `glide.lock` file. That allows for reproducible installs (see `glide install`).
 
-If you want to use `glide up` to help you managed dependencies that are checked into your version control consider the flags:
-
-* `--update-vendored` (aliased to `-u`) to update the vendored dependencies. If Glide detects a vendored dependency it will update it and leave it in a vendored state. Note, any tertiary dependencies will not be automatically vendored with this flag.
-* `--strip-vcs` (aliased to `-s`) to strip VCS metadata (e.g., `.git` directories) from the `vendor` folder.
-* `--strip-vendor` (aliased to `-v`) to strip nested `vendor/` directories.
-
-For example, you can use the command:
-
-    $ glide up -u -s
-
-This will tell Glide to update the vendored packages and remove any VCS directories from transitive dependencies that were picked up as well.
+To remove any nested `vendor/` directories from fetched packages see the `-v` flag.
 
 ## glide install
 
@@ -72,6 +83,8 @@ This will read the `glide.lock` file, warning you if it's not tied to the `glide
 When the `glide.lock` file doesn't tie to the `glide.yaml` file, such as there being a change, it will provide an warning. Running `glide up` will recreate the `glide.lock` file when updating the dependency tree.
 
 If no `glide.lock` file is present `glide install` will perform an `update` and generates a lock file.
+
+To remove any nested `vendor/` directories from fetched packages see the `-v` flag.
 
 ## glide novendor (aliased to nv)
 
@@ -89,32 +102,59 @@ When you're scripting with Glide there are occasions where you need to know the 
 
 Glide's `list` command shows an alphabetized list of all the packages that a project imports.
 
-```
-$ glide list
-INSTALLED packages:
-	vendor/github.com/Masterminds/cookoo
-	vendor/github.com/Masterminds/cookoo/fmt
-	vendor/github.com/Masterminds/cookoo/io
-	vendor/github.com/Masterminds/cookoo/web
-	vendor/github.com/Masterminds/semver
-	vendor/github.com/Masterminds/vcs
-	vendor/github.com/codegangsta/cli
-	vendor/gopkg.in/yaml.v2
-```
+    $ glide list
+    INSTALLED packages:
+    	vendor/github.com/Masterminds/cookoo
+    	vendor/github.com/Masterminds/cookoo/fmt
+    	vendor/github.com/Masterminds/cookoo/io
+    	vendor/github.com/Masterminds/cookoo/web
+    	vendor/github.com/Masterminds/semver
+    	vendor/github.com/Masterminds/vcs
+    	vendor/github.com/codegangsta/cli
+    	vendor/gopkg.in/yaml.v2
 
 ## glide help
 
 Print the glide help.
 
-```
-$ glide help
-```
+    $ glide help
 
 ## glide --version
 
 Print the version and exit.
 
-```
-$ glide --version
-glide version 0.9.0
-```
+    $ glide --version
+    glide version 0.12.0
+
+## glide mirror
+
+Mirrors provide the ability to replace a repo location with
+another location that's a mirror of the original. This is useful when you want
+to have a cache for your continuous integration (CI) system or if you want to
+work on a dependency in a local location.
+
+The mirrors are stored in an `mirrors.yaml` file in your `GLIDE_HOME`.
+
+The three commands to manager mirrors are `list`, `set`, and `remove`.
+
+Use `set` in the form:
+
+    glide mirror set [original] [replacement]
+
+or
+
+    glide mirror set [original] [replacement] --vcs [type]
+
+for example,
+
+   glide mirror set https://github.com/example/foo https://git.example.com/example/foo.git
+
+   glide mirror set https://github.com/example/foo file:///path/to/local/repo --vcs git
+
+Use `remove` in the form:
+
+   glide mirror remove [original]
+
+for example,
+
+   glide mirror remove https://github.com/example/foo

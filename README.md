@@ -29,7 +29,7 @@ distributed with the package.
     - hg
     - svn
 * Support custom local and global plugins (see docs/plugins.md)
-* Repository caching including reuse of packages in the `$GOPATH`
+* Repository caching and data caching for improved performance.
 * Flatten dependencies resolving version differences and avoiding the inclusion
   of a package multiple times.
 * Manage and install dependencies on-demand or vendored in your version control
@@ -37,16 +37,25 @@ distributed with the package.
 
 ## How It Works
 
-The dependencies for a project are listed in a `glide.yaml` file. This can
-include a version, VCS, repository location (that can be different from the
-package name), etc. When `glide up` is run it downloads the packages (or updates)
-to the `vendor` directory. It then recursively walks through the downloaded
-packages looking for those with a `glide.yaml` file (or Godep, gb, gom, or GPM config
-file) that don't already have a `vendor` directory and installing their
-dependencies to their `vendor` directories. Once Glide has downloaded and figured
-out versions to use in the dependency tree it creates a `glide.lock` file
-containing the complete dependency tree pinned to specific versions. To install
-the correct versions use `glide install`.
+Glide scans the source code of your application or library to determine the needed
+dependencies. To determine the versions and locations (such as aliases for forks)
+Glide reads a `glide.yaml` file with the rules. With this information Glide retrieves
+needed dependencies.
+
+When a dependent package is encountered its imports are scanned to determine
+dependencies of dependencies (transitive dependencies). If the dependent project
+contains a `glide.yaml` file that information is used to help determine the
+dependency rules when fetching from a location or version to use. Configuration
+from Godep, GB, GOM, and GPM is also imported.
+
+The dependencies are exported to the `vendor/` directory where the `go` tools
+can find and use them. A `glide.lock` file is generated containing all the
+dependencies, including transitive ones.
+
+The `glide init` command can be use to setup a new project, `glide update`
+regenerates the dependency versions using scanning and rules, and `glide install`
+will install the versions listed in the `glide.lock` file, skipping scanning,
+unless the `glide.lock` file is not found in which case it will perform an update.
 
 A projects is structured like this:
 
@@ -138,22 +147,34 @@ they are specified with another package manager or not.
 
 ```
 $ glide create
-[INFO] Generating a YAML configuration file and guessing the dependencies
-[INFO] Attempting to import from other package managers (use --skip-import to skip)
-[INFO] Found reference to github.com/Sirupsen/logrus
-[INFO] Adding sub-package hooks/syslog to github.com/Sirupsen/logrus
-[INFO] Found reference to github.com/boltdb/bolt
-[INFO] Found reference to github.com/gorilla/websocket
-[INFO] Found reference to github.com/mndrix/ps
-[INFO] Found reference to github.com/spf13/cobra
-[INFO] Found reference to github.com/spf13/pflag
-[INFO] Found reference to github.com/tinylib/msgp/msgp
-[INFO] Found reference to github.com/unrolled/secure
-[INFO] Found reference to github.com/xeipuuv/gojsonschema
-[INFO] Found reference to github.com/zenazn/goji/graceful
-[INFO] Adding sub-package web to github.com/zenazn/goji
-[INFO] Adding sub-package web/mutil to github.com/zenazn/goji
+[INFO]	Generating a YAML configuration file and guessing the dependencies
+[INFO]	Attempting to import from other package managers (use --skip-import to skip)
+[INFO]	Scanning code to look for dependencies
+[INFO]	--> Found reference to github.com/Masterminds/semver
+[INFO]	--> Found reference to github.com/Masterminds/vcs
+[INFO]	--> Found reference to github.com/codegangsta/cli
+[INFO]	--> Found reference to gopkg.in/yaml.v2
+[INFO]	Writing configuration file (glide.yaml)
+[INFO]	Would you like Glide to help you find ways to improve your glide.yaml configuration?
+[INFO]	If you want to revisit this step you can use the config-wizard command at any time.
+[INFO]	Yes (Y) or No (N)?
+n
+[INFO]	You can now edit the glide.yaml file. Consider:
+[INFO]	--> Using versions and ranges. See https://glide.sh/docs/versions/
+[INFO]	--> Adding additional metadata. See https://glide.sh/docs/glide.yaml/
+[INFO]	--> Running the config-wizard command to improve the versions in your configuration
 ```
+
+The `config-wizard`, noted here, can be run here or manually run at a later time.
+This wizard helps you figure out versions and ranges you can use for your
+dependencies.
+
+### glide config-wizard
+
+This runs a wizard that scans your dependencies and retrieves information on them
+to offer up suggestions that you can interactively choose. For example, it can
+discover if a dependency uses semantic versions and help you choose the version
+ranges to use.
 
 ### glide get [package name]
 
@@ -171,7 +192,7 @@ dependencies including using Godep, GPM, Gom, and GB config files.
 
 Download or update all of the libraries listed in the `glide.yaml` file and put
 them in the `vendor` directory. It will also recursively walk through the
-dependency packages doing the same thing if no `vendor` directory exists.
+dependency packages to fetch anything that's needed and read in any configuration.
 
 ```
 $ glide up
@@ -184,6 +205,8 @@ A `glide.lock` file will be created or updated with the dependencies pinned to
 specific versions. For example, if in the `glide.yaml` file a version was
 specified as a range (e.g., `^1.2.3`) it will be set to a specific commit id in
 the `glide.lock` file. That allows for reproducible installs (see `glide install`).
+
+To remove any nested `vendor/` directories from fetched packages see the `-v` flag.
 
 ### glide install
 
@@ -204,6 +227,8 @@ being a change, it will provide a warning. Running `glide up` will recreate the
 If no `glide.lock` file is present `glide install` will perform an `update` and
 generate a lock file.
 
+To remove any nested `vendor/` directories from fetched packages see the `-v` flag.
+
 ## glide novendor (aliased to nv)
 
 When you run commands like `go test ./...` it will iterate over all the
@@ -222,26 +247,6 @@ This will run `go test` over all directories of your project except the
 When you're scripting with Glide there are occasions where you need to know
 the name of the package you're working on. `glide name` returns the name of the
 package listed in the `glide.yaml` file.
-
-### glide rebuild
-
-Runs `go install` on the packages in the `glide.yaml` file. This
-(along with `glide install` and `glide update`) pays special attention
-to the contents of the `subpackages:` directive in the YAML file.
-
-```
-$ glide rebuild
-[INFO] Building dependencies.
-[INFO] Running go build github.com/kylelemons/go-gypsy/yaml
-[INFO] Running go build github.com/Masterminds/cookoo/cli
-[INFO] Running go build github.com/Masterminds/cookoo
-```
-
-This is useful when you are working with large 3rd party libraries. It
-will create the `.a` files, which can have a positive impact on your
-build times.
-
-**This feature is deprecated and will be removed before Glide 1.0.0**
 
 ### glide tree
 
@@ -289,6 +294,8 @@ vendoring makes it possible for the same package to live in multiple
 places, `glide tree` also prints the location of the package being
 imported.
 
+_This command is deprecated and will be removed in the near future._
+
 ### glide list
 
 Glide's `list` command shows an alphabetized list of all the packages
@@ -321,10 +328,12 @@ Print the version and exit.
 
 ```
 $ glide --version
-glide version 0.8.0
+glide version 0.12.0
 ```
 
 ### glide.yaml
+
+For full details on the `glide.yaml` files see [the documentation](https://glide.sh/docs/glide.yaml).
 
 The `glide.yaml` file does two critical things:
 
@@ -338,7 +347,6 @@ package: github.com/Masterminds/glide
 import:
   - package: github.com/Masterminds/semver
   - package: github.com/Masterminds/cookoo
-    vcs: git
     version: ^1.2.0
     repo: git@github.com:Masterminds/cookoo.git
 ```
@@ -347,7 +355,6 @@ The above tells `glide` that...
 
 1. This package is named `github.com/Masterminds/glide`
 2. That this package depends on two libraries.
-
 
 The first library exemplifies a minimal package import. It merely gives
 the fully qualified import path.
