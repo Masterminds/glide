@@ -185,64 +185,64 @@ func VcsVersion(dep *cfg.Dependency) error {
 	_, err = v.DetectVcsFromFS(cwd)
 	if empty == false && err == v.ErrCannotDetectVCS {
 		return fmt.Errorf("Cache directory missing VCS information for %s", dep.Name)
+	}
+
+	repo, err := dep.GetRepo(cwd)
+	if err != nil {
+		return err
+	}
+
+	ver := dep.Reference
+	// References in Git can begin with a ^ which is similar to semver.
+	// If there is a ^ prefix we assume it's a semver constraint rather than
+	// part of the git/VCS commit id.
+	if repo.IsReference(ver) && !strings.HasPrefix(ver, "^") {
+		msg.Info("--> Setting version for %s to %s.\n", dep.Name, ver)
 	} else {
-		repo, err := dep.GetRepo(cwd)
+
+		// Create the constraint first to make sure it's valid before
+		// working on the repo.
+		constraint, err := semver.NewConstraint(ver)
+
+		// Make sure the constriant is valid. At this point it's not a valid
+		// reference so if it's not a valid constrint we can exit early.
+		if err != nil {
+			msg.Warn("The reference '%s' is not valid\n", ver)
+			return err
+		}
+
+		// Get the tags and branches (in that order)
+		refs, err := getAllVcsRefs(repo)
 		if err != nil {
 			return err
 		}
 
-		ver := dep.Reference
-		// References in Git can begin with a ^ which is similar to semver.
-		// If there is a ^ prefix we assume it's a semver constraint rather than
-		// part of the git/VCS commit id.
-		if repo.IsReference(ver) && !strings.HasPrefix(ver, "^") {
-			msg.Info("--> Setting version for %s to %s.\n", dep.Name, ver)
+		// Convert and filter the list to semver.Version instances
+		semvers := getSemVers(refs)
+
+		// Sort semver list
+		sort.Sort(sort.Reverse(semver.Collection(semvers)))
+		found := false
+		for _, v := range semvers {
+			if constraint.Check(v) {
+				found = true
+				// If the constrint passes get the original reference
+				ver = v.Original()
+				break
+			}
+		}
+		if found {
+			msg.Info("--> Detected semantic version. Setting version for %s to %s.", dep.Name, ver)
 		} else {
-
-			// Create the constraint first to make sure it's valid before
-			// working on the repo.
-			constraint, err := semver.NewConstraint(ver)
-
-			// Make sure the constriant is valid. At this point it's not a valid
-			// reference so if it's not a valid constrint we can exit early.
-			if err != nil {
-				msg.Warn("The reference '%s' is not valid\n", ver)
-				return err
-			}
-
-			// Get the tags and branches (in that order)
-			refs, err := getAllVcsRefs(repo)
-			if err != nil {
-				return err
-			}
-
-			// Convert and filter the list to semver.Version instances
-			semvers := getSemVers(refs)
-
-			// Sort semver list
-			sort.Sort(sort.Reverse(semver.Collection(semvers)))
-			found := false
-			for _, v := range semvers {
-				if constraint.Check(v) {
-					found = true
-					// If the constrint passes get the original reference
-					ver = v.Original()
-					break
-				}
-			}
-			if found {
-				msg.Info("--> Detected semantic version. Setting version for %s to %s.", dep.Name, ver)
-			} else {
-				msg.Warn("--> Unable to find semantic version for constraint %s %s", dep.Name, ver)
-			}
+			msg.Warn("--> Unable to find semantic version for constraint %s %s", dep.Name, ver)
 		}
-		if err := repo.UpdateVersion(ver); err != nil {
-			return err
-		}
-		dep.Pin, err = repo.Version()
-		if err != nil {
-			return err
-		}
+	}
+	if err := repo.UpdateVersion(ver); err != nil {
+		return err
+	}
+	dep.Pin, err = repo.Version()
+	if err != nil {
+		return err
 	}
 
 	return nil

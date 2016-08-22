@@ -609,7 +609,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 	}
 
 	if len(r.hadError) > 0 {
-		// Errors occured so we return.
+		// Errors occurred so we return.
 		return []string{}, errors.New("Error resolving imports")
 	}
 
