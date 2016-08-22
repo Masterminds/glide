@@ -20,7 +20,7 @@ type mirror struct {
 	Repo, Vcs string
 }
 
-// Get retrieves informtion about an mirror. It returns.
+// Get retrieves information about an mirror. It returns.
 // - bool if found
 // - new repo location
 // - vcs type
