@@ -1,6 +1,9 @@
-# Unreleased
+# Release 0.12.0 (2016-08-23)
 
 ## Added
+- Support for distributions in FreeBSD, OpenBSD, NetBSD, and Plan9
+- #528: ARM release support (thanks @franciscocpg)
+- #563: Added initial integration testing
 - #533: Log VCS output with debug (`--debug` switch) when there was a VCS error (thanks @atombender)
 - #39: Added support for mirrors. See the mirror command and subcommands
 
@@ -15,6 +18,8 @@
   others are deprecated and no longer needed.
 
 ## Fixed
+- #287: When file or directory not found provide useful message
+- #559: Fixed error is nil issue (thanks @mfycheng)
 - #553: Export was failing with different physical devices
 - #542: Glide failed to detect some test dependencies (thanks @sdboyer)
 - #517: Fixed failure to install testImport from lock when no imports present
