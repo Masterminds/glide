@@ -23,13 +23,17 @@ clean:
 	rm -rf ./dist
 
 bootstrap-dist:
-	${GLIDE_GO_EXECUTABLE} get -u github.com/mitchellh/gox
+	${GLIDE_GO_EXECUTABLE} get -u github.com/franciscocpg/gox
+	cd ${GOPATH}/src/github.com/franciscocpg/gox && git checkout dc50315fc7992f4fa34a4ee4bb3d60052eeb038e
+	cd ${GOPATH}/src/github.com/franciscocpg/gox && ${GLIDE_GO_EXECUTABLE} install
+
 
 build-all:
 	gox -verbose \
 	-ldflags "-X main.version=${VERSION}" \
-	-os="linux darwin windows " \
-	-arch="amd64 386" \
+	-os="linux darwin windows freebsd openbsd netbsd plan9" \
+	-arch="amd64 386 armv5 armv6 armv7 arm64" \
+	-osarch="!darwin/arm64" \
 	-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
 
 dist: build-all
