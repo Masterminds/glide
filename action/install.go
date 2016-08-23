@@ -1,7 +1,6 @@
 package action
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/Masterminds/glide/cache"
@@ -37,9 +36,6 @@ func Install(installer *repo.Installer, stripVendor bool) {
 	if err != nil {
 		msg.Die("Could not load lockfile.")
 	} else if hash != lock.Hash {
-		fmt.Println(hash, lock.Hash)
-		foo, _ := conf.Marshal()
-		fmt.Println(string(foo))
 		msg.Warn("Lock file may be out of date. Hash check of YAML failed. You may need to run 'update'")
 	}
 
