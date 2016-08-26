@@ -975,6 +975,17 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 		return info
 	}
 
+	// Check $GOROOT
+	for _, rr := range filepath.SplitList(r.BuildContext.GOROOT) {
+		p = filepath.Join(rr, "src", filepath.FromSlash(name))
+		if pkgExists(p) {
+			info.Path = p
+			info.Loc = LocGoroot
+			r.findCache[name] = info
+			return info
+		}
+	}
+
 	// Check _only_ if this dep is in the current vendor directory.
 	p = filepath.Join(r.VendorDir, filepath.FromSlash(name))
 	if pkgExists(p) {
@@ -1003,17 +1014,6 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 		if pkgExists(p) {
 			info.Path = p
 			info.Loc = LocGopath
-			r.findCache[name] = info
-			return info
-		}
-	}
-
-	// Check $GOROOT
-	for _, rr := range filepath.SplitList(r.BuildContext.GOROOT) {
-		p = filepath.Join(rr, "src", filepath.FromSlash(name))
-		if pkgExists(p) {
-			info.Path = p
-			info.Loc = LocGoroot
 			r.findCache[name] = info
 			return info
 		}

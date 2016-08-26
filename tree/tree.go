@@ -112,6 +112,16 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		return info
 	}
 
+	// Check $GOROOT
+	for _, r := range strings.Split(b.GOROOT, ":") {
+		p = filepath.Join(r, "src", name)
+		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || gpath.IsLink(fi)) {
+			info.Path = p
+			info.Loc = dependency.LocGoroot
+			return info
+		}
+	}
+
 	// Recurse backward to scan other vendor/ directories
 	// If the cwd isn't an absolute path walking upwards looking for vendor/
 	// folders can get into an infinate loop.
@@ -151,16 +161,6 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || gpath.IsLink(fi)) {
 			info.Path = p
 			info.Loc = dependency.LocGopath
-			return info
-		}
-	}
-
-	// Check $GOROOT
-	for _, r := range strings.Split(b.GOROOT, ":") {
-		p = filepath.Join(r, "src", name)
-		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || gpath.IsLink(fi)) {
-			info.Path = p
-			info.Loc = dependency.LocGoroot
 			return info
 		}
 	}
