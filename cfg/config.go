@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/vcs"
 	"github.com/sdboyer/gps"
 	"gopkg.in/yaml.v2"
@@ -44,33 +43,14 @@ type Config struct {
 	// those to skip.
 	Ignore []string `yaml:"ignore,omitempty"`
 
-	// Exclude contains a list of directories in the local application to
-	// exclude from scanning for dependencies.
-	Exclude []string `yaml:"excludeDirs,omitempty"`
-
-	// Imports contains a list of all non-development imports for a project. For
+	// Imports contains a list of all dependency constraints for a project. For
 	// more detail on how these are captured see the Dependency type.
-	Imports Dependencies `yaml:"import"`
+	Imports Dependencies `yaml:"dependencies"`
 
-	// DevImports contains the test or other development imports for a project.
-	// See the Dependency type for more details on how this is recorded.
-	DevImports Dependencies `yaml:"testImport,omitempty"`
+	DevImports Dependencies `yaml:"testDependencies"`
 }
 
 // A transitive representation of a dependency for importing and exporting to yaml.
-type cf1 struct {
-	Name        string       `yaml:"package"`
-	Description string       `yaml:"description,omitempty"`
-	Home        string       `yaml:"homepage,omitempty"`
-	License     string       `yaml:"license,omitempty"`
-	Owners      Owners       `yaml:"owners,omitempty"`
-	Ignore      []string     `yaml:"ignore,omitempty"`
-	Exclude     []string     `yaml:"excludeDirs,omitempty"`
-	Imports     Dependencies `yaml:"dependencies"`
-	DevImports  Dependencies `yaml:"testdependencies,omitempty"`
-}
-
-// Legacy representation of a glide.yaml file.
 type cf struct {
 	Name        string       `yaml:"package"`
 	Description string       `yaml:"description,omitempty"`
@@ -78,16 +58,22 @@ type cf struct {
 	License     string       `yaml:"license,omitempty"`
 	Owners      Owners       `yaml:"owners,omitempty"`
 	Ignore      []string     `yaml:"ignore,omitempty"`
-	Exclude     []string     `yaml:"excludeDirs,omitempty"`
-	Imports     Dependencies `yaml:"import"`
-	DevImports  Dependencies `yaml:"testImport,omitempty"`
+	Imports     Dependencies `yaml:"dependencies"`
+	DevImports  Dependencies `yaml:"testDependencies,omitempty"`
 }
 
 // ConfigFromYaml returns an instance of Config from YAML
-func ConfigFromYaml(yml []byte) (*Config, error) {
+func ConfigFromYaml(yml []byte) (*Config, bool, error) {
 	cfg := &Config{}
 	err := yaml.Unmarshal([]byte(yml), &cfg)
-	return cfg, err
+	if err != nil {
+		lcfg := &lConfig1{}
+		err = yaml.Unmarshal([]byte(yml), &lcfg)
+		if err != nil {
+			// TODO(sdboyer) convert to new form, then return
+		}
+	}
+	return cfg, false, err
 }
 
 // Marshal converts a Config instance to YAML
@@ -111,7 +97,6 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	c.License = newConfig.License
 	c.Owners = newConfig.Owners
 	c.Ignore = newConfig.Ignore
-	c.Exclude = newConfig.Exclude
 	c.Imports = newConfig.Imports
 	c.DevImports = newConfig.DevImports
 
@@ -130,7 +115,6 @@ func (c *Config) MarshalYAML() (interface{}, error) {
 		License:     c.License,
 		Owners:      c.Owners,
 		Ignore:      c.Ignore,
-		Exclude:     c.Exclude,
 	}
 	i, err := c.Imports.Clone().DeDupe()
 	if err != nil {
@@ -178,38 +162,12 @@ func (c *Config) TestDependencyConstraints() []gps.ProjectConstraint {
 func depsToVSolver(deps Dependencies) []gps.ProjectConstraint {
 	cp := make([]gps.ProjectConstraint, len(deps))
 	for k, d := range deps {
-		var c gps.Constraint
-		var err error
-
-		// Support both old and new. TODO handle this earlier
-		if d.Constraint != nil {
-			c = d.Constraint
-		} else {
-			// TODO need to differentiate types of constraints so that we don't have
-			// this ambiguity
-			// Try semver first
-			c, err = gps.NewSemverConstraint(d.Reference)
-			if err != nil {
-				// Not a semver constraint. Super crappy heuristic that'll cover hg
-				// and git revs, but not bzr (svn, you say? lol, madame. lol)
-				if len(d.Reference) == 40 {
-					c = gps.Revision(d.Reference)
-				} else {
-					// Otherwise, assume a branch. This also sucks, because it could
-					// very well be a shitty, non-semver tag.
-					c = gps.NewBranch(d.Reference)
-				}
-			}
-		}
-
-		id := gps.ProjectIdentifier{
-			ProjectRoot: gps.ProjectRoot(d.Name),
-			NetworkName: d.Repository,
-		}
-
 		cp[k] = gps.ProjectConstraint{
-			Ident:      id,
-			Constraint: c,
+			Ident: gps.ProjectIdentifier{
+				ProjectRoot: gps.ProjectRoot(d.Name),
+				NetworkName: d.Repository,
+			},
+			Constraint: d.Constraint,
 		}
 	}
 
@@ -242,18 +200,6 @@ func (c *Config) HasIgnore(name string) bool {
 	return false
 }
 
-// HasExclude returns true if the given name is listed on the exclude list.
-func (c *Config) HasExclude(ex string) bool {
-	ep := normalizeSlash(ex)
-	for _, v := range c.Exclude {
-		if vp := normalizeSlash(v); vp == ep {
-			return true
-		}
-	}
-
-	return false
-}
-
 // Clone performs a deep clone of the Config instance
 func (c *Config) Clone() *Config {
 	n := &Config{}
@@ -263,7 +209,6 @@ func (c *Config) Clone() *Config {
 	n.License = c.License
 	n.Owners = c.Owners.Clone()
 	n.Ignore = c.Ignore
-	n.Exclude = c.Exclude
 	n.Imports = c.Imports.Clone()
 	n.DevImports = c.DevImports.Clone()
 	return n
@@ -430,16 +375,16 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 			// In here we've encountered a dependency for the second time.
 			// Make sure the details are the same or return an error.
 			v := imports[val]
-			if dep.Reference != v.Reference {
-				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Reference, v.Reference)
+			// Have to do string-based comparison
+			if dep.Constraint.String() != v.Constraint.String() {
+				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Constraint, v.Constraint)
 			}
-			if dep.Repository != v.Repository || dep.VcsType != v.VcsType {
+			if dep.Repository != v.Repository {
 				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
 			}
 			if !reflect.DeepEqual(dep.Os, v.Os) || !reflect.DeepEqual(dep.Arch, v.Arch) {
 				return d, fmt.Errorf("Import %s repeated with different OS or Architecture filtering", dep.Name)
 			}
-			imports[checked[dep.Name]].Subpackages = stringArrayDeDupe(v.Subpackages, dep.Subpackages...)
 		}
 	}
 
@@ -448,60 +393,58 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
-	Name             string         `yaml:"package"`
-	Constraint       gps.Constraint `yaml:"-"` // TODO temporary, for experimenting; reconcile with other data
-	Reference        string         `yaml:"version,omitempty"`
-	Pin              string         `yaml:"-"`
-	Repository       string         `yaml:"repo,omitempty"`
-	VcsType          string         `yaml:"vcs,omitempty"`
-	Subpackages      []string       `yaml:"subpackages,omitempty"`
-	Arch             []string       `yaml:"arch,omitempty"`
-	Os               []string       `yaml:"os,omitempty"`
-	UpdateAsVendored bool           `yaml:"-"`
+	Name       string
+	VcsType    string // TODO remove
+	Constraint gps.Constraint
+	Repository string
+	Arch       []string
+	Os         []string
 }
 
-// A transitive representation of a dependency for importing and exploting to yaml.
+// A transitive representation of a dependency for yaml import/export.
 type dep struct {
-	Name        string   `yaml:"package"`
-	Reference   string   `yaml:"version,omitempty"`
-	Branch      string   `yaml:"branch,omitempty"`
-	Ref         string   `yaml:"ref,omitempty"`
-	Repository  string   `yaml:"repo,omitempty"`
-	VcsType     string   `yaml:"vcs,omitempty"`
-	Subpackages []string `yaml:"subpackages,omitempty"`
-	Arch        []string `yaml:"arch,omitempty"`
-	Os          []string `yaml:"os,omitempty"`
+	Name       string   `yaml:"package"`
+	Reference  string   `yaml:"version,omitempty"`
+	Branch     string   `yaml:"branch,omitempty"`
+	Repository string   `yaml:"repo,omitempty"`
+	Arch       []string `yaml:"arch,omitempty"`
+	Os         []string `yaml:"os,omitempty"`
 }
 
 // DependencyFromLock converts a Lock to a Dependency
 func DependencyFromLock(lock *Lock) *Dependency {
-	return &Dependency{
-		Name:        lock.Name,
-		Reference:   lock.Version,
-		Repository:  lock.Repository,
-		VcsType:     lock.VcsType,
-		Subpackages: lock.Subpackages,
-		Arch:        lock.Arch,
-		Os:          lock.Os,
+	d := &Dependency{
+		Name:       lock.Name,
+		Repository: lock.Repository,
 	}
+
+	r := gps.Revision(lock.Revision)
+	if lock.Version != "" {
+		d.Constraint = gps.NewVersion(lock.Version).Is(r)
+	} else if lock.Branch != "" {
+		d.Constraint = gps.NewBranch(lock.Version).Is(r)
+	} else {
+		d.Constraint = r
+	}
+
+	return d
 }
 
 // UnmarshalYAML is a hook for gopkg.in/yaml.v2 in the unmarshaling process
 func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	newDep := &dep{}
+	newDep := dep{}
 	err := unmarshal(&newDep)
 	if err != nil {
 		return err
 	}
+
 	d.Name = newDep.Name
-	d.Reference = newDep.Reference
+	d.Repository = newDep.Repository
+	d.Arch = newDep.Arch
+	d.Os = newDep.Os
 
-	if d.Reference == "" && newDep.Ref != "" {
-		d.Reference = newDep.Ref
-	}
-
-	if d.Reference != "" {
-		r := d.Reference
+	if newDep.Reference != "" {
+		r := newDep.Reference
 		// TODO(sdboyer) this covers git & hg; bzr and svn (??) need love
 		if len(r) == 40 {
 			if _, err := hex.DecodeString(r); err == nil {
@@ -527,44 +470,16 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		d.Constraint = gps.Any()
 	}
 
-	d.Repository = newDep.Repository
-	d.VcsType = newDep.VcsType
-	d.Subpackages = newDep.Subpackages
-	d.Arch = newDep.Arch
-	d.Os = newDep.Os
-
-	// Make sure only legitimate VCS are listed.
-	d.VcsType = filterVcsType(d.VcsType)
-
-	// Get the root name for the package
-	tn, subpkg := util.NormalizeName(d.Name)
-	d.Name = tn
-	if subpkg != "" {
-		d.Subpackages = append(d.Subpackages, subpkg)
-	}
-
-	// Older versions of Glide had a / prefix on subpackages in some cases.
-	// Here that's cleaned up. Someday we should be able to remove this.
-	for k, v := range d.Subpackages {
-		d.Subpackages[k] = strings.TrimPrefix(v, "/")
-	}
-
 	return nil
 }
 
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process
 func (d *Dependency) MarshalYAML() (interface{}, error) {
-
-	// Make sure we only write the correct vcs type to file
-	t := filterVcsType(d.VcsType)
-
 	newDep := &dep{
-		Name:        d.Name,
-		Repository:  d.Repository,
-		VcsType:     t,
-		Subpackages: d.Subpackages,
-		Arch:        d.Arch,
-		Os:          d.Os,
+		Name:       d.Name,
+		Repository: d.Repository,
+		Arch:       d.Arch,
+		Os:         d.Os,
 	}
 
 	// Pull out the correct type of constraint
@@ -580,10 +495,9 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	} else if gps.IsAny(d.Constraint) {
 		// We do nothing here, as the way any gets represented is with no
 		// constraint information at all
-		// TODO for now, probably until we add first-class 'default branch'
 	} else if d.Constraint != nil {
 		// The only other thing this could really be is a semver range. This
-		// will dump that up appropriately.
+		// will dump that appropriately.
 		newDep.Reference = d.Constraint.String()
 	}
 	// Just ignore any other case
@@ -593,8 +507,8 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 
 // GetRepo retrieves a Masterminds/vcs repo object configured for the root
 // of the package being retrieved.
+// TODO remove
 func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
-
 	// The remote location is either the configured repo or the package
 	// name as an https url.
 	var remote string
@@ -626,29 +540,14 @@ func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 
 // Clone creates a clone of a Dependency
 func (d *Dependency) Clone() *Dependency {
-	return &Dependency{
-		Name:             d.Name,
-		Constraint:       d.Constraint,
-		Reference:        d.Reference,
-		Pin:              d.Pin,
-		Repository:       d.Repository,
-		VcsType:          d.VcsType,
-		Subpackages:      d.Subpackages,
-		Arch:             d.Arch,
-		Os:               d.Os,
-		UpdateAsVendored: d.UpdateAsVendored,
-	}
+	var d2 Dependency
+	d2 = *d
+	return &d2
 }
 
 // HasSubpackage returns if the subpackage is present on the dependency
+// TODO remove
 func (d *Dependency) HasSubpackage(sub string) bool {
-
-	for _, v := range d.Subpackages {
-		if sub == v {
-			return true
-		}
-	}
-
 	return false
 }
 

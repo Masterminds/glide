@@ -38,8 +38,7 @@ func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 	for _, p := range r.Projects() {
 		pi := p.Ident()
 		l := &Lock{
-			Name:    string(pi.ProjectRoot),
-			VcsType: "", // TODO allow this to be extracted from sm
+			Name: string(pi.ProjectRoot),
 		}
 
 		if l.Name != pi.NetworkName && pi.NetworkName != "" {
@@ -80,10 +79,6 @@ func (lf *Lockfile) Marshal() ([]byte, error) {
 // MarshalYAML is a hook for gopkg.in/yaml.v2.
 // It sorts import subpackages lexicographically for reproducibility.
 func (lf *Lockfile) MarshalYAML() (interface{}, error) {
-	for _, imp := range lf.Imports {
-		sort.Strings(imp.Subpackages)
-	}
-
 	// Ensure elements on testImport don't already exist on import.
 	var newDI Locks
 	var found bool
@@ -104,9 +99,6 @@ func (lf *Lockfile) MarshalYAML() (interface{}, error) {
 	}
 	lf.DevImports = newDI
 
-	for _, imp := range lf.DevImports {
-		sort.Strings(imp.Subpackages)
-	}
 	return lf, nil
 }
 
@@ -236,39 +228,28 @@ func (l Locks) Swap(i, j int) {
 
 // Lock represents an individual locked dependency.
 type Lock struct {
-	Name        string   `yaml:"name"`
-	Version     string   `yaml:"version"`
-	Repository  string   `yaml:"repo,omitempty"`
-	VcsType     string   `yaml:"vcs,omitempty"`
-	Subpackages []string `yaml:"subpackages,omitempty"`
-	Arch        []string `yaml:"arch,omitempty"`
-	Os          []string `yaml:"os,omitempty"`
+	Name       string `yaml:"name"`
+	Version    string `yaml:"version,omitempty"`
+	Branch     string `yaml:"branch,omitempty"`
+	Revision   string `yaml:"revision"`
+	Repository string `yaml:"repo,omitempty"`
 }
 
 // Clone creates a clone of a Lock.
 func (l *Lock) Clone() *Lock {
-	return &Lock{
-		Name:        l.Name,
-		Version:     l.Version,
-		Repository:  l.Repository,
-		VcsType:     l.VcsType,
-		Subpackages: l.Subpackages,
-		Arch:        l.Arch,
-		Os:          l.Os,
-	}
+	var l2 Lock
+	l2 = *l
+	return &l2
 }
 
 // LockFromDependency converts a Dependency to a Lock
 func LockFromDependency(dep *Dependency) *Lock {
-	return &Lock{
-		Name:        dep.Name,
-		Version:     dep.Pin,
-		Repository:  dep.Repository,
-		VcsType:     dep.VcsType,
-		Subpackages: dep.Subpackages,
-		Arch:        dep.Arch,
-		Os:          dep.Os,
+	l := &Lock{
+		Name:       dep.Name,
+		Repository: dep.Repository,
 	}
+
+	return l
 }
 
 // NewLockfile is used to create an instance of Lockfile.
@@ -292,8 +273,8 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 		for ii := 0; ii < len(ds); ii++ {
 			if ds[ii].Name == tds[i].Name {
 				found = true
-				if ds[ii].Reference != tds[i].Reference {
-					return &Lockfile{}, fmt.Errorf("Generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].Reference, tds[i].Reference)
+				if ds[ii].Constraint.String() != tds[i].Constraint.String() {
+					return &Lockfile{}, fmt.Errorf("Generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].Constraint, tds[i].Constraint)
 				}
 				break
 			}

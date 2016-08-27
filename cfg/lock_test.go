@@ -7,14 +7,14 @@ import (
 )
 
 func TestSortLocks(t *testing.T) {
-	c, err := ConfigFromYaml([]byte(yml))
+	c, legacy, err := ConfigFromYaml([]byte(yml))
 	if err != nil {
 		t.Error("ConfigFromYaml failed to parse yaml for TestSortDependencies")
 	}
 
 	ls := make(Locks, len(c.Imports))
 	for i := 0; i < len(c.Imports); i++ {
-		ls[i] = &Lock{
+		ls[i] = &lLock1{
 			Name:    c.Imports[i].Name,
 			Version: c.Imports[i].Reference,
 		}

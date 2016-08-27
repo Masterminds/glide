@@ -15,6 +15,30 @@ owners:
 - name: foo
   email: bar@example.com
   homepage: https://example.com
+dependencies:
+- github.com/kylelemons/go-gypsy:
+    version: 1.0.0
+- github.com/Masterminds/convert:
+    repo: git@github.com:Masterminds/convert.git
+    version: a9949121a2e2192ca92fa6dddfeaaa4a4412d955
+- github.com/Masterminds/structable:
+    branch: master
+- github.com/Masterminds/cookoo/convert
+    repo: https://github.com/cookoo/convert.git
+
+testDependencies:
+  - package: github.com/kylelemons/go-gypsy
+`
+
+var lyml = `
+package: fake/testing
+description: foo bar baz
+homepage: https://example.com
+license: MIT
+owners:
+- name: foo
+  email: bar@example.com
+  homepage: https://example.com
 import:
   - package: github.com/kylelemons/go-gypsy
     subpackages:
@@ -41,8 +65,8 @@ testImport:
   - package: github.com/kylelemons/go-gypsy
 `
 
-func TestManualConfigFromYaml(t *testing.T) {
-	cfg := &Config{}
+func TestLegacyManualConfigFromYaml(t *testing.T) {
+	cfg := &lConfig1{}
 	err := yaml.Unmarshal([]byte(yml), &cfg)
 	if err != nil {
 		t.Errorf("Unable to Unmarshal config yaml")
@@ -112,7 +136,7 @@ func TestClone(t *testing.T) {
 }
 
 func TestConfigFromYaml(t *testing.T) {
-	c, err := ConfigFromYaml([]byte(yml))
+	c, legacy, err := ConfigFromYaml([]byte(yml))
 	if err != nil {
 		t.Error("ConfigFromYaml failed to parse yaml")
 	}
@@ -123,7 +147,7 @@ func TestConfigFromYaml(t *testing.T) {
 }
 
 func TestHasDependency(t *testing.T) {
-	c, err := ConfigFromYaml([]byte(yml))
+	c, legacy, err := ConfigFromYaml([]byte(yml))
 	if err != nil {
 		t.Error("ConfigFromYaml failed to parse yaml for HasDependency")
 	}
