@@ -107,6 +107,6 @@ func TestSortSubpackages(t *testing.T) {
 	}
 
 	if !strings.Contains(string(out), expectSubpkgYaml) {
-		t.Errorf("Expected %q\nto contain\n%q")
+		t.Errorf("Expected %q\nto contain\n%q", string(out), expectSubpkgYaml)
 	}
 }
