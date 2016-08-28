@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"fmt"
+	"path"
 	"reflect"
 	"strings"
 
@@ -42,9 +43,54 @@ func (c *lConfig1) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return err
 }
 
+func (c *lConfig1) Convert() (*Config, error) {
+	// This is probably already done, but do it just in case
+	err := c.DeDupe()
+	if err != nil {
+		return nil, err
+	}
+
+	// Pull over the easy values
+	c2 := &Config{
+		Name:        c.Name,
+		Description: c.Description,
+		Home:        c.Home,
+		License:     c.License,
+		Owners:      c.Owners,
+		Ignore:      c.Ignore,
+	}
+
+	// _if_ the name is set, path-prepend it to exclude, and add that to ignore.
+	// Otherwise, we just skip excludes. Not that big a deal, since they're a
+	// root-only property anyway; the user can reasonably recreate.
+
+	if c.Name != "" {
+		for _, excl := range c.Exclude {
+			c.Ignore = append(c.Ignore, path.Join(c.Name, excl))
+			// The trailing * is interpreted by gps as an ignore on that and all
+			// child paths (or, soon - https://github.com/sdboyer/gps/issues/88)
+			c.Ignore = append(c.Ignore, path.Join(c.Name, excl, "*"))
+		}
+	}
+
+	// Quitting early on this might seem risky, but a) all possible errs
+	// _should_ have already been surfaced in the earlier DeDupe(), and b) there
+	// are no new errs introduced by the conversion itself, so this doesn't
+	// actually increase the surface area for failures vis-a-vis pre-gps glide.
+	c2.Imports, err = c.Imports.Convert()
+	if err != nil {
+		return nil, err
+	}
+	c2.DevImports, err = c.DevImports.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	return c2, nil
+}
+
 // DeDupe consolidates duplicate dependencies on a Config instance
 func (c *lConfig1) DeDupe() error {
-
 	// Remove duplicates in the imports
 	var err error
 	c.Imports, err = c.Imports.DeDupe()
@@ -118,6 +164,35 @@ type lcf1 struct {
 
 type lDependencies1 []*lDependency1
 
+func (ds lDependencies1) Convert() (Dependencies, error) {
+	dds, err := ds.DeDupe()
+	if err != nil {
+		return nil, err
+	}
+
+	var ds2 Dependencies
+	for _, d := range dds {
+		// If we have neither a repo nor a reference, then it's pointless to
+		// include this dep in the list (it will add no information to gps)
+		if d.Repository == "" && d.Reference == "" {
+			continue
+		}
+
+		d2 := &Dependency{
+			Name:       d.Name,
+			Repository: d.Repository,
+		}
+
+		d2.Constraint = deduceConstraint(d.Reference)
+		// TODO(sdboyer) if the above result is a plain version, the old
+		// semantics are ambiguous wrt if the user wants a branch or tag. Check
+		// the version list (via source manager) to convert most sanely?
+		ds2 = append(ds2, d2)
+	}
+
+	return ds2, nil
+}
+
 type lDependency1 struct {
 	Name        string   `yaml:"package"`
 	Reference   string   `yaml:"version,omitempty"`
@@ -129,7 +204,7 @@ type lDependency1 struct {
 	Os          []string `yaml:"os,omitempty"`
 }
 
-// Legacy unmarshaler
+// Legacy unmarshaler for dependency component of yaml files
 func (d *lDependency1) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	newDep := &ldep1{}
 	err := unmarshal(&newDep)

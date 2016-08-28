@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/vcs"
@@ -45,8 +46,15 @@ type Config struct {
 
 	// Imports contains a list of all dependency constraints for a project. For
 	// more detail on how these are captured see the Dependency type.
+	// TODO rename
+	// TODO mapify
 	Imports Dependencies `yaml:"dependencies"`
 
+	// DevImports contains the test or other development dependency constraints
+	// for a project. See the Dependency type for more details on how this is
+	// recorded.
+	// TODO rename
+	// TODO mapify
 	DevImports Dependencies `yaml:"testDependencies"`
 }
 
@@ -58,22 +66,27 @@ type cf struct {
 	License     string       `yaml:"license,omitempty"`
 	Owners      Owners       `yaml:"owners,omitempty"`
 	Ignore      []string     `yaml:"ignore,omitempty"`
-	Imports     Dependencies `yaml:"dependencies"`
+	Imports     Dependencies `yaml:"dependencies,omitempty"`
 	DevImports  Dependencies `yaml:"testDependencies,omitempty"`
+	// used to guarantee that this wil fail on unmarshaling legacy yamls
+	Compat  int `yaml:"import,omitempty"`
+	Compat2 int `yaml:"testImport,omitempty"`
 }
 
 // ConfigFromYaml returns an instance of Config from YAML
-func ConfigFromYaml(yml []byte) (*Config, bool, error) {
-	cfg := &Config{}
-	err := yaml.Unmarshal([]byte(yml), &cfg)
+func ConfigFromYaml(yml []byte) (cfg *Config, legacy bool, err error) {
+	cfg = &Config{}
+	err = yaml.Unmarshal(yml, cfg)
 	if err != nil {
 		lcfg := &lConfig1{}
-		err = yaml.Unmarshal([]byte(yml), &lcfg)
-		if err != nil {
-			// TODO(sdboyer) convert to new form, then return
+		err = yaml.Unmarshal(yml, &lcfg)
+		if err == nil {
+			legacy = true
+			cfg, err = lcfg.Convert()
 		}
 	}
-	return cfg, false, err
+
+	return
 }
 
 // Marshal converts a Config instance to YAML
@@ -404,7 +417,7 @@ type Dependency struct {
 // A transitive representation of a dependency for yaml import/export.
 type dep struct {
 	Name       string   `yaml:"package"`
-	Reference  string   `yaml:"version,omitempty"`
+	Reference  string   `yaml:"version,omitempty"` // TODO rename
 	Branch     string   `yaml:"branch,omitempty"`
 	Repository string   `yaml:"repo,omitempty"`
 	Arch       []string `yaml:"arch,omitempty"`
@@ -471,6 +484,45 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	return nil
+}
+
+// deduceConstraint tries to puzzle out what kind of version is given in a string -
+// semver, a revision, or as a fallback, a plain tag
+func deduceConstraint(s string) gps.Constraint {
+	// always semver if we can
+	c, err := gps.NewSemverConstraint(s)
+	if err == nil {
+		return c
+	}
+
+	if len(s) == 40 {
+		if _, err = hex.DecodeString(s); err == nil {
+			// Whether or not it's intended to be a SHA1 digest, this is a
+			// valid byte sequence for that, so go with Revision. This
+			// covers git and hg
+			return gps.Revision(s)
+		}
+	}
+	// Next, try for bzr, which has a three-component GUID separated by
+	// dashes. There should be two, but the email part could contain
+	// internal dashes
+	if strings.Count(s, "-") >= 2 {
+		// Work from the back to avoid potential confusion from the email
+		i3 := strings.LastIndex(s, "-")
+		if _, err = hex.DecodeString(s[i3:]); err == nil {
+			i2 := strings.LastIndex(s[:i3], "-")
+			if _, err = strconv.ParseUint(s[i2:i3], 10, 64); err != nil {
+				// Getting this far means it'd pretty much be nuts if it's not a
+				// bzr rev, so don't bother parsing the email.
+				return gps.Revision(s)
+			}
+		}
+	}
+
+	// If not a plain SHA1 or bzr custom GUID, assume a plain version.
+	//
+	// svn, you ask? lol, madame. lol.
+	return gps.NewVersion(s)
 }
 
 // MarshalYAML is a hook for gopkg.in/yaml.v2 in the marshaling process

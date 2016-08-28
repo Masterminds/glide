@@ -37,6 +37,7 @@ import:
       - i386
       - arm
   - package: github.com/Masterminds/structable
+    version: v1.0.0
   - package: github.com/Masterminds/cookoo/color
   - package: github.com/Masterminds/cookoo/convert
 
@@ -238,6 +239,58 @@ func TestClone(t *testing.T) {
 	}
 }
 
+func TestLegacyConfigAutoconvert(t *testing.T) {
+	c, leg, err := ConfigFromYaml([]byte(lyml))
+	if err != nil {
+		t.Errorf("ConfigFromYaml failed to detect and autoconvert legacy yaml file with err %s", err)
+	}
+
+	if !leg {
+		t.Errorf("ConfigFromYaml failed to report autoconversion of legacy yaml file")
+	}
+
+	if c.Name != "fake/testing" {
+		t.Error("ConfigFromYaml failed to properly autoconvert legacy yaml file")
+	}
+
+	// Two should survive the conversion
+	if len(c.Imports) != 2 {
+		t.Error("Expected two dep clauses to survive conversion, but got ", len(c.Imports))
+	}
+
+	found := false
+	found2 := false
+	for _, i := range c.Imports {
+		if i.Name == "github.com/Masterminds/convert" {
+			found = true
+			ref := gps.Revision("a9949121a2e2192ca92fa6dddfeaaa4a4412d955")
+			if i.Constraint != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			}
+
+			repo := "git@github.com:Masterminds/convert.git"
+			if i.Repository != repo {
+				t.Errorf("(%s) Expected %q for repository, got %q", i.Name, repo, i.Repository)
+			}
+		}
+
+		if i.Name == "github.com/Masterminds/structable" {
+			found2 = true
+			ref := gps.NewVersion("v1.0.0")
+			if i.Constraint != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			}
+		}
+	}
+	if !found {
+		t.Error("Unable to find github.com/Masterminds/convert")
+	}
+	if !found2 {
+		t.Error("Unable to find github.com/Masterminds/structable")
+	}
+
+}
+
 func TestConfigFromYaml(t *testing.T) {
 	c, _, err := ConfigFromYaml([]byte(yml))
 	if err != nil {
@@ -255,7 +308,7 @@ func TestHasDependency(t *testing.T) {
 		t.Error("ConfigFromYaml failed to parse yaml for HasDependency")
 	}
 
-	if c.HasDependency("github.com/Masterminds/convert") != true {
+	if !c.HasDependency("github.com/Masterminds/convert") {
 		t.Error("HasDependency failing to pickup depenency")
 	}
 
