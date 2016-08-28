@@ -1,34 +1,13 @@
 package cfg
 
 import (
+	"reflect"
 	"testing"
+
+	"github.com/sdboyer/gps"
 
 	"gopkg.in/yaml.v2"
 )
-
-var yml = `
-package: fake/testing
-description: foo bar baz
-homepage: https://example.com
-license: MIT
-owners:
-- name: foo
-  email: bar@example.com
-  homepage: https://example.com
-dependencies:
-- github.com/kylelemons/go-gypsy:
-    version: 1.0.0
-- github.com/Masterminds/convert:
-    repo: git@github.com:Masterminds/convert.git
-    version: a9949121a2e2192ca92fa6dddfeaaa4a4412d955
-- github.com/Masterminds/structable:
-    branch: master
-- github.com/Masterminds/cookoo/convert
-    repo: https://github.com/cookoo/convert.git
-
-testDependencies:
-  - package: github.com/kylelemons/go-gypsy
-`
 
 var lyml = `
 package: fake/testing
@@ -65,9 +44,133 @@ testImport:
   - package: github.com/kylelemons/go-gypsy
 `
 
+var yml = `
+package: fake/testing
+description: foo bar baz
+homepage: https://example.com
+license: MIT
+owners:
+- name: foo
+  email: bar@example.com
+  homepage: https://example.com
+dependencies:
+  - package: github.com/kylelemons/go-gypsy
+    version: v1.0.0
+  - package: github.com/Masterminds/convert
+    repo: git@github.com:Masterminds/convert.git
+    version: a9949121a2e2192ca92fa6dddfeaaa4a4412d955
+  - package: github.com/Masterminds/structable
+    branch: master
+  - package: github.com/Masterminds/cookoo
+    repo: git://github.com/Masterminds/cookoo
+  - package: github.com/sdboyer/gps
+    version: ^v1.0.0
+
+testDependencies:
+  - package: github.com/Sirupsen/logrus
+    version: ~v1.0.0
+`
+
+func TestManualConfigFromYaml(t *testing.T) {
+	cfg := &Config{}
+	err := yaml.Unmarshal([]byte(yml), &cfg)
+	if err != nil {
+		t.Errorf("Unable to Unmarshal config yaml")
+	}
+
+	found := make(map[string]bool)
+	for _, i := range cfg.Imports {
+		found[i.Name] = true
+
+		switch i.Name {
+		case "github.com/kylelemons/go-gypsy":
+			ref := gps.NewVersion("v1.0.0")
+			if i.Constraint != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			}
+
+		case "github.com/Masterminds/convert":
+			ref := gps.Revision("a9949121a2e2192ca92fa6dddfeaaa4a4412d955")
+			if i.Constraint != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			}
+
+			repo := "git@github.com:Masterminds/convert.git"
+			if i.Repository != repo {
+				t.Errorf("(%s) Expected %q for repository, got %q", i.Name, repo, i.Repository)
+			}
+
+		case "github.com/Masterminds/structable":
+			ref := gps.NewBranch("master")
+			if i.Constraint != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			}
+
+		case "github.com/Masterminds/cookoo":
+			repo := "git://github.com/Masterminds/cookoo"
+			if i.Repository != repo {
+				t.Errorf("(%s) Expected %q for repository, got %q", i.Name, repo, i.Repository)
+			}
+
+		case "github.com/sdboyer/gps":
+			sv, _ := gps.NewSemverConstraint("^v1.0.0")
+			if !reflect.DeepEqual(sv, i.Constraint) {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, sv, i.Constraint)
+			}
+		}
+	}
+
+	names := []string{
+		"github.com/Masterminds/convert",
+		"github.com/Masterminds/cookoo",
+		"github.com/Masterminds/structable",
+		"github.com/kylelemons/go-gypsy",
+		"github.com/sdboyer/gps",
+	}
+
+	for _, n := range names {
+		if !found[n] {
+			t.Errorf("Could not find config entry for %s", n)
+
+		}
+	}
+
+	if len(cfg.DevImports) != 1 {
+		t.Errorf("Expected 1 entry in DevImports, got %v", len(cfg.DevImports))
+	} else {
+		ti := cfg.DevImports[0]
+		n := "github.com/Sirupsen/logrus"
+		if ti.Name != n {
+			t.Errorf("Expected test dependency to be %s, got %s", n, ti.Name)
+		}
+
+		sv, _ := gps.NewSemverConstraint("~v1.0.0")
+		if !reflect.DeepEqual(sv, ti.Constraint) {
+			t.Errorf("(test dep: %s) Expected %q for constraint, got %q", ti.Name, sv, ti.Constraint)
+		}
+	}
+
+	if cfg.Name != "fake/testing" {
+		t.Errorf("Inaccurate name found %s", cfg.Name)
+	}
+
+	if cfg.Description != "foo bar baz" {
+		t.Errorf("Inaccurate description found %s", cfg.Description)
+	}
+
+	if cfg.Home != "https://example.com" {
+		t.Errorf("Inaccurate homepage found %s", cfg.Home)
+	}
+
+	if cfg.License != "MIT" {
+		t.Errorf("Inaccurate license found %s", cfg.License)
+	}
+
+}
+
 func TestLegacyManualConfigFromYaml(t *testing.T) {
 	cfg := &lConfig1{}
-	err := yaml.Unmarshal([]byte(yml), &cfg)
+	err := yaml.Unmarshal([]byte(lyml), &cfg)
 	if err != nil {
 		t.Errorf("Unable to Unmarshal config yaml")
 	}
@@ -136,7 +239,7 @@ func TestClone(t *testing.T) {
 }
 
 func TestConfigFromYaml(t *testing.T) {
-	c, legacy, err := ConfigFromYaml([]byte(yml))
+	c, _, err := ConfigFromYaml([]byte(yml))
 	if err != nil {
 		t.Error("ConfigFromYaml failed to parse yaml")
 	}
@@ -147,7 +250,7 @@ func TestConfigFromYaml(t *testing.T) {
 }
 
 func TestHasDependency(t *testing.T) {
-	c, legacy, err := ConfigFromYaml([]byte(yml))
+	c, _, err := ConfigFromYaml([]byte(yml))
 	if err != nil {
 		t.Error("ConfigFromYaml failed to parse yaml for HasDependency")
 	}

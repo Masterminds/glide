@@ -10,7 +10,7 @@ imports:
 - name: github.com/Masterminds/vcs
   version: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
 - name: github.com/sdboyer/gps
-  version: 278a227dfc3d595a33a77ff3f841fd8ca1bc8cd0
+  version: f6e74e8d79b34ee6954d0cc8b770758ec99870ad
 - name: github.com/termie/go-shutil
   version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
 - name: gopkg.in/yaml.v2
