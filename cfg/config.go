@@ -495,7 +495,8 @@ func deduceConstraint(s string) gps.Constraint {
 		return c
 	}
 
-	if len(s) == 40 {
+	slen := len(s)
+	if slen == 40 {
 		if _, err = hex.DecodeString(s); err == nil {
 			// Whether or not it's intended to be a SHA1 digest, this is a
 			// valid byte sequence for that, so go with Revision. This
@@ -509,9 +510,14 @@ func deduceConstraint(s string) gps.Constraint {
 	if strings.Count(s, "-") >= 2 {
 		// Work from the back to avoid potential confusion from the email
 		i3 := strings.LastIndex(s, "-")
-		if _, err = hex.DecodeString(s[i3:]); err == nil {
+		// Skip if - is last char, otherwise this would panic on bounds err
+		if slen == i3+1 {
+			return gps.NewVersion(s)
+		}
+
+		if _, err = hex.DecodeString(s[i3+1:]); err == nil {
 			i2 := strings.LastIndex(s[:i3], "-")
-			if _, err = strconv.ParseUint(s[i2:i3], 10, 64); err != nil {
+			if _, err = strconv.ParseUint(s[i2+1:i3], 10, 64); err == nil {
 				// Getting this far means it'd pretty much be nuts if it's not a
 				// bzr rev, so don't bother parsing the email.
 				return gps.Revision(s)
