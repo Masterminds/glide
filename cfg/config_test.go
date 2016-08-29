@@ -359,21 +359,21 @@ func TestOwners(t *testing.T) {
 
 func TestDeduceConstraint(t *testing.T) {
 	// First, valid semver
-	c := deduceConstraint("v1.0.0")
+	c := DeduceConstraint("v1.0.0")
 	if c.(gps.Version).Type() != "semver" {
 		t.Errorf("Got unexpected version type when passing valid semver string: %T %s", c, c)
 	}
 
 	// Now, 20 hex-encoded bytes (which should be assumed to be a SHA1 digest)
 	revin := "a9949121a2e2192ca92fa6dddfeaaa4a4412d955"
-	c = deduceConstraint(revin)
+	c = DeduceConstraint(revin)
 	if c != gps.Revision(revin) {
 		t.Errorf("Got unexpected version type/val when passing hex-encoded SHA1 digest: %T %s", c, c)
 	}
 
 	// Now, the weird bzr guid
 	bzrguid := "john@smith.org-20051026185030-93c7cad63ee570df"
-	c = deduceConstraint(bzrguid)
+	c = DeduceConstraint(bzrguid)
 	if c != gps.Revision(bzrguid) {
 		t.Errorf("Expected revision with valid bzr guid, got: %T %s", c, c)
 	}
@@ -381,21 +381,21 @@ func TestDeduceConstraint(t *testing.T) {
 	// Check fails if the bzr rev is malformed or weirdly formed
 	//
 	// chopping off a char should make the hex decode check fail
-	c = deduceConstraint(bzrguid[:len(bzrguid)-1])
+	c = DeduceConstraint(bzrguid[:len(bzrguid)-1])
 	if c != gps.NewVersion(bzrguid[:len(bzrguid)-1]) {
 		t.Errorf("Expected plain version when bzr guid has truncated tail hex bits: %T %s", c, c)
 	}
 
 	// Extra dash in email doesn't mess us up
 	bzrguid2 := "john-smith@smith.org-20051026185030-93c7cad63ee570df"
-	c = deduceConstraint(bzrguid2)
+	c = DeduceConstraint(bzrguid2)
 	if c != gps.Revision(bzrguid2) {
 		t.Errorf("Expected revision when passing bzr guid has extra dash in email, got: %T %s", c, c)
 	}
 
 	// Non-numeric char in middle section bites it
 	bzrguid3 := "john-smith@smith.org-2005102a6185030-93c7cad63ee570df"
-	c = deduceConstraint(bzrguid3)
+	c = DeduceConstraint(bzrguid3)
 	if c != gps.NewVersion(bzrguid3) {
 		t.Errorf("Expected plain version when bzr guid has invalid second section, got: %T %s", c, c)
 	}

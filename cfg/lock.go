@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/sdboyer/gps"
 
 	"gopkg.in/yaml.v2"
@@ -20,7 +19,7 @@ type Lockfile struct {
 	Hash       string    `yaml:"hash"`
 	Updated    time.Time `yaml:"updated"`
 	Imports    Locks     `yaml:"imports"`
-	DevImports Locks     `yaml:"testImports"`
+	DevImports Locks     `yaml:"testImports"` // TODO remove and fold in as prop
 }
 
 // LockfileFromSolverLock transforms a gps.Lock into a glide *Lockfile.
@@ -46,9 +45,16 @@ func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 		}
 
 		v := p.Version()
-		if pv, ok := v.(gps.PairedVersion); ok {
-			l.Version = pv.Underlying().String()
-		} else {
+		// There's (currently) no way gps can emit a non-paired version in a
+		// solution, so this unchecked type assertion should be safe.
+		//
+		// TODO might still be better to check and return out with an err if
+		// not, though
+		l.Revision = v.(gps.PairedVersion).Underlying().String()
+		switch v.Type() {
+		case "branch":
+			l.Branch = v.String()
+		case "semver", "version":
 			l.Version = v.String()
 		}
 
@@ -130,21 +136,15 @@ func (lf *Lockfile) Projects() []gps.LockedProject {
 	lp := make([]gps.LockedProject, len(all))
 
 	for k, l := range all {
-		// TODO guess the version type. ugh
-		var v gps.Version
+		r := gps.Revision(l.Revision)
 
-		// semver first
-		_, err := semver.NewVersion(l.Version)
-		if err == nil {
-			v = gps.NewVersion(l.Version)
+		var v gps.Version
+		if l.Version != "" {
+			v = gps.NewVersion(l.Version).Is(r)
+		} else if l.Branch != "" {
+			v = gps.NewBranch(l.Branch).Is(r)
 		} else {
-			// Crappy heuristic to cover hg and git, but not bzr. Or (lol) svn
-			if len(l.Version) == 40 {
-				v = gps.Revision(l.Version)
-			} else {
-				// Otherwise, assume it's a branch
-				v = gps.NewBranch(l.Version)
-			}
+			v = r
 		}
 
 		lp[k] = gps.NewLockedProject(gps.ProjectRoot(l.Name), v, l.Repository, nil)
@@ -166,6 +166,7 @@ func (lf *Lockfile) Clone() *Lockfile {
 
 // Fingerprint returns a hash of the contents minus the date. This allows for
 // two lockfiles to be compared irrespective of their updated times.
+// TODO remove, or seriously re-adapt
 func (lf *Lockfile) Fingerprint() ([32]byte, error) {
 	c := lf.Clone()
 	c.Updated = time.Time{} // Set the time to be the nil equivalent
@@ -243,6 +244,7 @@ func (l *Lock) Clone() *Lock {
 }
 
 // LockFromDependency converts a Dependency to a Lock
+// TODO remove
 func LockFromDependency(dep *Dependency) *Lock {
 	l := &Lock{
 		Name:       dep.Name,
@@ -253,6 +255,7 @@ func LockFromDependency(dep *Dependency) *Lock {
 }
 
 // NewLockfile is used to create an instance of Lockfile.
+// TODO remove
 func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 	lf := &Lockfile{
 		Hash:       hash,
@@ -290,6 +293,7 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 }
 
 // LockfileFromMap takes a map of dependencies and generates a lock Lockfile instance.
+// TODO remove
 func LockfileFromMap(ds map[string]*Dependency, hash string) *Lockfile {
 	lf := &Lockfile{
 		Hash:    hash,

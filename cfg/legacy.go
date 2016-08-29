@@ -160,6 +160,9 @@ type lcf1 struct {
 	Exclude     []string       `yaml:"excludeDirs,omitempty"`
 	Imports     lDependencies1 `yaml:"import"`
 	DevImports  lDependencies1 `yaml:"testImport,omitempty"`
+	// these fields guarantee that this struct fails to unmarshal the new yamls
+	Compat  int `yaml:"dependencies,omitempty"`
+	Compat2 int `yaml:"testDependencies,omitempty"`
 }
 
 type lDependencies1 []*lDependency1
@@ -183,7 +186,7 @@ func (ds lDependencies1) Convert() (Dependencies, error) {
 			Repository: d.Repository,
 		}
 
-		d2.Constraint = deduceConstraint(d.Reference)
+		d2.Constraint = DeduceConstraint(d.Reference)
 		// TODO(sdboyer) if the above result is a plain version, the old
 		// semantics are ambiguous wrt if the user wants a branch or tag. Check
 		// the version list (via source manager) to convert most sanely?

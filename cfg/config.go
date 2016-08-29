@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -68,7 +67,7 @@ type cf struct {
 	Ignore      []string     `yaml:"ignore,omitempty"`
 	Imports     Dependencies `yaml:"dependencies,omitempty"`
 	DevImports  Dependencies `yaml:"testDependencies,omitempty"`
-	// used to guarantee that this wil fail on unmarshaling legacy yamls
+	// these fields guarantee that this struct fails to unmarshal legacy yamls
 	Compat  int `yaml:"import,omitempty"`
 	Compat2 int `yaml:"testImport,omitempty"`
 }
@@ -163,16 +162,16 @@ func (c *Config) HasDependency(name string) bool {
 // DependencyConstraints lists all the non-test dependency constraints
 // described in a glide manifest in a way gps will understand.
 func (c *Config) DependencyConstraints() []gps.ProjectConstraint {
-	return depsToVSolver(c.Imports)
+	return gpsifyDeps(c.Imports)
 }
 
 // TestDependencyConstraints lists all the test dependency constraints described
 // in a glide manifest in a way gps will understand.
 func (c *Config) TestDependencyConstraints() []gps.ProjectConstraint {
-	return depsToVSolver(c.DevImports)
+	return gpsifyDeps(c.DevImports)
 }
 
-func depsToVSolver(deps Dependencies) []gps.ProjectConstraint {
+func gpsifyDeps(deps Dependencies) []gps.ProjectConstraint {
 	cp := make([]gps.ProjectConstraint, len(deps))
 	for k, d := range deps {
 		cp[k] = gps.ProjectConstraint{
@@ -395,9 +394,6 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 			if dep.Repository != v.Repository {
 				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
 			}
-			if !reflect.DeepEqual(dep.Os, v.Os) || !reflect.DeepEqual(dep.Arch, v.Arch) {
-				return d, fmt.Errorf("Import %s repeated with different OS or Architecture filtering", dep.Name)
-			}
 		}
 	}
 
@@ -410,18 +406,14 @@ type Dependency struct {
 	VcsType    string // TODO remove
 	Constraint gps.Constraint
 	Repository string
-	Arch       []string
-	Os         []string
 }
 
 // A transitive representation of a dependency for yaml import/export.
 type dep struct {
-	Name       string   `yaml:"package"`
-	Reference  string   `yaml:"version,omitempty"` // TODO rename
-	Branch     string   `yaml:"branch,omitempty"`
-	Repository string   `yaml:"repo,omitempty"`
-	Arch       []string `yaml:"arch,omitempty"`
-	Os         []string `yaml:"os,omitempty"`
+	Name       string `yaml:"package"`
+	Reference  string `yaml:"version,omitempty"` // TODO rename
+	Branch     string `yaml:"branch,omitempty"`
+	Repository string `yaml:"repo,omitempty"`
 }
 
 // DependencyFromLock converts a Lock to a Dependency
@@ -453,8 +445,6 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	d.Name = newDep.Name
 	d.Repository = newDep.Repository
-	d.Arch = newDep.Arch
-	d.Os = newDep.Os
 
 	if newDep.Reference != "" {
 		r := newDep.Reference
@@ -486,9 +476,9 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-// deduceConstraint tries to puzzle out what kind of version is given in a string -
+// DeduceConstraint tries to puzzle out what kind of version is given in a string -
 // semver, a revision, or as a fallback, a plain tag
-func deduceConstraint(s string) gps.Constraint {
+func DeduceConstraint(s string) gps.Constraint {
 	// always semver if we can
 	c, err := gps.NewSemverConstraint(s)
 	if err == nil {
@@ -536,8 +526,6 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	newDep := &dep{
 		Name:       d.Name,
 		Repository: d.Repository,
-		Arch:       d.Arch,
-		Os:         d.Os,
 	}
 
 	// Pull out the correct type of constraint
@@ -601,12 +589,6 @@ func (d *Dependency) Clone() *Dependency {
 	var d2 Dependency
 	d2 = *d
 	return &d2
-}
-
-// HasSubpackage returns if the subpackage is present on the dependency
-// TODO remove
-func (d *Dependency) HasSubpackage(sub string) bool {
-	return false
 }
 
 // Owners is a list of owners for a project.
