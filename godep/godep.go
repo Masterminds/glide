@@ -7,12 +7,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
+	"github.com/sdboyer/gps"
 )
 
 // This file contains commands for working with Godep.
@@ -75,23 +75,10 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 
 	seen := map[string]bool{}
 	for _, d := range godeps.Deps {
-		pkg, sub := util.NormalizeName(d.ImportPath)
-		if _, ok := seen[pkg]; ok {
-			if len(sub) == 0 {
-				continue
-			}
-			// Modify existing dep with additional subpackages.
-			for _, dep := range buf {
-				if dep.Name == pkg {
-					dep.Subpackages = append(dep.Subpackages, sub)
-				}
-			}
-		} else {
+		pkg, _ := util.NormalizeName(d.ImportPath)
+		if !seen[pkg] {
 			seen[pkg] = true
-			dep := &cfg.Dependency{Name: pkg, Reference: d.Rev}
-			if sub != "" {
-				dep.Subpackages = []string{sub}
-			}
+			dep := &cfg.Dependency{Name: pkg, Constraint: gps.Revision(d.Rev)}
 			buf = append(buf, dep)
 		}
 	}
@@ -134,8 +121,8 @@ func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
 			// This approach does make for an uncomfortably wide possibility
 			// space where deps aren't getting what they expect, but that's
 			// better than just having the solver give up completely.
-			m = append(m, &cfg.Dependency{Name: pkg, Reference: "*"})
-			l.Imports = append(l.Imports, &cfg.Lock{Name: pkg, Version: d.Rev})
+			m = append(m, &cfg.Dependency{Name: pkg, Constraint: gps.Any()})
+			l.Imports = append(l.Imports, &cfg.Lock{Name: pkg, Revision: d.Rev})
 
 			// TODO this fails to differentiate between dev and non-dev imports;
 			// need static analysis for that
@@ -143,30 +130,4 @@ func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
 	}
 
 	return m, l, nil
-}
-
-// RemoveGodepSubpackages strips subpackages from a cfg.Config dependencies that
-// contain "Godeps/_workspace/src" as part of the path.
-func RemoveGodepSubpackages(c *cfg.Config) *cfg.Config {
-	for _, d := range c.Imports {
-		n := []string{}
-		for _, v := range d.Subpackages {
-			if !strings.HasPrefix(v, "Godeps/_workspace/src") {
-				n = append(n, v)
-			}
-		}
-		d.Subpackages = n
-	}
-
-	for _, d := range c.DevImports {
-		n := []string{}
-		for _, v := range d.Subpackages {
-			if !strings.HasPrefix(v, "Godeps/_workspace/src") {
-				n = append(n, v)
-			}
-		}
-		d.Subpackages = n
-	}
-
-	return c
 }

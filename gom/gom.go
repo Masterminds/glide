@@ -56,33 +56,21 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 			}
 		}
 
-		pkg, sub := util.NormalizeName(gom.name)
+		pkg, _ := util.NormalizeName(gom.name)
 
 		dep := &cfg.Dependency{
 			Name: pkg,
 		}
 
-		if len(sub) > 0 {
-			dep.Subpackages = []string{sub}
-		}
-
 		// Check for a specific revision
 		if val, ok := gom.options["commit"]; ok {
-			dep.Reference = val.(string)
+			dep.Constraint = gps.Revision(val.(string))
 		}
 		if val, ok := gom.options["tag"]; ok {
-			dep.Reference = val.(string)
+			dep.Constraint = gps.NewVersion(val.(string))
 		}
 		if val, ok := gom.options["branch"]; ok {
-			dep.Reference = val.(string)
-		}
-
-		// Parse goos and goarch
-		if val, ok := gom.options["goos"]; ok {
-			dep.Os = toStringSlice(val)
-		}
-		if val, ok := gom.options["goarch"]; ok {
-			dep.Arch = toStringSlice(val)
+			dep.Constraint = gps.NewBranch(val.(string))
 		}
 
 		buf = append(buf, dep)
