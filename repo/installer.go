@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -360,8 +361,11 @@ func (i *Installer) Export(conf *cfg.Config) error {
 	err = os.Rename(vp, i.VendorPath())
 
 	// When there are different physical devices we cannot rename cross device.
-	// Fall back to manual copy.
-	if err != nil && strings.Contains(err.Error(), "cross-device link") {
+	// Note, windows does not return the cross-device link message but instead
+	// bubbles up a system message (I believe is i18n). So, we try to detect the
+	// cross device link error or a windows error. If copy fails that will bubble
+	// up an additional error.
+	if err != nil && (strings.Contains(err.Error(), "cross-device link") || runtime.GOOS == "windows") {
 		msg.Debug("Cross link err, trying manual copy: %s", err)
 
 		err = gpath.CopyDir(vp, i.VendorPath())
