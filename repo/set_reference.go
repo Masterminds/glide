@@ -47,7 +47,7 @@ func SetReference(conf *cfg.Config, resolveTest bool) error {
 					}
 					cache.Lock(key)
 					if err := VcsVersion(dep, cwd); err != nil {
-						msg.Err("Failed to set version on %s to %s: %s\n", dep.Name, dep.Constraint, err)
+						msg.Err("Failed to set version on %s to %s: %s\n", dep.Name, dep.GetConstraint(), err)
 
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.

@@ -9,7 +9,6 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
-	"github.com/sdboyer/gps"
 )
 
 // Has returns true if this dir has a GB-flavored manifest file.
@@ -52,7 +51,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 			seen[pkg] = true
 			dep := &cfg.Dependency{
 				Name:       pkg,
-				Constraint: cfg.DeduceConstraint(d.Revision),
+				Version:    d.Revision,
 				Repository: d.Repository,
 			}
 			buf = append(buf, dep)
@@ -89,7 +88,6 @@ func AsMetadataPair(dir string) (m []*cfg.Dependency, l *cfg.Lockfile, err error
 			seen[pkg] = true
 			dep := &cfg.Dependency{
 				Name:       pkg,
-				Constraint: gps.Any(),
 				Repository: d.Repository,
 			}
 			m = append(m, dep)

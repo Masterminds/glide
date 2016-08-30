@@ -1,7 +1,6 @@
 package cfg
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/sdboyer/gps"
@@ -85,15 +84,15 @@ func TestManualConfigFromYaml(t *testing.T) {
 
 		switch i.Name {
 		case "github.com/kylelemons/go-gypsy":
-			ref := gps.NewVersion("v1.0.0")
-			if i.Constraint != ref {
-				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			ref := "v1.0.0"
+			if i.Version != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Version)
 			}
 
 		case "github.com/Masterminds/convert":
-			ref := gps.Revision("a9949121a2e2192ca92fa6dddfeaaa4a4412d955")
-			if i.Constraint != ref {
-				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			ref := "a9949121a2e2192ca92fa6dddfeaaa4a4412d955"
+			if i.Version != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Version)
 			}
 
 			repo := "git@github.com:Masterminds/convert.git"
@@ -102,9 +101,9 @@ func TestManualConfigFromYaml(t *testing.T) {
 			}
 
 		case "github.com/Masterminds/structable":
-			ref := gps.NewBranch("master")
-			if i.Constraint != ref {
-				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			ref := "master"
+			if i.Branch != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Branch)
 			}
 
 		case "github.com/Masterminds/cookoo":
@@ -114,9 +113,9 @@ func TestManualConfigFromYaml(t *testing.T) {
 			}
 
 		case "github.com/sdboyer/gps":
-			sv, _ := gps.NewSemverConstraint("^v1.0.0")
-			if !reflect.DeepEqual(sv, i.Constraint) {
-				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, sv, i.Constraint)
+			sv := "^v1.0.0"
+			if i.Version != sv {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, sv, i.Version)
 			}
 		}
 	}
@@ -145,9 +144,9 @@ func TestManualConfigFromYaml(t *testing.T) {
 			t.Errorf("Expected test dependency to be %s, got %s", n, ti.Name)
 		}
 
-		sv, _ := gps.NewSemverConstraint("~v1.0.0")
-		if !reflect.DeepEqual(sv, ti.Constraint) {
-			t.Errorf("(test dep: %s) Expected %q for constraint, got %q", ti.Name, sv, ti.Constraint)
+		sv := "~v1.0.0"
+		if ti.Version != sv {
+			t.Errorf("(%s) Expected %q for constraint, got %q", ti.Name, sv, ti.Version)
 		}
 	}
 
@@ -263,9 +262,9 @@ func TestLegacyConfigAutoconvert(t *testing.T) {
 	for _, i := range c.Imports {
 		if i.Name == "github.com/Masterminds/convert" {
 			found = true
-			ref := gps.Revision("a9949121a2e2192ca92fa6dddfeaaa4a4412d955")
-			if i.Constraint != ref {
-				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			ref := "a9949121a2e2192ca92fa6dddfeaaa4a4412d955"
+			if i.Version != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Version)
 			}
 
 			repo := "git@github.com:Masterminds/convert.git"
@@ -276,9 +275,9 @@ func TestLegacyConfigAutoconvert(t *testing.T) {
 
 		if i.Name == "github.com/Masterminds/structable" {
 			found2 = true
-			ref := gps.NewVersion("v1.0.0")
-			if i.Constraint != ref {
-				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Constraint)
+			ref := "v1.0.0"
+			if i.Version != ref {
+				t.Errorf("(%s) Expected %q for constraint, got %q", i.Name, ref, i.Version)
 			}
 		}
 	}

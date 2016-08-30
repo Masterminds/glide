@@ -179,7 +179,7 @@ func gpsifyDeps(deps Dependencies) []gps.ProjectConstraint {
 				ProjectRoot: gps.ProjectRoot(d.Name),
 				NetworkName: d.Repository,
 			},
-			Constraint: d.Constraint,
+			Constraint: d.GetConstraint(),
 		}
 	}
 
@@ -388,8 +388,8 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 			// Make sure the details are the same or return an error.
 			v := imports[val]
 			// Have to do string-based comparison
-			if dep.Constraint.String() != v.Constraint.String() {
-				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Constraint, v.Constraint)
+			if dep.ConstraintsEq(*v) {
+				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.GetConstraint(), v.GetConstraint())
 			}
 			if dep.Repository != v.Repository {
 				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
@@ -404,14 +404,15 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 type Dependency struct {
 	Name       string
 	VcsType    string // TODO remove
-	Constraint gps.Constraint
 	Repository string
+	Branch     string
+	Version    string
 }
 
 // A transitive representation of a dependency for yaml import/export.
 type dep struct {
 	Name       string `yaml:"package"`
-	Reference  string `yaml:"version,omitempty"` // TODO rename
+	Version    string `yaml:"version,omitempty"`
 	Branch     string `yaml:"branch,omitempty"`
 	Repository string `yaml:"repo,omitempty"`
 }
@@ -423,16 +424,59 @@ func DependencyFromLock(lock *Lock) *Dependency {
 		Repository: lock.Repository,
 	}
 
-	r := gps.Revision(lock.Revision)
+	// Because it's not allowed to have both, if we see both, prefer version
+	// over branch
 	if lock.Version != "" {
-		d.Constraint = gps.NewVersion(lock.Version).Is(r)
+		d.Version = lock.Version
 	} else if lock.Branch != "" {
-		d.Constraint = gps.NewBranch(lock.Version).Is(r)
+		d.Branch = lock.Branch
 	} else {
-		d.Constraint = r
+		d.Version = lock.Revision
 	}
 
 	return d
+}
+
+// GetConstraint constructs an appropriate gps.Constraint from the Dependency's
+// string input data.
+func (d Dependency) GetConstraint() gps.Constraint {
+	// If neither or both Version and Branch are set, accept anything
+	if d.IsUnconstrained() {
+		return gps.Any()
+	} else if d.Version != "" {
+		return DeduceConstraint(d.Version)
+	} else {
+		// only case left is a non-empty branch
+		return gps.NewBranch(d.Branch)
+	}
+}
+
+// IsUnconstrained indicates if this dependency has no constraint information,
+// version or branch.
+func (d Dependency) IsUnconstrained() bool {
+	return (d.Version != "" && d.Branch != "") || (d.Version == "" && d.Branch == "")
+}
+
+// ConstraintsEq checks if the constraints on two Dependency are exactly equal.
+func (d Dependency) ConstraintsEq(d2 Dependency) bool {
+	// Having both branch and version set is always an error, so if either have
+	// it, then return false
+	if (d.Version != "" && d.Branch != "") || (d2.Version != "" && d2.Branch != "") {
+		return false
+	}
+	// Neither being set, though, is OK
+	if (d.Version == "" && d.Branch == "") || (d2.Version == "" && d2.Branch == "") {
+		return true
+	}
+
+	// Now, xors
+	if d.Version != "" && d.Version == d2.Version {
+		return true
+	}
+	if d.Branch == d2.Branch {
+		return true
+	}
+	return false
 }
 
 // UnmarshalYAML is a hook for gopkg.in/yaml.v2 in the unmarshaling process
@@ -443,35 +487,14 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
+	if newDep.Version != "" && newDep.Branch != "" {
+		return fmt.Errorf("Cannot set both a both a branch and a version constraint for %q", d.Name)
+	}
+
 	d.Name = newDep.Name
 	d.Repository = newDep.Repository
-
-	if newDep.Reference != "" {
-		r := newDep.Reference
-		// TODO(sdboyer) this covers git & hg; bzr and svn (??) need love
-		if len(r) == 40 {
-			if _, err := hex.DecodeString(r); err == nil {
-				d.Constraint = gps.Revision(r)
-			}
-		} else {
-			d.Constraint, err = gps.NewSemverConstraint(r)
-			if err != nil {
-				d.Constraint = gps.NewVersion(r)
-			}
-		}
-
-		if err != nil {
-			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, r, err)
-		}
-	} else if newDep.Branch != "" {
-		d.Constraint = gps.NewBranch(newDep.Branch)
-
-		if err != nil {
-			return fmt.Errorf("Error on creating constraint for %q from %q: %s", d.Name, newDep.Branch, err)
-		}
-	} else {
-		d.Constraint = gps.Any()
-	}
+	d.Version = newDep.Version
+	d.Branch = newDep.Branch
 
 	return nil
 }
@@ -526,27 +549,9 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	newDep := &dep{
 		Name:       d.Name,
 		Repository: d.Repository,
+		Version:    d.Version,
+		Branch:     d.Branch,
 	}
-
-	// Pull out the correct type of constraint
-	if v, ok := d.Constraint.(gps.Version); ok {
-		switch v.Type() {
-		case "any":
-			// Do nothing; nothing here is taken as 'any'
-		case "branch":
-			newDep.Branch = v.String()
-		case "revision", "semver", "version":
-			newDep.Reference = v.String()
-		}
-	} else if gps.IsAny(d.Constraint) {
-		// We do nothing here, as the way any gets represented is with no
-		// constraint information at all
-	} else if d.Constraint != nil {
-		// The only other thing this could really be is a semver range. This
-		// will dump that appropriately.
-		newDep.Reference = d.Constraint.String()
-	}
-	// Just ignore any other case
 
 	return newDep, nil
 }

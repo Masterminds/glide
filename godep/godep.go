@@ -12,7 +12,6 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
-	"github.com/sdboyer/gps"
 )
 
 // This file contains commands for working with Godep.
@@ -78,7 +77,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		pkg, _ := util.NormalizeName(d.ImportPath)
 		if !seen[pkg] {
 			seen[pkg] = true
-			dep := &cfg.Dependency{Name: pkg, Constraint: gps.Revision(d.Rev)}
+			dep := &cfg.Dependency{Name: pkg, Version: d.Rev}
 			buf = append(buf, dep)
 		}
 	}
@@ -121,7 +120,7 @@ func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
 			// This approach does make for an uncomfortably wide possibility
 			// space where deps aren't getting what they expect, but that's
 			// better than just having the solver give up completely.
-			m = append(m, &cfg.Dependency{Name: pkg, Constraint: gps.Any()})
+			m = append(m, &cfg.Dependency{Name: pkg})
 			l.Imports = append(l.Imports, &cfg.Lock{Name: pkg, Revision: d.Rev})
 
 			// TODO this fails to differentiate between dev and non-dev imports;

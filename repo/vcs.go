@@ -18,7 +18,6 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/semver"
 	v "github.com/Masterminds/vcs"
-	"github.com/sdboyer/gps"
 )
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
@@ -133,22 +132,17 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 			// and that version is already checked out we can skip updating
 			// which is faster than going out to the Internet to perform
 			// an update.
-			if dep.Constraint != nil {
+			if !dep.IsUnconstrained() {
 				version, err := repo.Version()
 				if err != nil {
 					return err
 				}
 
-				var ib bool
-				if cv, ok := dep.Constraint.(gps.Version); ok {
-					ib = cv.Type() == "branch"
-				}
-
 				// If the current version equals the ref and it's not a
 				// branch it's a tag or commit id so we can skip
 				// performing an update.
-				if version == dep.Constraint.String() && !ib {
-					msg.Debug("%s is already set to version %s. Skipping update.", dep.Name, dep.Constraint)
+				if version == dep.Version {
+					msg.Debug("%s is already set to version %s. Skipping update.", dep.Name, dep.GetConstraint())
 					return nil
 				}
 			}
@@ -176,7 +170,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 	cwd := filepath.Join(vend, dep.Name)
 
 	// If there is no reference configured there is nothing to set.
-	if dep.Constraint == nil {
+	if dep.IsUnconstrained() {
 		// Before exiting update the pinned version
 		//_, err := dep.GetRepo(cwd)
 		//if err != nil {
@@ -204,14 +198,13 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 			return err
 		}
 
-		ver := dep.Constraint.String()
+		ver := dep.GetConstraint().String()
 		// References in Git can begin with a ^ which is similar to semver.
 		// If there is a ^ prefix we assume it's a semver constraint rather than
 		// part of the git/VCS commit id.
 		if repo.IsReference(ver) && !strings.HasPrefix(ver, "^") {
 			msg.Info("--> Setting version for %s to %s.\n", dep.Name, ver)
 		} else {
-
 			// Create the constraint first to make sure it's valid before
 			// working on the repo.
 			constraint, err := semver.NewConstraint(ver)
@@ -308,7 +301,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 
 				// If there is no reference set on the dep we try to checkout
 				// the default branch.
-				if dep.Constraint == nil {
+				if dep.IsUnconstrained() {
 					db := defaultBranch(repo, home)
 					if db != "" {
 						err = repo.UpdateVersion(db)

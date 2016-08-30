@@ -185,12 +185,12 @@ func (ds lDependencies1) Convert() (Dependencies, error) {
 		d2 := &Dependency{
 			Name:       d.Name,
 			Repository: d.Repository,
+			Version:    d.Reference,
 		}
 
-		d2.Constraint = DeduceConstraint(d.Reference)
-		// TODO(sdboyer) if the above result is a plain version, the old
-		// semantics are ambiguous wrt if the user wants a branch or tag. Check
-		// the version list (via source manager) to convert most sanely?
+		// TODO(sdboyer) d.Reference doesn't disambiguate between branches and
+		// tags. Check the version list (via source manager) to convert most
+		// sanely?
 		ds2 = append(ds2, d2)
 	}
 

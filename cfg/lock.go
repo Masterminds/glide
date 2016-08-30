@@ -314,8 +314,8 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 		for ii := 0; ii < len(ds); ii++ {
 			if ds[ii].Name == tds[i].Name {
 				found = true
-				if ds[ii].Constraint.String() != tds[i].Constraint.String() {
-					return &Lockfile{}, fmt.Errorf("Generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].Constraint, tds[i].Constraint)
+				if ds[ii].ConstraintsEq(*tds[i]) {
+					return &Lockfile{}, fmt.Errorf("Generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].GetConstraint(), tds[i].GetConstraint())
 				}
 				break
 			}

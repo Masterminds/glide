@@ -183,10 +183,10 @@ func guessImportDeps(base string, config *cfg.Config) {
 	}
 
 	for _, i := range deps {
-		if i.Constraint == nil {
+		if i.IsUnconstrained() {
 			msg.Info("--> Found imported reference to %s", i.Name)
 		} else {
-			msg.Info("--> Found imported reference to %s with constraint %s", i.Name, i.Constraint)
+			msg.Info("--> Found imported reference to %s with constraint %s", i.Name, i.GetConstraint())
 		}
 
 		config.Imports = append(config.Imports, i)

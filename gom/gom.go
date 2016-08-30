@@ -64,13 +64,13 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 
 		// Check for a specific revision
 		if val, ok := gom.options["commit"]; ok {
-			dep.Constraint = gps.Revision(val.(string))
+			dep.Version = val.(string)
 		}
 		if val, ok := gom.options["tag"]; ok {
-			dep.Constraint = gps.NewVersion(val.(string))
+			dep.Version = val.(string)
 		}
 		if val, ok := gom.options["branch"]; ok {
-			dep.Constraint = gps.NewBranch(val.(string))
+			dep.Branch = val.(string)
 		}
 
 		buf = append(buf, dep)

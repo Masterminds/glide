@@ -184,8 +184,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 		}
 
 		dep := &cfg.Dependency{
-			Name:       root,
-			Constraint: gps.Any(),
+			Name: root,
 		}
 
 		// When retriving from an insecure location set the repo to the
@@ -196,13 +195,14 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 
 		if version != "" {
 			// TODO(sdboyer) set the right type...what is that here?
-			dep.Constraint = gps.NewVersion(version)
+			dep.Version = version
+			dep.Branch = "" // just to be sure
 		} else if !nonInteract {
 			getWizard(dep)
 		}
 
-		if dep.Constraint != nil {
-			msg.Info("--> Adding %s to your configuration with the version %s", dep.Name, dep.Constraint)
+		if !dep.IsUnconstrained() {
+			msg.Info("--> Adding %s to your configuration with the version %s", dep.Name, dep.GetConstraint())
 		} else {
 			msg.Info("--> Adding %s to your configuration", dep.Name)
 		}
@@ -233,20 +233,15 @@ func getWizard(dep *cfg.Dependency) {
 	if memlatest != "" {
 		dres := wizardAskLatest(memlatest, dep)
 		if dres {
-			// TODO(sdboyer) set the right type...what is that here?
-			v := gps.NewVersion(memlatest)
-			dep.Constraint = v
+			dep.Version = memlatest
 
-			if v.Type() == "semver" {
-				sv, _ := semver.NewVersion(memlatest)
+			sv, err := semver.NewVersion(memlatest)
+			if err != nil {
 				res := wizardAskRange(sv, dep)
-
 				if res == "m" {
-					// no errors possible here, if init was valid semver version
-					dep.Constraint, _ = gps.NewSemverConstraint("^" + v.String())
+					dep.Version = "^" + memlatest
 				} else if res == "p" {
-					// no errors possible here, if init was valid semver version
-					dep.Constraint, _ = gps.NewSemverConstraint("~" + v.String())
+					dep.Version = "~" + memlatest
 				}
 			}
 		}

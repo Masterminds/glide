@@ -13,7 +13,6 @@ import (
 	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
-	"github.com/sdboyer/gps"
 )
 
 // Has indicates whether a Godeps file exists.
@@ -47,7 +46,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 		if ok {
 			dep := &cfg.Dependency{Name: parts[0]}
 			if len(parts) > 1 {
-				dep.Constraint = cfg.DeduceConstraint(parts[1])
+				dep.Version = parts[1]
 			}
 			buf = append(buf, dep)
 		}
@@ -85,7 +84,7 @@ func AsMetadataPair(dir string) ([]*cfg.Dependency, *cfg.Lockfile, error) {
 			if len(parts) > 1 {
 				l.Imports = append(l.Imports, &cfg.Lock{Name: parts[0], Version: parts[1]})
 			}
-			m = append(m, &cfg.Dependency{Name: parts[0], Constraint: gps.Any()})
+			m = append(m, &cfg.Dependency{Name: parts[0]})
 		}
 	}
 	if err := scanner.Err(); err != nil {
