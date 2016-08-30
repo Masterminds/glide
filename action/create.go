@@ -129,32 +129,20 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 
 	for _, pa := range sortable {
 		n := strings.TrimPrefix(pa, vpath)
-		root, subpkg := util.NormalizeName(n)
+		root, _ := util.NormalizeName(n)
 
 		if !config.Imports.Has(root) && root != config.Name {
 			msg.Info("--> Found reference to %s\n", n)
 			d := &cfg.Dependency{
 				Name: root,
 			}
-			if len(subpkg) > 0 {
-				d.Subpackages = []string{subpkg}
-			}
 			config.Imports = append(config.Imports, d)
-		} else if config.Imports.Has(root) {
-			if len(subpkg) > 0 {
-				subpkg = strings.TrimPrefix(subpkg, "/")
-				d := config.Imports.Get(root)
-				if !d.HasSubpackage(subpkg) {
-					msg.Info("--> Adding sub-package %s to %s\n", subpkg, root)
-					d.Subpackages = append(d.Subpackages, subpkg)
-				}
-			}
 		}
 	}
 
 	for _, pa := range testSortable {
 		n := strings.TrimPrefix(pa, vpath)
-		root, subpkg := util.NormalizeName(n)
+		root, _ := util.NormalizeName(n)
 
 		if config.Imports.Has(root) && root != config.Name {
 			msg.Debug("--> Found test reference to %s already listed as an import", n)
@@ -163,19 +151,7 @@ func guessDeps(base string, skipImport bool) *cfg.Config {
 			d := &cfg.Dependency{
 				Name: root,
 			}
-			if len(subpkg) > 0 {
-				d.Subpackages = []string{subpkg}
-			}
 			config.DevImports = append(config.DevImports, d)
-		} else if config.DevImports.Has(root) {
-			if len(subpkg) > 0 {
-				subpkg = strings.TrimPrefix(subpkg, "/")
-				d := config.DevImports.Get(root)
-				if !d.HasSubpackage(subpkg) {
-					msg.Info("--> Adding test sub-package %s to %s\n", subpkg, root)
-					d.Subpackages = append(d.Subpackages, subpkg)
-				}
-			}
 		}
 	}
 
@@ -207,10 +183,10 @@ func guessImportDeps(base string, config *cfg.Config) {
 	}
 
 	for _, i := range deps {
-		if i.Reference == "" {
+		if i.Constraint == nil {
 			msg.Info("--> Found imported reference to %s", i.Name)
 		} else {
-			msg.Info("--> Found imported reference to %s at revision %s", i.Name, i.Reference)
+			msg.Info("--> Found imported reference to %s with constraint %s", i.Name, i.Constraint)
 		}
 
 		config.Imports = append(config.Imports, i)

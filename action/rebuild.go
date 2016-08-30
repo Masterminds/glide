@@ -41,22 +41,23 @@ func Rebuild() {
 }
 
 func buildDep(dep *cfg.Dependency, vpath string) error {
-	if len(dep.Subpackages) == 0 {
-		buildPath(dep.Name)
-	}
+	buildPath(dep.Name)
 
-	for _, pkg := range dep.Subpackages {
-		if pkg == "**" || pkg == "..." {
-			//Info("Building all packages in %s\n", dep.Name)
-			buildPath(path.Join(dep.Name, "..."))
-		} else {
-			paths, err := resolvePackages(vpath, dep.Name, pkg)
-			if err != nil {
-				msg.Warn("Error resolving packages: %s", err)
-			}
-			buildPaths(paths)
-		}
-	}
+	// TODO(sdboyer) to replace this, would need static analysis. But...rebuild
+	// is going away anyway, right?
+
+	//for _, pkg := range dep.Subpackages {
+	//if pkg == "**" || pkg == "..." {
+	////Info("Building all packages in %s\n", dep.Name)
+	//buildPath(path.Join(dep.Name, "..."))
+	//} else {
+	//paths, err := resolvePackages(vpath, dep.Name, pkg)
+	//if err != nil {
+	//msg.Warn("Error resolving packages: %s", err)
+	//}
+	//buildPaths(paths)
+	//}
+	//}
 
 	return nil
 }

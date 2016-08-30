@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
+	"github.com/sdboyer/gps"
 )
 
 // Has returns true if this dir has a GB-flavored manifest file.
@@ -44,25 +45,15 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	seen := map[string]bool{}
 
 	for _, d := range man.Dependencies {
-		pkg, sub := util.NormalizeName(d.Importpath)
-		if _, ok := seen[pkg]; ok {
-			if len(sub) == 0 {
-				continue
-			}
-			for _, dep := range buf {
-				if dep.Name == pkg {
-					dep.Subpackages = append(dep.Subpackages, sub)
-				}
-			}
-		} else {
+		// TODO(sdboyer) move to the corresponding SourceManager call...though
+		// that matters less once gps caches these results
+		pkg, _ := util.NormalizeName(d.Importpath)
+		if !seen[pkg] {
 			seen[pkg] = true
 			dep := &cfg.Dependency{
 				Name:       pkg,
-				Reference:  d.Revision,
+				Constraint: cfg.DeduceConstraint(d.Revision),
 				Repository: d.Repository,
-			}
-			if len(sub) > 0 {
-				dep.Subpackages = []string{sub}
 			}
 			buf = append(buf, dep)
 		}
@@ -94,16 +85,15 @@ func AsMetadataPair(dir string) (m []*cfg.Dependency, l *cfg.Lockfile, err error
 
 	for _, d := range man.Dependencies {
 		pkg, _ := util.NormalizeName(d.Importpath)
-		if _, ok := seen[pkg]; ok {
+		if !seen[pkg] {
 			seen[pkg] = true
 			dep := &cfg.Dependency{
-				Name: pkg,
-				// TODO we have the branch info here - maybe we should use that
-				Reference:  "*",
+				Name:       pkg,
+				Constraint: gps.Any(),
 				Repository: d.Repository,
 			}
 			m = append(m, dep)
-			l.Imports = append(l.Imports, &cfg.Lock{Name: pkg, Version: d.Revision})
+			l.Imports = append(l.Imports, &cfg.Lock{Name: pkg, Revision: d.Revision})
 		}
 	}
 	return

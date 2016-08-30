@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/sdboyer/gps"
 
 	"gopkg.in/yaml.v2"
@@ -20,7 +19,7 @@ type Lockfile struct {
 	Hash       string    `yaml:"hash"`
 	Updated    time.Time `yaml:"updated"`
 	Imports    Locks     `yaml:"imports"`
-	DevImports Locks     `yaml:"testImports"`
+	DevImports Locks     `yaml:"testImports"` // TODO remove and fold in as prop
 }
 
 // LockfileFromSolverLock transforms a gps.Lock into a glide *Lockfile.
@@ -38,8 +37,7 @@ func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 	for _, p := range r.Projects() {
 		pi := p.Ident()
 		l := &Lock{
-			Name:    string(pi.ProjectRoot),
-			VcsType: "", // TODO allow this to be extracted from sm
+			Name: string(pi.ProjectRoot),
 		}
 
 		if l.Name != pi.NetworkName && pi.NetworkName != "" {
@@ -47,9 +45,16 @@ func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 		}
 
 		v := p.Version()
-		if pv, ok := v.(gps.PairedVersion); ok {
-			l.Version = pv.Underlying().String()
-		} else {
+		// There's (currently) no way gps can emit a non-paired version in a
+		// solution, so this unchecked type assertion should be safe.
+		//
+		// TODO might still be better to check and return out with an err if
+		// not, though
+		l.Revision = v.(gps.PairedVersion).Underlying().String()
+		switch v.Type() {
+		case "branch":
+			l.Branch = v.String()
+		case "semver", "version":
 			l.Version = v.String()
 		}
 
@@ -60,13 +65,22 @@ func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 }
 
 // LockfileFromYaml returns an instance of Lockfile from YAML
-func LockfileFromYaml(yml []byte) (*Lockfile, error) {
+func LockfileFromYaml(yml []byte) (*Lockfile, bool, error) {
 	lock := &Lockfile{}
-	err := yaml.Unmarshal([]byte(yml), &lock)
-	return lock, err
+	err := yaml.Unmarshal([]byte(yml), lock)
+	if err == nil {
+		return lock, false, nil
+	}
+
+	llock := &lLockfile1{}
+	err2 := yaml.Unmarshal([]byte(yml), llock)
+	if err2 != nil {
+		return nil, false, err2
+	}
+	return llock.Convert(), true, nil
 }
 
-// Marshal converts a Config instance to YAML
+// Marshal converts a Lockfile instance to YAML
 func (lf *Lockfile) Marshal() ([]byte, error) {
 	sort.Sort(lf.Imports)
 	sort.Sort(lf.DevImports)
@@ -80,10 +94,6 @@ func (lf *Lockfile) Marshal() ([]byte, error) {
 // MarshalYAML is a hook for gopkg.in/yaml.v2.
 // It sorts import subpackages lexicographically for reproducibility.
 func (lf *Lockfile) MarshalYAML() (interface{}, error) {
-	for _, imp := range lf.Imports {
-		sort.Strings(imp.Subpackages)
-	}
-
 	// Ensure elements on testImport don't already exist on import.
 	var newDI Locks
 	var found bool
@@ -104,9 +114,6 @@ func (lf *Lockfile) MarshalYAML() (interface{}, error) {
 	}
 	lf.DevImports = newDI
 
-	for _, imp := range lf.DevImports {
-		sort.Strings(imp.Subpackages)
-	}
 	return lf, nil
 }
 
@@ -138,21 +145,15 @@ func (lf *Lockfile) Projects() []gps.LockedProject {
 	lp := make([]gps.LockedProject, len(all))
 
 	for k, l := range all {
-		// TODO guess the version type. ugh
-		var v gps.Version
+		r := gps.Revision(l.Revision)
 
-		// semver first
-		_, err := semver.NewVersion(l.Version)
-		if err == nil {
-			v = gps.NewVersion(l.Version)
+		var v gps.Version
+		if l.Version != "" {
+			v = gps.NewVersion(l.Version).Is(r)
+		} else if l.Branch != "" {
+			v = gps.NewBranch(l.Branch).Is(r)
 		} else {
-			// Crappy heuristic to cover hg and git, but not bzr. Or (lol) svn
-			if len(l.Version) == 40 {
-				v = gps.Revision(l.Version)
-			} else {
-				// Otherwise, assume it's a branch
-				v = gps.NewBranch(l.Version)
-			}
+			v = r
 		}
 
 		lp[k] = gps.NewLockedProject(gps.ProjectRoot(l.Name), v, l.Repository, nil)
@@ -174,6 +175,7 @@ func (lf *Lockfile) Clone() *Lockfile {
 
 // Fingerprint returns a hash of the contents minus the date. This allows for
 // two lockfiles to be compared irrespective of their updated times.
+// TODO remove, or seriously re-adapt
 func (lf *Lockfile) Fingerprint() ([32]byte, error) {
 	c := lf.Clone()
 	c.Updated = time.Time{} // Set the time to be the nil equivalent
@@ -193,7 +195,7 @@ func ReadLockFile(lockpath string) (*Lockfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	lock, err := LockfileFromYaml(yml)
+	lock, _, err := LockfileFromYaml(yml)
 	if err != nil {
 		return nil, err
 	}
@@ -236,42 +238,62 @@ func (l Locks) Swap(i, j int) {
 
 // Lock represents an individual locked dependency.
 type Lock struct {
-	Name        string   `yaml:"name"`
-	Version     string   `yaml:"version"`
-	Repository  string   `yaml:"repo,omitempty"`
-	VcsType     string   `yaml:"vcs,omitempty"`
-	Subpackages []string `yaml:"subpackages,omitempty"`
-	Arch        []string `yaml:"arch,omitempty"`
-	Os          []string `yaml:"os,omitempty"`
+	Name       string `yaml:"name"`
+	Version    string `yaml:"version,omitempty"`
+	Branch     string `yaml:"branch,omitempty"`
+	Revision   string `yaml:"revision"`
+	Repository string `yaml:"repo,omitempty"`
+}
+
+func (l *Lock) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	nl := struct {
+		Name       string `yaml:"name"`
+		Version    string `yaml:"version,omitempty"`
+		Branch     string `yaml:"branch,omitempty"`
+		Revision   string `yaml:"revision"`
+		Repository string `yaml:"repo,omitempty"`
+	}{}
+
+	err := unmarshal(&nl)
+	if err != nil {
+		return err
+	}
+
+	// If Revision field is empty, then we can be certain this is either a
+	// legacy file, or just plain invalid
+	if nl.Revision == "" {
+		return fmt.Errorf("dependency %s is missing a revision; is this a legacy glide.lock file?", nl.Name)
+	}
+
+	l.Name = nl.Name
+	l.Version = nl.Version
+	l.Branch = nl.Branch
+	l.Revision = nl.Revision
+	l.Repository = nl.Repository
+
+	return nil
 }
 
 // Clone creates a clone of a Lock.
 func (l *Lock) Clone() *Lock {
-	return &Lock{
-		Name:        l.Name,
-		Version:     l.Version,
-		Repository:  l.Repository,
-		VcsType:     l.VcsType,
-		Subpackages: l.Subpackages,
-		Arch:        l.Arch,
-		Os:          l.Os,
-	}
+	var l2 Lock
+	l2 = *l
+	return &l2
 }
 
 // LockFromDependency converts a Dependency to a Lock
+// TODO remove
 func LockFromDependency(dep *Dependency) *Lock {
-	return &Lock{
-		Name:        dep.Name,
-		Version:     dep.Pin,
-		Repository:  dep.Repository,
-		VcsType:     dep.VcsType,
-		Subpackages: dep.Subpackages,
-		Arch:        dep.Arch,
-		Os:          dep.Os,
+	l := &Lock{
+		Name:       dep.Name,
+		Repository: dep.Repository,
 	}
+
+	return l
 }
 
 // NewLockfile is used to create an instance of Lockfile.
+// TODO remove
 func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 	lf := &Lockfile{
 		Hash:       hash,
@@ -292,8 +314,8 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 		for ii := 0; ii < len(ds); ii++ {
 			if ds[ii].Name == tds[i].Name {
 				found = true
-				if ds[ii].Reference != tds[i].Reference {
-					return &Lockfile{}, fmt.Errorf("Generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].Reference, tds[i].Reference)
+				if ds[ii].Constraint.String() != tds[i].Constraint.String() {
+					return &Lockfile{}, fmt.Errorf("Generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].Constraint, tds[i].Constraint)
 				}
 				break
 			}
@@ -309,6 +331,7 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 }
 
 // LockfileFromMap takes a map of dependencies and generates a lock Lockfile instance.
+// TODO remove
 func LockfileFromMap(ds map[string]*Dependency, hash string) *Lockfile {
 	lf := &Lockfile{
 		Hash:    hash,

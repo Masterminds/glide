@@ -257,10 +257,10 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 		}
 		pt := strings.TrimPrefix(path, r.basedir+string(os.PathSeparator))
 		pt = strings.TrimSuffix(pt, string(os.PathSeparator))
-		if r.Config.HasExclude(pt) {
-			msg.Debug("Excluding %s", pt)
-			return filepath.SkipDir
-		}
+		//if r.Config.HasExclude(pt) {
+		//msg.Debug("Excluding %s", pt)
+		//return filepath.SkipDir
+		//}
 		if !fi.IsDir() {
 			return nil
 		}
@@ -588,7 +588,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 	// In addition to generating a list
 	for e := queue.Front(); e != nil; e = e.Next() {
 		t := r.Stripv(e.Value.(string))
-		root, sp := util.NormalizeName(t)
+		root, _ := util.NormalizeName(t)
 
 		// Skip ignored packages
 		if r.Config.HasIgnore(e.Value.(string)) {
@@ -598,25 +598,19 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 
 		// TODO(mattfarina): Need to eventually support devImport
 		existing := r.Config.Imports.Get(root)
-		if existing == nil && addTest {
-			existing = r.Config.DevImports.Get(root)
-		}
-		if existing != nil {
-			if sp != "" && !existing.HasSubpackage(sp) {
-				existing.Subpackages = append(existing.Subpackages, sp)
-			}
-		} else {
-			newDep := &cfg.Dependency{
-				Name: root,
-			}
-			if sp != "" {
-				newDep.Subpackages = []string{sp}
-			}
-
+		if existing == nil {
 			if addTest {
-				r.Config.DevImports = append(r.Config.DevImports, newDep)
+				existing = r.Config.DevImports.Get(root)
 			} else {
-				r.Config.Imports = append(r.Config.Imports, newDep)
+				newDep := &cfg.Dependency{
+					Name: root,
+				}
+
+				if addTest {
+					r.Config.DevImports = append(r.Config.DevImports, newDep)
+				} else {
+					r.Config.Imports = append(r.Config.Imports, newDep)
+				}
 			}
 		}
 		res = append(res, t)
@@ -685,29 +679,22 @@ func (r *Resolver) resolveList(queue *list.List, testDeps, addTest bool) ([]stri
 	// In addition to generating a list
 	for e := queue.Front(); e != nil; e = e.Next() {
 		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
-		root, sp := util.NormalizeName(t)
+		root, _ := util.NormalizeName(t)
 
 		existing := r.Config.Imports.Get(root)
-		if existing == nil && addTest {
-			existing = r.Config.DevImports.Get(root)
-		}
-
-		if existing != nil {
-			if sp != "" && !existing.HasSubpackage(sp) {
-				existing.Subpackages = append(existing.Subpackages, sp)
-			}
-		} else {
-			newDep := &cfg.Dependency{
-				Name: root,
-			}
-			if sp != "" {
-				newDep.Subpackages = []string{sp}
-			}
-
+		if existing == nil {
 			if addTest {
-				r.Config.DevImports = append(r.Config.DevImports, newDep)
+				existing = r.Config.DevImports.Get(root)
 			} else {
-				r.Config.Imports = append(r.Config.Imports, newDep)
+				newDep := &cfg.Dependency{
+					Name: root,
+				}
+
+				if addTest {
+					r.Config.DevImports = append(r.Config.DevImports, newDep)
+				} else {
+					r.Config.Imports = append(r.Config.Imports, newDep)
+				}
 			}
 		}
 		res = append(res, e.Value.(string))
@@ -861,20 +848,8 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 func sliceToQueue(deps []*cfg.Dependency, basepath string) *list.List {
 	l := list.New()
 	for _, e := range deps {
-		if len(e.Subpackages) > 0 {
-			for _, v := range e.Subpackages {
-				ip := e.Name
-				if v != "." && v != "" {
-					ip = ip + "/" + v
-				}
-				msg.Debug("Adding local Import %s to queue", ip)
-				l.PushBack(filepath.Join(basepath, filepath.FromSlash(ip)))
-			}
-		} else {
-			msg.Debug("Adding local Import %s to queue", e.Name)
-			l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name)))
-		}
-
+		msg.Debug("Adding local Import %s to queue", e.Name)
+		l.PushBack(filepath.Join(basepath, filepath.FromSlash(e.Name)))
 	}
 	return l
 }

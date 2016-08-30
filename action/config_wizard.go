@@ -13,10 +13,14 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/semver"
 	"github.com/Masterminds/vcs"
+	"github.com/sdboyer/gps"
 )
 
 // ConfigWizard reads configuration from a glide.yaml file and attempts to suggest
 // improvements. The wizard is interactive.
+//
+// TODO(sdboyer) the Dependency.Reference -> Dependency.Constraint conversion is
+// really awkward here and needs to be revisited
 func ConfigWizard(base string) {
 	_, err := gpath.Glide()
 	glidefile := gpath.GlideFile
@@ -76,7 +80,7 @@ func ConfigWizard(base string) {
 
 		// First check, ask if the tag should be used instead of the commit id for it.
 		cur := cache.MemCurrent(remote)
-		if cur != "" && cur != dep.Reference {
+		if cur != "" && cur != dep.Constraint.String() {
 			wizardSugOnce()
 			var dres bool
 			asked, use, val := wizardOnce("current")
@@ -93,15 +97,16 @@ func ConfigWizard(base string) {
 			}
 
 			if dres {
-				msg.Info("Updating %s to use the tag %s instead of commit id %s", dep.Name, cur, dep.Reference)
-				dep.Reference = cur
+				msg.Info("Updating %s to use the tag %s instead of commit id %s", dep.Name, cur, dep.Constraint)
+				// FIXME just wrong; have to disambiguate branches and versions
+				dep.Constraint = gps.NewVersion(cur)
 				changes++
 			}
 		}
 
 		// Second check, if no version is being used and there's a semver release ask about latest.
 		memlatest := cache.MemLatest(remote)
-		if dep.Reference == "" && memlatest != "" {
+		if dep.Constraint == nil && memlatest != "" {
 			wizardSugOnce()
 			var dres bool
 			asked, use, val := wizardOnce("latest")
@@ -119,14 +124,14 @@ func ConfigWizard(base string) {
 
 			if dres {
 				msg.Info("Updating %s to use the release %s instead of no release", dep.Name, memlatest)
-				dep.Reference = memlatest
+				dep.Constraint = gps.NewVersion(memlatest)
 				changes++
 			}
 		}
 
 		// Third check, if the version is semver offer to use a range instead.
-		sv, err := semver.NewVersion(dep.Reference)
-		if err == nil {
+		if v, ok := dep.Constraint.(gps.Version); ok && v.Type() == "semver" {
+			sv, _ := semver.NewVersion(v.String())
 			wizardSugOnce()
 			var res string
 			asked, use, val := wizardOnce("range")
@@ -144,13 +149,13 @@ func ConfigWizard(base string) {
 
 			if res == "m" {
 				r := "^" + sv.String()
-				msg.Info("Updating %s to use the range %s instead of commit id %s", dep.Name, r, dep.Reference)
-				dep.Reference = r
+				msg.Info("Updating %s to use the range %s instead of commit id %s", dep.Name, r, dep.Constraint)
+				dep.Constraint, _ = gps.NewSemverConstraint(r)
 				changes++
 			} else if res == "p" {
 				r := "~" + sv.String()
-				msg.Info("Updating %s to use the range %s instead of commit id %s", dep.Name, r, dep.Reference)
-				dep.Reference = r
+				msg.Info("Updating %s to use the range %s instead of commit id %s", dep.Name, r, dep.Constraint)
+				dep.Constraint, _ = gps.NewSemverConstraint(r)
 				changes++
 			}
 		}
@@ -229,7 +234,7 @@ func wizardAskRange(ver *semver.Version, d *cfg.Dependency) string {
 }
 
 func wizardAskCurrent(cur string, d *cfg.Dependency) bool {
-	msg.Info("The package %s is currently set to use the version %s.", d.Name, d.Reference)
+	msg.Info("The package %s is currently set to use the version %s.", d.Name, d.Constraint)
 	msg.Info("There is an equivalent semantic version (http://semver.org) release of %s. Would", cur)
 	msg.Info("you like to use that instead? Yes (Y) or No (N)")
 	return msg.PromptUntilYorN()
@@ -243,7 +248,7 @@ func wizardAskLatest(latest string, d *cfg.Dependency) bool {
 }
 
 func wizardLookInto(d *cfg.Dependency) bool {
-	_, err := semver.NewConstraint(d.Reference)
+	_, err := semver.NewConstraint(d.Constraint.String())
 
 	// The existing version is already a valid semver constraint so we skip suggestions.
 	if err == nil {
@@ -302,7 +307,7 @@ func wizardFindVersions(d *cfg.Dependency) {
 				if found := createGitParseVersion.FindString(ti); found != "" {
 					tg := strings.TrimPrefix(strings.TrimSuffix(found, "^{}"), "tags/")
 					cache.MemPut(remote, tg)
-					if d.Reference != "" && strings.HasPrefix(ti, d.Reference) {
+					if d.Constraint != nil && strings.HasPrefix(ti, d.Constraint.String()) {
 						cache.MemSetCurrent(remote, tg)
 					}
 				}
@@ -332,15 +337,17 @@ func wizardFindVersions(d *cfg.Dependency) {
 				cache.MemPut(remote, v)
 			}
 		}
-		if d.Reference != "" && repo.IsReference(d.Reference) {
-			tgs, err = repo.TagsFromCommit(d.Reference)
-			if err != nil {
-				msg.Debug("Problem getting tags for commit: %s", err)
-			} else {
-				if len(tgs) > 0 {
-					for _, v := range tgs {
-						if !(repo.Vcs() == vcs.Hg && v == "tip") {
-							cache.MemSetCurrent(remote, v)
+		if d.Constraint != nil {
+			if rev, ok := d.Constraint.(gps.Revision); ok {
+				tgs, err = repo.TagsFromCommit(string(rev))
+				if err != nil {
+					msg.Debug("Problem getting tags for commit: %s", err)
+				} else {
+					if len(tgs) > 0 {
+						for _, v := range tgs {
+							if !(repo.Vcs() == vcs.Hg && v == "tip") {
+								cache.MemSetCurrent(remote, v)
+							}
 						}
 					}
 				}

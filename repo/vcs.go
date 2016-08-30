@@ -18,6 +18,7 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/semver"
 	v "github.com/Masterminds/vcs"
+	"github.com/sdboyer/gps"
 )
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.
@@ -25,10 +26,10 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 
 	// If the dependency has already been pinned we can skip it. This is a
 	// faster path so we don't need to resolve it again.
-	if dep.Pin != "" {
-		msg.Debug("Dependency %s has already been pinned. Fetching updates skipped.", dep.Name)
-		return nil
-	}
+	//if dep.Pin != "" {
+	//msg.Debug("Dependency %s has already been pinned. Fetching updates skipped.", dep.Name)
+	//return nil
+	//}
 
 	if updated.Check(dep.Name) {
 		msg.Debug("%s was already updated, skipping.", dep.Name)
@@ -83,7 +84,7 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 					msg.Err("Unable to update vendored dependency %s.\n", dep.Name)
 					return err
 				}
-				dep.UpdateAsVendored = true
+				//dep.UpdateAsVendored = true
 
 				if err = VcsGet(dep, dest, home, cache, cacheGopath, useGopath); err != nil {
 					msg.Warn("Unable to checkout %s\n", dep.Name)
@@ -132,21 +133,22 @@ func VcsUpdate(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGo
 			// and that version is already checked out we can skip updating
 			// which is faster than going out to the Internet to perform
 			// an update.
-			if dep.Reference != "" {
+			if dep.Constraint != nil {
 				version, err := repo.Version()
 				if err != nil {
 					return err
 				}
-				ib, err := isBranch(dep.Reference, repo)
-				if err != nil {
-					return err
+
+				var ib bool
+				if cv, ok := dep.Constraint.(gps.Version); ok {
+					ib = cv.Type() == "branch"
 				}
 
 				// If the current version equals the ref and it's not a
 				// branch it's a tag or commit id so we can skip
 				// performing an update.
-				if version == dep.Reference && !ib {
-					msg.Debug("%s is already set to version %s. Skipping update.", dep.Name, dep.Reference)
+				if version == dep.Constraint.String() && !ib {
+					msg.Debug("%s is already set to version %s. Skipping update.", dep.Name, dep.Constraint)
 					return nil
 				}
 			}
@@ -166,24 +168,24 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 
 	// If the dependency has already been pinned we can skip it. This is a
 	// faster path so we don't need to resolve it again.
-	if dep.Pin != "" {
-		msg.Debug("Dependency %s has already been pinned. Setting version skipped.", dep.Name)
-		return nil
-	}
+	//if dep.Pin != "" {
+	//msg.Debug("Dependency %s has already been pinned. Setting version skipped.", dep.Name)
+	//return nil
+	//}
 
 	cwd := filepath.Join(vend, dep.Name)
 
 	// If there is no reference configured there is nothing to set.
-	if dep.Reference == "" {
+	if dep.Constraint == nil {
 		// Before exiting update the pinned version
-		repo, err := dep.GetRepo(cwd)
-		if err != nil {
-			return err
-		}
-		dep.Pin, err = repo.Version()
-		if err != nil {
-			return err
-		}
+		//_, err := dep.GetRepo(cwd)
+		//if err != nil {
+		//return err
+		//}
+		//dep.Pin, err = repo.Version()
+		//if err != nil {
+		//return err
+		//}
 		return nil
 	}
 
@@ -202,7 +204,7 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 			return err
 		}
 
-		ver := dep.Reference
+		ver := dep.Constraint.String()
 		// References in Git can begin with a ^ which is similar to semver.
 		// If there is a ^ prefix we assume it's a semver constraint rather than
 		// part of the git/VCS commit id.
@@ -250,10 +252,10 @@ func VcsVersion(dep *cfg.Dependency, vend string) error {
 		if err := repo.UpdateVersion(ver); err != nil {
 			return err
 		}
-		dep.Pin, err = repo.Version()
-		if err != nil {
-			return err
-		}
+		//dep.Pin, err = repo.Version()
+		//if err != nil {
+		//return err
+		//}
 	}
 
 	return nil
@@ -306,7 +308,7 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 
 				// If there is no reference set on the dep we try to checkout
 				// the default branch.
-				if dep.Reference == "" {
+				if dep.Constraint == nil {
 					db := defaultBranch(repo, home)
 					if db != "" {
 						err = repo.UpdateVersion(db)
@@ -477,32 +479,6 @@ func VcsGet(dep *cfg.Dependency, dest, home string, cache, cacheGopath, useGopat
 //
 // FIXME: Should this be moved to the dependency package?
 func filterArchOs(dep *cfg.Dependency) bool {
-	found := false
-	if len(dep.Arch) > 0 {
-		for _, a := range dep.Arch {
-			if a == runtime.GOARCH {
-				found = true
-			}
-		}
-		// If it's not found, it should be filtered out.
-		if !found {
-			return true
-		}
-	}
-
-	found = false
-	if len(dep.Os) > 0 {
-		for _, o := range dep.Os {
-			if o == runtime.GOOS {
-				found = true
-			}
-		}
-		if !found {
-			return true
-		}
-
-	}
-
 	return false
 }
 
