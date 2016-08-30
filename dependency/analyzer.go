@@ -121,7 +121,8 @@ func (a Analyzer) lookForGlide(root string) (gps.Manifest, gps.Lock, error) {
 		return m, nil, nil
 	}
 
-	l, err := cfg.LockfileFromYaml(yml)
+	// Again, legacy doesn't matter here
+	l, _, err := cfg.LockfileFromYaml(yml)
 	if err != nil {
 		return m, nil, nil
 	}

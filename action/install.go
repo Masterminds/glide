@@ -48,7 +48,11 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 
 	var s gps.Solver
 	if gpath.HasLock(base) {
-		params.Lock, err = loadLockfile(base, conf)
+		var legacy bool
+		params.Lock, legacy, err = loadLockfile(base, conf)
+		if legacy {
+			msg.Warn("glide.lock was in a legacy format. An attempt will be made to automatically update it.")
+		}
 		if err != nil {
 			msg.Err("Could not load lockfile.")
 			return
@@ -334,15 +338,15 @@ func (gw safeGroupWriter) writeAllSafe() error {
 }
 
 // loadLockfile loads the contents of a glide.lock file.
-func loadLockfile(base string, conf *cfg.Config) (*cfg.Lockfile, error) {
+func loadLockfile(base string, conf *cfg.Config) (*cfg.Lockfile, bool, error) {
 	yml, err := ioutil.ReadFile(filepath.Join(base, gpath.LockFile))
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	lock, err := cfg.LockfileFromYaml(yml)
+	lock, legacy, err := cfg.LockfileFromYaml(yml)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return lock, nil
+	return lock, legacy, nil
 }

@@ -5,6 +5,7 @@ import (
 	"path"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/glide/util"
 )
@@ -196,6 +197,37 @@ func (ds lDependencies1) Convert() (Dependencies, error) {
 	return ds2, nil
 }
 
+// DeDupe cleans up duplicates on a list of dependencies.
+func (d lDependencies1) DeDupe() (lDependencies1, error) {
+	checked := map[string]int{}
+	imports := make(lDependencies1, 0, 1)
+	i := 0
+	for _, dep := range d {
+		// The first time we encounter a dependency add it to the list
+		if val, ok := checked[dep.Name]; !ok {
+			checked[dep.Name] = i
+			imports = append(imports, dep)
+			i++
+		} else {
+			// In here we've encountered a dependency for the second time.
+			// Make sure the details are the same or return an error.
+			v := imports[val]
+			if dep.Reference != v.Reference {
+				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Reference, v.Reference)
+			}
+			if dep.Repository != v.Repository || dep.VcsType != v.VcsType {
+				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
+			}
+			if !reflect.DeepEqual(dep.Os, v.Os) || !reflect.DeepEqual(dep.Arch, v.Arch) {
+				return d, fmt.Errorf("Import %s repeated with different OS or Architecture filtering", dep.Name)
+			}
+			imports[checked[dep.Name]].Subpackages = stringArrayDeDupe(v.Subpackages, dep.Subpackages...)
+		}
+	}
+
+	return imports, nil
+}
+
 type lDependency1 struct {
 	Name        string   `yaml:"package"`
 	Reference   string   `yaml:"version,omitempty"`
@@ -210,7 +242,7 @@ type lDependency1 struct {
 // Legacy unmarshaler for dependency component of yaml files
 func (d *lDependency1) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	newDep := &ldep1{}
-	err := unmarshal(&newDep)
+	err := unmarshal(newDep)
 	if err != nil {
 		return err
 	}
@@ -245,37 +277,6 @@ func (d *lDependency1) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-// DeDupe cleans up duplicates on a list of dependencies.
-func (d lDependencies1) DeDupe() (lDependencies1, error) {
-	checked := map[string]int{}
-	imports := make(lDependencies1, 0, 1)
-	i := 0
-	for _, dep := range d {
-		// The first time we encounter a dependency add it to the list
-		if val, ok := checked[dep.Name]; !ok {
-			checked[dep.Name] = i
-			imports = append(imports, dep)
-			i++
-		} else {
-			// In here we've encountered a dependency for the second time.
-			// Make sure the details are the same or return an error.
-			v := imports[val]
-			if dep.Reference != v.Reference {
-				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Reference, v.Reference)
-			}
-			if dep.Repository != v.Repository || dep.VcsType != v.VcsType {
-				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
-			}
-			if !reflect.DeepEqual(dep.Os, v.Os) || !reflect.DeepEqual(dep.Arch, v.Arch) {
-				return d, fmt.Errorf("Import %s repeated with different OS or Architecture filtering", dep.Name)
-			}
-			imports[checked[dep.Name]].Subpackages = stringArrayDeDupe(v.Subpackages, dep.Subpackages...)
-		}
-	}
-
-	return imports, nil
-}
-
 // Legacy representation of a dep constraint
 type ldep1 struct {
 	Name        string   `yaml:"package"`
@@ -286,6 +287,44 @@ type ldep1 struct {
 	Subpackages []string `yaml:"subpackages,omitempty"`
 	Arch        []string `yaml:"arch,omitempty"`
 	Os          []string `yaml:"os,omitempty"`
+}
+
+type lLockfile1 struct {
+	Hash       string    `yaml:"hash"`
+	Updated    time.Time `yaml:"updated"`
+	Imports    lLocks1   `yaml:"imports"`
+	DevImports lLocks1   `yaml:"testImports"` // TODO remove and fold in as prop
+	Compat     int       `yaml:"import,omitempty"`
+	Compat2    int       `yaml:"testImport,omitempty"`
+}
+
+func (l *lLockfile1) Convert() *Lockfile {
+	return &Lockfile{
+		Hash:       l.Hash,
+		Updated:    l.Updated,
+		Imports:    l.Imports.Convert(),
+		DevImports: l.DevImports.Convert(),
+	}
+}
+
+type lLocks1 []*lLock1
+
+func (ll lLocks1) Convert() Locks {
+	var ll2 Locks
+	for _, l := range ll {
+		// If they have no rev, just drop them
+		if l.Version == "" {
+			continue
+		}
+
+		ll2 = append(ll2, &Lock{
+			Name:       l.Name,
+			Repository: l.Repository,
+			Revision:   l.Version,
+		})
+	}
+
+	return ll2
 }
 
 type lLock1 struct {

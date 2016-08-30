@@ -65,13 +65,22 @@ func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 }
 
 // LockfileFromYaml returns an instance of Lockfile from YAML
-func LockfileFromYaml(yml []byte) (*Lockfile, error) {
+func LockfileFromYaml(yml []byte) (*Lockfile, bool, error) {
 	lock := &Lockfile{}
-	err := yaml.Unmarshal([]byte(yml), &lock)
-	return lock, err
+	err := yaml.Unmarshal([]byte(yml), lock)
+	if err == nil {
+		return lock, false, nil
+	}
+
+	llock := &lLockfile1{}
+	err2 := yaml.Unmarshal([]byte(yml), llock)
+	if err2 != nil {
+		return nil, false, err2
+	}
+	return llock.Convert(), true, nil
 }
 
-// Marshal converts a Config instance to YAML
+// Marshal converts a Lockfile instance to YAML
 func (lf *Lockfile) Marshal() ([]byte, error) {
 	sort.Sort(lf.Imports)
 	sort.Sort(lf.DevImports)
@@ -186,7 +195,7 @@ func ReadLockFile(lockpath string) (*Lockfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	lock, err := LockfileFromYaml(yml)
+	lock, _, err := LockfileFromYaml(yml)
 	if err != nil {
 		return nil, err
 	}
@@ -234,6 +243,35 @@ type Lock struct {
 	Branch     string `yaml:"branch,omitempty"`
 	Revision   string `yaml:"revision"`
 	Repository string `yaml:"repo,omitempty"`
+}
+
+func (l *Lock) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	nl := struct {
+		Name       string `yaml:"name"`
+		Version    string `yaml:"version,omitempty"`
+		Branch     string `yaml:"branch,omitempty"`
+		Revision   string `yaml:"revision"`
+		Repository string `yaml:"repo,omitempty"`
+	}{}
+
+	err := unmarshal(&nl)
+	if err != nil {
+		return err
+	}
+
+	// If Revision field is empty, then we can be certain this is either a
+	// legacy file, or just plain invalid
+	if nl.Revision == "" {
+		return fmt.Errorf("dependency %s is missing a revision; is this a legacy glide.lock file?", nl.Name)
+	}
+
+	l.Name = nl.Name
+	l.Version = nl.Version
+	l.Branch = nl.Branch
+	l.Revision = nl.Revision
+	l.Repository = nl.Repository
+
+	return nil
 }
 
 // Clone creates a clone of a Lock.
