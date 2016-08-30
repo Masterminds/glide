@@ -102,7 +102,8 @@ func (a Analyzer) lookForGlide(root string) (gps.Manifest, gps.Lock, error) {
 		return nil, nil, fmt.Errorf("Error while reading glide manifest data: %s", root)
 	}
 
-	m, err := cfg.ConfigFromYaml(yml)
+	// We don't care here if it's legacy
+	m, _, err := cfg.ConfigFromYaml(yml)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error while parsing glide manifest data: %s", root)
 	}

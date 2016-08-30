@@ -151,7 +151,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 
 		msg.Info("Attempting to get package %s", name)
 
-		root, subpkg := util.NormalizeName(name)
+		root, _ := util.NormalizeName(name)
 		if len(root) == 0 {
 			return 0, fmt.Errorf("Package name is required for %q.", name)
 		}
@@ -172,24 +172,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 				msg.Warn("--> Test dependency %s already listed as import", root)
 			}
 
-			// Check if the subpackage is present.
-			if subpkg != "" {
-				if dep == nil {
-					dep = conf.Imports.Get(root)
-					if dep == nil && testDeps {
-						dep = conf.DevImports.Get(root)
-					}
-				}
-				if dep.HasSubpackage(subpkg) {
-					if !moved {
-						msg.Warn("--> Package %q is already in glide.yaml. Skipping", name)
-					}
-				} else {
-					dep.Subpackages = append(dep.Subpackages, subpkg)
-					msg.Info("--> Adding sub-package %s to existing import %s", subpkg, root)
-					numAdded++
-				}
-			} else if !moved {
+			if !moved {
 				msg.Warn("--> Package %q is already in glide.yaml. Skipping", root)
 			}
 			continue
@@ -212,17 +195,14 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 		}
 
 		if version != "" {
-			dep.Reference = version
+			// TODO(sdboyer) set the right type...what is that here?
+			dep.Constraint = gps.NewVersion(version)
 		} else if !nonInteract {
 			getWizard(dep)
 		}
 
-		if len(subpkg) > 0 {
-			dep.Subpackages = []string{subpkg}
-		}
-
-		if dep.Reference != "" {
-			msg.Info("--> Adding %s to your configuration with the version %s", dep.Name, dep.Reference)
+		if dep.Constraint != nil {
+			msg.Info("--> Adding %s to your configuration with the version %s", dep.Name, dep.Constraint)
 		} else {
 			msg.Info("--> Adding %s to your configuration", dep.Name)
 		}
@@ -253,15 +233,20 @@ func getWizard(dep *cfg.Dependency) {
 	if memlatest != "" {
 		dres := wizardAskLatest(memlatest, dep)
 		if dres {
-			dep.Reference = memlatest
+			// TODO(sdboyer) set the right type...what is that here?
+			v := gps.NewVersion(memlatest)
+			dep.Constraint = v
 
-			sv, err := semver.NewVersion(dep.Reference)
-			if err == nil {
+			if v.Type() == "semver" {
+				sv, _ := semver.NewVersion(memlatest)
 				res := wizardAskRange(sv, dep)
+
 				if res == "m" {
-					dep.Reference = "^" + sv.String()
+					// no errors possible here, if init was valid semver version
+					dep.Constraint, _ = gps.NewSemverConstraint("^" + v.String())
 				} else if res == "p" {
-					dep.Reference = "~" + sv.String()
+					// no errors possible here, if init was valid semver version
+					dep.Constraint, _ = gps.NewSemverConstraint("~" + v.String())
 				}
 			}
 		}

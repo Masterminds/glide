@@ -29,7 +29,10 @@ func EnsureConfig() *cfg.Config {
 		msg.ExitCode(2)
 		msg.Die("Failed to load %s: %s", yamlpath, err)
 	}
-	conf, err := cfg.ConfigFromYaml(yml)
+	conf, legacy, err := cfg.ConfigFromYaml(yml)
+	if legacy {
+		msg.Warn("glide.yaml was in a legacy format. An attempt will be made to automatically update it.")
+	}
 	if err != nil {
 		msg.ExitCode(3)
 		msg.Die("Failed to parse %s: %s", yamlpath, err)

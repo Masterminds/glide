@@ -44,7 +44,7 @@ func (d *DefaultImporter) Import(path string) (bool, []*cfg.Dependency, error) {
 		if err != nil {
 			return false, []*cfg.Dependency{}, err
 		}
-		conf, err := cfg.ConfigFromYaml(yml)
+		conf, _, err := cfg.ConfigFromYaml(yml)
 		if err != nil {
 			return false, []*cfg.Dependency{}, err
 		}

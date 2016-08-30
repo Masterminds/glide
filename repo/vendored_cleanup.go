@@ -20,23 +20,22 @@ func VendoredCleanup(conf *cfg.Config) error {
 	}
 
 	for _, dep := range conf.Imports {
-		if dep.UpdateAsVendored == true {
-			msg.Info("Cleaning up vendored package %s\n", dep.Name)
+		//if dep.UpdateAsVendored == true {
+		msg.Info("Cleaning up vendored package %s\n", dep.Name)
 
-			// Remove the VCS directory
-			cwd := filepath.Join(vend, dep.Name)
-			repo, err := dep.GetRepo(cwd)
-			if err != nil {
-				msg.Err("Error cleaning up %s:%s", dep.Name, err)
-				continue
-			}
-			t := repo.Vcs()
-			err = os.RemoveAll(cwd + string(os.PathSeparator) + "." + string(t))
-			if err != nil {
-				msg.Err("Error cleaning up VCS dir for %s:%s", dep.Name, err)
-			}
+		// Remove the VCS directory
+		cwd := filepath.Join(vend, dep.Name)
+		repo, err := dep.GetRepo(cwd)
+		if err != nil {
+			msg.Err("Error cleaning up %s:%s", dep.Name, err)
+			continue
 		}
-
+		t := repo.Vcs()
+		err = os.RemoveAll(cwd + string(os.PathSeparator) + "." + string(t))
+		if err != nil {
+			msg.Err("Error cleaning up VCS dir for %s:%s", dep.Name, err)
+		}
+		//}
 	}
 
 	return nil

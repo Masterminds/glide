@@ -16,7 +16,6 @@ func TestAddPkgsToConfig(t *testing.T) {
 	conf := new(cfg.Config)
 	dep := new(cfg.Dependency)
 	dep.Name = "github.com/Masterminds/cookoo"
-	dep.Subpackages = append(dep.Subpackages, "convert")
 	conf.Imports = append(conf.Imports, dep)
 
 	names := []string{
@@ -28,17 +27,6 @@ func TestAddPkgsToConfig(t *testing.T) {
 
 	if !conf.HasDependency("github.com/Masterminds/semver") {
 		t.Error("addPkgsToConfig failed to add github.com/Masterminds/semver")
-	}
-
-	d := conf.Imports.Get("github.com/Masterminds/cookoo")
-	found := false
-	for _, s := range d.Subpackages {
-		if s == "fmt" {
-			found = true
-		}
-	}
-	if !found {
-		t.Error("addPkgsToConfig failed to add subpackage to existing import")
 	}
 
 	// Restore messaging to original location

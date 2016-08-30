@@ -195,19 +195,13 @@ func (i *Installer) Update(conf *cfg.Config) error {
 		if conf.HasIgnore(n) {
 			continue
 		}
-		rt, sub := util.NormalizeName(n)
-		if sub == "" {
-			sub = "."
-		}
+		rt, _ := util.NormalizeName(n)
 		d := deps.Get(rt)
 		if d == nil {
 			nd := &cfg.Dependency{
-				Name:        rt,
-				Subpackages: []string{sub},
+				Name: rt,
 			}
 			deps = append(deps, nd)
-		} else if !d.HasSubpackage(sub) {
-			d.Subpackages = append(d.Subpackages, sub)
 		}
 	}
 	if i.ResolveTest {
@@ -216,22 +210,16 @@ func (i *Installer) Update(conf *cfg.Config) error {
 			if conf.HasIgnore(n) {
 				continue
 			}
-			rt, sub := util.NormalizeName(n)
-			if sub == "" {
-				sub = "."
-			}
+			rt, _ := util.NormalizeName(n)
 			d := deps.Get(rt)
 			if d == nil {
 				d = tdeps.Get(rt)
 			}
 			if d == nil {
 				nd := &cfg.Dependency{
-					Name:        rt,
-					Subpackages: []string{sub},
+					Name: rt,
 				}
 				tdeps = append(tdeps, nd)
-			} else if !d.HasSubpackage(sub) {
-				d.Subpackages = append(d.Subpackages, sub)
 			}
 		}
 	}
@@ -330,12 +318,12 @@ func LazyConcurrentUpdate(deps []*cfg.Dependency, cwd string, i *Installer, c *c
 			continue
 		}
 
-		if ver == dep.Reference {
-			msg.Info("--> Found desired version %s %s!", dep.Name, dep.Reference)
+		if ver == dep.Constraint.String() {
+			msg.Info("--> Found desired version %s %s!", dep.Name, dep.Constraint)
 			continue
 		}
 
-		msg.Debug("--> Queue %s for update (%s != %s).", dep.Name, ver, dep.Reference)
+		msg.Debug("--> Queue %s for update (%s != %s).", dep.Name, ver, dep.Constraint)
 		newDeps = append(newDeps, dep)
 	}
 	if len(newDeps) > 0 {
@@ -621,7 +609,7 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 
 				// The fist one wins. Would something smater than this be better?
 				exists, _ := d.Use.Get(dep.Name)
-				if exists == nil && (dep.Reference != "" || dep.Repository != "") {
+				if exists == nil && (dep.Constraint != nil || dep.Repository != "") {
 					d.Use.Add(dep.Name, dep, root)
 				}
 			}
@@ -656,8 +644,8 @@ func (d *VersionHandler) SetVersion(pkg string, addTest bool) (e error) {
 			// There are import chains (because the import tree is resolved
 			// before the test tree) that can cause this.
 			tempD := d.Config.DevImports.Get(root)
-			if tempD.Reference != v.Reference {
-				msg.Warn("Using import %s (version %s) for test instead of testImport (version %s).", v.Name, v.Reference, tempD.Reference)
+			if tempD.Constraint.String() != v.Constraint.String() {
+				msg.Warn("Using import %s (version %s) for test instead of testImport (version %s).", v.Name, v.Constraint, tempD.Constraint)
 			}
 			// TODO(mattfarina): Note repo difference in a warning.
 		}
@@ -665,12 +653,12 @@ func (d *VersionHandler) SetVersion(pkg string, addTest bool) (e error) {
 
 	dep, req := d.Use.Get(root)
 	if dep != nil && v != nil {
-		if v.Reference == "" && dep.Reference != "" {
-			v.Reference = dep.Reference
+		if v.Constraint == nil && dep.Constraint != nil {
+			v.Constraint = dep.Constraint
 			// Clear the pin, if set, so the new version can be used.
-			v.Pin = ""
+			//v.Pin = ""
 			dep = v
-		} else if v.Reference != "" && dep.Reference != "" && v.Reference != dep.Reference {
+		} else if v.Constraint != nil && dep.Constraint != nil && v.Constraint.String() != dep.Constraint.String() {
 			dest := filepath.Join(d.Destination, filepath.FromSlash(v.Name))
 			dep = determineDependency(v, dep, dest, req)
 		} else {
@@ -689,12 +677,9 @@ func (d *VersionHandler) SetVersion(pkg string, addTest bool) (e error) {
 		}
 	} else {
 		// If we've gotten here we don't have any depenency objects.
-		r, sp := util.NormalizeName(pkg)
+		r, _ := util.NormalizeName(pkg)
 		dep = &cfg.Dependency{
 			Name: r,
-		}
-		if sp != "" {
-			dep.Subpackages = []string{sp}
 		}
 		if addTest {
 			d.Config.DevImports = append(d.Config.DevImports, dep)
@@ -705,7 +690,7 @@ func (d *VersionHandler) SetVersion(pkg string, addTest bool) (e error) {
 
 	err := VcsVersion(dep, d.Destination)
 	if err != nil {
-		msg.Warn("Unable to set version on %s to %s. Err: %s", root, dep.Reference, err)
+		msg.Warn("Unable to set version on %s to %s. Err: %s", root, dep.Constraint, err)
 		e = err
 	}
 
@@ -716,110 +701,110 @@ func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependen
 	repo, err := v.GetRepo(dest)
 	if err != nil {
 		singleWarn("Unable to access repo for %s\n", v.Name)
-		singleInfo("Keeping %s %s", v.Name, v.Reference)
+		singleInfo("Keeping %s %s", v.Name, v.Constraint)
 		return v
 	}
 
-	vIsRef := repo.IsReference(v.Reference)
-	depIsRef := repo.IsReference(dep.Reference)
+	vIsRef := repo.IsReference(v.Constraint.String())
+	depIsRef := repo.IsReference(dep.Constraint.String())
 
 	// Both are references and they are different ones.
 	if vIsRef && depIsRef {
-		singleWarn("Conflict: %s rev is currently %s, but %s wants %s\n", v.Name, v.Reference, req, dep.Reference)
+		singleWarn("Conflict: %s rev is currently %s, but %s wants %s\n", v.Name, v.Constraint, req, dep.Constraint)
 
 		displayCommitInfo(repo, v)
 		displayCommitInfo(repo, dep)
 
-		singleInfo("Keeping %s %s", v.Name, v.Reference)
+		singleInfo("Keeping %s %s", v.Name, v.Constraint)
 		return v
 	} else if vIsRef {
 		// The current one is a reference and the suggestion is a SemVer constraint.
-		con, err := semver.NewConstraint(dep.Reference)
+		con, err := semver.NewConstraint(dep.Constraint.String())
 		if err != nil {
-			singleWarn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", dep.Name, dep.Reference)
-			singleInfo("Keeping %s %s", v.Name, v.Reference)
+			singleWarn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", dep.Name, dep.Constraint)
+			singleInfo("Keeping %s %s", v.Name, v.Constraint)
 			return v
 		}
 
-		ver, err := semver.NewVersion(v.Reference)
+		ver, err := semver.NewVersion(v.Constraint.String())
 		if err != nil {
 			// The existing version is not a semantic version.
-			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Constraint, dep.Constraint)
 			displayCommitInfo(repo, v)
-			singleInfo("Keeping %s %s", v.Name, v.Reference)
+			singleInfo("Keeping %s %s", v.Name, v.Constraint)
 			return v
 		}
 
 		if con.Matches(ver) == nil {
-			singleInfo("Keeping %s %s because it fits constraint '%s'", v.Name, v.Reference, dep.Reference)
+			singleInfo("Keeping %s %s because it fits constraint '%s'", v.Name, v.Constraint, dep.Constraint)
 			return v
 		}
-		singleWarn("Conflict: %s version is %s but does not meet constraint '%s'\n", v.Name, v.Reference, dep.Reference)
-		singleInfo("Keeping %s %s", v.Name, v.Reference)
+		singleWarn("Conflict: %s version is %s but does not meet constraint '%s'\n", v.Name, v.Constraint, dep.Constraint)
+		singleInfo("Keeping %s %s", v.Name, v.Constraint)
 		return v
 	} else if depIsRef {
 
-		con, err := semver.NewConstraint(v.Reference)
+		con, err := semver.NewConstraint(v.Constraint.String())
 		if err != nil {
-			singleWarn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", v.Name, v.Reference)
-			singleInfo("Keeping %s %s", v.Name, v.Reference)
+			singleWarn("Version issue for %s: '%s' is neither a reference or semantic version constraint\n", v.Name, v.Constraint)
+			singleInfo("Keeping %s %s", v.Name, v.Constraint)
 			return v
 		}
 
-		ver, err := semver.NewVersion(dep.Reference)
+		ver, err := semver.NewVersion(dep.Constraint.String())
 		if err != nil {
-			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
+			singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Constraint, dep.Constraint)
 			displayCommitInfo(repo, dep)
-			singleInfo("Keeping %s %s", v.Name, v.Reference)
+			singleInfo("Keeping %s %s", v.Name, v.Constraint)
 			return v
 		}
 
 		if con.Matches(ver) == nil {
-			v.Reference = dep.Reference
-			singleInfo("Using %s %s because it fits constraint '%s'", v.Name, v.Reference, v.Reference)
+			v.Constraint = dep.Constraint
+			singleInfo("Using %s %s because it fits constraint '%s'", v.Name, v.Constraint, v.Constraint)
 			return v
 		}
-		singleWarn("Conflict: %s semantic version constraint is %s but '%s' does not meet the constraint\n", v.Name, v.Reference, v.Reference)
-		singleInfo("Keeping %s %s", v.Name, v.Reference)
+		singleWarn("Conflict: %s semantic version constraint is %s but '%s' does not meet the constraint\n", v.Name, v.Constraint, v.Constraint)
+		singleInfo("Keeping %s %s", v.Name, v.Constraint)
 		return v
 	}
 	// Neither is a vcs reference and both could be semantic version
 	// constraints that are different.
 
-	_, err = semver.NewConstraint(dep.Reference)
+	_, err = semver.NewConstraint(dep.Constraint.String())
 	if err != nil {
-		// dd.Reference is not a reference or a valid constraint.
-		singleWarn("Version %s %s is not a reference or valid semantic version constraint\n", dep.Name, dep.Reference)
-		singleInfo("Keeping %s %s", v.Name, v.Reference)
+		// dd.Constraint is not a reference or a valid constraint.
+		singleWarn("Version %s %s is not a reference or valid semantic version constraint\n", dep.Name, dep.Constraint)
+		singleInfo("Keeping %s %s", v.Name, v.Constraint)
 		return v
 	}
 
-	_, err = semver.NewConstraint(v.Reference)
+	_, err = semver.NewConstraint(v.Constraint.String())
 	if err != nil {
-		// existing.Reference is not a reference or a valid constraint.
+		// existing.Constraint is not a reference or a valid constraint.
 		// We really should never end up here.
-		singleWarn("Version %s %s is not a reference or valid semantic version constraint\n", v.Name, v.Reference)
+		singleWarn("Version %s %s is not a reference or valid semantic version constraint\n", v.Name, v.Constraint)
 
-		v.Reference = dep.Reference
-		v.Pin = ""
-		singleInfo("Using %s %s because it is a valid version", v.Name, v.Reference)
+		v.Constraint = dep.Constraint
+		//v.Pin = ""
+		singleInfo("Using %s %s because it is a valid version", v.Name, v.Constraint)
 		return v
 	}
 
 	// Both versions are constraints. Try to merge them.
 	// If either comparison has an || skip merging. That's complicated.
-	ddor := strings.Index(dep.Reference, "||")
-	eor := strings.Index(v.Reference, "||")
+	ddor := strings.Index(dep.Constraint.String(), "||")
+	eor := strings.Index(v.Constraint.String(), "||")
 	if ddor == -1 && eor == -1 {
 		// Add the comparisons together.
-		newRef := v.Reference + ", " + dep.Reference
-		v.Reference = newRef
-		v.Pin = ""
-		singleInfo("Combining %s semantic version constraints %s and %s", v.Name, v.Reference, dep.Reference)
+		// TODO(sdboyer) this all just reeeeeally needs to go
+		v.Constraint = v.Constraint.Intersect(dep.Constraint)
+		//v.Pin = ""
+		singleInfo("Combining %s semantic version constraints %s and %s", v.Name, v.Constraint, dep.Constraint)
 		return v
 	}
-	singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Reference, dep.Reference)
-	singleInfo("Keeping %s %s", v.Name, v.Reference)
+	singleWarn("Conflict: %s version is %s, but also asked for %s\n", v.Name, v.Constraint, dep.Constraint)
+	singleInfo("Keeping %s %s", v.Name, v.Constraint)
 	return v
 }
 
@@ -877,13 +862,13 @@ var displayCommitInfoTemplate = "%s reference %s:\n" +
 	displayCommitInfoPrefix + "- subject (first line): %s\n"
 
 func displayCommitInfo(repo vcs.Repo, dep *cfg.Dependency) {
-	c, err := repo.CommitInfo(dep.Reference)
-	ref := dep.Reference
+	ref := dep.Constraint.String()
+	c, err := repo.CommitInfo(ref)
 
 	if err == nil {
 		tgs, err2 := repo.TagsFromCommit(c.Commit)
 		if err2 == nil && len(tgs) > 0 {
-			if tgs[0] != dep.Reference {
+			if tgs[0] != ref {
 				ref = ref + " (" + tgs[0] + ")"
 			}
 		}
