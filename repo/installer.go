@@ -583,6 +583,12 @@ func (m *MissingPackageHandler) InVendor(pkg string, addTest bool) error {
 func (m *MissingPackageHandler) PkgPath(pkg string) string {
 	root, sub := util.NormalizeName(pkg)
 
+	// For the parent applications source skip the cache.
+	if root == m.Config.Name {
+		pth := gpath.Basepath()
+		return filepath.Join(pth, filepath.FromSlash(sub))
+	}
+
 	d := m.Config.Imports.Get(root)
 	if d == nil {
 		d = m.Config.DevImports.Get(root)
@@ -601,7 +607,7 @@ func (m *MissingPackageHandler) PkgPath(pkg string) string {
 		msg.Die("Error generating cache key for %s", d.Name)
 	}
 
-	return filepath.Join(cache.Location(), "src", key, sub)
+	return filepath.Join(cache.Location(), "src", key, filepath.FromSlash(sub))
 }
 
 func (m *MissingPackageHandler) fetchToCache(pkg string, addTest bool) error {
@@ -767,6 +773,12 @@ func (d *VersionHandler) SetVersion(pkg string, addTest bool) (e error) {
 func (d *VersionHandler) pkgPath(pkg string) string {
 	root, sub := util.NormalizeName(pkg)
 
+	// For the parent applications source skip the cache.
+	if root == d.Config.Name {
+		pth := gpath.Basepath()
+		return filepath.Join(pth, filepath.FromSlash(sub))
+	}
+
 	dep := d.Config.Imports.Get(root)
 	if dep == nil {
 		dep = d.Config.DevImports.Get(root)
@@ -785,7 +797,7 @@ func (d *VersionHandler) pkgPath(pkg string) string {
 		msg.Die("Error generating cache key for %s", dep.Name)
 	}
 
-	return filepath.Join(cache.Location(), "src", key, sub)
+	return filepath.Join(cache.Location(), "src", key, filepath.FromSlash(sub))
 }
 
 func determineDependency(v, dep *cfg.Dependency, dest, req string) *cfg.Dependency {

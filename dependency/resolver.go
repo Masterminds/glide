@@ -483,7 +483,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 		}
 		r.VersionHandler.Process(dep)
 		// Here, we want to import the package and see what imports it has.
-		msg.Debug("Trying to open %s", vdep)
+		msg.Debug("Trying to open %s (%s)", dep, r.Handler.PkgPath(dep))
 		var imps []string
 		pkg, err := r.BuildContext.ImportDir(r.Handler.PkgPath(dep), 0)
 		if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
@@ -621,6 +621,10 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 		t := r.Stripv(e.Value.(string))
 		root, sp := util.NormalizeName(t)
 
+		if root == r.Config.Name {
+			continue
+		}
+
 		// Skip ignored packages
 		if r.Config.HasIgnore(e.Value.(string)) {
 			msg.Debug("Ignoring: %s", e.Value.(string))
@@ -717,6 +721,10 @@ func (r *Resolver) resolveList(queue *list.List, testDeps, addTest bool) ([]stri
 	for e := queue.Front(); e != nil; e = e.Next() {
 		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
 		root, sp := util.NormalizeName(t)
+
+		if root == r.Config.Name {
+			continue
+		}
 
 		existing := r.Config.Imports.Get(root)
 		if existing == nil && addTest {
