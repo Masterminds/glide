@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"time"
 
@@ -81,6 +82,23 @@ func startLock() error {
 		}
 	}()
 
+	// Capture ctrl-c or other interruptions then clean up the global lock.
+	ch := make(chan os.Signal)
+	signal.Notify(ch, os.Interrupt, os.Kill)
+	go func(cc <-chan os.Signal) {
+		s := <-cc
+		SystemUnlock()
+
+		// Exiting with the expected exit codes when we can.
+		if s == os.Interrupt {
+			os.Exit(130)
+		} else if s == os.Kill {
+			os.Exit(137)
+		} else {
+			os.Exit(1)
+		}
+	}(ch)
+
 	return nil
 }
 
@@ -104,8 +122,7 @@ func waitOnLock() error {
 			msg.Info("Waiting on Glide global cache access")
 		}
 
-		// Check on the lock file every 15 seconds.
-		// TODO(mattfarina): should this be a different length?
+		// Check on the lock file every second.
 		time.Sleep(time.Second)
 	}
 }
