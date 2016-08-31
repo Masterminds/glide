@@ -31,7 +31,7 @@ bootstrap-dist:
 build-all:
 	gox -verbose \
 	-ldflags "-X main.version=${VERSION}" \
-	-os="linux darwin windows freebsd openbsd netbsd plan9" \
+	-os="linux darwin windows freebsd openbsd netbsd" \
 	-arch="amd64 386 armv5 armv6 armv7 arm64" \
 	-osarch="!darwin/arm64" \
 	-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .

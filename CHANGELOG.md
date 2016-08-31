@@ -5,6 +5,9 @@
 - #580: cross-device error handling failed on Windows in some cases
 - #590: When exit signal received remove global lock
 
+Note, Plan 9 is an experimental OS for Go. Due to some issues we are not going
+to be supporting builds for it at this time.
+
 # Release 0.12.0 (2016-08-23)
 
 ## Added
