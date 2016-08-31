@@ -235,7 +235,11 @@ func CopyDir(source string, dest string) error {
 		return err
 	}
 
-	d, _ := os.Open(source)
+	d, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
 
 	objects, err := d.Readdir(-1)
 
