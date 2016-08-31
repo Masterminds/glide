@@ -14,6 +14,9 @@ import (
 
 var isStarted bool
 
+// If the global cache lock file should be written
+var shouldWriteLock = true
+
 // SystemLock starts a system rather than application lock. This way multiple
 // app instances don't cause race conditions when working in the cache.
 func SystemLock() error {
@@ -47,6 +50,13 @@ var lockFileName = filepath.Join(gpath.Home(), "lock.json")
 
 // Write a lock for now.
 func writeLock() error {
+
+	// If the lock should not be written exit immediately. This happens in cases
+	// where shutdown/clean is happening.
+	if !shouldWriteLock {
+		return nil
+	}
+
 	ld := &lockdata{
 		Comment: "File managed by Glide (https://glide.sh)",
 		Pid:     os.Getpid(),
@@ -87,6 +97,7 @@ func startLock() error {
 	signal.Notify(ch, os.Interrupt, os.Kill)
 	go func(cc <-chan os.Signal) {
 		s := <-cc
+		shouldWriteLock = false
 		SystemUnlock()
 
 		// Exiting with the expected exit codes when we can.
