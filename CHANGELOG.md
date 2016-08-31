@@ -1,3 +1,10 @@
+# Release 0.12.1 (2016-08-31)
+
+## Fixed
+- #578: Not resolving parent project packages in some cases
+- #580: cross-device error handling failed on Windows in some cases
+- #590: When exit signal received remove global lock
+
 # Release 0.12.0 (2016-08-23)
 
 ## Added
