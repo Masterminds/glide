@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 )
 
 var isStarted bool
+
+// If the global cache lock file should be written
+var shouldWriteLock = true
 
 // SystemLock starts a system rather than application lock. This way multiple
 // app instances don't cause race conditions when working in the cache.
@@ -46,6 +50,13 @@ var lockFileName = filepath.Join(gpath.Home(), "lock.json")
 
 // Write a lock for now.
 func writeLock() error {
+
+	// If the lock should not be written exit immediately. This happens in cases
+	// where shutdown/clean is happening.
+	if !shouldWriteLock {
+		return nil
+	}
+
 	ld := &lockdata{
 		Comment: "File managed by Glide (https://glide.sh)",
 		Pid:     os.Getpid(),
@@ -81,6 +92,24 @@ func startLock() error {
 		}
 	}()
 
+	// Capture ctrl-c or other interruptions then clean up the global lock.
+	ch := make(chan os.Signal)
+	signal.Notify(ch, os.Interrupt, os.Kill)
+	go func(cc <-chan os.Signal) {
+		s := <-cc
+		shouldWriteLock = false
+		SystemUnlock()
+
+		// Exiting with the expected exit codes when we can.
+		if s == os.Interrupt {
+			os.Exit(130)
+		} else if s == os.Kill {
+			os.Exit(137)
+		} else {
+			os.Exit(1)
+		}
+	}(ch)
+
 	return nil
 }
 
@@ -104,8 +133,7 @@ func waitOnLock() error {
 			msg.Info("Waiting on Glide global cache access")
 		}
 
-		// Check on the lock file every 15 seconds.
-		// TODO(mattfarina): should this be a different length?
+		// Check on the lock file every second.
 		time.Sleep(time.Second)
 	}
 }
