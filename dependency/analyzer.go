@@ -116,7 +116,7 @@ func (a Analyzer) lookForGlide(root string) (gps.Manifest, gps.Lock, error) {
 		return m, nil, nil
 	}
 
-	yml, err = ioutil.ReadFile(mpath)
+	yml, err = ioutil.ReadFile(lpath)
 	if err != nil {
 		return m, nil, nil
 	}
