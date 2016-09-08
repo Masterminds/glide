@@ -672,6 +672,8 @@ func (r *Resolver) resolveList(queue *list.List, testDeps, addTest bool) ([]stri
 	}
 
 	var failedDep string
+	var failedDepPath string
+	var pkgPath string
 	for e := queue.Front(); e != nil; e = e.Next() {
 		dep := e.Value.(string)
 		t := strings.TrimPrefix(dep, r.VendorDir+string(os.PathSeparator))
@@ -683,8 +685,10 @@ func (r *Resolver) resolveList(queue *list.List, testDeps, addTest bool) ([]stri
 		//msg.Warn("#### %s ####", dep)
 		//msg.Info("Seen Count: %d", len(r.seen))
 		// Catch the outtermost dependency.
-		failedDep = dep
-		err := filepath.Walk(dep, func(path string, fi os.FileInfo, err error) error {
+		pkgPath = r.Handler.PkgPath(t)
+		failedDep = t
+		failedDepPath = pkgPath
+		err := filepath.Walk(pkgPath, func(path string, fi os.FileInfo, err error) error {
 			if err != nil && err != filepath.SkipDir {
 				return err
 			}
@@ -703,14 +707,14 @@ func (r *Resolver) resolveList(queue *list.List, testDeps, addTest bool) ([]stri
 			// the queue.
 			r.alreadyQ[path] = true
 			e := r.queueUnseen(path, queue, testDeps, addTest)
-			if err != nil {
-				failedDep = path
+			if e != nil {
+				failedDepPath = path
 				//msg.Err("Failed to fetch dependency %s: %s", path, err)
 			}
 			return e
 		})
 		if err != nil && err != filepath.SkipDir {
-			msg.Err("Dependency %s failed to resolve: %s.", failedDep, err)
+			msg.Err("Dependency %s (%s) failed to resolve: %s.", failedDep, failedDepPath, err)
 			return []string{}, err
 		}
 	}
@@ -806,7 +810,7 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 	// FIXME: On error this should try to NotFound to the dependency, and then import
 	// it again.
 	var imps []string
-	p, err := r.BuildContext.ImportDir(r.Handler.PkgPath(pkg), 0)
+	p, err := r.BuildContext.ImportDir(pkg, 0)
 	if err != nil && strings.HasPrefix(err.Error(), "found packages ") {
 		// If we got here it's because a package and multiple packages
 		// declared. This is often because of an example with a package
