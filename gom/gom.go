@@ -143,23 +143,27 @@ func AsMetadataPair(dir string) (gps.Manifest, gps.Lock, error) {
 			dep.Constraint = gps.NewBranch(body)
 		}
 
+		id := gps.ProjectIdentifier{
+			ProjectRoot: gps.ProjectRoot(dir),
+		}
+		var version gps.Version
 		if val, ok := gom.options["commit"]; ok {
 			body := val.(string)
 			if v != nil {
-				v.Is(gps.Revision(body))
-				l = append(l, gps.NewLockedProject(gps.ProjectRoot(dir), v, dir, nil))
+				version = v.Is(gps.Revision(body))
 			} else {
 				// As with the other third-party system integrations, we're
 				// going to choose not to put revisions into a manifest, even
 				// though gom has a lot more information than most and the
 				// argument could be made for it.
 				dep.Constraint = gps.Any()
-				l = append(l, gps.NewLockedProject(gps.ProjectRoot(dir), gps.Revision(body), dir, nil))
+				version = gps.Revision(body)
 			}
 		} else if v != nil {
 			// This is kinda uncomfortable - lock w/no immut - but OK
-			l = append(l, gps.NewLockedProject(gps.ProjectRoot(dir), v, dir, nil))
+			version = v
 		}
+		l = append(l, gps.NewLockedProject(id, version, nil))
 
 		// TODO We ignore GOOS, GOARCH for now
 	}

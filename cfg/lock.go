@@ -156,7 +156,11 @@ func (lf *Lockfile) Projects() []gps.LockedProject {
 			v = r
 		}
 
-		lp[k] = gps.NewLockedProject(gps.ProjectRoot(l.Name), v, l.Repository, nil)
+		id := gps.ProjectIdentifier{
+			ProjectRoot: gps.ProjectRoot(l.Name),
+			NetworkName: l.Repository,
+		}
+		lp[k] = gps.NewLockedProject(id, v, nil)
 	}
 
 	return lp

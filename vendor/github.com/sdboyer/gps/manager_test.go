@@ -7,7 +7,6 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"sync"
 	"testing"
 
@@ -124,7 +123,7 @@ func TestSourceInit(t *testing.T) {
 		}
 	}()
 
-	id := mkPI("github.com/Masterminds/VCSTestRepo")
+	id := mkPI("github.com/Masterminds/VCSTestRepo").normalize()
 	v, err := sm.ListVersions(id)
 	if err != nil {
 		t.Errorf("Unexpected error during initial project setup/fetching %s", err)
@@ -142,7 +141,7 @@ func TestSourceInit(t *testing.T) {
 
 		// SourceManager itself doesn't guarantee ordering; sort them here so we
 		// can dependably check output
-		sort.Sort(upgradeVersionSorter(v))
+		SortForUpgrade(v)
 
 		for k, e := range expected {
 			if v[k] != e {
@@ -220,7 +219,7 @@ func TestSourceInit(t *testing.T) {
 
 func TestMgrMethodsFailWithBadPath(t *testing.T) {
 	// a symbol will always bork it up
-	bad := mkPI("foo/##&^")
+	bad := mkPI("foo/##&^").normalize()
 	sm, clean := mkNaiveSM(t)
 	defer clean()
 
@@ -257,9 +256,9 @@ func TestGetSources(t *testing.T) {
 	sm, clean := mkNaiveSM(t)
 
 	pil := []ProjectIdentifier{
-		mkPI("github.com/Masterminds/VCSTestRepo"),
-		mkPI("bitbucket.org/mattfarina/testhgrepo"),
-		mkPI("launchpad.net/govcstestbzrrepo"),
+		mkPI("github.com/Masterminds/VCSTestRepo").normalize(),
+		mkPI("bitbucket.org/mattfarina/testhgrepo").normalize(),
+		mkPI("launchpad.net/govcstestbzrrepo").normalize(),
 	}
 
 	wg := &sync.WaitGroup{}
@@ -325,7 +324,7 @@ func TestGetInfoListVersionsOrdering(t *testing.T) {
 
 	// setup done, now do the test
 
-	id := mkPI("github.com/Masterminds/VCSTestRepo")
+	id := mkPI("github.com/Masterminds/VCSTestRepo").normalize()
 
 	_, _, err := sm.GetManifestAndLock(id, NewVersion("1.0.0"))
 	if err != nil {
