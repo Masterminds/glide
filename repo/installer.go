@@ -691,7 +691,7 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 	// Should we look in places other than the root of the project?
 	if d.Imported[root] == false {
 		d.Imported[root] = true
-		p := d.pkgPath(pkg)
+		p := d.pkgPath(root)
 		f, deps, err := importer.Import(p)
 		if f && err == nil {
 			for _, dep := range deps {
