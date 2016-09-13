@@ -1,3 +1,9 @@
+# Release 0.12.1 (2016-09-13)
+
+## Fixed
+- #599: In some cases was not importing dependencies config
+- #601: Fixed issue where --all-dependencies flag stopped working
+
 # Release 0.12.1 (2016-08-31)
 
 ## Fixed
