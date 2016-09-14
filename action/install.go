@@ -182,7 +182,12 @@ func (gw safeGroupWriter) writeAllSafe() error {
 		if gw.lock == nil {
 			writeLock, writeVendor = true, true
 		} else {
-			rlf := cfg.LockfileFromSolverLock(gw.resultLock)
+			rlf, err := cfg.LockfileFromSolverLock(gw.resultLock)
+			// This err really shouldn't occur, but could if we get an unpaired
+			// version back from gps somehow
+			if err != nil {
+				return err
+			}
 			if !locksAreEquivalent(rlf, gw.lock) {
 				writeLock, writeVendor = true, true
 			}
@@ -228,7 +233,12 @@ func (gw safeGroupWriter) writeAllSafe() error {
 				return fmt.Errorf("Failed to write glide lock file: %s", err)
 			}
 		} else {
-			rlf := cfg.LockfileFromSolverLock(gw.resultLock)
+			rlf, err := cfg.LockfileFromSolverLock(gw.resultLock)
+			// As with above, this case really shouldn't get hit unless there's
+			// a bug in gps, or guarantees change
+			if err != nil {
+				return err
+			}
 			if err := rlf.WriteFile(filepath.Join(td, gpath.LockFile)); err != nil {
 				return fmt.Errorf("Failed to write glide lock file: %s", err)
 			}

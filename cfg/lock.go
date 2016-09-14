@@ -23,9 +23,9 @@ type Lockfile struct {
 }
 
 // LockfileFromSolverLock transforms a gps.Lock into a glide *Lockfile.
-func LockfileFromSolverLock(r gps.Lock) *Lockfile {
+func LockfileFromSolverLock(r gps.Lock) (*Lockfile, error) {
 	if r == nil {
-		return nil
+		return nil, fmt.Errorf("no gps lock data provided to transform")
 	}
 
 	// Create and write out a new lock file from the result
@@ -50,18 +50,26 @@ func LockfileFromSolverLock(r gps.Lock) *Lockfile {
 		//
 		// TODO might still be better to check and return out with an err if
 		// not, though
-		l.Revision = v.(gps.PairedVersion).Underlying().String()
-		switch v.Type() {
-		case "branch":
-			l.Branch = v.String()
-		case "semver", "version":
-			l.Version = v.String()
+		switch tv := v.(type) {
+		case gps.Revision:
+			l.Revision = tv.String()
+		case gps.PairedVersion:
+			l.Revision = v.(gps.PairedVersion).Underlying().String()
+			switch v.Type() {
+			case "branch":
+				l.Branch = v.String()
+			case "semver", "version":
+				l.Version = v.String()
+			}
+		case gps.UnpairedVersion:
+			// this should not be possible - error if we hit it
+			return nil, fmt.Errorf("should not be possible - gps returned an unpaired version for %s", pi)
 		}
 
 		lf.Imports = append(lf.Imports, l)
 	}
 
-	return lf
+	return lf, nil
 }
 
 // LockfileFromYaml returns an instance of Lockfile from YAML
