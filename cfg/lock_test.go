@@ -1,10 +1,6 @@
 package cfg
 
-import (
-	"testing"
-
-	"github.com/kr/pretty"
-)
+import "testing"
 
 const lockFix = `
 imports:
@@ -23,7 +19,7 @@ func TestLegacyLockAutoconvert(t *testing.T) {
 	if err != nil {
 		t.Errorf("LockfileFromYaml failed to detect and autoconvert legacy lock file with err %s", err)
 	}
-	pretty.Println(ll)
+
 	if !legacy {
 		t.Error("LockfileFromYaml failed to report autoconversion of legacy lock file")
 	}
