@@ -1,18 +1,24 @@
-hash: 7b0d46d2b21d5d8ff24023a402285f87b14b9f554ae52913cc7ea08bfd17453d
-updated: 2016-07-13T23:09:11.03428654-04:00
+hash: e12d18f87508f2f53e2981b52a02ed23d135f59ab90f3afca813727c0685eec0
+updated: 2016-09-15T09:56:26.054743146-04:00
 imports:
 - name: github.com/armon/go-radix
-  version: 4239b77079c7b5d1243b7b4736304ce8ddb6f0f2
+  branch: master
+  revision: 4239b77079c7b5d1243b7b4736304ce8ddb6f0f2
 - name: github.com/codegangsta/cli
-  version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
+  version: v1.14.0
+  revision: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - name: github.com/Masterminds/semver
-  version: b3ef6b1808e9889dfb8767ce7068db923a3d07de
+  branch: 2.x
+  revision: b3ef6b1808e9889dfb8767ce7068db923a3d07de
 - name: github.com/Masterminds/vcs
-  version: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
+  version: v1.8.0
+  revision: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
 - name: github.com/sdboyer/gps
-  version: 6e8a101af5e735feedcdae1f716bebc338b74525
+  branch: master
+  revision: 166f36103aedbb9d835b9b6dcc7762a6bd900a98
 - name: github.com/termie/go-shutil
-  version: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
+  revision: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
 - name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
+  branch: v2
+  revision: 31c299268d302dd0aa9a0dcf765a3d58971ac83f
 testImports: []

@@ -348,6 +348,7 @@ type pident struct {
 type specfix interface {
 	name() string
 	rootmanifest() RootManifest
+	rootTree() PackageTree
 	specs() []depspec
 	maxTries() int
 	solution() map[ProjectIdentifier]Version
@@ -411,6 +412,33 @@ func (f basicFixture) rootmanifest() RootManifest {
 		tc:  f.ds[0].devdeps,
 		ovr: f.ovr,
 	}
+}
+
+func (f basicFixture) rootTree() PackageTree {
+	var imp, timp []string
+	for _, dep := range f.ds[0].deps {
+		imp = append(imp, string(dep.Ident.ProjectRoot))
+	}
+	for _, dep := range f.ds[0].devdeps {
+		timp = append(timp, string(dep.Ident.ProjectRoot))
+	}
+
+	n := string(f.ds[0].n)
+	pt := PackageTree{
+		ImportRoot: n,
+		Packages: map[string]PackageOrErr{
+			string(n): {
+				P: Package{
+					ImportPath:  n,
+					Name:        n,
+					Imports:     imp,
+					TestImports: timp,
+				},
+			},
+		},
+	}
+
+	return pt
 }
 
 func (f basicFixture) failure() error {
@@ -667,6 +695,10 @@ var basicFixtures = map[string]basicFixture{
 			"bar 1.0.1",
 		),
 	},
+	// This fixture describes a situation that should be impossible with a
+	// real-world VCS (contents of dep at same rev are different, as indicated
+	// by different constraints on bar). But, that's not the SUT here, so it's
+	// OK.
 	"pairs bare revs in lock with all versions": {
 		ds: []depspec{
 			mkDepspec("root 0.0.0", "foo ~1.0.1"),
@@ -682,7 +714,7 @@ var basicFixtures = map[string]basicFixture{
 		),
 		r: mksolution(
 			"foo 1.0.2 foorev",
-			"bar 1.0.1",
+			"bar 1.0.2",
 		),
 	},
 	"does not pair bare revs in manifest with unpaired lock version": {
@@ -701,6 +733,35 @@ var basicFixtures = map[string]basicFixture{
 		r: mksolution(
 			"foo 1.0.1 foorev",
 			"bar 1.0.1",
+		),
+	},
+	"lock to branch on old rev keeps old rev": {
+		ds: []depspec{
+			mkDepspec("root 0.0.0", "foo bmaster"),
+			mkDepspec("foo bmaster newrev"),
+		},
+		l: mklock(
+			"foo bmaster oldrev",
+		),
+		r: mksolution(
+			"foo bmaster oldrev",
+		),
+	},
+	// Whereas this is a normal situation for a branch, when it occurs for a
+	// tag, it means someone's been naughty upstream. Still, though, the outcome
+	// is the same.
+	//
+	// TODO(sdboyer) this needs to generate a warning, once we start doing that
+	"lock to now-moved tag on old rev keeps old rev": {
+		ds: []depspec{
+			mkDepspec("root 0.0.0", "foo ptaggerino"),
+			mkDepspec("foo ptaggerino newrev"),
+		},
+		l: mklock(
+			"foo ptaggerino oldrev",
+		),
+		r: mksolution(
+			"foo ptaggerino oldrev",
 		),
 	},
 	"includes root package's dev dependencies": {
@@ -1175,6 +1236,16 @@ func newdepspecSM(ds []depspec, ignore []string) *depspecSourceManager {
 }
 
 func (sm *depspecSourceManager) GetManifestAndLock(id ProjectIdentifier, v Version) (Manifest, Lock, error) {
+	// If the input version is a PairedVersion, look only at its top version,
+	// not the underlying. This is generally consistent with the idea that, for
+	// this class of lookup, the rev probably DOES exist, but upstream changed
+	// it (typically a branch). For the purposes of tests, then, that's an OK
+	// scenario, because otherwise we'd have to enumerate all the revs in the
+	// fixture declarations, which would screw up other things.
+	if pv, ok := v.(PairedVersion); ok {
+		v = pv.Unpair()
+	}
+
 	for _, ds := range sm.specs {
 		if id.netName() == string(ds.n) && v.Matches(ds.v) {
 			return ds, dummyLock{}, nil
@@ -1210,7 +1281,7 @@ func (sm *depspecSourceManager) ListPackages(id ProjectIdentifier, v Version) (P
 	pid := pident{n: ProjectRoot(id.netName()), v: v}
 
 	if r, exists := sm.rm[pid]; exists {
-		ptree := PackageTree{
+		return PackageTree{
 			ImportRoot: string(pid.n),
 			Packages: map[string]PackageOrErr{
 				string(pid.n): {
@@ -1221,8 +1292,29 @@ func (sm *depspecSourceManager) ListPackages(id ProjectIdentifier, v Version) (P
 					},
 				},
 			},
+		}, nil
+	}
+
+	// if incoming version was paired, walk the map and search for a match on
+	// top-only version
+	if pv, ok := v.(PairedVersion); ok {
+		uv := pv.Unpair()
+		for pid, r := range sm.rm {
+			if uv.Matches(pid.v) {
+				return PackageTree{
+					ImportRoot: string(pid.n),
+					Packages: map[string]PackageOrErr{
+						string(pid.n): {
+							P: Package{
+								ImportPath: string(pid.n),
+								Name:       string(pid.n),
+								Imports:    r[string(pid.n)],
+							},
+						},
+					},
+				}, nil
+			}
 		}
-		return ptree, nil
 	}
 
 	return PackageTree{}, fmt.Errorf("Project %s at version %s could not be found", pid.n, v)
@@ -1272,10 +1364,6 @@ func (sm *depspecSourceManager) SyncSourceFor(id ProjectIdentifier) error {
 	return nil
 }
 
-func (sm *depspecSourceManager) VendorCodeExists(id ProjectIdentifier) (bool, error) {
-	return false, nil
-}
-
 func (sm *depspecSourceManager) Release() {}
 
 func (sm *depspecSourceManager) ExportProject(id ProjectIdentifier, v Version, to string) error {
@@ -1308,26 +1396,11 @@ type depspecBridge struct {
 	*bridge
 }
 
-// override computeRootReach() on bridge to read directly out of the depspecs
-func (b *depspecBridge) computeRootReach() ([]string, error) {
-	// This only gets called for the root project, so grab that one off the test
-	// source manager
-	dsm := b.sm.(fixSM)
-	root := dsm.rootSpec()
-
-	ptree, err := dsm.ListPackages(mkPI(string(root.n)), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return ptree.ListExternalImports(true, true, dsm.ignore()), nil
-}
-
 // override verifyRoot() on bridge to prevent any filesystem interaction
 func (b *depspecBridge) verifyRootDir(path string) error {
 	root := b.sm.(fixSM).rootSpec()
 	if string(root.n) != path {
-		return fmt.Errorf("Expected only root project %q to computeRootReach(), got %q", root.n, path)
+		return fmt.Errorf("Expected only root project %q to verifyRootDir(), got %q", root.n, path)
 	}
 
 	return nil
@@ -1335,6 +1408,10 @@ func (b *depspecBridge) verifyRootDir(path string) error {
 
 func (b *depspecBridge) ListPackages(id ProjectIdentifier, v Version) (PackageTree, error) {
 	return b.sm.(fixSM).ListPackages(id, v)
+}
+
+func (sm *depspecBridge) vendorCodeExists(id ProjectIdentifier) (bool, error) {
+	return false, nil
 }
 
 // enforce interfaces

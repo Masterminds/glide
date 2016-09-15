@@ -19,7 +19,7 @@ var fixtorun string
 
 // TODO(sdboyer) regression test ensuring that locks with only revs for projects don't cause errors
 func init() {
-	flag.StringVar(&fixtorun, "gps.fix", "", "A single fixture to run in TestBasicSolves")
+	flag.StringVar(&fixtorun, "gps.fix", "", "A single fixture to run in TestBasicSolves or TestBimodalSolves")
 	overrideMkBridge()
 }
 
@@ -87,12 +87,12 @@ func solveBasicsAndCheck(fix basicFixture, t *testing.T) (res Solution, err erro
 	sm := newdepspecSM(fix.ds, nil)
 
 	params := SolveParameters{
-		RootDir:    string(fix.ds[0].n),
-		ImportRoot: ProjectRoot(fix.ds[0].n),
-		Manifest:   fix.rootmanifest(),
-		Lock:       dummyLock{},
-		Downgrade:  fix.downgrade,
-		ChangeAll:  fix.changeall,
+		RootDir:         string(fix.ds[0].n),
+		RootPackageTree: fix.rootTree(),
+		Manifest:        fix.rootmanifest(),
+		Lock:            dummyLock{},
+		Downgrade:       fix.downgrade,
+		ChangeAll:       fix.changeall,
 	}
 
 	if fix.l != nil {
@@ -137,12 +137,12 @@ func solveBimodalAndCheck(fix bimodalFixture, t *testing.T) (res Solution, err e
 	sm := newbmSM(fix)
 
 	params := SolveParameters{
-		RootDir:    string(fix.ds[0].n),
-		ImportRoot: ProjectRoot(fix.ds[0].n),
-		Manifest:   fix.rootmanifest(),
-		Lock:       dummyLock{},
-		Downgrade:  fix.downgrade,
-		ChangeAll:  fix.changeall,
+		RootDir:         string(fix.ds[0].n),
+		RootPackageTree: fix.rootTree(),
+		Manifest:        fix.rootmanifest(),
+		Lock:            dummyLock{},
+		Downgrade:       fix.downgrade,
+		ChangeAll:       fix.changeall,
 	}
 
 	if fix.l != nil {
@@ -161,6 +161,13 @@ func fixtureSolveSimpleChecks(fix specfix, soln Solution, err error, t *testing.
 			return string(id.ProjectRoot)
 		}
 		return fmt.Sprintf("%s (from %s)", id.ProjectRoot, id.NetworkName)
+	}
+
+	pv := func(v Version) string {
+		if pv, ok := v.(PairedVersion); ok {
+			return fmt.Sprintf("%s (%s)", pv.Unpair(), pv.Underlying())
+		}
+		return v.String()
 	}
 
 	fixfail := fix.failure()
@@ -207,7 +214,7 @@ func fixtureSolveSimpleChecks(fix specfix, soln Solution, err error, t *testing.
 				// delete result from map so we skip it on the reverse pass
 				delete(rp, p)
 				if v != av {
-					t.Errorf("(fixture: %q) Expected version %q of project %q, but actual version was %q", fix.name(), v, ppi(p), av)
+					t.Errorf("(fixture: %q) Expected version %q of project %q, but actual version was %q", fix.name(), pv(v), ppi(p), pv(av))
 				}
 			}
 		}
@@ -217,7 +224,7 @@ func fixtureSolveSimpleChecks(fix specfix, soln Solution, err error, t *testing.
 			if fv, exists := fix.solution()[p]; !exists {
 				t.Errorf("(fixture: %q) Unexpected project %q present in results", fix.name(), ppi(p))
 			} else if v != fv {
-				t.Errorf("(fixture: %q) Got version %q of project %q, but expected version was %q", fix.name(), v, ppi(p), fv)
+				t.Errorf("(fixture: %q) Got version %q of project %q, but expected version was %q", fix.name(), pv(v), ppi(p), pv(fv))
 			}
 		}
 	}
@@ -232,7 +239,7 @@ func fixtureSolveSimpleChecks(fix specfix, soln Solution, err error, t *testing.
 // produce weird side effects.
 func TestRootLockNoVersionPairMatching(t *testing.T) {
 	fix := basicFixture{
-		n: "does not pair bare revs in manifest with unpaired lock version",
+		n: "does not match unpaired lock versions with paired real versions",
 		ds: []depspec{
 			mkDepspec("root 0.0.0", "foo *"), // foo's constraint rewritten below to foorev
 			mkDepspec("foo 1.0.0", "bar 1.0.0"),
@@ -247,7 +254,7 @@ func TestRootLockNoVersionPairMatching(t *testing.T) {
 		),
 		r: mksolution(
 			"foo 1.0.2 foorev",
-			"bar 1.0.1",
+			"bar 1.0.2",
 		),
 	}
 
@@ -262,10 +269,10 @@ func TestRootLockNoVersionPairMatching(t *testing.T) {
 	l2[0].v = nil
 
 	params := SolveParameters{
-		RootDir:    string(fix.ds[0].n),
-		ImportRoot: ProjectRoot(fix.ds[0].n),
-		Manifest:   fix.rootmanifest(),
-		Lock:       l2,
+		RootDir:         string(fix.ds[0].n),
+		RootPackageTree: fix.rootTree(),
+		Manifest:        fix.rootmanifest(),
+		Lock:            l2,
 	}
 
 	res, err := fixSolve(params, sm)
@@ -303,7 +310,27 @@ func TestBadSolveOpts(t *testing.T) {
 		t.Error("Prepare should have given error on empty import root, but gave:", err)
 	}
 
-	params.ImportRoot = ProjectRoot(pn)
+	params.RootPackageTree = PackageTree{
+		ImportRoot: pn,
+	}
+	_, err = Prepare(params, sm)
+	if err == nil {
+		t.Errorf("Prepare should have errored on empty name")
+	} else if !strings.Contains(err.Error(), "at least one package") {
+		t.Error("Prepare should have given error on empty import root, but gave:", err)
+	}
+
+	params.RootPackageTree = PackageTree{
+		ImportRoot: pn,
+		Packages: map[string]PackageOrErr{
+			pn: {
+				P: Package{
+					ImportPath: pn,
+					Name:       pn,
+				},
+			},
+		},
+	}
 	params.Trace = true
 	_, err = Prepare(params, sm)
 	if err == nil {
