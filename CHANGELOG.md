@@ -1,4 +1,4 @@
-# Release 0.12.1 (2016-09-13)
+# Release 0.12.2 (2016-09-13)
 
 ## Fixed
 - #599: In some cases was not importing dependencies config
