@@ -719,12 +719,33 @@ Example:
 			},
 		},
 		{
-			Name:      "cache-clear",
-			ShortName: "cc",
-			Usage:     "Clears the Glide cache.",
-			Action: func(c *cli.Context) error {
-				action.CacheClear()
-				return nil
+			Name:  "cache",
+			Usage: "Manage Glide's cache",
+			Subcommands: []cli.Command{
+				{
+					Name:      "clear",
+					ShortName: "cc",
+					Usage:     "Clears the Glide cache",
+					Action: func(c *cli.Context) error {
+						action.CacheClear()
+						return nil
+					},
+				},
+				{
+					Name:  "path",
+					Usage: "Get a the path to a cached dependency's sources",
+					Description: `Returns the path to a cached dependency's
+		   sources. This is useful for scripts that need to run commands like
+		   "git-describe" on one of a project's vendored dependencies.
+
+		   For example,
+
+		       glide cache path github.com/emccode/libstorage`,
+					Action: func(c *cli.Context) error {
+						action.CachePath(c.Args().Get(0))
+						return nil
+					},
+				},
 			},
 		},
 		{
