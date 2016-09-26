@@ -57,7 +57,7 @@ regenerates the dependency versions using scanning and rules, and `glide install
 will install the versions listed in the `glide.lock` file, skipping scanning,
 unless the `glide.lock` file is not found in which case it will perform an update.
 
-A projects is structured like this:
+A project is structured like this:
 
 ```
 - $GOPATH/src/myProject (Your project)
