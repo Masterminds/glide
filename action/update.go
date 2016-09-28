@@ -30,12 +30,18 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
+	rd := filepath.Dir(vend)
+	rt, err := gps.ListPackages(rd, conf.Name)
+	if err != nil {
+		msg.Die("Error while scanning project: %s", err)
+	}
+
 	params := gps.SolveParameters{
-		RootDir:     filepath.Dir(vend),
-		ImportRoot:  gps.ProjectRoot(conf.Name),
-		Manifest:    conf,
-		Trace:       true,
-		TraceLogger: log.New(os.Stdout, "", 0),
+		RootDir:         rd,
+		RootPackageTree: rt,
+		Manifest:        conf,
+		Trace:           true,
+		TraceLogger:     log.New(os.Stdout, "", 0),
 	}
 
 	if len(projs) == 0 {
@@ -59,7 +65,7 @@ func Update(installer *repo.Installer, sv bool, projs []string) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), false)
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"))
 	if err != nil {
 		msg.Err(err.Error())
 		return

@@ -31,19 +31,25 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 	}
 
 	// Create the SourceManager for this run
-	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), false)
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"))
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())
 		return
 	}
 
+	rd := filepath.Dir(vend)
+	rt, err := gps.ListPackages(rd, conf.Name)
+	if err != nil {
+		msg.Die("Error while scanning project: %s", err)
+	}
+
 	params := gps.SolveParameters{
-		RootDir:     filepath.Dir(vend),
-		ImportRoot:  gps.ProjectRoot(conf.Name),
-		Manifest:    conf,
-		Trace:       true,
-		TraceLogger: log.New(os.Stdout, "", 0),
+		RootDir:         rd,
+		RootPackageTree: rt,
+		Manifest:        conf,
+		Trace:           true,
+		TraceLogger:     log.New(os.Stdout, "", 0),
 	}
 
 	var s gps.Solver
@@ -63,7 +69,7 @@ func Install(installer *repo.Installer, io, so, sv bool) {
 			msg.Err("Could not set up solver: %s", err)
 			return
 		}
-		digest, err := s.HashInputs()
+		digest := s.HashInputs()
 
 		// Check if digests match, and warn if they don't
 		if bytes.Equal(digest, params.Lock.InputHash()) {

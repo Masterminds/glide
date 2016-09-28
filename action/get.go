@@ -37,12 +37,18 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 		msg.Die("Could not find the vendor dir: %s", err)
 	}
 
+	rd := filepath.Dir(glidefile)
+	rt, err := gps.ListPackages(rd, conf.Name)
+	if err != nil {
+		msg.Die("Error while scanning project: %s", err)
+	}
+
 	params := gps.SolveParameters{
-		RootDir:     filepath.Dir(glidefile),
-		ImportRoot:  gps.ProjectRoot(conf.Name),
-		Manifest:    conf,
-		Trace:       true,
-		TraceLogger: log.New(os.Stdout, "", 0),
+		RootDir:         rd,
+		RootPackageTree: rt,
+		Manifest:        conf,
+		Trace:           true,
+		TraceLogger:     log.New(os.Stdout, "", 0),
 	}
 
 	// We load the lock file early and bail out if there's a problem, because we
@@ -57,7 +63,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	}
 
 	// Create the SourceManager for this run
-	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"), false)
+	sm, err := gps.NewSourceManager(dependency.Analyzer{}, filepath.Join(installer.Home, "cache"))
 	defer sm.Release()
 	if err != nil {
 		msg.Err(err.Error())

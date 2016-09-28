@@ -44,7 +44,7 @@ func mkNaiveSM(t *testing.T) (*SourceMgr, func()) {
 		t.FailNow()
 	}
 
-	sm, err := NewSourceManager(naiveAnalyzer{}, cpath, false)
+	sm, err := NewSourceManager(naiveAnalyzer{}, cpath)
 	if err != nil {
 		t.Errorf("Unexpected error on SourceManager creation: %s", err)
 		t.FailNow()
@@ -69,31 +69,44 @@ func TestSourceManagerInit(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create temp dir: %s", err)
 	}
-	_, err = NewSourceManager(naiveAnalyzer{}, cpath, false)
+	sm, err := NewSourceManager(naiveAnalyzer{}, cpath)
 
 	if err != nil {
 		t.Errorf("Unexpected error on SourceManager creation: %s", err)
 	}
-	defer func() {
-		err := removeAll(cpath)
-		if err != nil {
-			t.Errorf("removeAll failed: %s", err)
-		}
-	}()
 
-	_, err = NewSourceManager(naiveAnalyzer{}, cpath, false)
+	_, err = NewSourceManager(naiveAnalyzer{}, cpath)
 	if err == nil {
 		t.Errorf("Creating second SourceManager should have failed due to file lock contention")
-	}
-
-	sm, err := NewSourceManager(naiveAnalyzer{}, cpath, true)
-	defer sm.Release()
-	if err != nil {
-		t.Errorf("Creating second SourceManager should have succeeded when force flag was passed, but failed with err %s", err)
+	} else if te, ok := err.(CouldNotCreateLockError); !ok {
+		t.Errorf("Should have gotten CouldNotCreateLockError error type, but got %T", te)
 	}
 
 	if _, err = os.Stat(path.Join(cpath, "sm.lock")); err != nil {
 		t.Errorf("Global cache lock file not created correctly")
+	}
+
+	sm.Release()
+	err = removeAll(cpath)
+	if err != nil {
+		t.Errorf("removeAll failed: %s", err)
+	}
+
+	if _, err = os.Stat(path.Join(cpath, "sm.lock")); !os.IsNotExist(err) {
+		t.Errorf("Global cache lock file not cleared correctly on Release()")
+		t.FailNow()
+	}
+
+	// Set another one up at the same spot now, just to be sure
+	sm, err = NewSourceManager(naiveAnalyzer{}, cpath)
+	if err != nil {
+		t.Errorf("Creating a second SourceManager should have succeeded when the first was released, but failed with err %s", err)
+	}
+
+	sm.Release()
+	err = removeAll(cpath)
+	if err != nil {
+		t.Errorf("removeAll failed: %s", err)
 	}
 }
 
@@ -109,7 +122,7 @@ func TestSourceInit(t *testing.T) {
 		t.FailNow()
 	}
 
-	sm, err := NewSourceManager(naiveAnalyzer{}, cpath, false)
+	sm, err := NewSourceManager(naiveAnalyzer{}, cpath)
 	if err != nil {
 		t.Errorf("Unexpected error on SourceManager creation: %s", err)
 		t.FailNow()
@@ -144,9 +157,16 @@ func TestSourceInit(t *testing.T) {
 		SortForUpgrade(v)
 
 		for k, e := range expected {
-			if v[k] != e {
+			if !v[k].Matches(e) {
 				t.Errorf("Expected version %s in position %v but got %s", e, k, v[k])
 			}
+		}
+
+		if !v[1].(versionPair).v.(branchVersion).isDefault {
+			t.Error("Expected master branch version to have isDefault flag, but it did not")
+		}
+		if v[2].(versionPair).v.(branchVersion).isDefault {
+			t.Error("Expected test branch version not to have isDefault flag, but it did")
 		}
 	}
 
@@ -175,9 +195,16 @@ func TestSourceInit(t *testing.T) {
 		}
 
 		for k, e := range expected {
-			if v[k] != e {
+			if !v[k].Matches(e) {
 				t.Errorf("Expected version %s in position %v but got %s", e, k, v[k])
 			}
+		}
+
+		if !v[1].(versionPair).v.(branchVersion).isDefault {
+			t.Error("Expected master branch version to have isDefault flag, but it did not")
+		}
+		if v[2].(versionPair).v.(branchVersion).isDefault {
+			t.Error("Expected test branch version not to have isDefault flag, but it did")
 		}
 	}
 
@@ -214,6 +241,51 @@ func TestSourceInit(t *testing.T) {
 	}
 	if !exists {
 		t.Error("Source should exist after non-erroring call to ListVersions")
+	}
+}
+
+func TestDefaultBranchAssignment(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping default branch assignment test in short mode")
+	}
+
+	sm, clean := mkNaiveSM(t)
+	defer clean()
+
+	id := mkPI("github.com/sdboyer/test-multibranch")
+	v, err := sm.ListVersions(id)
+	if err != nil {
+		t.Errorf("Unexpected error during initial project setup/fetching %s", err)
+	}
+
+	if len(v) != 3 {
+		t.Errorf("Expected three version results from the test repo, got %v", len(v))
+	} else {
+		brev := Revision("fda020843ac81352004b9dca3fcccdd517600149")
+		mrev := Revision("9f9c3a591773d9b28128309ac7a9a72abcab267d")
+		expected := []Version{
+			NewBranch("branchone").Is(brev),
+			NewBranch("otherbranch").Is(brev),
+			NewBranch("master").Is(mrev),
+		}
+
+		SortForUpgrade(v)
+
+		for k, e := range expected {
+			if !v[k].Matches(e) {
+				t.Errorf("Expected version %s in position %v but got %s", e, k, v[k])
+			}
+		}
+
+		if !v[0].(versionPair).v.(branchVersion).isDefault {
+			t.Error("Expected branchone branch version to have isDefault flag, but it did not")
+		}
+		if !v[0].(versionPair).v.(branchVersion).isDefault {
+			t.Error("Expected otherbranch branch version to have isDefault flag, but it did not")
+		}
+		if v[2].(versionPair).v.(branchVersion).isDefault {
+			t.Error("Expected master branch version not to have isDefault flag, but it did")
+		}
 	}
 }
 
