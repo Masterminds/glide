@@ -1,5 +1,5 @@
 hash: e12d18f87508f2f53e2981b52a02ed23d135f59ab90f3afca813727c0685eec0
-updated: 2016-09-15T09:56:26.054743146-04:00
+updated: 2016-09-27T23:50:39.744887915-04:00
 imports:
 - name: github.com/armon/go-radix
   branch: master
@@ -14,8 +14,8 @@ imports:
   version: v1.8.0
   revision: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
 - name: github.com/sdboyer/gps
-  version: v0.11.1
-  revision: 507f709c7eb2429371a22cff9f6077630827e450
+  branch: master
+  revision: 44255835bcf52ec1dfacf207dbbb4c1bffe378d0
 - name: github.com/termie/go-shutil
   revision: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
 - name: gopkg.in/yaml.v2

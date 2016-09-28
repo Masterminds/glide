@@ -18,4 +18,4 @@ dependencies:
 - package: github.com/Masterminds/semver
   branch: 2.x
 - package: github.com/sdboyer/gps
-  version: ^0.11.0
+  branch: master
