@@ -460,11 +460,18 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 		return []string{}, nil
 	}
 
+	alreadySeen := map[string]bool{}
+
 	for e := queue.Front(); e != nil; e = e.Next() {
 		vdep := e.Value.(string)
 		dep := r.Stripv(vdep)
 		// Check if marked in the Q and then explicitly mark it. We want to know
 		// if it had previously been marked and ensure it for the future.
+
+		if alreadySeen[dep] {
+			continue
+		}
+		alreadySeen[dep] = true
 
 		_, foundQ := r.alreadyQ[dep]
 		r.alreadyQ[dep] = true
@@ -518,6 +525,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 				// If the location doesn't exist try to fetch it.
 				if ok, err2 := r.Handler.NotFound(dep, addTest); ok {
 					r.alreadyQ[dep] = true
+					alreadySeen[dep] = false
 
 					// By adding to the queue it will get reprocessed now that
 					// it exists.
@@ -572,7 +580,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 				msg.Debug("In vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					msg.Debug("Marking %s to be scanned.", imp)
-					r.alreadyQ[dep] = true
+					r.alreadyQ[imp] = true
 					queue.PushBack(r.vpath(imp))
 					if err := r.Handler.InVendor(imp, addTest); err == nil {
 						r.VersionHandler.SetVersion(imp, addTest)
@@ -583,14 +591,14 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 			case LocUnknown:
 				msg.Debug("Missing %s. Trying to resolve.", imp)
 				if ok, err := r.Handler.NotFound(imp, addTest); ok {
-					r.alreadyQ[dep] = true
+					r.alreadyQ[imp] = true
 					queue.PushBack(r.vpath(imp))
 					r.VersionHandler.SetVersion(imp, addTest)
 				} else if err != nil {
-					r.hadError[dep] = true
+					r.hadError[imp] = true
 					msg.Err("Error looking for %s: %s", imp, err)
 				} else {
-					r.hadError[dep] = true
+					r.hadError[imp] = true
 					msg.Err("Not found: %s (2)", imp)
 				}
 			case LocGopath:
@@ -598,7 +606,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 				if _, ok := r.alreadyQ[imp]; !ok {
 					// Only scan it if it gets moved into vendor/
 					if ok, _ := r.Handler.OnGopath(imp, addTest); ok {
-						r.alreadyQ[dep] = true
+						r.alreadyQ[imp] = true
 						queue.PushBack(r.vpath(imp))
 						r.VersionHandler.SetVersion(imp, addTest)
 					}
