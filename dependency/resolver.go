@@ -460,7 +460,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 		return []string{}, nil
 	}
 
-	alreadySeen := map[string]bool{}
+	alreadySeen := make(map[string]bool, queue.Len())
 
 	for e := queue.Front(); e != nil; e = e.Next() {
 		vdep := e.Value.(string)
