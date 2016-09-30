@@ -1,6 +1,6 @@
 // Glide is a command line utility that manages Go project dependencies.
 //
-// Configureation of where to start is managed via a glide.yaml in the root of a
+// Configuration of where to start is managed via a glide.yaml in the root of a
 // project. The yaml
 //
 // A glide.yaml file looks like:
@@ -522,7 +522,7 @@ Example:
 
    If a dependency has a glide.yaml file, update will read that file and
    use the information contained there. Those dependencies are maintained in
-   a the top level 'vendor/' directory. 'vendor/foo/bar' will have its
+   the top level 'vendor/' directory. 'vendor/foo/bar' will have its
    dependencies stored in 'vendor/'. This behavior can be disabled with
    '--no-recursive'. When this behavior is skipped a glide.lock file is not
    generated because the full dependency tree cannot be known.
@@ -533,7 +533,7 @@ Example:
 
    The '--strip-vendor' flag will remove any nested 'vendor' folders and
    'Godeps/_workspace' folders after an update (along with undoing any Godep
-   import rewriting). Note, The Godeps specific functionality is deprecated and
+   import rewriting). Note, the Godeps specific functionality is deprecated and
    will be removed when most Godeps users have migrated to using the vendor
    folder.`,
 			Flags: []cli.Flag{
