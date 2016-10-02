@@ -255,8 +255,8 @@ func commands() []cli.Command {
    - No updates are peformed. You may want to run 'glide up' to accomplish that.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "delete,d",
-					Usage: "Also delete from vendor/ any packages that are no longer used.",
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -265,14 +265,10 @@ func commands() []cli.Command {
 					os.Exit(1)
 				}
 
-				if c.Bool("delete") {
-					// FIXME: Implement this in the installer.
-					fmt.Println("Delete is not currently implemented.")
-				}
 				inst := repo.NewInstaller()
 				inst.Force = c.Bool("force")
 				packages := []string(c.Args())
-				action.Remove(packages, inst)
+				action.Remove(packages, inst, c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -589,7 +585,6 @@ Example:
 // so it can be used by any Glide command.
 func startup(c *cli.Context) error {
 	action.Debug(c.Bool("debug"))
-	action.Verbose(c.Bool("verbose"))
 	action.NoColor(c.Bool("no-color"))
 	action.Quiet(c.Bool("quiet"))
 	action.Init(c.String("yaml"), c.String("home"))

@@ -40,7 +40,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	rd := filepath.Dir(glidefile)
 	rt, err := gps.ListPackages(rd, conf.Name)
 	if err != nil {
-		msg.Die("Error while scanning project: %s", err)
+		msg.Die("Error while scanning project imports: %s", err)
 	}
 
 	params := gps.SolveParameters{
@@ -57,7 +57,7 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	if gpath.HasLock(base) {
 		params.Lock, _, err = loadLockfile(base, conf)
 		if err != nil {
-			msg.Err("Could not load lockfile; aborting get. Existing dependency versions cannot be safely preserved without a lock file. Error was: %s", err)
+			msg.Err("Could not load lockfile; aborting get. Other dependency versions cannot be preserved without an invalid lock file . Error was: %s", err)
 			return
 		}
 	}
@@ -112,7 +112,6 @@ func Get(names []string, installer *repo.Installer, stripVendor, nonInteract boo
 	err = gw.writeAllSafe()
 	if err != nil {
 		msg.Err(err.Error())
-		return
 	}
 }
 
