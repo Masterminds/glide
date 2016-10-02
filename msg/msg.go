@@ -22,9 +22,6 @@ type Messenger struct {
 	// IsDebugging, if true, shows Debug.
 	IsDebugging bool
 
-	// IsVerbose, if true, shows detailed informational messages.
-	IsVerbose bool
-
 	// NoColor, if true, will not use color in the output.
 	NoColor bool
 
@@ -52,7 +49,6 @@ func NewMessenger() *Messenger {
 	m := &Messenger{
 		Quiet:       false,
 		IsDebugging: false,
-		IsVerbose:   false,
 		NoColor:     false,
 		Stdout:      os.Stdout,
 		Stderr:      os.Stderr,
@@ -93,19 +89,6 @@ func (m *Messenger) Debug(msg string, args ...interface{}) {
 // Debug logs debug information using the Default Messenger
 func Debug(msg string, args ...interface{}) {
 	Default.Debug(msg, args...)
-}
-
-// Verbose logs detailed information
-func (m *Messenger) Verbose(msg string, args ...interface{}) {
-	if m.Quiet || !m.IsVerbose {
-		return
-	}
-	m.Info(msg, args...)
-}
-
-// Verbose detailed information using the Default Messenger
-func Verbose(msg string, args ...interface{}) {
-	Default.Verbose(msg, args...)
 }
 
 // Warn logs a warning

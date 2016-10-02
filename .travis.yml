@@ -5,6 +5,7 @@ language: go
 go:
   - 1.5
   - 1.6
+  - 1.7
   - tip
 
 # Setting sudo access to false will let Travis CI use containers rather than
@@ -17,7 +18,7 @@ sudo: false
 # in the vendor directory. We don't need to test all dependent packages.
 # Only testing this project.
 script:
-  - GO15VENDOREXPERIMENT=1 make test
+  - GO15VENDOREXPERIMENT=1 make test integration-test
 
 notifications:
   webhooks:

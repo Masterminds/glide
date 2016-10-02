@@ -110,7 +110,7 @@ var remotePackageCache = make(map[string]string)
 
 func checkRemotePackageCache(pkg string) (string, bool) {
 	for k, v := range remotePackageCache {
-		if pkg == k || strings.HasPrefix(pkg, k + "/") {
+		if pkg == k || strings.HasPrefix(pkg, k+"/") {
 			return v, true
 		}
 	}
@@ -290,7 +290,7 @@ func GetBuildContext() (*BuildCtxt, error) {
 		out, err := exec.Command(goExecutable, "env", "GOROOT").Output()
 		if goRoot = strings.TrimSpace(string(out)); len(goRoot) == 0 || err != nil {
 			return nil, fmt.Errorf("Please set the $GOROOT environment " +
-			"variable to use this command\n")
+				"variable to use this command\n")
 		}
 		buildContext.GOROOT = goRoot
 	}

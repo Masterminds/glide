@@ -224,12 +224,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 }
 
 func getWizard(dep *cfg.Dependency) {
-	var remote string
-	if dep.Repository != "" {
-		remote = dep.Repository
-	} else {
-		remote = "https://" + dep.Name
-	}
+	remote := dep.Remote()
 
 	// Lookup dependency info and store in cache.
 	msg.Info("--> Gathering release information for %s", dep.Name)

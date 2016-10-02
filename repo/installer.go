@@ -570,6 +570,10 @@ func (m *MissingPackageHandler) InVendor(pkg string, addTest bool) error {
 	return nil
 }
 
+func (m *MissingPackageHandler) PkgPath(pkg string) string {
+	return pkg
+}
+
 // VersionHandler handles setting the proper version in the VCS.
 type VersionHandler struct {
 

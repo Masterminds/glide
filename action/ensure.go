@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/mirrors"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
@@ -57,6 +58,11 @@ func EnsureConfig() *cfg.Config {
 		} else {
 			msg.Warn("Problem finding the config file path (%s) relative to the current directory (%s): %s", b, cwd, err)
 		}
+	}
+
+	err = mirrors.Load()
+	if err != nil {
+		msg.Err("Unable to load mirrors: %s", err)
 	}
 
 	return conf

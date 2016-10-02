@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/glide/mirrors"
 	"github.com/Masterminds/vcs"
 	"github.com/sdboyer/gps"
 	"gopkg.in/yaml.v2"
@@ -556,22 +557,56 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 	return newDep, nil
 }
 
+// Remote returns the remote location to fetch source from. This location is
+// the central place where mirrors can alter the location.
+func (d *Dependency) Remote() string {
+	var r string
+
+	if d.Repository != "" {
+		r = d.Repository
+	} else {
+		r = "https://" + d.Name
+	}
+
+	f, nr, _ := mirrors.Get(r)
+	if f {
+		return nr
+	}
+
+	return r
+}
+
+// Vcs returns the VCS type to fetch source from.
+func (d *Dependency) Vcs() string {
+	var r string
+
+	if d.Repository != "" {
+		r = d.Repository
+	} else {
+		r = "https://" + d.Name
+	}
+
+	f, _, nv := mirrors.Get(r)
+	if f {
+		return nv
+	}
+
+	return d.VcsType
+}
+
 // GetRepo retrieves a Masterminds/vcs repo object configured for the root
 // of the package being retrieved.
 // TODO remove
 func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 	// The remote location is either the configured repo or the package
 	// name as an https url.
-	var remote string
-	if len(d.Repository) > 0 {
-		remote = d.Repository
-	} else {
-		remote = "https://" + d.Name
-	}
+	remote := d.Remote()
+
+	VcsType := d.Vcs()
 
 	// If the VCS type has a value we try that first.
-	if len(d.VcsType) > 0 && d.VcsType != "None" {
-		switch vcs.Type(d.VcsType) {
+	if len(VcsType) > 0 && VcsType != "None" {
+		switch vcs.Type(VcsType) {
 		case vcs.Git:
 			return vcs.NewGitRepo(remote, dest)
 		case vcs.Svn:
@@ -581,7 +616,7 @@ func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 		case vcs.Bzr:
 			return vcs.NewBzrRepo(remote, dest)
 		default:
-			return nil, fmt.Errorf("Unknown VCS type %s set for %s", d.VcsType, d.Name)
+			return nil, fmt.Errorf("Unknown VCS type %s set for %s", VcsType, d.Name)
 		}
 	}
 

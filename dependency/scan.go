@@ -137,6 +137,18 @@ func IterativeScan(path string) ([]string, []string, error) {
 				testPkgs = append(testPkgs, dep)
 			}
 		}
+
+		for _, dep := range pk.XTestImports {
+			found := false
+			for _, p := range pkgs {
+				if p == dep {
+					found = true
+				}
+			}
+			if !found {
+				testPkgs = append(testPkgs, dep)
+			}
+		}
 	}
 
 	return pkgs, testPkgs, nil

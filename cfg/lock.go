@@ -311,7 +311,7 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 		Hash:       hash,
 		Updated:    time.Now(),
 		Imports:    make([]*Lock, len(ds)),
-		DevImports: make([]*Lock, len(tds)),
+		DevImports: make([]*Lock, 0),
 	}
 
 	for i := 0; i < len(ds); i++ {
@@ -333,7 +333,7 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 			}
 		}
 		if !found {
-			lf.DevImports[i] = LockFromDependency(tds[i])
+			lf.DevImports = append(lf.DevImports, LockFromDependency(tds[i]))
 		}
 	}
 
