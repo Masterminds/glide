@@ -1,3 +1,8 @@
+# Release 0.12.3 (2016-10-03)
+
+## Fixed
+- #615: Fixed possible situation where resolver could get stuck in a loop
+
 # Release 0.12.2 (2016-09-13)
 
 ## Fixed
