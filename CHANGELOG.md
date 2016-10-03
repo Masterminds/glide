@@ -1,4 +1,9 @@
-# Release 0.12.1 (2016-09-13)
+# Release 0.12.3 (2016-10-03)
+
+## Fixed
+- #615: Fixed possible situation where resolver could get stuck in a loop
+
+# Release 0.12.2 (2016-09-13)
 
 ## Fixed
 - #599: In some cases was not importing dependencies config
