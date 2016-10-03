@@ -186,7 +186,7 @@ func commands() []cli.Command {
 				},
 				cli.BoolFlag{
 					Name:  "insecure",
-					Usage: "Use http:// rather than https:// to retrieve pacakges.",
+					Usage: "Use http:// rather than https:// to retrieve packages.",
 				},
 				cli.BoolFlag{
 					Name:  "no-recursive, quick",
