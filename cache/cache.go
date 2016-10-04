@@ -54,12 +54,12 @@ var isSetup bool
 var setupMutex sync.Mutex
 
 // Setup creates the cache location.
-func Setup() error {
+func Setup() {
 	setupMutex.Lock()
 	defer setupMutex.Unlock()
 
 	if isSetup {
-		return nil
+		return
 	}
 	msg.Debug("Setting up the cache directory")
 	pths := []string{
@@ -71,12 +71,11 @@ func Setup() error {
 	for _, l := range pths {
 		err := os.MkdirAll(filepath.Join(gpath.Home(), l), 0755)
 		if err != nil {
-			return err
+			msg.Die("Cache directory unavailable: %s", err)
 		}
 	}
 
 	isSetup = true
-	return nil
 }
 
 // SetupReset resets if setup has been completed. The next time setup is run
@@ -86,11 +85,11 @@ func SetupReset() {
 }
 
 // Location returns the location of the cache.
-func Location() (string, error) {
+func Location() string {
 	p := filepath.Join(gpath.Home(), "cache")
-	err := Setup()
+	Setup()
 
-	return p, err
+	return p
 }
 
 // scpSyntaxRe matches the SCP-like addresses used to access repos over SSH.
@@ -153,10 +152,7 @@ func SaveRepoData(key string, data RepoInfo) error {
 	if !Enabled {
 		return ErrCacheDisabled
 	}
-	location, err := Location()
-	if err != nil {
-		return err
-	}
+	location := Location()
 	data.LastUpdate = time.Now().String()
 	d, err := json.Marshal(data)
 	if err != nil {
@@ -185,10 +181,7 @@ func RepoData(key string) (*RepoInfo, error) {
 	if !Enabled {
 		return &RepoInfo{}, ErrCacheDisabled
 	}
-	location, err := Location()
-	if err != nil {
-		return &RepoInfo{}, err
-	}
+	location := Location()
 	c := &RepoInfo{}
 	p := filepath.Join(location, "info", key+".json")
 	f, err := ioutil.ReadFile(p)

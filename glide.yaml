@@ -14,7 +14,7 @@ dependencies:
 - package: github.com/Masterminds/vcs
   version: ^1.8.0
 - package: github.com/codegangsta/cli
-  version: ~1.14.0
+  version: ^1.16.0
 - package: github.com/Masterminds/semver
   branch: 2.x
 - package: github.com/sdboyer/gps

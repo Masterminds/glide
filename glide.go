@@ -155,8 +155,9 @@ func commands() []cli.Command {
 					Usage: "Disable interactive prompts.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Create(".", c.Bool("skip-import"), c.Bool("non-interactive"))
+				return nil
 			},
 		},
 		{
@@ -166,8 +167,9 @@ func commands() []cli.Command {
 			Description: `Glide will analyze a projects glide.yaml file and the imported
 		projects to find ways the glide.yaml file can potentially be improved. It
 		will then interactively make suggestions that you can skip or accept.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.ConfigWizard(".")
+				return nil
 			},
 		},
 		{
@@ -223,7 +225,7 @@ func commands() []cli.Command {
 					Usage: "Disable interactive prompts.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if len(c.Args()) < 1 {
 					fmt.Println("Oops! Package name is required.")
 					os.Exit(1)
@@ -241,6 +243,7 @@ func commands() []cli.Command {
 				packages := []string(c.Args())
 				//insecure := c.Bool("insecure")
 				action.Get(packages, inst, c.Bool("strip-vendor"), c.Bool("non-interactive"))
+				return nil
 			},
 		},
 		{
@@ -255,8 +258,8 @@ func commands() []cli.Command {
    - No updates are peformed. You may want to run 'glide up' to accomplish that.`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  "delete,d",
-					Usage: "Also delete from vendor/ any packages that are no longer used.",
+					Name:  "strip-vendor, v",
+					Usage: "Removes nested vendor and Godeps/_workspace directories. Requires --strip-vcs.",
 				},
 			},
 			Action: func(c *cli.Context) {
@@ -265,14 +268,10 @@ func commands() []cli.Command {
 					os.Exit(1)
 				}
 
-				if c.Bool("delete") {
-					// FIXME: Implement this in the installer.
-					fmt.Println("Delete is not currently implemented.")
-				}
 				inst := repo.NewInstaller()
 				inst.Force = c.Bool("force")
 				packages := []string(c.Args())
-				action.Remove(packages, inst)
+				action.Remove(packages, inst, c.Bool("strip-vendor"))
 			},
 		},
 		{
@@ -475,7 +474,7 @@ Example:
 					Usage: "Resolve dependencies in test files.",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if c.Bool("resolve-current") {
 					util.ResolveCurrent = true
 					msg.Warn("Only resolving dependencies for the current OS/Arch")
@@ -487,6 +486,7 @@ Example:
 				installer.Home = gpath.Home()
 
 				action.Update(installer, c.Bool("strip-vendor"), []string(c.Args()))
+				return nil
 			},
 		},
 		{
@@ -498,8 +498,9 @@ Example:
    It ignores testdata/ and directories that begin with . or _. Packages in
    vendor/ are only included if they are referenced by the main project or
    one of its dependencies.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.Tree(".", false)
+				return nil
 			},
 		},
 		{
@@ -512,8 +513,9 @@ Example:
 
    Directories that begin with . or _ are ignored, as are testdata directories. Packages in
    vendor are only included if they are used by the project.`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.List(".", true, c.String("output"))
+				return nil
 			},
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -557,27 +559,30 @@ Example:
 
        glide info -f "%n - %d - %h - %l"
           prints 'foo - Some example description - https://example.com - MIT'`,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				if c.IsSet("format") {
 					action.Info(c.String("format"))
 				} else {
 					cli.ShowCommandHelp(c, c.Command.Name)
 				}
+				return nil
 			},
 		},
 		{
 			Name:      "cache-clear",
 			ShortName: "cc",
 			Usage:     "Clears the Glide cache.",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.CacheClear()
+				return nil
 			},
 		},
 		{
 			Name:  "about",
 			Usage: "Learn about Glide",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				action.About()
+				return nil
 			},
 		},
 	}
@@ -589,7 +594,6 @@ Example:
 // so it can be used by any Glide command.
 func startup(c *cli.Context) error {
 	action.Debug(c.Bool("debug"))
-	action.Verbose(c.Bool("verbose"))
 	action.NoColor(c.Bool("no-color"))
 	action.Quiet(c.Bool("quiet"))
 	action.Init(c.String("yaml"), c.String("home"))

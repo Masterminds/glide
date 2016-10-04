@@ -34,7 +34,7 @@ func TestCommandFlagParsing(t *testing.T) {
 			Aliases:     []string{"tc"},
 			Usage:       "this is for testing",
 			Description: "testing",
-			Action:      func(_ *Context) {},
+			Action:      func(_ *Context) error { return nil },
 		}
 
 		command.SkipFlagParsing = c.skipFlagParsing
@@ -49,10 +49,14 @@ func TestCommandFlagParsing(t *testing.T) {
 func TestCommand_Run_DoesNotOverwriteErrorFromBefore(t *testing.T) {
 	app := NewApp()
 	app.Commands = []Command{
-		Command{
-			Name:   "bar",
-			Before: func(c *Context) error { return fmt.Errorf("before error") },
-			After:  func(c *Context) error { return fmt.Errorf("after error") },
+		{
+			Name: "bar",
+			Before: func(c *Context) error {
+				return fmt.Errorf("before error")
+			},
+			After: func(c *Context) error {
+				return fmt.Errorf("after error")
+			},
 		},
 	}
 
@@ -72,12 +76,12 @@ func TestCommand_Run_DoesNotOverwriteErrorFromBefore(t *testing.T) {
 func TestCommand_OnUsageError_WithWrongFlagValue(t *testing.T) {
 	app := NewApp()
 	app.Commands = []Command{
-		Command{
-			Name:   "bar",
+		{
+			Name: "bar",
 			Flags: []Flag{
 				IntFlag{Name: "flag"},
 			},
-			OnUsageError: func(c *Context, err error) error {
+			OnUsageError: func(c *Context, err error, _ bool) error {
 				if !strings.HasPrefix(err.Error(), "invalid value \"wrong\"") {
 					t.Errorf("Expect an invalid value error, but got \"%v\"", err)
 				}

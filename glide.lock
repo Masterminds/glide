@@ -1,12 +1,12 @@
-hash: e12d18f87508f2f53e2981b52a02ed23d135f59ab90f3afca813727c0685eec0
-updated: 2016-09-27T23:50:39.744887915-04:00
+hash: eff229a4411103cdd466f1af8e2540a13197c537afe1ebc4fff4493eafb6e5ea
+updated: 2016-10-02T02:12:53.210831187-04:00
 imports:
 - name: github.com/armon/go-radix
   branch: master
   revision: 4239b77079c7b5d1243b7b4736304ce8ddb6f0f2
 - name: github.com/codegangsta/cli
-  version: v1.14.0
-  revision: 71f57d300dd6a780ac1856c005c4b518cfd498ec
+  version: v1.18.1
+  revision: a14d7d367bc02b1f57d88de97926727f2d936387
 - name: github.com/Masterminds/semver
   branch: 2.x
   revision: b3ef6b1808e9889dfb8767ce7068db923a3d07de

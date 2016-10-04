@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 
 	"gopkg.in/yaml.v2"
 )
@@ -24,7 +24,7 @@ type yamlSourceContext struct {
 // NewYamlSourceFromFile creates a new Yaml InputSourceContext from a filepath.
 func NewYamlSourceFromFile(file string) (InputSourceContext, error) {
 	ysc := &yamlSourceContext{FilePath: file}
-	var results map[string]interface{}
+	var results map[interface{}]interface{}
 	err := readCommandYaml(ysc.FilePath, &results)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to load Yaml file '%s': inner error: \n'%v'", ysc.FilePath, err.Error())
