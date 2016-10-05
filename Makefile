@@ -46,8 +46,10 @@ dist: build-all
 	cd ..
 
 verify-version:
-	@if [ "$(VERSION_INCODE)" = "$(VERSION_INCHANGELOG)" ]; then \
+	@if [ "$(VERSION_INCODE)" = "v$(VERSION_INCHANGELOG)" ]; then \
 		echo "glide: $(VERSION_INCHANGELOG)"; \
+	elif [ "$(VERSION_INCODE)" = "v$(VERSION_INCHANGELOG)-dev" ]; then \
+		echo "glide (development): $(VERSION_INCHANGELOG)"; \
 	else \
 		echo "Version number in version.go does not match CHANGELOG.md"; \
 		echo "version.go: $(VERSION_INCODE)"; \
