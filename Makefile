@@ -47,9 +47,7 @@ dist: build-all
 
 verify-version:
 	@if [ "$(VERSION_INCODE)" = "$(VERSION_INCHANGELOG)" ]; then \
-		echo "yarpc-go: $(VERSION_INCHANGELOG)"; \
-	elif [ "$(VERSION_INCODE)" = "$(VERSION_INCHANGELOG)-dev" ]; then \
-		echo "yarpc-go (development): $(VERSION_INCODE)"; \
+		echo "glide: $(VERSION_INCHANGELOG)"; \
 	else \
 		echo "Version number in version.go does not match CHANGELOG.md"; \
 		echo "version.go: $(VERSION_INCODE)"; \
