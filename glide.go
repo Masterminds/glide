@@ -34,6 +34,8 @@ import (
 	"os"
 )
 
+const version = "0.13.0-dev"
+
 const usage = `Vendor Package Management for your Go projects.
 
    Each project should have a 'glide.yaml' file in the project directory. Files
@@ -58,7 +60,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "glide"
 	app.Usage = usage
-	app.Version = Version
+	app.Version = version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "yaml, y",

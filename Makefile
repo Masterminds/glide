@@ -1,7 +1,7 @@
 GLIDE_GO_EXECUTABLE ?= go
 DIST_DIRS := find * -type d -exec
 VERSION := $(shell git describe --tags)
-VERSION_INCODE = $(shell perl -ne '/^const Version.*"([^"]+)".*$$/ && print "v$$1\n"' version.go)
+VERSION_INCODE = $(shell perl -ne '/^const version.*"([^"]+)".*$$/ && print "v$$1\n"' glide.go)
 VERSION_INCHANGELOG = $(shell perl -ne '/^\# Release (\d+(\.\d+)+) / && print "$$1\n"' CHANGELOG.md | head -n1)
 
 build:
@@ -51,8 +51,8 @@ verify-version:
 	elif [ "$(VERSION_INCODE)" = "v$(VERSION_INCHANGELOG)-dev" ]; then \
 		echo "glide (development): $(VERSION_INCHANGELOG)"; \
 	else \
-		echo "Version number in version.go does not match CHANGELOG.md"; \
-		echo "version.go: $(VERSION_INCODE)"; \
+		echo "Version number in glide.go does not match CHANGELOG.md"; \
+		echo "glide.go: $(VERSION_INCODE)"; \
 		echo "CHANGELOG : $(VERSION_INCHANGELOG)"; \
 		exit 1; \
 	fi
