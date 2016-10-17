@@ -15,7 +15,7 @@ imports:
   revision: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
 - name: github.com/sdboyer/gps
   branch: master
-  revision: 44255835bcf52ec1dfacf207dbbb4c1bffe378d0
+  revision: 9ca61cb4e9851c80bb537e7d8e1be56e18e03cc9
 - name: github.com/termie/go-shutil
   revision: bcacb06fecaeec8dc42af03c87c6949f4a05c74c
 - name: gopkg.in/yaml.v2

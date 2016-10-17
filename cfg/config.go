@@ -162,25 +162,22 @@ func (c *Config) HasDependency(name string) bool {
 
 // DependencyConstraints lists all the non-test dependency constraints
 // described in a glide manifest in a way gps will understand.
-func (c *Config) DependencyConstraints() []gps.ProjectConstraint {
+func (c *Config) DependencyConstraints() gps.ProjectConstraints {
 	return gpsifyDeps(c.Imports)
 }
 
 // TestDependencyConstraints lists all the test dependency constraints described
 // in a glide manifest in a way gps will understand.
-func (c *Config) TestDependencyConstraints() []gps.ProjectConstraint {
+func (c *Config) TestDependencyConstraints() gps.ProjectConstraints {
 	return gpsifyDeps(c.DevImports)
 }
 
-func gpsifyDeps(deps Dependencies) []gps.ProjectConstraint {
-	cp := make([]gps.ProjectConstraint, len(deps))
-	for k, d := range deps {
-		cp[k] = gps.ProjectConstraint{
-			Ident: gps.ProjectIdentifier{
-				ProjectRoot: gps.ProjectRoot(d.Name),
-				NetworkName: d.Repository,
-			},
-			Constraint: d.GetConstraint(),
+func gpsifyDeps(deps Dependencies) gps.ProjectConstraints {
+	cp := make(gps.ProjectConstraints, len(deps))
+	for _, d := range deps {
+		cp[gps.ProjectRoot(d.Name)] = gps.ProjectProperties{
+			NetworkName: d.Repository,
+			Constraint:  d.GetConstraint(),
 		}
 	}
 
@@ -241,7 +238,6 @@ func (c *Config) WriteFile(glidepath string) error {
 
 // DeDupe consolidates duplicate dependencies on a Config instance
 func (c *Config) DeDupe() error {
-
 	// Remove duplicates in the imports
 	var err error
 	c.Imports, err = c.Imports.DeDupe()
