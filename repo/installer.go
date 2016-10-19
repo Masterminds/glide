@@ -244,6 +244,25 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	return nil
 }
 
+func removeContents(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	names, err := d.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		err = os.RemoveAll(filepath.Join(dir, name))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Export from the cache to the vendor directory
 func (i *Installer) Export(conf *cfg.Config) error {
 	tempDir, err := ioutil.TempDir(gpath.Tmp, "glide-vendor")
@@ -354,7 +373,7 @@ func (i *Installer) Export(conf *cfg.Config) error {
 	}
 
 	msg.Info("Replacing existing vendor dependencies")
-	err = os.RemoveAll(i.VendorPath())
+	err = removeContents(i.VendorPath())
 	if err != nil {
 		return err
 	}
