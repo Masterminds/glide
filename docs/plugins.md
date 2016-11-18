@@ -9,6 +9,7 @@ Some plugins exist today for Glide including:
 * [glide-vc](https://github.com/sgotti/glide-vc) - The vendor cleaner allows you to strip files files not needed for building your application from the `vendor/` directory.
 * [glide-brew](https://github.com/heewa/glide-brew) - Convert Go deps managed by glide to Homebrew resources to help you make brew formulas for you Go programs.
 * [glide-hash](https://github.com/mattfarina/glide-hash) - Generates a hash of the `glide.yaml` file compatible with Glides internal hash.
+* [glide-cleanup](https://github.com/ngdinhtoan/glide-cleanup) - Removing unused packages from the `glide.yaml` file.
 
 _Note, to add plugins to this list please create a pull request._
 
