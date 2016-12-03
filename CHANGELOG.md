@@ -1,6 +1,6 @@
 # Release 0.13.0 (unreleased)
 
-- Nothing yet
+- #697: Preserve vendor/.git, if it exists.
 
 # Release 0.12.3 (2016-10-03)
 
