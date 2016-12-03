@@ -192,11 +192,20 @@ func VcsVersion(dep *cfg.Dependency) error {
 		return err
 	}
 
+	type reftype uint8
+	const (
+		branch reftype = iota + 1
+		tag
+		revision
+	)
+
+	var rt reftype
 	ver := dep.Reference
 	// References in Git can begin with a ^ which is similar to semver.
 	// If there is a ^ prefix we assume it's a semver constraint rather than
 	// part of the git/VCS commit id.
 	if repo.IsReference(ver) && !strings.HasPrefix(ver, "^") {
+		rt = revision
 		msg.Info("--> Setting version for %s to %s.\n", dep.Name, ver)
 	} else {
 
@@ -211,14 +220,27 @@ func VcsVersion(dep *cfg.Dependency) error {
 			return err
 		}
 
-		// Get the tags and branches (in that order)
-		refs, err := getAllVcsRefs(repo)
+		contains := func(a []string, b string) bool {
+			for _, v := range a {
+				if b == v {
+					return true
+				}
+			}
+			return false
+		}
+
+		tags, err := repo.Tags()
+		if err != nil {
+			return err
+		}
+
+		branches, err := repo.Branches()
 		if err != nil {
 			return err
 		}
 
 		// Convert and filter the list to semver.Version instances
-		semvers := getSemVers(refs)
+		semvers := getSemVers(append(tags, branches...))
 
 		// Sort semver list
 		sort.Sort(sort.Reverse(semver.Collection(semvers)))
@@ -226,17 +248,37 @@ func VcsVersion(dep *cfg.Dependency) error {
 		for _, v := range semvers {
 			if constraint.Check(v) {
 				found = true
-				// If the constrint passes get the original reference
+				// If the constraint passes get the original reference
 				ver = v.Original()
+
 				break
 			}
 		}
+
+		if contains(tags, ver) {
+			rt = tag
+		} else {
+			rt = branch
+		}
+
 		if found {
 			msg.Info("--> Detected semantic version. Setting version for %s to %s.", dep.Name, ver)
 		} else {
 			msg.Warn("--> Unable to find semantic version for constraint %s %s", dep.Name, ver)
 		}
 	}
+
+	if repo.Vcs() == v.Git {
+		switch rt {
+		case branch:
+			ver = "origin/" + ver
+		case tag:
+			ver = "tags/" + ver
+		case revision:
+			// do nothing, should checkout fine as-is
+		}
+	}
+	msg.Debug("Updating to ver %s", ver)
 	if err := repo.UpdateVersion(ver); err != nil {
 		return err
 	}
