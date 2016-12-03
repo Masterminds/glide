@@ -354,40 +354,64 @@ func (i *Installer) Export(conf *cfg.Config) error {
 	}
 
 	msg.Info("Replacing existing vendor dependencies")
+
+	// Check if a .git directory exists under the old vendor dir. If it does,
+	// move it over to the newly-generated vendor dir - the user is probably
+	// submoduling, and it's easy enough not to break their setup.
+	ivg := filepath.Join(i.VendorPath(), ".git")
+	_, err = os.Stat(ivg)
+	if err == nil {
+		msg.Info("Preserving existing vendor/.git directory")
+		vpg := filepath.Join(vp, ".git")
+		err = os.Rename(ivg, vpg)
+
+		if terr, ok := err.(*os.LinkError); ok {
+			err = fixcle(ivg, vpg, terr)
+			if err != nil {
+				msg.Warn("Failed to preserve existing vendor/.git directory")
+			}
+		}
+	}
+
 	err = os.RemoveAll(i.VendorPath())
 	if err != nil {
 		return err
 	}
 
 	err = os.Rename(vp, i.VendorPath())
-
-	if err != nil {
-		// When there are different physical devices we cannot rename cross device.
-		// Instead we copy.
-		switch terr := err.(type) {
-		case *os.LinkError:
-			// syscall.EXDEV is the common name for the cross device link error
-			// which has varying output text across different operating systems.
-			if terr.Err == syscall.EXDEV {
-				msg.Debug("Cross link err, trying manual copy: %s", err)
-				return gpath.CopyDir(vp, i.VendorPath())
-			} else if runtime.GOOS == "windows" {
-				// In windows it can drop down to an operating system call that
-				// returns an operating system error with a different number and
-				// message. Checking for that as a fall back.
-				noerr, ok := terr.Err.(syscall.Errno)
-				// 0x11 (ERROR_NOT_SAME_DEVICE) is the windows error.
-				// See https://msdn.microsoft.com/en-us/library/cc231199.aspx
-				if ok && noerr == 0x11 {
-					msg.Debug("Cross link err on Windows, trying manual copy: %s", err)
-					return gpath.CopyDir(vp, i.VendorPath())
-				}
-			}
-		}
+	if terr, ok := err.(*os.LinkError); ok {
+		return fixcle(vp, i.VendorPath(), terr)
 	}
 
 	return err
 
+}
+
+// fixcle is a helper function that tries to recover from cross-device rename
+// errors by falling back to copying.
+func fixcle(from, to string, terr *os.LinkError) error {
+	// When there are different physical devices we cannot rename cross device.
+	// Instead we copy.
+
+	// syscall.EXDEV is the common name for the cross device link error
+	// which has varying output text across different operating systems.
+	if terr.Err == syscall.EXDEV {
+		msg.Debug("Cross link err, trying manual copy: %s", terr)
+		return gpath.CopyDir(from, to)
+	} else if runtime.GOOS == "windows" {
+		// In windows it can drop down to an operating system call that
+		// returns an operating system error with a different number and
+		// message. Checking for that as a fall back.
+		noerr, ok := terr.Err.(syscall.Errno)
+		// 0x11 (ERROR_NOT_SAME_DEVICE) is the windows error.
+		// See https://msdn.microsoft.com/en-us/library/cc231199.aspx
+		if ok && noerr == 0x11 {
+			msg.Debug("Cross link err on Windows, trying manual copy: %s", terr)
+			return gpath.CopyDir(from, to)
+		}
+	}
+
+	return terr
 }
 
 // List resolves the complete dependency tree and returns a list of dependencies.
