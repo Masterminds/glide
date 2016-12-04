@@ -20,6 +20,7 @@ package main
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/Masterminds/glide/action"
 	"github.com/Masterminds/glide/cache"
@@ -86,6 +87,11 @@ func main() {
 			Value:  "",
 			Usage:  "The temp directory to use. Defaults to systems temp",
 			EnvVar: "GLIDE_TMP",
+		},
+		cli.UintFlag{
+			Name:  "go-get-timeout",
+			Value: 5,
+			Usage: "timeout seconds for fetching meta data from go get",
 		},
 		cli.BoolFlag{
 			Name:  "no-color",
@@ -830,6 +836,10 @@ func startup(c *cli.Context) error {
 	action.Debug(c.Bool("debug"))
 	action.NoColor(c.Bool("no-color"))
 	action.Quiet(c.Bool("quiet"))
+	goGetTimeoutSec := c.Uint("go-get-timeout")
+	if goGetTimeoutSec > 0 {
+		util.GoGetTimeout = time.Duration(goGetTimeoutSec) * time.Second
+	}
 	action.Init(c.String("yaml"), c.String("home"))
 	action.EnsureGoVendor()
 	gpath.Tmp = c.String("tmp")

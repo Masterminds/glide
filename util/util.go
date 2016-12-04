@@ -21,10 +21,10 @@ import (
 // the current OS/ARCH instead of all possible permutations.
 // This is not concurrently safe which is ok for the current application. If
 // other needs arise it may need to be re-written.
+const DefaultGoGetTimeout time.Duration = time.Second * 5
+
 var ResolveCurrent = false
-var goGetCli *http.Client = &http.Client{
-	Timeout: 5 * time.Second,
-}
+var GoGetTimeout = DefaultGoGetTimeout
 
 func init() {
 	// Precompile the regular expressions used to check VCS locations.
@@ -88,6 +88,9 @@ func getRootFromGoGet(pkg string) string {
 		u.RawQuery = u.RawQuery + "&go-get=1"
 	}
 	checkURL := u.String()
+	goGetCli := &http.Client{
+		Timeout: GoGetTimeout,
+	}
 	resp, err := goGetCli.Get(checkURL)
 	if err != nil {
 		addToRemotePackageCache(pkg, pkg)
