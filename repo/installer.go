@@ -130,7 +130,7 @@ func (i *Installer) Checkout(conf *cfg.Config) error {
 // listed, but the version reconciliation has not been done.
 //
 // In other words, all versions in the Lockfile will be empty.
-func (i *Installer) Update(conf *cfg.Config) error {
+func (i *Installer) Update(conf *cfg.Config, req ...string) error {
 	base := "."
 
 	ic := newImportCache()
@@ -168,7 +168,7 @@ func (i *Installer) Update(conf *cfg.Config) error {
 	}
 	var deps cfg.Dependencies
 	var tdeps cfg.Dependencies
-	for _, v := range imps {
+	for _, v := range append(imps, req...) {
 		n := res.Stripv(v)
 		if conf.HasIgnore(n) {
 			continue

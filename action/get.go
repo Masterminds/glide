@@ -59,7 +59,7 @@ func Get(names []string, installer *repo.Installer, insecure, skipRecursive, str
 		// to be between 1.0 and 2.0. But changing that dependency may then result
 		// in that dependency's dependencies changing... so we sorta do the whole
 		// thing to be safe.
-		err = installer.Update(confcopy)
+		err = installer.Update(confcopy, names...)
 		if err != nil {
 			msg.Die("Could not update packages: %s", err)
 		}
