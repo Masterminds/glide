@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/gb"
 	"github.com/Masterminds/glide/godep"
+	"github.com/Masterminds/glide/govendor"
 	"github.com/Masterminds/glide/gpm"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
@@ -204,6 +205,9 @@ func guessImportDeps(base string, config *cfg.Config) {
 	} else if d, ok := guessImportGB(absBase); ok {
 		msg.Info("Importing GB configuration")
 		deps = d
+	} else if d, ok := guessImportGovendor(absBase); ok {
+		msg.Info("Importing govendor configuration")
+		deps = d
 	}
 
 	for _, i := range deps {
@@ -237,6 +241,15 @@ func guessImportGPM(dir string) ([]*cfg.Dependency, bool) {
 
 func guessImportGB(dir string) ([]*cfg.Dependency, bool) {
 	d, err := gb.Parse(dir)
+	if err != nil || len(d) == 0 {
+		return []*cfg.Dependency{}, false
+	}
+
+	return d, true
+}
+
+func guessImportGovendor(dir string) ([]*cfg.Dependency, bool) {
+	d, err := govendor.Parse(dir)
 	if err != nil || len(d) == 0 {
 		return []*cfg.Dependency{}, false
 	}
