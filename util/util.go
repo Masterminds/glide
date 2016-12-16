@@ -22,10 +22,24 @@ import (
 // other needs arise it may need to be re-written.
 var ResolveCurrent = false
 
+// goRoot caches the GOROOT variable for build contexts. If $GOROOT is not set in
+// the user's environment, then the context's root path is 'go env GOROOT'.
+var goRoot string
+
 func init() {
 	// Precompile the regular expressions used to check VCS locations.
 	for _, v := range vcsList {
 		v.regex = regexp.MustCompile(v.pattern)
+	}
+	if goRoot = os.Getenv("GOROOT"); len(goRoot) == 0 {
+		goExecutable := os.Getenv("GLIDE_GO_EXECUTABLE")
+		if len(goExecutable) <= 0 {
+			goExecutable = "go"
+		}
+		out, err := exec.Command(goExecutable, "env", "GOROOT").Output()
+		if err == nil {
+			goRoot = strings.TrimSpace(string(out))
+		}
 	}
 }
 
@@ -272,6 +286,11 @@ func (b *BuildCtxt) PackageName(base string) string {
 //
 // TODO: This should be moved to the `dependency` package.
 func GetBuildContext() (*BuildCtxt, error) {
+	if len(goRoot) == 0 {
+		return nil, fmt.Errorf("Please set the $GOROOT environment " +
+			"variable to use this command\n")
+	}
+
 	buildContext := &BuildCtxt{build.Default}
 
 	// If we aren't resolving for the current system set to look at all
@@ -282,18 +301,7 @@ func GetBuildContext() (*BuildCtxt, error) {
 		buildContext.UseAllFiles = true
 	}
 
-	if goRoot := os.Getenv("GOROOT"); len(goRoot) == 0 {
-		goExecutable := os.Getenv("GLIDE_GO_EXECUTABLE")
-		if len(goExecutable) <= 0 {
-			goExecutable = "go"
-		}
-		out, err := exec.Command(goExecutable, "env", "GOROOT").Output()
-		if goRoot = strings.TrimSpace(string(out)); len(goRoot) == 0 || err != nil {
-			return nil, fmt.Errorf("Please set the $GOROOT environment " +
-				"variable to use this command\n")
-		}
-		buildContext.GOROOT = goRoot
-	}
+	buildContext.GOROOT = goRoot
 	return buildContext, nil
 }
 
