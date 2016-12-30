@@ -1,10 +1,8 @@
 // Package cache provides an interface for interfacing with the Glide local cache
 //
 // Glide has a local cache of metadata and repositories similar to the GOPATH.
-// To store the cache Glide creates a .glide directory with a cache subdirectory.
-// This is usually in the users home directory unless there is no accessible
-// home directory in which case the .glide directory is in the root of the
-// repository.
+// To store the cache Glide creates a $XDG_CACHE_HOME/glide directory with a
+// cache subdirectory. This is usually in the ~/.cache/glide directory.
 //
 // To get the cache location use the `cache.Location()` function. This will
 // return the proper base location in your environment.
@@ -40,7 +38,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/glide/msg"
-	gpath "github.com/Masterminds/glide/path"
 )
 
 // Enabled sets if the cache is globally enabled. Defaults to true.
@@ -63,13 +60,13 @@ func Setup() {
 	}
 	msg.Debug("Setting up the cache directory")
 	pths := []string{
-		"cache",
-		filepath.Join("cache", "src"),
-		filepath.Join("cache", "info"),
+		"src",
+		"info",
 	}
 
+	cachedir := filepath.Join(xdgCacheDir(), "glide")
 	for _, l := range pths {
-		err := os.MkdirAll(filepath.Join(gpath.Home(), l), 0755)
+		err := os.MkdirAll(filepath.Join(cachedir, l), 0755)
 		if err != nil {
 			msg.Die("Cache directory unavailable: %s", err)
 		}
@@ -86,7 +83,7 @@ func SetupReset() {
 
 // Location returns the location of the cache.
 func Location() string {
-	p := filepath.Join(gpath.Home(), "cache")
+	p := filepath.Join(xdgCacheDir(), "glide")
 	Setup()
 
 	return p
