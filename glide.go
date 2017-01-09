@@ -250,7 +250,7 @@ func commands() []cli.Command {
 					msg.Warn("The --update-vendored flag is deprecated. This now works by default.")
 				}
 				if c.String("file") != "" {
-					msg.Warn("The --flag flag is deprecated.")
+					msg.Warn("The --file flag is deprecated.")
 				}
 				if c.Bool("cache") {
 					msg.Warn("The --cache flag is deprecated. This now works by default.")
@@ -423,8 +423,8 @@ Example:
 			Name:      "install",
 			ShortName: "i",
 			Usage:     "Install a project's dependencies",
-			Description: `This uses the native VCS of each packages to install
-   the appropriate version. There are two ways a projects dependencies can
+			Description: `This uses the native VCS of each package to install
+   the appropriate version. There are two ways a project's dependencies can
    be installed. When there is a glide.yaml file defining the dependencies but
    no lock file (glide.lock) the dependencies are installed using the "update"
    command and a glide.lock file is generated pinning all dependencies. If a
