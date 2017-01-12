@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 // DefaultGlideFile is the default name for the glide.yaml file.
@@ -45,10 +46,8 @@ func Home() string {
 		return homeDir
 	}
 
-	// Initialize the default user.
-	u, err := user.Current()
-	if err == nil && u.HomeDir != "" {
-		homeDir = filepath.Join(u.HomeDir, ".glide")
+	if h, err := homedir.Dir(); err != nil {
+		homeDir = filepath.Join(h, ".glide")
 	} else {
 		cwd, err := os.Getwd()
 		if err == nil {

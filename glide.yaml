@@ -16,3 +16,4 @@ import:
   version: ^1.16.0
 - package: github.com/Masterminds/semver
   version: ^1.1.1
+- package: github.com/mitchellh/go-homedir

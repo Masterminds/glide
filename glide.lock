@@ -1,12 +1,14 @@
-hash: 67c5571c33bfcb663d32d2b40b9ce1f2a05a3fa2e9f442077277c2782195729c
-updated: 2016-08-11T14:22:17.773372627-04:00
+hash: e36c5a71bd15a6d2f7f795a68b0fbfbd41537ee29aec16e7105bd8fd3ef118ee
+updated: 2017-01-12T13:12:10.704271522-05:00
 imports:
 - name: github.com/codegangsta/cli
-  version: 1efa31f08b9333f1bd4882d61f9d668a70cd902e
+  version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
 - name: github.com/Masterminds/semver
-  version: 8d0431362b544d1a3536cca26684828866a7de09
+  version: 59c29afe1a994eacb71c833025ca7acf874bb1da
 - name: github.com/Masterminds/vcs
-  version: fbe9fb6ad5b5f35b3e82a7c21123cfc526cbf895
+  version: 87fca6b9ec721bb38f1e9f2e3c0a36c78f6067d5
+- name: github.com/mitchellh/go-homedir
+  version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: gopkg.in/yaml.v2
-  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
+  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 testImports: []

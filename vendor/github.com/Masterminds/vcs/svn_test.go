@@ -54,7 +54,7 @@ func TestSvn(t *testing.T) {
 	}
 
 	// Verify SVN repo is a SVN repo
-	if repo.CheckLocal() == false {
+	if !repo.CheckLocal() {
 		t.Error("Problem checking out repo or SVN CheckLocal is not working")
 	}
 
@@ -167,15 +167,15 @@ func TestSvn(t *testing.T) {
 		t.Error("Svn is incorrectly returning branches")
 	}
 
-	if repo.IsReference("r4") != true {
+	if !repo.IsReference("r4") {
 		t.Error("Svn is reporting a reference is not one")
 	}
 
-	if repo.IsReference("55") == true {
-		t.Error("Svn is reporting a non-existant reference is one")
+	if repo.IsReference("55") {
+		t.Error("Svn is reporting a non-existent reference is one")
 	}
 
-	if repo.IsDirty() == true {
+	if repo.IsDirty() {
 		t.Error("Svn incorrectly reporting dirty")
 	}
 
@@ -230,7 +230,7 @@ func TestSvn(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(exportDir, string(repo.Vcs())))
 	if err != nil {
-		if found := os.IsNotExist(err); found == false {
+		if found := os.IsNotExist(err); !found {
 			t.Errorf("Error checking exported metadata in Svn: %s", err)
 		}
 	} else {
@@ -253,7 +253,7 @@ func TestSvnCheckLocal(t *testing.T) {
 	}()
 
 	repo, _ := NewSvnRepo("", tempDir)
-	if repo.CheckLocal() == true {
+	if repo.CheckLocal() {
 		t.Error("SVN CheckLocal does not identify non-SVN location")
 	}
 

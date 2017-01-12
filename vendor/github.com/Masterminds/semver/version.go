@@ -12,17 +12,28 @@ import (
 // The compiled version of the regex created at init() is cached here so it
 // only needs to be created once.
 var versionRegex *regexp.Regexp
+var validPrereleaseRegex *regexp.Regexp
 
 var (
 	// ErrInvalidSemVer is returned a version is found to be invalid when
 	// being parsed.
 	ErrInvalidSemVer = errors.New("Invalid Semantic Version")
+
+	// ErrInvalidMetadata is returned when the metadata is an invalid format
+	ErrInvalidMetadata = errors.New("Invalid Metadata string")
+
+	// ErrInvalidPrerelease is returned when the pre-release is an invalid format
+	ErrInvalidPrerelease = errors.New("Invalid Prerelease string")
 )
 
-// SemVerRegex id the regular expression used to parse a semantic version.
+// SemVerRegex is the regular expression used to parse a semantic version.
 const SemVerRegex string = `v?([0-9]+)(\.[0-9]+)?(\.[0-9]+)?` +
 	`(-([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?` +
 	`(\+([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?`
+
+// ValidPrerelease is the regular expression which validates
+// both prerelease and metadata values.
+const ValidPrerelease string = `^([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*)`
 
 // Version represents a single semantic version.
 type Version struct {
@@ -34,6 +45,7 @@ type Version struct {
 
 func init() {
 	versionRegex = regexp.MustCompile("^" + SemVerRegex + "$")
+	validPrereleaseRegex = regexp.MustCompile(ValidPrerelease)
 }
 
 // NewVersion parses a given version and returns an instance of Version or
@@ -78,6 +90,15 @@ func NewVersion(v string) (*Version, error) {
 	}
 
 	return sv, nil
+}
+
+// MustParse parses a given version and panics on error.
+func MustParse(v string) *Version {
+	sv, err := NewVersion(v)
+	if err != nil {
+		panic(err)
+	}
+	return sv
 }
 
 // String converts a Version object to a string.
@@ -127,6 +148,95 @@ func (v *Version) Prerelease() string {
 // Metadata returns the metadata on the version.
 func (v *Version) Metadata() string {
 	return v.metadata
+}
+
+// originalVPrefix returns the original 'v' prefix if any.
+func (v *Version) originalVPrefix() string {
+
+	// Note, only lowercase v is supported as a prefix by the parser.
+	if v.original != "" && v.original[:1] == "v" {
+		return v.original[:1]
+	}
+	return ""
+}
+
+// IncPatch produces the next patch version.
+// If the current version does not have prerelease/metadata information,
+// it unsets metadata and prerelease values, increments patch number.
+// If the current version has any of prerelease or metadata information,
+// it unsets both values and keeps curent patch value
+func (v Version) IncPatch() Version {
+	vNext := v
+	// according to http://semver.org/#spec-item-9
+	// Pre-release versions have a lower precedence than the associated normal version.
+	// according to http://semver.org/#spec-item-10
+	// Build metadata SHOULD be ignored when determining version precedence.
+	if v.pre != "" {
+		vNext.metadata = ""
+		vNext.pre = ""
+	} else {
+		vNext.metadata = ""
+		vNext.pre = ""
+		vNext.patch = v.patch + 1
+	}
+	vNext.original = v.originalVPrefix() + "" + vNext.String()
+	return vNext
+}
+
+// IncMinor produces the next minor version.
+// Sets patch to 0.
+// Increments minor number.
+// Unsets metadata.
+// Unsets prerelease status.
+func (v Version) IncMinor() Version {
+	vNext := v
+	vNext.metadata = ""
+	vNext.pre = ""
+	vNext.patch = 0
+	vNext.minor = v.minor + 1
+	vNext.original = v.originalVPrefix() + "" + vNext.String()
+	return vNext
+}
+
+// IncMajor produces the next major version.
+// Sets patch to 0.
+// Sets minor to 0.
+// Increments major number.
+// Unsets metadata.
+// Unsets prerelease status.
+func (v Version) IncMajor() Version {
+	vNext := v
+	vNext.metadata = ""
+	vNext.pre = ""
+	vNext.patch = 0
+	vNext.minor = 0
+	vNext.major = v.major + 1
+	vNext.original = v.originalVPrefix() + "" + vNext.String()
+	return vNext
+}
+
+// SetPrerelease defines the prerelease value.
+// Value must not include the required 'hypen' prefix.
+func (v Version) SetPrerelease(prerelease string) (Version, error) {
+	vNext := v
+	if len(prerelease) > 0 && !validPrereleaseRegex.MatchString(prerelease) {
+		return vNext, ErrInvalidPrerelease
+	}
+	vNext.pre = prerelease
+	vNext.original = v.originalVPrefix() + "" + vNext.String()
+	return vNext, nil
+}
+
+// SetMetadata defines metadata value.
+// Value must not include the required 'plus' prefix.
+func (v Version) SetMetadata(metadata string) (Version, error) {
+	vNext := v
+	if len(metadata) > 0 && !validPrereleaseRegex.MatchString(metadata) {
+		return vNext, ErrInvalidMetadata
+	}
+	vNext.metadata = metadata
+	vNext.original = v.originalVPrefix() + "" + vNext.String()
+	return vNext, nil
 }
 
 // LessThan tests if one version is less than another one.

@@ -129,7 +129,7 @@ func init() {
 		cvRegex))
 
 	constraintRangeRegex = regexp.MustCompile(fmt.Sprintf(
-		`\s*(%s)\s*-\s*(%s)\s*`,
+		`\s*(%s)\s+-\s+(%s)\s*`,
 		cvRegex, cvRegex))
 }
 
@@ -204,6 +204,14 @@ func parseConstraint(c string) (*constraint, error) {
 // Constraint functions
 func constraintNotEqual(v *Version, c *constraint) bool {
 	if c.dirty {
+
+		// If there is a pre-release on the version but the constraint isn't looking
+		// for them assume that pre-releases are not compatible. See issue 21 for
+		// more details.
+		if v.Prerelease() != "" && c.con.Prerelease() == "" {
+			return false
+		}
+
 		if c.con.Major() != v.Major() {
 			return true
 		}
@@ -220,10 +228,31 @@ func constraintNotEqual(v *Version, c *constraint) bool {
 }
 
 func constraintGreaterThan(v *Version, c *constraint) bool {
+
+	// An edge case the constraint is 0.0.0 and the version is 0.0.0-someprerelease
+	// exists. This that case.
+	if !isNonZero(c.con) && isNonZero(v) {
+		return true
+	}
+
+	// If there is a pre-release on the version but the constraint isn't looking
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
+	if v.Prerelease() != "" && c.con.Prerelease() == "" {
+		return false
+	}
+
 	return v.Compare(c.con) == 1
 }
 
 func constraintLessThan(v *Version, c *constraint) bool {
+	// If there is a pre-release on the version but the constraint isn't looking
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
+	if v.Prerelease() != "" && c.con.Prerelease() == "" {
+		return false
+	}
+
 	if !c.dirty {
 		return v.Compare(c.con) < 0
 	}
@@ -238,10 +267,30 @@ func constraintLessThan(v *Version, c *constraint) bool {
 }
 
 func constraintGreaterThanEqual(v *Version, c *constraint) bool {
+	// An edge case the constraint is 0.0.0 and the version is 0.0.0-someprerelease
+	// exists. This that case.
+	if !isNonZero(c.con) && isNonZero(v) {
+		return true
+	}
+
+	// If there is a pre-release on the version but the constraint isn't looking
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
+	if v.Prerelease() != "" && c.con.Prerelease() == "" {
+		return false
+	}
+
 	return v.Compare(c.con) >= 0
 }
 
 func constraintLessThanEqual(v *Version, c *constraint) bool {
+	// If there is a pre-release on the version but the constraint isn't looking
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
+	if v.Prerelease() != "" && c.con.Prerelease() == "" {
+		return false
+	}
+
 	if !c.dirty {
 		return v.Compare(c.con) <= 0
 	}
@@ -262,6 +311,13 @@ func constraintLessThanEqual(v *Version, c *constraint) bool {
 // ~1.2.3, ~>1.2.3 --> >=1.2.3, <1.3.0
 // ~1.2.0, ~>1.2.0 --> >=1.2.0, <1.3.0
 func constraintTilde(v *Version, c *constraint) bool {
+	// If there is a pre-release on the version but the constraint isn't looking
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
+	if v.Prerelease() != "" && c.con.Prerelease() == "" {
+		return false
+	}
+
 	if v.LessThan(c.con) {
 		return false
 	}
@@ -286,6 +342,13 @@ func constraintTilde(v *Version, c *constraint) bool {
 // When there is a .x (dirty) status it automatically opts in to ~. Otherwise
 // it's a straight =
 func constraintTildeOrEqual(v *Version, c *constraint) bool {
+	// If there is a pre-release on the version but the constraint isn't looking
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
+	if v.Prerelease() != "" && c.con.Prerelease() == "" {
+		return false
+	}
+
 	if c.dirty {
 		c.msg = constraintMsg["~"]
 		return constraintTilde(v, c)
@@ -301,6 +364,13 @@ func constraintTildeOrEqual(v *Version, c *constraint) bool {
 // ^1.2.3 --> >=1.2.3, <2.0.0
 // ^1.2.0 --> >=1.2.0, <2.0.0
 func constraintCaret(v *Version, c *constraint) bool {
+	// If there is a pre-release on the version but the constraint isn't looking
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
+	if v.Prerelease() != "" && c.con.Prerelease() == "" {
+		return false
+	}
+
 	if v.LessThan(c.con) {
 		return false
 	}
@@ -339,4 +409,13 @@ func rewriteRange(i string) string {
 	}
 
 	return o
+}
+
+// Detect if a version is not zero (0.0.0)
+func isNonZero(v *Version) bool {
+	if v.Major() != 0 || v.Minor() != 0 || v.Patch() != 0 || v.Prerelease() != "" {
+		return true
+	}
+
+	return false
 }

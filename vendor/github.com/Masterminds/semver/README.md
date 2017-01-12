@@ -78,6 +78,15 @@ The basic comparisons are:
 * `>=`: greater than or equal to
 * `<=`: less than or equal to
 
+_Note, according to the Semantic Version specification pre-releases may not be
+API compliant with their release counterpart. It says,_
+
+> _A pre-release version indicates that the version is unstable and might not satisfy the intended compatibility requirements as denoted by its associated normal version._
+
+_SemVer comparisons without a pre-release value will skip pre-release versions.
+For example, `>1.2.3` will skip pre-releases when looking at a list of values
+while `>1.2.3-alpha.1` will evaluate pre-releases._
+
 ## Hyphen Range Comparisons
 
 There are multiple methods to handle ranges and the first is hyphens ranges.

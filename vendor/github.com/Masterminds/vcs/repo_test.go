@@ -63,12 +63,12 @@ func TestTypeSwitch(t *testing.T) {
 
 func TestDepInstalled(t *testing.T) {
 	i := depInstalled("git")
-	if i != true {
+	if !i {
 		t.Error("depInstalled not finding installed dep.")
 	}
 
 	i = depInstalled("thisreallyisntinstalled")
-	if i != false {
+	if i {
 		t.Error("depInstalled finding not installed dep.")
 	}
 }

@@ -15,20 +15,20 @@ func DetectVcsFromFS(vcsPath string) (Type, error) {
 		return "", ErrCannotDetectVCS
 	}
 
-	seperator := string(os.PathSeparator)
+	separator := string(os.PathSeparator)
 
 	// Walk through each of the different VCS types to see if
 	// one can be detected. Do this is order of guessed popularity.
-	if _, err := os.Stat(vcsPath + seperator + ".git"); err == nil {
+	if _, err := os.Stat(vcsPath + separator + ".git"); err == nil {
 		return Git, nil
 	}
-	if _, err := os.Stat(vcsPath + seperator + ".svn"); err == nil {
+	if _, err := os.Stat(vcsPath + separator + ".svn"); err == nil {
 		return Svn, nil
 	}
-	if _, err := os.Stat(vcsPath + seperator + ".hg"); err == nil {
+	if _, err := os.Stat(vcsPath + separator + ".hg"); err == nil {
 		return Hg, nil
 	}
-	if _, err := os.Stat(vcsPath + seperator + ".bzr"); err == nil {
+	if _, err := os.Stat(vcsPath + separator + ".bzr"); err == nil {
 		return Bzr, nil
 	}
 

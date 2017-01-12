@@ -1,3 +1,22 @@
+# 1.10.0 (2017-01-09)
+
+## Added
+- #60: Handle Git submodules (thanks @sdboyer)
+- #61: Add gometalinter to testing
+
+# 1.9.0 (2016-11-18)
+
+## Added
+- #50: Auto-detect remotes with file:// prefix.
+- #59: Testing against Go 1.7
+
+## Changed
+- Removed auto-detection for Google Code as the service is deprecated
+- Added auto-detection of git.openstack.org
+
+## Fixed
+- #53: Git not fetching tags off branch
+
 # 1.8.0 (2016-06-29)
 
 ## Added
