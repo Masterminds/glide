@@ -166,7 +166,7 @@ func commands() []cli.Command {
    the subpackage 'web'.
 
    If a fetched dependency has a glide.yaml file, configuration from Godep,
-   GPM, GOM, or GB Glide that configuration will be used to find the dependencies
+   GPM, GOM, GB or Trash Glide that configuration will be used to find the dependencies
    and versions to fetch. If those are not available the dependent packages will
    be fetched as either a version specified elsewhere or the latest version.
 
@@ -374,6 +374,20 @@ func commands() []cli.Command {
 						return nil
 					},
 				},
+				{
+					Name:  "trash",
+					Usage: "Import Trash vendor file and display the would-be yaml file",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "file, f",
+							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						action.ImporTrash(c.String("file"))
+						return nil
+					},
+				},
 			},
 		},
 		{
@@ -527,9 +541,9 @@ Example:
    '--no-recursive'. When this behavior is skipped a glide.lock file is not
    generated because the full dependency tree cannot be known.
 
-   Glide will also import Godep, GB, GOM, and GPM files as it finds them in dependencies.
-   It will create a glide.yaml file from the Godeps data, and then update. This
-   has no effect if '--no-recursive' is set.
+   Glide will also import Godep, GB, GOM, GPM and Trash files as it finds them 
+   in dependencies. It will create a glide.yaml file from the Godeps data, and
+   then update. This has no effect if '--no-recursive' is set.
 
    The '--strip-vendor' flag will remove any nested 'vendor' folders and
    'Godeps/_workspace' folders after an update (along with undoing any Godep

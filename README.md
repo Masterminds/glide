@@ -46,7 +46,7 @@ When a dependent package is encountered its imports are scanned to determine
 dependencies of dependencies (transitive dependencies). If the dependent project
 contains a `glide.yaml` file that information is used to help determine the
 dependency rules when fetching from a location or version to use. Configuration
-from Godep, GB, GOM, and GPM is also imported.
+from Godep, GB, GOM, GPM and Trash is also imported.
 
 The dependencies are exported to the `vendor/` directory where the `go` tools
 can find and use them. A `glide.lock` file is generated containing all the
@@ -186,7 +186,7 @@ $ glide get github.com/Masterminds/cookoo
 ```
 
 When `glide get` is used it will introspect the listed package to resolve its
-dependencies including using Godep, GPM, Gom, and GB config files.
+dependencies including using Godep, GPM, Gom, GB and Trash config files.
 
 ### glide update (aliased to up)
 
@@ -199,7 +199,7 @@ $ glide up
 ```
 
 This will recurse over the packages looking for other projects managed by Glide,
-Godep, gb, gom, and GPM. When one is found those packages will be installed as needed.
+Godep, gb, gom, GPM and Trash. When one is found those packages will be installed as needed.
 
 A `glide.lock` file will be created or updated with the dependencies pinned to
 specific versions. For example, if in the `glide.yaml` file a version was
@@ -403,16 +403,16 @@ That's up to you. It's not necessary, but it may also cause you extra
 work and lots of extra space in your VCS. There may also be unforeseen errors
 ([see an example](https://github.com/mattfarina/golang-broken-vendor)).
 
-#### Q: How do I import settings from GPM, Godep, gom or gb?
+#### Q: How do I import settings from GPM, Godep, gom, gb or Trash?
 
 There are two parts to importing.
 
-1. If a package you import has configuration for GPM, Godep, gom or gb Glide will
-   recursively install the dependencies automatically.
-2. If you would like to import configuration from GPM, Godep, gom or gb to Glide see
-   the `glide import` command. For example, you can run `glide import godep` for
-   Glide to detect the projects Godep configuration and generate a `glide.yaml`
-   file for you.
+1. If a package you import has configuration for GPM, Godep, gom, gb or Trash
+   Glide will recursively install the dependencies automatically.
+2. If you would like to import configuration from GPM, Godep, gom, gb or Trash
+   to Glide see the `glide import` command. For example, you can run
+   `glide import godep` for Glide to detect the projects Godep configuration
+   and generate a `glide.yaml` file for you.
 
 Each of these will merge your existing `glide.yaml` file with the
 dependencies it finds for those managers, and then emit the file as
