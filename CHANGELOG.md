@@ -1,6 +1,10 @@
 # Release 0.13.0 (unreleased)
 
+## Changed
 - #697: Preserve vendor/.git, if it exists.
+
+## Fixed
+- #736: Find home dir without using cgo (thanks @krancour)
 
 # Release 0.12.3 (2016-10-03)
 
