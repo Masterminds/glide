@@ -28,7 +28,7 @@ func TestSvn(t *testing.T) {
 		}
 	}()
 
-	repo, err := NewSvnRepo("https://github.com/Masterminds/VCSTestRepo/trunk", tempDir+"/VCSTestRepo")
+	repo, err := NewSvnRepo("https://github.com/Masterminds/VCSTestRepo/trunk", tempDir+string(os.PathSeparator)+"VCSTestRepo")
 	if err != nil {
 		t.Error(err)
 	}
@@ -41,7 +41,7 @@ func TestSvn(t *testing.T) {
 	if repo.Remote() != "https://github.com/Masterminds/VCSTestRepo/trunk" {
 		t.Error("Remote not set properly")
 	}
-	if repo.LocalPath() != tempDir+"/VCSTestRepo" {
+	if repo.LocalPath() != tempDir+string(os.PathSeparator)+"VCSTestRepo" {
 		t.Error("Local disk location not set properly")
 	}
 
@@ -300,8 +300,8 @@ func TestSvnPing(t *testing.T) {
 
 func TestSvnInit(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "go-vcs-svn-tests")
-	remoteDir := tempDir + "/remoteDir"
-	localDir := tempDir + "/localDir"
+	remoteDir := tempDir + string(os.PathSeparator) + "remoteDir"
+	localDir := tempDir + string(os.PathSeparator) + "localDir"
 	if err != nil {
 		t.Error(err)
 	}
