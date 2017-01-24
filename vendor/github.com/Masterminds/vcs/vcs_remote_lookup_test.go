@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -92,7 +93,14 @@ func TestVCSFileLookup(t *testing.T) {
 		t.Error(err)
 	}
 
-	pth := "file://" + tempDir
+	// On Windows it should be file:// followed by /C:\for\bar. That / before
+	// the drive needs to be included in testing.
+	var pth string
+	if runtime.GOOS == "windows" {
+		pth = "file:///" + tempDir
+	} else {
+		pth = "file://" + tempDir
+	}
 	ty, _, err := detectVcsFromRemote(pth)
 
 	if err != nil {

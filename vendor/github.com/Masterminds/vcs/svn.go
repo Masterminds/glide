@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -76,6 +77,8 @@ func (s *SvnRepo) Get() error {
 	remote := s.Remote()
 	if strings.HasPrefix(remote, "/") {
 		remote = "file://" + remote
+	} else if runtime.GOOS == "windows" && filepath.VolumeName(remote) != "" {
+		remote = "file:///" + remote
 	}
 	out, err := s.run("svn", "checkout", remote, s.LocalPath())
 	if err != nil {
@@ -183,8 +186,8 @@ func (s *SvnRepo) Date() (time.Time, error) {
 	if err != nil {
 		return time.Time{}, NewLocalError("Unable to retrieve revision date", err, string(out))
 	}
-	const longForm = "2006-01-02T15:04:05.000000Z\n"
-	t, err := time.Parse(longForm, string(out))
+	const longForm = "2006-01-02T15:04:05.000000Z"
+	t, err := time.Parse(longForm, strings.TrimSpace(string(out)))
 	if err != nil {
 		return time.Time{}, NewLocalError("Unable to retrieve revision date", err, string(out))
 	}
@@ -193,14 +196,24 @@ func (s *SvnRepo) Date() (time.Time, error) {
 
 // CheckLocal verifies the local location is an SVN repo.
 func (s *SvnRepo) CheckLocal() bool {
-	sep := fmt.Sprintf("%c", os.PathSeparator)
-	psplit := strings.Split(s.LocalPath(), sep)
-	for i := 0; i < len(psplit); i++ {
-		path := fmt.Sprintf("%s%s", sep, filepath.Join(psplit[0:(len(psplit)-(i))]...))
-		if _, err := os.Stat(filepath.Join(path, ".svn")); err == nil {
+	pth, err := filepath.Abs(s.LocalPath())
+	if err != nil {
+		s.log(err.Error())
+		return false
+	}
+
+	if _, err := os.Stat(filepath.Join(pth, ".svn")); err == nil {
+		return true
+	}
+
+	oldpth := pth
+	for oldpth != pth {
+		pth = filepath.Dir(pth)
+		if _, err := os.Stat(filepath.Join(pth, ".svn")); err == nil {
 			return true
 		}
 	}
+
 	return false
 }
 
