@@ -46,7 +46,7 @@ func Home() string {
 		return homeDir
 	}
 
-	if h, err := homedir.Dir(); err != nil {
+	if h, err := homedir.Dir(); err == nil {
 		homeDir = filepath.Join(h, ".glide")
 	} else {
 		cwd, err := os.Getwd()
