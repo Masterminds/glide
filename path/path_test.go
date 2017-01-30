@@ -3,6 +3,7 @@ package path
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -35,7 +36,7 @@ func TestVendor(t *testing.T) {
 	}
 	wd, _ := os.Getwd()
 
-	os.Chdir(filepath.Join(td, "a/b/c"))
+	os.Chdir(filepath.Join(td, "a", "b", "c"))
 	res, err := Vendor()
 	if err != nil {
 		t.Errorf("Failed to resolve vendor directory: %s", err)
@@ -45,12 +46,23 @@ func TestVendor(t *testing.T) {
 		t.Errorf("Failed to find vendor: expected %s got %s", expect, res)
 	}
 
-	os.Chdir(filepath.Join(td, "x/y/z"))
+	os.Chdir(filepath.Join(td, "x", "y", "z"))
 	res, err = Vendor()
 	if err != nil {
 		t.Errorf("Failed to resolve vendor directory: %s", err)
 	}
-	expect = filepath.Join(td, "x", "symlinked_vendor")
+
+	// Windows symlinks are different than *nix and they can be inconsistent.
+	// The current testing only works for *nix testing and windows doesn't follow
+	// the symlinks. If this is a vendor.lnk file in windows this won't work for
+	// the go toolchain. If this is a windows link you need access to create one
+	// which isn't consistent.
+	// If there is a better way would love to know.
+	if runtime.GOOS == "windows" {
+		expect = filepath.Join(td, "x", "vendor")
+	} else {
+		expect = filepath.Join(td, "x", "symlinked_vendor")
+	}
 	if res != expect {
 		t.Errorf("Failed to find vendor: expected %s got %s", expect, res)
 	}
