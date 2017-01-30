@@ -1,0 +1,22 @@
+
+version: build-{build}.{branch}
+
+clone_folder: C:\gopath\src\github.com\Masterminds\glide
+shallow_clone: true
+
+environment:
+  GOPATH: C:\gopath
+
+platform:
+  - x64
+
+build: off
+
+install:
+  - go version
+  - go env
+
+test_script:
+  - go test -v . ./gb ./path ./action ./tree ./util ./godep ./godep/strip ./gpm ./cfg ./dependency ./importer ./msg ./repo ./mirrors
+
+deploy: off
