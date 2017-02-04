@@ -1,6 +1,6 @@
 # Commands
 
-The following are the Glide commands, most of which are to help yoy manage your workspace.
+The following are the Glide commands, most of which are to help you manage your workspace.
 
 ## glide create (aliased to init)
 
