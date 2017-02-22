@@ -17,20 +17,20 @@ func init() {
 }
 
 type mirror struct {
-	Repo, Vcs string
+	Repo, Base, Vcs string
 }
 
 // Get retrieves information about an mirror. It returns.
 // - bool if found
 // - new repo location
 // - vcs type
-func Get(k string) (bool, string, string) {
+func Get(k string) (bool, string, string, string) {
 	o, f := mirrors[k]
 	if !f {
-		return false, "", ""
+		return false, "", "", ""
 	}
 
-	return true, o.Repo, o.Vcs
+	return true, o.Repo, o.Base, o.Vcs
 }
 
 // Load pulls the mirrors into memory
@@ -64,6 +64,7 @@ func Load() error {
 		msg.Debug("Found mirror: %s to %s (%s)", o.Original, o.Repo, o.Vcs)
 		no := &mirror{
 			Repo: o.Repo,
+			Base: o.Base,
 			Vcs:  o.Vcs,
 		}
 		mirrors[o.Original] = no

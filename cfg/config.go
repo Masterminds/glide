@@ -471,13 +471,32 @@ func (d *Dependency) Remote() string {
 		r = "https://" + d.Name
 	}
 
-	f, nr, _ := mirrors.Get(r)
+	f, nr,_, _ := mirrors.Get(r)
 	if f {
 		return nr
 	}
 
 	return r
 }
+
+// Vcs returns the VCS type to fetch source from.
+func (d *Dependency) Base() string {
+	var r string
+
+	if d.Repository != "" {
+		r = d.Repository
+	} else {
+		r = "https://" + d.Name
+	}
+
+	f, _,n, _ := mirrors.Get(r)
+	if f {
+		return n
+	}
+
+	return ""
+}
+
 
 // Vcs returns the VCS type to fetch source from.
 func (d *Dependency) Vcs() string {
@@ -489,7 +508,7 @@ func (d *Dependency) Vcs() string {
 		r = "https://" + d.Name
 	}
 
-	f, _, nv := mirrors.Get(r)
+	f, _,_, nv := mirrors.Get(r)
 	if f {
 		return nv
 	}
