@@ -120,6 +120,8 @@ sudo add-apt-repository ppa:masterminds/glide && sudo apt-get update
 sudo apt-get install glide
 ```
 
+It is also possiblle to `go get github.com/Masterminds/glide`.
+
 [Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac, Linux and Windows.
 
 To build from source you can:
