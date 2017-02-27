@@ -12,7 +12,7 @@ From this it will attempt to figure out the external packages. External packages
 2. If the package associated with the repo ends in `.git`, `.hg`, `.bzr`, or `.svn` this is used to determine the root and the type of version control system.
 3. If the rules don't provide an answer a `go get` request occurs to try and lookup the information.
 
-Again, this is the same way `go` trying to determine an external location when you use `go get`.
+Again, this is the same way `go` tries to determine an external location when you use `go get`.
 
 If the project has dependency configuration stored in a Godep, GPM, Gom, or GB file that information will be used to populate the version within the `glide.yaml` file.
 
