@@ -6,7 +6,7 @@ Glide supports a simple plugin system similar to Git.
 
 Some plugins exist today for Glide including:
 
-* [glide-vc](https://github.com/sgotti/glide-vc) - The vendor cleaner allows you to strip files files not needed for building your application from the `vendor/` directory.
+* [glide-vc](https://github.com/sgotti/glide-vc) - The vendor cleaner allows you to strip files not needed for building your application from the `vendor/` directory.
 * [glide-brew](https://github.com/heewa/glide-brew) - Convert Go deps managed by glide to Homebrew resources to help you make brew formulas for you Go programs.
 * [glide-hash](https://github.com/mattfarina/glide-hash) - Generates a hash of the `glide.yaml` file compatible with Glides internal hash.
 * [glide-cleanup](https://github.com/ngdinhtoan/glide-cleanup) - Removing unused packages from the `glide.yaml` file.
@@ -38,7 +38,7 @@ In the example above, when glide receives the command `foo`, which it does not k
 A Glide plugin can be written in any language you wish, provided that it can be executed from the command line as a subprocess of Glide. The example included with Glide is a simple Bash script. We could just as easily write Go, Python, Perl, or even Java code (with a wrapper) to
 execute.
 
-A glide plugin must be in one of two locations:
+A Glide plugin must be in one of two locations:
 
 1. Somewhere on the PATH
 2. In the same directory as `glide.yaml`
