@@ -30,7 +30,7 @@ If you want to remove nested `vendor/` directories from within dependencies use 
 
 All of the dependencies Glide fetches are into the top level `vendor/` folder for a project. Go provides the ability for each package to have a `vendor/` folder. Glide only uses a top level folder for two reasons:
 
-1. Each import location will be compiled into the binary. If the same dependency is imported into three `vendor/` folders it will be in the compiled binary tree times. This can quickly lead to binary bloat.
+1. Each import location will be compiled into the binary. If the same dependency is imported into three `vendor/` folders it will be in the compiled binary three times. This can quickly lead to binary bloat.
 2. Instances of types created in a dependency in one `vendor/` folder are not compatible with the same dependency in other locations. Even if they are the same version. Go sees them as different packages because they are in different locations. This is a problem for database drivers, loggers, and many other things. If you [try to pass an instance created from one location of a package to another you'll encounter errors](https://github.com/mattfarina/golang-broken-vendor).
 
 If a dependency has a `vendor/` directory of its own Glide does not remove it by default. The resolution in the `go` toolchain will use these nested versions if they are present. To remove them use the `--strip-vendor` or `-v` flag on the `up` or `install` commands.
