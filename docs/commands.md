@@ -135,7 +135,7 @@ work on a dependency in a local location.
 
 The mirrors are stored in an `mirrors.yaml` file in your `GLIDE_HOME`.
 
-The three commands to manager mirrors are `list`, `set`, and `remove`.
+The three commands to manage mirrors are `list`, `set`, and `remove`.
 
 Use `set` in the form:
 
@@ -147,14 +147,16 @@ or
 
 for example,
 
-   glide mirror set https://github.com/example/foo https://git.example.com/example/foo.git
+    glide mirror set https://github.com/example/foo https://git.example.com/example/foo.git
 
-   glide mirror set https://github.com/example/foo file:///path/to/local/repo --vcs git
+or
+
+    glide mirror set https://github.com/example/foo file:///path/to/local/repo --vcs git
 
 Use `remove` in the form:
 
-   glide mirror remove [original]
+    glide mirror remove [original]
 
 for example,
 
-   glide mirror remove https://github.com/example/foo
+    glide mirror remove https://github.com/example/foo
