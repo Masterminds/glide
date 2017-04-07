@@ -287,8 +287,8 @@ func (b *BuildCtxt) PackageName(base string) string {
 // TODO: This should be moved to the `dependency` package.
 func GetBuildContext() (*BuildCtxt, error) {
 	if len(goRoot) == 0 {
-		return nil, fmt.Errorf("Please set the $GOROOT environment " +
-			"variable to use this command\n")
+		return nil, fmt.Errorf("GOROOT value not found. Please set the GOROOT " +
+			"environment variable to use this command")
 	}
 
 	buildContext := &BuildCtxt{build.Default}
