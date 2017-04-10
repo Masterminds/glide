@@ -1,6 +1,6 @@
 GLIDE_GO_EXECUTABLE ?= go
 DIST_DIRS := find * -type d -exec
-VERSION := $(shell git describe --tags)
+VERSION ?= $(shell git describe --tags)
 VERSION_INCODE = $(shell perl -ne '/^var version.*"([^"]+)".*$$/ && print "v$$1\n"' glide.go)
 VERSION_INCHANGELOG = $(shell perl -ne '/^\# Release (\d+(\.\d+)+) / && print "$$1\n"' CHANGELOG.md | head -n1)
 
