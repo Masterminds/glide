@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -37,6 +38,24 @@ var GlideFile = DefaultGlideFile
 
 // LockFile is the default name for the lock file.
 const LockFile = "glide.lock"
+
+func init() {
+
+	// As of Go 1.8 the GOPATH is no longer required to be set. Instead there
+	// is a default value. If there is no GOPATH check for the default value.
+	// Note, checking the GOPATH first to avoid invoking the go toolchain if
+	// possible.
+	if gopaths = os.Getenv("GOPATH"); len(gopaths) == 0 {
+		goExecutable := os.Getenv("GLIDE_GO_EXECUTABLE")
+		if len(goExecutable) <= 0 {
+			goExecutable = "go"
+		}
+		out, err := exec.Command(goExecutable, "env", "GOPATH").Output()
+		if err == nil {
+			gopaths = strings.TrimSpace(string(out))
+		}
+	}
+}
 
 // Home returns the Glide home directory ($GLIDE_HOME or ~/.glide, typically).
 //
@@ -145,6 +164,12 @@ func GlideWD(dir string) (string, error) {
 	return GlideWD(base)
 }
 
+// Stores the gopaths so they do not get repeatedly looked up. This is especially
+// true when the default value needs to be retrieved from `go env GOPATH`.
+// TODO(mattfarina): Instead of a singleton an application context would be a
+// better place to store things like this.
+var gopaths string
+
 // Gopath gets GOPATH from environment and return the most relevant path.
 //
 // A GOPATH can contain a colon-separated list of paths. This retrieves the
@@ -163,8 +188,7 @@ func Gopath() string {
 // Gopaths retrieves the Gopath as a list when there is more than one path
 // listed in the Gopath.
 func Gopaths() []string {
-	p := os.Getenv("GOPATH")
-	p = strings.Trim(p, string(filepath.ListSeparator))
+	p := strings.Trim(gopaths, string(filepath.ListSeparator))
 	return filepath.SplitList(p)
 }
 
