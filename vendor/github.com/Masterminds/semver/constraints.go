@@ -151,6 +151,7 @@ type constraint struct {
 	// When an x is used as part of the version (e.g., 1.x)
 	minorDirty bool
 	dirty      bool
+	patchDirty bool
 }
 
 // Check if a version meets the constraint
@@ -169,6 +170,7 @@ func parseConstraint(c string) (*constraint, error) {
 	ver := m[2]
 	orig := ver
 	minorDirty := false
+	patchDirty := false
 	dirty := false
 	if isX(m[3]) {
 		ver = "0.0.0"
@@ -179,6 +181,7 @@ func parseConstraint(c string) (*constraint, error) {
 		ver = fmt.Sprintf("%s.0.0%s", m[3], m[6])
 	} else if isX(strings.TrimPrefix(m[5], ".")) {
 		dirty = true
+		patchDirty = true
 		ver = fmt.Sprintf("%s%s.0%s", m[3], m[4], m[6])
 	}
 
@@ -196,6 +199,7 @@ func parseConstraint(c string) (*constraint, error) {
 		con:        con,
 		orig:       orig,
 		minorDirty: minorDirty,
+		patchDirty: patchDirty,
 		dirty:      dirty,
 	}
 	return cs, nil
@@ -324,7 +328,8 @@ func constraintTilde(v *Version, c *constraint) bool {
 
 	// ~0.0.0 is a special case where all constraints are accepted. It's
 	// equivalent to >= 0.0.0.
-	if c.con.Major() == 0 && c.con.Minor() == 0 && c.con.Patch() == 0 {
+	if c.con.Major() == 0 && c.con.Minor() == 0 && c.con.Patch() == 0 &&
+		!c.minorDirty && !c.patchDirty {
 		return true
 	}
 

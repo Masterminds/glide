@@ -11,9 +11,9 @@ owners:
 import:
 - package: gopkg.in/yaml.v2
 - package: github.com/Masterminds/vcs
-  version: ^1.10.2
+  version: ^1.11.0
 - package: github.com/codegangsta/cli
   version: ^1.16.0
 - package: github.com/Masterminds/semver
-  version: ^1.1.1
+  version: ^1.2.3
 - package: github.com/mitchellh/go-homedir
