@@ -122,6 +122,8 @@ sudo apt-get install glide
 
 [Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac, Linux and Windows.
 
+For a development version it is also possible to `go get github.com/Masterminds/glide`.
+
 To build from source you can:
 
 1. Clone this repository into `$GOPATH/src/github.com/Masterminds/glide` and
