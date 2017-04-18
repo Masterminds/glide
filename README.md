@@ -1,5 +1,7 @@
 # Glide: Vendor Package Management for Golang
 
+[![Join the chat at https://gitter.im/Masterminds/glide](https://badges.gitter.im/Masterminds/glide.svg)](https://gitter.im/Masterminds/glide?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ![glide logo](https://glide.sh/assets/logo-small.png)
 
 Are you used to tools such as Cargo, npm, Composer, Nuget, Pip, Maven, Bundler,
