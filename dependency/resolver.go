@@ -628,6 +628,9 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 	for e := queue.Front(); e != nil; e = e.Next() {
 		t := r.Stripv(e.Value.(string))
 		root, sp := util.NormalizeName(t)
+		if sp == "" {
+			sp = "."
+		}
 
 		if root == r.Config.Name {
 			continue
@@ -645,16 +648,14 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 			existing = r.Config.DevImports.Get(root)
 		}
 		if existing != nil {
-			if sp != "" && !existing.HasSubpackage(sp) {
+			if !existing.HasSubpackage(sp) {
 				existing.Subpackages = append(existing.Subpackages, sp)
 			}
 		} else {
 			newDep := &cfg.Dependency{
 				Name: root,
 			}
-			if sp != "" {
-				newDep.Subpackages = []string{sp}
-			}
+			newDep.Subpackages = []string{sp}
 
 			if addTest {
 				r.Config.DevImports = append(r.Config.DevImports, newDep)
@@ -733,6 +734,9 @@ func (r *Resolver) resolveList(queue *list.List, testDeps, addTest bool) ([]stri
 	for e := queue.Front(); e != nil; e = e.Next() {
 		t := strings.TrimPrefix(e.Value.(string), r.VendorDir+string(os.PathSeparator))
 		root, sp := util.NormalizeName(t)
+		if sp == "" {
+			sp = "."
+		}
 
 		if root == r.Config.Name {
 			continue
@@ -744,16 +748,14 @@ func (r *Resolver) resolveList(queue *list.List, testDeps, addTest bool) ([]stri
 		}
 
 		if existing != nil {
-			if sp != "" && !existing.HasSubpackage(sp) {
+			if !existing.HasSubpackage(sp) {
 				existing.Subpackages = append(existing.Subpackages, sp)
 			}
 		} else {
 			newDep := &cfg.Dependency{
 				Name: root,
 			}
-			if sp != "" {
-				newDep.Subpackages = []string{sp}
-			}
+			newDep.Subpackages = []string{sp}
 
 			if addTest {
 				r.Config.DevImports = append(r.Config.DevImports, newDep)
