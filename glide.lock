@@ -1,8 +1,10 @@
-hash: d4ba37e19ce11b569a279704436594a242b9a389c9f2b54dc621d5a794329155
-updated: 2017-04-07T09:19:29.493352788-04:00
+hash: dd4bd3d902d0a5e41aa396f453a821ff7ac372644bf827bf8f84053bfdc5cb78
+updated: 2017-04-22T11:11:37.120301414-04:00
 imports:
 - name: github.com/codegangsta/cli
   version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
+- name: github.com/m0j0hn/vcs
+  version: 189aecbc500cf273f49280b9bcf57af51f0a256b
 - name: github.com/Masterminds/semver
   version: 3f0ab6d4ab4bed1c61caf056b63a6e62190c7801
 - name: github.com/Masterminds/vcs
