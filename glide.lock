@@ -1,5 +1,5 @@
 hash: dd4bd3d902d0a5e41aa396f453a821ff7ac372644bf827bf8f84053bfdc5cb78
-updated: 2017-04-22T11:11:37.120301414-04:00
+updated: 2017-04-22T12:03:25.056725037-04:00
 imports:
 - name: github.com/codegangsta/cli
   version: 0bdeddeeb0f650497d603c4ad7b20cfe685682f6
@@ -12,5 +12,5 @@ imports:
 - name: github.com/mitchellh/go-homedir
   version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: gopkg.in/yaml.v2
-  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports: []
