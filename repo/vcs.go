@@ -17,7 +17,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/semver"
-	v "github.com/Masterminds/vcs"
+	v "github.com/m0j0hn/vcs"
 )
 
 // VcsUpdate updates to a particular checkout based on the VCS setting.

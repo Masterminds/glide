@@ -12,7 +12,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/semver"
-	"github.com/Masterminds/vcs"
+	"github.com/m0j0hn/vcs"
 )
 
 // ConfigWizard reads configuration from a glide.yaml file and attempts to suggest

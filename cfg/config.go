@@ -10,7 +10,7 @@ import (
 
 	"github.com/Masterminds/glide/mirrors"
 	"github.com/Masterminds/glide/util"
-	"github.com/Masterminds/vcs"
+	"github.com/m0j0hn/vcs"
 	"gopkg.in/yaml.v2"
 )
 
@@ -497,7 +497,7 @@ func (d *Dependency) Vcs() string {
 	return d.VcsType
 }
 
-// GetRepo retrieves a Masterminds/vcs repo object configured for the root
+// GetRepo retrieves a m0j0hn/vcs repo object configured for the root
 // of the package being retrieved.
 func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 

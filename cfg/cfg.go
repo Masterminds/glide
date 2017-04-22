@@ -23,9 +23,9 @@
 //     - node_modules
 //     import:
 //     - package: gopkg.in/yaml.v2
-//     - package: github.com/Masterminds/vcs
+//     - package: github.com/m0j0hn/vcs
 //       version: ^1.2.0
-//       repo:    git@github.com:Masterminds/vcs
+//       repo:    git@github.com:m0j0hn/vcs
 //       vcs:     git
 //     - package: github.com/codegangsta/cli
 //     - package: github.com/Masterminds/semver

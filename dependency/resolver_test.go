@@ -22,7 +22,7 @@ func TestResolveLocalShallow(t *testing.T) {
 
 	expect := []string{
 		filepath.FromSlash("github.com/Masterminds/semver"),
-		filepath.FromSlash("github.com/Masterminds/vcs"),
+		filepath.FromSlash("github.com/m0j0hn/vcs"),
 		filepath.FromSlash("gopkg.in/yaml.v2"),
 		filepath.FromSlash("github.com/codegangsta/cli"),
 	}
@@ -87,7 +87,7 @@ func TestResolveAll(t *testing.T) {
 	deps := []*cfg.Dependency{
 		{Name: "github.com/codegangsta/cli"},
 		{Name: "github.com/Masterminds/semver"},
-		{Name: "github.com/Masterminds/vcs"},
+		{Name: "github.com/m0j0hn/vcs"},
 		{Name: "gopkg.in/yaml.v2"},
 	}
 
