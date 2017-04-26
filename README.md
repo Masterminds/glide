@@ -113,12 +113,14 @@ On Mac OS X you can also install the latest release via [Homebrew](https://githu
 $ brew install glide
 ```
 
-On Ubuntu Precise(12.04), Trusty (14.04), Wily (15.10) or Xenial (16.04) you can install from our PPA:
+On Ubuntu Precise (12.04), Trusty (14.04), Wily (15.10) or Xenial (16.04) you can install from our PPA:
 
 ```
 sudo add-apt-repository ppa:masterminds/glide && sudo apt-get update
 sudo apt-get install glide
 ```
+
+On Ubuntu Zesty (17.04) the package is called `golang-glide`.
 
 [Binary packages](https://github.com/Masterminds/glide/releases) are available for Mac, Linux and Windows.
 
