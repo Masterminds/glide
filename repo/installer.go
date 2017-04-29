@@ -19,7 +19,7 @@ import (
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
 	"github.com/Masterminds/semver"
-	"github.com/Masterminds/vcs"
+	"github.com/m0j0hn/vcs"
 	"github.com/codegangsta/cli"
 )
 

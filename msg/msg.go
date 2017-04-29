@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Masterminds/vcs"
+	"github.com/m0j0hn/vcs"
 )
 
 // Messenger provides the underlying implementation that displays output to
