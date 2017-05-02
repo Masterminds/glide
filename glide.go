@@ -106,7 +106,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// If there was a Error message exit non-zero.
+	// If there was an Error message exit non-zero.
 	if msg.HasErrored() {
 		m := msg.Color(msg.Red, "An Error has occurred")
 		msg.Msg(m)
@@ -170,7 +170,7 @@ func commands() []cli.Command {
    and versions to fetch. If those are not available the dependent packages will
    be fetched as either a version specified elsewhere or the latest version.
 
-   When adding a new dependency Glide will perform an update to work out the
+   When adding a new dependency Glide will perform an update to work out
    the versions for the dependencies of this dependency (transitive ones). This
    will generate an updated glide.lock file with specific locked versions to use.
 
@@ -272,7 +272,7 @@ func commands() []cli.Command {
 
 				if c.Bool("resolve-current") {
 					util.ResolveCurrent = true
-					msg.Warn("Only resolving dependencies for the current OS/Arch")
+					msg.Warn("Only resolving dependencies for the current OS/Arch.")
 				}
 
 				inst := repo.NewInstaller()
@@ -743,9 +743,9 @@ Example:
    to have a cache for your continuous integration (CI) system or if you want to
    work on a dependency in a local location.
 
-   The mirrors are stored in an mirrors.yaml file in your GLIDE_HOME.
+   The mirrors are stored in a mirrors.yaml file in your GLIDE_HOME.
 
-   The three commands to manager mirrors are 'list', 'set', and 'remove'.
+   The three commands to manage mirrors are 'list', 'set', and 'remove'.
 
    Use 'set' in the form:
 
@@ -805,7 +805,7 @@ Example:
 				{
 					Name:      "remove",
 					ShortName: "rm",
-					Usage:     "Remove an mirror",
+					Usage:     "Remove a mirror",
 					Description: `Use 'remove' in the form:
 
        glide mirror remove [original]
