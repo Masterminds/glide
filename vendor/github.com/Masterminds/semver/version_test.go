@@ -1,6 +1,8 @@
 package semver
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -309,7 +311,6 @@ func TestInc(t *testing.T) {
 		if err != nil {
 			t.Errorf("Error parsing version: %s", err)
 		}
-
 		var v2 Version
 		switch tc.how {
 		case "patch":
@@ -446,5 +447,36 @@ func TestOriginalVPrefix(t *testing.T) {
 		if a != e {
 			t.Errorf("Expected vprefix=%q, but got %q", e, a)
 		}
+	}
+}
+
+func TestJsonMarshal(t *testing.T) {
+	sVer := "1.1.1"
+	x, err := NewVersion(sVer)
+	if err != nil {
+		t.Errorf("Error creating version: %s", err)
+	}
+	out, err2 := json.Marshal(x)
+	if err2 != nil {
+		t.Errorf("Error marshaling version: %s", err2)
+	}
+	got := string(out)
+	want := fmt.Sprintf("%q", sVer)
+	if got != want {
+		t.Errorf("Error marshaling unexpected marshaled content: got=%q want=%q", got, want)
+	}
+}
+
+func TestJsonUnmarshal(t *testing.T) {
+	sVer := "1.1.1"
+	ver := &Version{}
+	err := json.Unmarshal([]byte(fmt.Sprintf("%q", sVer)), ver)
+	if err != nil {
+		t.Errorf("Error unmarshaling version: %s", err)
+	}
+	got := ver.String()
+	want := sVer
+	if got != want {
+		t.Errorf("Error unmarshaling unexpected object content: got=%q want=%q", got, want)
 	}
 }
