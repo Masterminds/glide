@@ -229,6 +229,10 @@ var vcsList = []*vcsInfo{
 		pattern: `^(?P<rootpkg>hub\.jazz\.net/git/[a-z0-9]+/[A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)*$`,
 	},
 	{
+		host:    "golang.org",
+		pattern: `^(?P<rootpkg>golang\.org/x/[A-Za-z0-9_.\-]+)(/[A-Za-z0-9_.\-]+)*$`,
+	},
+	{
 		host:    "go.googlesource.com",
 		pattern: `^(?P<rootpkg>go\.googlesource\.com/[A-Za-z0-9_.\-]+/?)$`,
 	},
