@@ -284,8 +284,13 @@ func (i *Installer) Export(conf *cfg.Config) error {
 					if err != nil {
 						msg.Die(err.Error())
 					}
-					msg.Info("--> Exporting %s", dep.Name)
-					if err := repo.ExportDir(filepath.Join(vp, filepath.ToSlash(dep.Name))); err != nil {
+					path := dep.Base()
+					if strings.Compare(path,"") == 0 {
+						path = dep.Name
+					}
+
+					msg.Info("--> Exporting %s", path)
+					if err := repo.ExportDir(filepath.Join(vp, filepath.ToSlash(path))); err != nil {
 						msg.Err("Export failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
 						// operations don't step on each other.

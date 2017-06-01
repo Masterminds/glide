@@ -94,5 +94,6 @@ func (o MirrorRepos) Swap(i, j int) {
 type MirrorRepo struct {
 	Original string `yaml:"original"`
 	Repo     string `yaml:"repo"`
+	Base     string `yaml:"base"`
 	Vcs      string `yaml:"vcs,omitempty"`
 }
