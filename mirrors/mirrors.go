@@ -39,22 +39,14 @@ func Load() error {
 
 	op := filepath.Join(home, "mirrors.yaml")
 
-	var ov *Mirrors
 	if _, err := os.Stat(op); os.IsNotExist(err) {
 		msg.Debug("No mirrors.yaml file exists")
-		ov = &Mirrors{
-			Repos: make(MirrorRepos, 0),
-		}
 		return nil
 	} else if err != nil {
-		ov = &Mirrors{
-			Repos: make(MirrorRepos, 0),
-		}
 		return err
 	}
 
-	var err error
-	ov, err = ReadMirrorsFile(op)
+	ov, err := ReadMirrorsFile(op)
 	if err != nil {
 		return fmt.Errorf("Error reading existing mirrors.yaml file: %s", err)
 	}
