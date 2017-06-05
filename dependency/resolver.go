@@ -321,7 +321,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 			switch info.Loc {
 			case LocUnknown, LocVendor:
 				l.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp))) // Do we need a path on this?
-			case LocGopath:
+			case LocGopathFirst:
 				if !dirHasPrefix(info.Path, r.basedir) {
 					// FIXME: This is a package outside of the project we're
 					// scanning. It should really be on vendor. But we don't
@@ -346,7 +346,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 				switch info.Loc {
 				case LocUnknown, LocVendor:
 					tl.PushBack(filepath.Join(r.VendorDir, filepath.FromSlash(imp))) // Do we need a path on this?
-				case LocGopath:
+				case LocGopathFirst:
 					if !dirHasPrefix(info.Path, r.basedir) {
 						// FIXME: This is a package outside of the project we're
 						// scanning. It should really be on vendor. But we don't
@@ -601,7 +601,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 					r.hadError[imp] = true
 					msg.Err("Not found: %s (2)", imp)
 				}
-			case LocGopath:
+			case LocGopathFirst:
 				msg.Debug("Found on GOPATH, not vendor: %s", imp)
 				if _, ok := r.alreadyQ[imp]; !ok {
 					// Only scan it if it gets moved into vendor/
@@ -883,7 +883,7 @@ func (r *Resolver) imports(pkg string, testDeps, addTest bool) ([]string, error)
 			} else {
 				msg.Warn("Error updating %s: %s", imp, err)
 			}
-		case LocGopath:
+		case LocGopathFirst:
 			found, err := r.Handler.OnGopath(imp, addTest)
 			if err != nil {
 				msg.Err("Failed to fetch %s: %s", imp, err)
@@ -940,8 +940,10 @@ const (
 	LocLocal
 	// LocVendor indicates that the package is in a vendor/ dir
 	LocVendor
-	// LocGopath inidcates that the package is in GOPATH
-	LocGopath
+	// LocGopathFirst inidcates that the package is in first path in GOPATH
+	LocGopathFirst
+	// LocGopathFirst inidcates that the package is in path follow the first path in GOPATH
+	LocGopathOther
 	// LocGoroot indicates that the package is in GOROOT
 	LocGoroot
 	// LocCgo indicates that the package is a a CGO package
@@ -1017,23 +1019,27 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 	//}
 	//}
 
-	// Check $GOPATH
-	for _, rr := range filepath.SplitList(r.BuildContext.GOPATH) {
-		p = filepath.Join(rr, "src", filepath.FromSlash(name))
-		if pkgExists(p) {
-			info.Path = p
-			info.Loc = LocGopath
-			r.findCache[name] = info
-			return info
-		}
-	}
-
 	// Check $GOROOT
 	for _, rr := range filepath.SplitList(r.BuildContext.GOROOT) {
 		p = filepath.Join(rr, "src", filepath.FromSlash(name))
 		if pkgExists(p) {
 			info.Path = p
 			info.Loc = LocGoroot
+			r.findCache[name] = info
+			return info
+		}
+	}
+
+	// Check $GOPATH
+	for i, rr := range filepath.SplitList(r.BuildContext.GOPATH) {
+		p = filepath.Join(rr, "src", filepath.FromSlash(name))
+		if pkgExists(p) {
+			info.Path = p
+			if i == 0 {
+				info.Loc = LocGopathFirst
+			} else {
+				info.Loc = LocGopathOther
+			}
 			r.findCache[name] = info
 			return info
 		}

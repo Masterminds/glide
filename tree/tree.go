@@ -146,11 +146,15 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		}
 	}
 	// Check $GOPATH
-	for _, r := range strings.Split(b.GOPATH, ":") {
+	for i, r := range strings.Split(b.GOPATH, ":") {
 		p = filepath.Join(r, "src", name)
 		if fi, err = os.Stat(p); err == nil && (fi.IsDir() || gpath.IsLink(fi)) {
 			info.Path = p
-			info.Loc = dependency.LocGopath
+			if i == 0 {
+				info.Loc = dependency.LocGopathFirst
+			} else {
+				info.Loc = dependency.LocGopathOther
+			}
 			return info
 		}
 	}
