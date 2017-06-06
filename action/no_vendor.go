@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/glide/cfg"
 	"github.com/Masterminds/glide/msg"
 )
 
@@ -15,7 +16,8 @@ import (
 // If suffix is true, this will append `/...` to every directory.
 func NoVendor(path string, onlyGo, suffix bool) {
 	// This is responsible for printing the results of noVend.
-	paths, err := noVend(path, onlyGo, suffix)
+	conf := EnsureConfig()
+	paths, err := noVend(path, conf, onlyGo, suffix)
 	if err != nil {
 		msg.Err("Failed to walk file tree: %s", err)
 		msg.Warn("FIXME: NoVendor should exit with non-zero exit code.")
@@ -34,7 +36,7 @@ func NoVendor(path string, onlyGo, suffix bool) {
 // ".go" files.
 //
 // TODO: Should we move this to its own package?
-func noVend(path string, onlyGo, suffix bool) ([]string, error) {
+func noVend(path string, config *cfg.Config, onlyGo, suffix bool) ([]string, error) {
 
 	info, err := os.Stat(path)
 	if err != nil {
@@ -64,6 +66,9 @@ func noVend(path string, onlyGo, suffix bool) ([]string, error) {
 		}
 
 		full := filepath.Join(path, fi.Name())
+		if fi.IsDir() && config.HasExclude(full) {
+			continue
+		}
 		if fi.IsDir() && !isVend(fi) {
 			p := "./" + full + "/..."
 			res = append(res, p)
