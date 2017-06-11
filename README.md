@@ -101,11 +101,7 @@ to see this philosophy in action.*
 
 ## Install
 
-The easiest way to install the latest release on Mac or Linux is with the following script:
-
-```
-curl https://glide.sh/get | sh
-```
+The easiest way to install the latest release on Mac or Linux is with `go get github.com/Masterminds/glide`, with [Go](https://golang.org/dl/) 1.5 or later.
 
 On Mac OS X you can also install the latest release via [Homebrew](https://github.com/Homebrew/homebrew):
 
