@@ -30,7 +30,7 @@ func StripVendor() error {
 			if _, err := os.Stat(path); err == nil {
 				if info.IsDir() {
 					msg.Info("Removing: %s", path)
-					return os.RemoveAll(path)
+					return CustomRemoveAll(path)
 				}
 
 				msg.Debug("%s is not a directory. Skipping removal", path)

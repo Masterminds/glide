@@ -380,12 +380,12 @@ func (i *Installer) Export(conf *cfg.Config) error {
 		}
 	}
 
-	err = os.RemoveAll(i.VendorPath())
+	err = gpath.CustomRemoveAll(i.VendorPath())
 	if err != nil {
 		return err
 	}
 
-	err = os.Rename(vp, i.VendorPath())
+	err = gpath.CustomRename(vp, i.VendorPath())
 	if terr, ok := err.(*os.LinkError); ok {
 		return fixcle(vp, i.VendorPath(), terr)
 	}
