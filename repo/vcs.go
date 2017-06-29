@@ -102,8 +102,26 @@ func VcsUpdate(dep *cfg.Dependency, force bool, updated *UpdateTracker) error {
 				if err != nil {
 					return err
 				}
+			} else if err == v.ErrWrongVCS {
+				tp, terr := v.DetectVcsFromFS(dest)
+				if terr != nil {
+					msg.Debug("Unable to detect local file system VCS")
+				} else {
+					msg.Debug("Expect VCS type %q but got %q for %s", dep.Vcs(), tp, dep.Name)
+				}
+
+				return fmt.Errorf("Wrong VCS type error: %s for dependency %s", err, dep.Name)
+			} else if err == v.ErrWrongRemote {
+				errR, terr := v.NewRepo("", dest)
+				if terr != nil {
+					msg.Debug("Unable to detect local file system repo location")
+				} else {
+					msg.Debug("Expect VCS location %q but got %q for %s", dep.Remote(), errR.Remote(), dep.Name)
+				}
+				return fmt.Errorf("Wrong VCS location error: %s for dependency %s", err, dep.Name)
+
 			} else if err != nil {
-				return err
+				return fmt.Errorf("Error: %s for dependency %s", err, dep.Name)
 			} else if repo.IsDirty() {
 				return fmt.Errorf("%s contains uncommitted changes. Skipping update", dep.Name)
 			}
