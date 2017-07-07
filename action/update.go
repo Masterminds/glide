@@ -2,7 +2,9 @@ package action
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
@@ -109,5 +111,85 @@ func Update(installer *repo.Installer, skipRecursive, stripVendor bool) {
 		if err != nil {
 			msg.Err("Unable to strip vendor directories: %s", err)
 		}
+		msg.Info("Cleaning test and unnecessary files from vendor directories...")
+		err = CleanVendor(confcopy)
+		if err != nil {
+			msg.Err("Unable to clean vendor directories: %s", err)
+		}
 	}
+}
+
+func CleanVendor(conf *cfg.Config) error {
+	searchPath, _ := gpath.Vendor()
+	if _, err := os.Stat(searchPath); err != nil {
+		if os.IsNotExist(err) {
+			msg.Debug("Vendor directory does not exist.")
+		}
+		return err
+	}
+
+	return filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
+		// Skip the base vendor directory
+		if path == searchPath {
+			return nil
+		}
+
+		// Skip paths we have already deleted
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return nil
+		}
+
+		if info.IsDir() {
+			pkg := path[len(searchPath)+1:]
+			if !isDependency(conf.Imports, pkg) {
+				// Check the dev imports
+				if isDependency(conf.DevImports, pkg) {
+					return nil
+				}
+				msg.Debug("Removing pkg: %s", pkg)
+				return os.RemoveAll(path)
+			}
+		} else {
+			normalizedPath := strings.ToLower(path)
+			if strings.HasSuffix(normalizedPath, "_test.go") {
+				msg.Debug("Removing Test: %s", path)
+				return os.RemoveAll(path)
+			}
+			// TODO: Provide the user an option to keep license and legal notices around
+			if isSrcFile(normalizedPath) {
+				return nil
+			}
+			msg.Debug("Removing file: %s", path)
+			return os.RemoveAll(path)
+		}
+		return nil
+	})
+}
+
+// Return true if the directory provided matches or is part of a path to any
+// of the packages listed in our dependencies
+func isDependency(deps cfg.Dependencies, dir string) bool {
+	for _, dep := range deps {
+		// If the directory is part of a sub package
+		for _, sub := range dep.Subpackages {
+			if strings.Contains(dep.Name+"/"+sub, dir) {
+				return true
+			}
+		}
+		// If the directory is part of a package path or matches a package exactly
+		if strings.HasPrefix(dep.Name, dir) {
+			return true
+		}
+	}
+	return false
+}
+
+// Return true if the file provided is a source file
+func isSrcFile(path string) bool {
+	for _, suffix := range []string{".go", ".s"} {
+		if strings.HasSuffix(path, suffix) {
+			return true
+		}
+	}
+	return false
 }

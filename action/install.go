@@ -63,5 +63,10 @@ func Install(installer *repo.Installer, stripVendor bool) {
 		if err != nil {
 			msg.Err("Unable to strip vendor directories: %s", err)
 		}
+		msg.Info("Cleaning test and unnecessary files from vendor directories...")
+		err = CleanVendor(newConf)
+		if err != nil {
+			msg.Err("Unable to clean vendor directories: %s", err)
+		}
 	}
 }
