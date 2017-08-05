@@ -374,6 +374,20 @@ func commands() []cli.Command {
 						return nil
 					},
 				},
+				{
+					Name:  "vndr",
+					Usage: "Import VNDR's vendor.conf file and display the would-be yaml file",
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "file, f",
+							Usage: "Save all of the discovered dependencies to a Glide YAML file.",
+						},
+					},
+					Action: func(c *cli.Context) error {
+						action.ImportVNDR(c.String("file"))
+						return nil
+					},
+				},
 			},
 		},
 		{
