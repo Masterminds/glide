@@ -226,6 +226,11 @@ func TestGreaterThan(t *testing.T) {
 		{"1.2.3", "1.5.1", false},
 		{"2.2.3", "1.5.1", true},
 		{"3.2-beta", "3.2-beta", false},
+		{"3.2.0-beta.1", "3.2.0-beta.5", false},
+		{"3.2-beta.4", "3.2-beta.2", true},
+		{"7.43.0-SNAPSHOT.99", "7.43.0-SNAPSHOT.103", false},
+		{"7.43.0-SNAPSHOT.FOO", "7.43.0-SNAPSHOT.103", true},
+		{"7.43.0-SNAPSHOT.99", "7.43.0-SNAPSHOT.BAR", false},
 	}
 
 	for _, tc := range tests {
