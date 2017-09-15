@@ -20,6 +20,7 @@ package main
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/glide/action"
 	"github.com/Masterminds/glide/cache"
@@ -664,7 +665,7 @@ Example:
    Directories that begin with . or _ are ignored, as are testdata directories. Packages in
    vendor are only included if they are used by the project.`,
 			Action: func(c *cli.Context) error {
-				action.List(".", true, c.String("output"))
+				action.List(".", true, c.String("output"), strings.Split(c.String("ignore"), ","))
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -672,6 +673,11 @@ Example:
 					Name:  "output, o",
 					Usage: "Output format. One of: json|json-pretty|text",
 					Value: "text",
+				},
+				cli.StringFlag{
+					Name:  "ignore,i",
+					Usage: "Ignore given packages as dependency (comma separated list)",
+					Value: "",
 				},
 			},
 		},

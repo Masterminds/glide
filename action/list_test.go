@@ -17,14 +17,14 @@ func TestList(t *testing.T) {
 
 	var buf bytes.Buffer
 	msg.Default.Stdout = &buf
-	List("../", false, "text")
+	List("../", false, "text", []string{})
 	if buf.Len() < 5 {
 		t.Error("Expected some data to be found.")
 	}
 
 	var buf2 bytes.Buffer
 	msg.Default.Stdout = &buf2
-	List("../", false, "json")
+	List("../", false, "json", []string{})
 	j := buf2.Bytes()
 	var o PackageList
 	err := json.Unmarshal(j, &o)
@@ -37,7 +37,7 @@ func TestList(t *testing.T) {
 
 	var buf3 bytes.Buffer
 	msg.Default.Stdout = &buf3
-	List("../", false, "json-pretty")
+	List("../", false, "json-pretty", []string{})
 	j = buf3.Bytes()
 	var o2 PackageList
 	err = json.Unmarshal(j, &o2)

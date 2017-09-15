@@ -15,7 +15,7 @@ import (
 //  - dir (string): basedir
 //  - deep (bool): whether to do a deep scan or a shallow scan
 //  - format (string): The format to output (text, json, json-pretty)
-func List(basedir string, deep bool, format string) {
+func List(basedir string, deep bool, format string, ignore []string) {
 	basedir, err := filepath.Abs(basedir)
 	if err != nil {
 		msg.Die("Could not read directory: %s", err)
@@ -27,6 +27,10 @@ func List(basedir string, deep bool, format string) {
 	}
 	h := &dependency.DefaultMissingPackageHandler{Missing: []string{}, Gopath: []string{}, Prefix: "vendor"}
 	r.Handler = h
+
+	if len(ignore) > 0 {
+		r.Config.Ignore = ignore
+	}
 
 	localPkgs, _, err := r.ResolveLocal(deep)
 	if err != nil {
