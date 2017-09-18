@@ -15,6 +15,7 @@ import (
 //  - dir (string): basedir
 //  - deep (bool): whether to do a deep scan or a shallow scan
 //  - format (string): The format to output (text, json, json-pretty)
+//  - ignore ([]string): packages to ignore, i.e. they may miss without triggering an error
 func List(basedir string, deep bool, format string, ignore []string) {
 	basedir, err := filepath.Abs(basedir)
 	if err != nil {

@@ -47,4 +47,17 @@ func TestList(t *testing.T) {
 	if len(o2.Installed) == 0 {
 		t.Error("No packages found on json-pretty list")
 	}
+
+	var buf4 bytes.Buffer
+	msg.Default.Stdout = &buf4
+	List("../", false, "json", []string{"nonexisting/package"})
+	j = buf3.Bytes()
+	var o3 PackageList
+	err = json.Unmarshal(j, &o3)
+	if err != nil {
+		t.Errorf("Error unmarshaling json list w/ ignore: %s", err)
+	}
+	if len(o3.Installed) == 0 {
+		t.Error("No packages found on json list w/ ignore")
+	}
 }
