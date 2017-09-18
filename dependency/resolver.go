@@ -515,7 +515,7 @@ func (r *Resolver) resolveImports(queue *list.List, testDeps, addTest bool) ([]s
 			if strings.HasPrefix(errStr, "no buildable Go source") {
 				msg.Debug("No subpackages declared. Skipping %s.", dep)
 				continue
-			} else if os.IsNotExist(err) && !foundErr && !foundQ {
+			} else if osDirNotFound(err, r.Handler.PkgPath(dep)) && !foundErr && !foundQ {
 				// If the location doesn't exist, there hasn't already been an
 				// error, it's not already been in the Q then try to fetch it.
 				// When there's an error or it's already in the Q (it should be
@@ -1141,4 +1141,27 @@ func dedupeStrings(s1, s2 []string) (r []string) {
 	}
 
 	return
+}
+
+// In Go 1.9 go/build.ImportDir changed so that a missing dir
+// no longer responses with os.IsNotExist. Instead the error changed
+// one in the form of fmt.Errorf("cannot find package %q in:\n\t%s", path, p.Dir)
+// which is similar to other go/build.ImportDir errors. This function
+// attempts to detect when ImportDir thinks something is not found
+func osDirNotFound(err error, p string) bool {
+
+	if os.IsNotExist(err) {
+		return true
+	}
+
+	// Since there are multiple errors that start like this we need to make
+	// sure the directory is not present
+	if strings.HasPrefix(err.Error(), "cannot find package ") {
+		_, nferr := os.Stat(p)
+		if os.IsNotExist(nferr) {
+			return true
+		}
+	}
+
+	return false
 }
