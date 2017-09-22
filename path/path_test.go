@@ -101,7 +101,7 @@ func TestCustomRemoveAll(t *testing.T) {
 	spaceyPath := filepath.Join(td, "10942384 12341234 12343214 324134132323")
 	err = os.MkdirAll(spaceyPath, 0777)
 	if err != nil {
-		t.Fatal("Failed to make test directory %s", err)
+		t.Fatalf("Failed to make test directory %s", err)
 	}
 	err = CustomRemoveAll(spaceyPath)
 	if err != nil {

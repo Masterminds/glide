@@ -15,21 +15,21 @@ import (
 
 // extract the exit code from an os.exec error
 func getExitCode(err error) int {
-        if err != nil {
-                if exitError, ok := err.(*exec.ExitError); ok {
-                        waitStatus := exitError.Sys().(syscall.WaitStatus)
-                        return waitStatus.ExitStatus()
-                }
-        }
-        return 0
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			waitStatus := exitError.Sys().(syscall.WaitStatus)
+			return waitStatus.ExitStatus()
+		}
+	}
+	return 0
 }
 
-
-// Hard to track down these codes - they are from windows.h and documented here: 
+// Hard to track down these codes - they are from windows.h and documented here:
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx
-const WIN_ERROR_FILE_NOT_FOUND = 2
-const WIN_ERROR_PATH_NOT_FOUND = 3
-
+const (
+	winErrorFileNotFound = 2
+	winErrorPathNotFound = 3
+)
 
 // This file and its contents are to handle a Windows bug where large sets of
 // files fail when using the `os` package. This has been seen in Windows 10
@@ -44,11 +44,11 @@ func CustomRemoveAll(p string) error {
 	// Handle the windows case first
 	if runtime.GOOS == "windows" {
 		msg.Debug("Detected Windows. Removing files using windows command")
-                cmd := exec.Command("cmd.exe", "/c", "rd", "/s", "/q", p)
+		cmd := exec.Command("cmd.exe", "/c", "rd", "/s", "/q", p)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			exitCode := getExitCode(err)
-			if exitCode != WIN_ERROR_FILE_NOT_FOUND && exitCode != WIN_ERROR_PATH_NOT_FOUND {
+			if exitCode != winErrorFileNotFound && exitCode != winErrorPathNotFound {
 				return fmt.Errorf("Error removing files: %s. output: %s", err, output)
 			}
 		}
