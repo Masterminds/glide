@@ -86,3 +86,28 @@ func TestGlide(t *testing.T) {
 	}
 	os.Chdir(wd)
 }
+
+func TestCustomRemoveAll(t *testing.T) {
+	td, err := filepath.Abs(testdata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// test that deleting a non-existent directory does not throw an error
+	err = CustomRemoveAll(filepath.Join(td, "directory/doesnt/exist"))
+	if err != nil {
+		t.Errorf("Failed when removing non-existent directory %s", err)
+	}
+	// test that deleting a path with spaces does not throw an error
+	spaceyPath := filepath.Join(td, "10942384 12341234 12343214 324134132323")
+	err = os.MkdirAll(spaceyPath, 0777)
+	if err != nil {
+		t.Fatal("Failed to make test directory %s", err)
+	}
+	err = CustomRemoveAll(spaceyPath)
+	if err != nil {
+		t.Errorf("Errored incorrectly when deleting a path with spaces %s", err)
+	}
+	if _, err = os.Stat(spaceyPath); !os.IsNotExist(err) {
+		t.Errorf("Failed to successfully delete a path with spaces")
+	}
+}
