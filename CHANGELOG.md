@@ -1,10 +1,43 @@
-# Release 0.13.0 (unreleased)
+# Release 0.13.0 (2017-09-28)
+
+## Added
+
+- #631: Verify version during build in automation (thanks @breerly)
+- #711: Added a commit hash example to the docs (thanks @mh-cbon)
+- #771: Handling default GOPATH for Go 1.8
+- #814: Adding install instructions for Ubuntu 17.04 (thanks @HaraldNordgren)
+- #870: Added support for s390x architecture (thanks @Nayana-ibm)
 
 ## Changed
-- #697: Preserve vendor/.git, if it exists.
+
+- #582: Removed verbose flag as it was not being used (thanks @kelcecil)
+- #697: Preserve vendor/.git, if it exists. (thanks @sdboyer)
+- #686: Make ending dots in output more consistent (thanks @stevenroose)
+- #748: Updated tests to work windows and add windows CI testing
+- #717: Cache GOROOT at init time for performance (thanks @heyitsanthony)
+- #797, #821, #908: Updating to the latest version of the dependencies
+- #800: Allow VERSION of glide to be passed in with build script (thanks @BlackYoup)
+- #774: Add docs on using go get to install glide (thanks @philoserf)
+- #907: Updated Travis CI language versions of Go to test against (thanks @dvrkps)
+- #916: Update gox to version managed by Masterminds for builds
 
 ## Fixed
+
 - #736: Find home dir without using cgo (thanks @krancour)
+- #603: Fixed where, in some cases not importing dependencies config
+- #620: Fixed grammar usage on projects (thanks @server-monitor)
+- #623: Fixed typos in help and  (thanks @jonboulle)
+- #628: Fixed typos (thanks @philoserf)
+- #733: Fixed documentation issues (thanks @matiasanaya)
+- #747: Fixed issue with glide home directory (thanks @agatan)
+- #759: More spelling fixes (thanks @jbirch)
+- #775: Even more doc typo fixes (thanks @cristiangreco)
+- #811: Fixed issue with windows git submodules
+- #819: Fixed more typos (thanks @zoofood)
+- #829: Fixed preservation of .git files correctly (@RaduBerinde)
+- #778: Fixed removing and moving large sets of files fails on Windows
+- #910: Fixed issue due to go/build.ImportDir change response on not found dir
+- #906: Fixed CustomRemoveAll() to handle spaces in paths, and also file not found (thanks @jpz)
 
 # Release 0.12.3 (2016-10-03)
 
