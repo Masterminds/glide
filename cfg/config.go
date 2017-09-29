@@ -377,6 +377,7 @@ type Dependency struct {
 	Subpackages []string `yaml:"subpackages,omitempty"`
 	Arch        []string `yaml:"arch,omitempty"`
 	Os          []string `yaml:"os,omitempty"`
+	Recursive   bool     `yaml:"recursive,omitempty"`
 }
 
 // A transitive representation of a dependency for importing and exploting to yaml.
@@ -389,6 +390,7 @@ type dep struct {
 	Subpackages []string `yaml:"subpackages,omitempty"`
 	Arch        []string `yaml:"arch,omitempty"`
 	Os          []string `yaml:"os,omitempty"`
+	Recursive   bool     `yaml:"recursive,omitempty"`
 }
 
 // DependencyFromLock converts a Lock to a Dependency
@@ -401,6 +403,7 @@ func DependencyFromLock(lock *Lock) *Dependency {
 		Subpackages: lock.Subpackages,
 		Arch:        lock.Arch,
 		Os:          lock.Os,
+		Recursive:   lock.Recursive,
 	}
 }
 
@@ -418,6 +421,7 @@ func (d *Dependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	d.Subpackages = newDep.Subpackages
 	d.Arch = newDep.Arch
 	d.Os = newDep.Os
+	d.Recursive = newDep.Recursive
 
 	if d.Reference == "" && newDep.Ref != "" {
 		d.Reference = newDep.Ref
@@ -455,6 +459,7 @@ func (d *Dependency) MarshalYAML() (interface{}, error) {
 		Subpackages: d.Subpackages,
 		Arch:        d.Arch,
 		Os:          d.Os,
+		Recursive:   d.Recursive,
 	}
 
 	return newDep, nil
@@ -511,7 +516,12 @@ func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 	if len(VcsType) > 0 && VcsType != "None" {
 		switch vcs.Type(VcsType) {
 		case vcs.Git:
-			return vcs.NewGitRepo(remote, dest)
+			r, err := vcs.NewGitRepo(remote, dest)
+			if err != nil {
+				return nil, err
+			}
+			r.SetRecursive(d.Recursive)
+			return r, nil
 		case vcs.Svn:
 			return vcs.NewSvnRepo(remote, dest)
 		case vcs.Hg:
@@ -524,7 +534,12 @@ func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 	}
 
 	// When no type set we try to autodetect.
-	return vcs.NewRepo(remote, dest)
+	r, err := vcs.NewRepo(remote, dest)
+	if err != nil {
+		return nil, err
+	}
+	r.SetRecursive(d.Recursive)
+	return r, nil
 }
 
 // Clone creates a clone of a Dependency
@@ -538,6 +553,7 @@ func (d *Dependency) Clone() *Dependency {
 		Subpackages: d.Subpackages,
 		Arch:        d.Arch,
 		Os:          d.Os,
+		Recursive:   d.Recursive,
 	}
 }
 

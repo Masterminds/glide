@@ -162,6 +162,7 @@ type Lock struct {
 	Subpackages []string `yaml:"subpackages,omitempty"`
 	Arch        []string `yaml:"arch,omitempty"`
 	Os          []string `yaml:"os,omitempty"`
+	Recursive   bool     `yaml:"recursive:omitempty"`
 }
 
 // Clone creates a clone of a Lock.
@@ -174,6 +175,7 @@ func (l *Lock) Clone() *Lock {
 		Subpackages: l.Subpackages,
 		Arch:        l.Arch,
 		Os:          l.Os,
+		Recursive:   l.Recursive,
 	}
 }
 
@@ -187,6 +189,7 @@ func LockFromDependency(dep *Dependency) *Lock {
 		Subpackages: dep.Subpackages,
 		Arch:        dep.Arch,
 		Os:          dep.Os,
+		Recursive:   dep.Recursive,
 	}
 }
 
