@@ -284,7 +284,15 @@ func (i *Installer) Export(conf *cfg.Config) error {
 					if err != nil {
 						msg.Die(err.Error())
 					}
-					msg.Info("--> Exporting %s", dep.Name)
+
+					commitInfo := " "
+					if dep.CommitInfo != nil {
+						commitInfo = " " +
+							util.Date(dep.CommitInfo.Date) + " " +
+							dep.CommitInfo.Author
+					}
+
+					msg.Info("--> Exporting %s %s@%s%s%s", dep.Name, dep.Original, dep.Pin[0:7], dep.RefString(), commitInfo)
 					if err := repo.ExportDir(filepath.Join(vp, filepath.ToSlash(dep.Name))); err != nil {
 						msg.Err("Export failed for %s: %s\n", dep.Name, err)
 						// Capture the error while making sure the concurrent
