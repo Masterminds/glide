@@ -18,17 +18,11 @@ distributed with the package.
 
 ### Golang Dep
 
-An [official package manager](https://github.com/golang/dep) has been started for
-the Go community. We view this as a good thing to bring everyone together around
-one solution. It's currently pre-alpha so it's not ready for prime time usage.
-
-If you start to poke it you'll see it has a similar style to Glide. While commands
-may have different names there are many of the same features such as semantic versions
-and ranges.
-
-Our view is that Glide will be around until an official package manager is ready
-for production use by the masses. We support the common tool and look forward to
-the day it is capable of replacing Glide.
+The Go community now has the [dep](https://github.com/golang/dep) project to
+manage dependencies. Please consider trying to migrate from Glide to dep. If there
+is an issue preventing you from migrating please file an issue with dep so the
+problem can be corrected. Glide will continue to be supported for some time but
+is considered to be in a state of support rather than active feature development.
 
 ### Features
 
