@@ -1,10 +1,10 @@
-hash: 9678e016890de949db9cfcae386b5ae1a4c2149ccd602aad33ac90d7c19d117e
-updated: 2017-09-14T16:18:17.322889284-04:00
+hash: 1f13d16b2759f4c698bf1fa66a55ef06a42ba86859153c478f903e60502a1273
+updated: 2017-10-04T10:27:41.570512797-04:00
 imports:
 - name: github.com/codegangsta/cli
   version: cfb38830724cc34fedffe9a2a29fb54fa9169cd1
 - name: github.com/Masterminds/semver
-  version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
+  version: 15d8430ab86497c5c0da827b748823945e1cf1e1
 - name: github.com/Masterminds/vcs
   version: 6f1c6d150500e452704e9863f68c2559f58616bf
 - name: github.com/mitchellh/go-homedir
