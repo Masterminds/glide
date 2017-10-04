@@ -383,7 +383,7 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 		if err != nil {
 			return []string{}, []string{}, err
 		}
-		tre, err := r.resolveImports(tl, true, true)
+		tre, err := r.resolveImports(tl, false, false)
 		return re, tre, err
 	}
 

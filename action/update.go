@@ -1,15 +1,23 @@
 package action
 
 import (
+	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/cfg"
+	"github.com/Masterminds/glide/dependency"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/repo"
 )
+
+var mainPkgRegex = regexp.MustCompile(`(?m)^package\s*main\s*$`)
 
 // Update updates repos and the lock file from the main glide yaml.
 func Update(installer *repo.Installer, skipRecursive, stripVendor bool) {
@@ -109,5 +117,143 @@ func Update(installer *repo.Installer, skipRecursive, stripVendor bool) {
 		if err != nil {
 			msg.Err("Unable to strip vendor directories: %s", err)
 		}
+		msg.Info("Cleaning test and unnecessary files from vendor directories...")
+		err = CleanVendor(confcopy)
+		if err != nil {
+			msg.Err("Unable to clean vendor directories: %s", err)
+		}
 	}
+}
+
+func CleanVendor(conf *cfg.Config) error {
+	searchPath, _ := gpath.Vendor()
+	if _, err := os.Stat(searchPath); err != nil {
+		if os.IsNotExist(err) {
+			msg.Debug("Vendor directory does not exist.")
+		}
+		return err
+	}
+
+	baseDir, err := filepath.Abs(".")
+	if err != nil {
+		msg.Die("Could not read directory: %s", err)
+	}
+
+	res, err := dependency.NewResolver(baseDir)
+	if err != nil {
+		msg.Die("Failed to create a resolver: %s", err)
+	}
+	res.Handler = &dependency.DefaultMissingPackageHandler{
+		Prefix:  path.Join(baseDir, "vendor"),
+		Missing: []string{},
+		Gopath:  []string{},
+	}
+	res.ResolveTest = true
+	res.Config = conf
+	msg.Info("Resolving vendored imports")
+
+	imports, testImports, err := res.ResolveLocal(true)
+	if err != nil {
+		msg.Die("Failed to resolve vendored packages: %s", err)
+	}
+
+	imports = append(imports, testImports...)
+
+	fmt.Printf("Scanned Imports: %+v\n", imports)
+
+	return filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
+		// Skip the base vendor directory
+		if path == searchPath {
+			return nil
+		}
+
+		// Skip paths we have already deleted
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return nil
+		}
+
+		if info.IsDir() {
+			pkg := path[len(searchPath)+1:]
+			if !isDirDependency(imports, pkg) {
+				msg.Debug("Removing pkg: %s", pkg)
+				return os.RemoveAll(path)
+			}
+		} else {
+
+			normalizedPath := strings.ToLower(path)
+			if strings.HasSuffix(normalizedPath, "_test.go") {
+				msg.Debug("Removing Test: %s", path)
+				return os.RemoveAll(path)
+			}
+			// TODO: Provide the user an option to keep license and legal notices around
+			if isSrcFile(normalizedPath) {
+				if isMainPkg(path) {
+					msg.Debug("Removing main package: %s", path)
+					return os.Remove(path)
+				}
+				// If the files dir is not in our dependency list
+				pkg := filepath.Dir(path[len(searchPath)+1:])
+				msg.Debug("Src PKG: %s - %s", pkg, path)
+				if !isSrcDependency(imports, pkg) {
+					msg.Debug("Removing NonDepencency Src: %s", path)
+					os.Remove(path)
+				}
+				return nil
+			}
+			msg.Debug("Removing file: %s", path)
+			return os.RemoveAll(path)
+		}
+		return nil
+	})
+}
+
+// Return true if the directory provided matches or is part of a path to any
+// of the packages listed in our dependencies
+func isDirDependency(deps []string, dir string) bool {
+	for _, dep := range deps {
+		// If the directory is part of a package path or matches a package exactly
+		if strings.HasPrefix(dep, dir) {
+			return true
+		}
+	}
+	return false
+}
+
+// Return true if the source directory provided is directly specified as a dependency
+func isSrcDependency(deps []string, dir string) bool {
+	for _, dep := range deps {
+		if dep == dir {
+			return true
+		}
+	}
+	return false
+}
+
+// Return true if the file provided is a source file
+func isSrcFile(path string) bool {
+	for _, suffix := range []string{".go", ".s"} {
+		if strings.HasSuffix(path, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+// Return true if the file provided is a source file
+func isMainPkg(path string) bool {
+	fd, err := os.Open(path)
+	if err != nil {
+		msg.Debug("isMainPkg: %s", err)
+		return false
+	}
+	contents, err := ioutil.ReadAll(fd)
+	if err != nil {
+		msg.Debug("isMainPkg: %s", err)
+		return false
+	}
+
+	if mainPkgRegex.Match(contents) {
+		return true
+	}
+	return false
 }
