@@ -78,7 +78,7 @@ func EnsureGoVendor() {
 	// Any release after go15 does not require that env var.
 	cmd = exec.Command(goExecutable(), "version")
 	if out, err := cmd.CombinedOutput(); err != nil {
-		msg.Err("Error getting version: %s.\n", err)
+		msg.Err("Error calling '%s version' (are GOPATH and GOROOT set correctly?): %s.\n", goExecutable(), err)
 		os.Exit(1)
 	} else if strings.HasPrefix(string(out), "go version 1.5") {
 		// This works with 1.5 and 1.6.
