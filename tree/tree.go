@@ -176,11 +176,9 @@ func findPkg(b *util.BuildCtxt, name, cwd string) *dependency.PkgInfo {
 		// where Google products are playing with each other.
 		// https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
 		info.Loc = dependency.LocAppengine
-	} else if name == "context" || name == "net/http/httptrace" {
-		// context and net/http/httptrace are packages being added to
-		// the Go 1.7 standard library. Some packages, such as golang.org/x/net
-		// are importing it with build flags in files for go1.7. Need to detect
-		// this and handle it.
+	} else if _, ok := dependency.PackagesAddedToStdlib[name]; ok {
+		// Various packages are being added to the Go standard library, and being imported
+		// with build flags. Need to detect this and handle it.
 		info.Loc = dependency.LocGoroot
 	}
 
