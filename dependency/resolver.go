@@ -962,6 +962,21 @@ type PkgInfo struct {
 	Loc        PkgLoc
 }
 
+// PackagesAddedToStdlib is the list of packages added to the go standard lib
+// at various points.
+var PackagesAddedToStdlib = map[string]struct{}{
+	// context and net/http/httptrace are packages being added to
+	// the Go 1.7 standard library. Some packages, such as golang.org/x/net
+	// are importing it with build flags in files for go1.7.
+	"context":            struct{}{},
+	"net/http/httptrace": struct{}{},
+
+	// math.bits are packages being added to the Go 1.9 standard library.
+	// Some packages, such as github.com/RoaringBitmap/roaring are importing
+	// it with build flags in files for go1.9.
+	"math/bits": struct{}{},
+}
+
 // FindPkg takes a package name and attempts to find it on the filesystem
 //
 // The resulting PkgInfo will indicate where it was found.
@@ -1052,11 +1067,9 @@ func (r *Resolver) FindPkg(name string) *PkgInfo {
 		// https://blog.golang.org/the-app-engine-sdk-and-workspaces-gopath
 		info.Loc = LocAppengine
 		r.findCache[name] = info
-	} else if name == "context" || name == "net/http/httptrace" {
-		// context and net/http/httptrace are packages being added to
-		// the Go 1.7 standard library. Some packages, such as golang.org/x/net
-		// are importing it with build flags in files for go1.7. Need to detect
-		// this and handle it.
+	} else if _, ok := PackagesAddedToStdlib[name]; ok {
+		// Various packages are being added to the Go standard library, and being imported
+		// with build flags. Need to detect this and handle it.
 		info.Loc = LocGoroot
 		r.findCache[name] = info
 	}
