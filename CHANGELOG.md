@@ -1,3 +1,9 @@
+# Release 0.13.1 (2017-11-07)
+
+## Fixed
+
+- #935: Fix handling of new core package math/bits (thanks @prateek)
+
 # Release 0.13.0 (2017-09-28)
 
 ## Added
