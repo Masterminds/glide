@@ -8,7 +8,6 @@ import (
 )
 
 func generateTestDirectory(t *testing.T) string {
-	t.Helper()
 	baseDir, err := ioutil.TempDir(os.TempDir(), "mgt")
 	if nil != err {
 		t.Error("Unable to create temp directory: ", err.Error())
