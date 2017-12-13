@@ -20,6 +20,10 @@ func StripVendor() error {
 	}
 
 	err := filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		// Skip the base vendor directory
 		if path == searchPath {
 			return nil
