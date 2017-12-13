@@ -8,6 +8,30 @@ import (
 	"github.com/Masterminds/glide/msg"
 )
 
+func getWalkFunction(searchPath string, removeAll func(p string) error) func(path string,
+	info os.FileInfo, err error) error {
+	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip the base vendor directory
+		if path == searchPath {
+			return nil
+		}
+
+		if info.Name() == "vendor" && info.IsDir() {
+			msg.Info("Removing: %s", path)
+			err = removeAll(path)
+			if nil != err {
+				return err
+			}
+			return filepath.SkipDir
+		}
+		return nil
+	}
+}
+
 // StripVendor removes nested vendor and Godeps/_workspace/ directories.
 func StripVendor() error {
 	searchPath, _ := Vendor()
@@ -19,30 +43,8 @@ func StripVendor() error {
 		return err
 	}
 
-	err := filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	err := filepath.Walk(searchPath, getWalkFunction(searchPath, CustomRemoveAll))
 
-		// Skip the base vendor directory
-		if path == searchPath {
-			return nil
-		}
-
-		name := info.Name()
-		if name == "vendor" {
-			if _, err := os.Stat(path); err == nil {
-				if info.IsDir() {
-					msg.Info("Removing: %s", path)
-					return CustomRemoveAll(path)
-				}
-
-				msg.Debug("%s is not a directory. Skipping removal", path)
-				return nil
-			}
-		}
-		return nil
-	})
 	if err != nil {
 		return err
 	}
