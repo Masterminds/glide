@@ -6,3 +6,4 @@ glide.exe
 dist/
 .DS_Store
 .idea
+*.sw[po]
