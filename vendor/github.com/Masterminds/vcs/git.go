@@ -158,20 +158,21 @@ func (s *GitRepo) Update() error {
 
 // UpdateVersion sets the version of a package currently checked out via Git.
 func (s *GitRepo) UpdateVersion(version string) error {
-	upstream, err := s.RunFromDir("git", "for-each-ref", "--format='%(upstream:short)'", version)
+
+	// If version is a remote branch, prepend s.RemoteLocation (aka "origin")
+	branches, err := s.Branches() // Remote branches
 	if err != nil {
-		return NewLocalError("Unable to track upstream", err, "")
+		return NewLocalError("Unable to query for repo branches", err, "")
 	}
-	if len(upstream) == 0 {
-		out, err := s.RunFromDir("git", "reset", "--hard", version)
-		if err != nil {
-			return NewLocalError("Unable to update checked out version", err, string(out))
+	for _, branch := range branches {
+		if version == branch {
+			version = s.RemoteLocation + "/" + branch // e.g. "origin/develop"
 		}
-	} else {
-		out, err := s.RunFromDir("git", "reset", "--hard", string(upstream))
-		if err != nil {
-			return NewLocalError("Unable to update checked out version", err, string(out))
-		}
+	}
+
+	out, err := s.RunFromDir("git", "reset", "--hard", version)
+	if err != nil {
+		return NewLocalError("Unable to update checked out version", err, string(out))
 	}
 
 	return s.defendAgainstSubmodules()
