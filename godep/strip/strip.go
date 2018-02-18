@@ -54,6 +54,10 @@ func GodepWorkspace(v string) error {
 }
 
 func stripGodepWorkspaceHandler(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+
 	// Skip the base vendor directory
 	if path == vPath {
 		return nil
@@ -81,6 +85,10 @@ func stripGodepWorkspaceHandler(path string, info os.FileInfo, err error) error 
 }
 
 func rewriteGodepfilesHandler(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+
 	name := info.Name()
 
 	if info.IsDir() {
