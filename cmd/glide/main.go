@@ -26,12 +26,9 @@ import (
 	"github.com/Masterminds/glide/cache"
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
-	"github.com/Masterminds/glide/repo"
-	"github.com/Masterminds/glide/util"
 
 	"github.com/codegangsta/cli"
 
-	"fmt"
 	"os"
 )
 
@@ -99,7 +96,7 @@ func main() {
 	}
 	app.Before = startup
 	app.After = shutdown
-	app.Commands = commands()
+	app.Commands = glide.Commands()
 
 	// Detect errors from the Before and After calls and exit on them.
 	if err := app.Run(os.Args); err != nil {

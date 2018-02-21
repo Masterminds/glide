@@ -15,7 +15,7 @@ test:
 	${GLIDE_GO_EXECUTABLE} test . ./gb ./path ./action ./tree ./util ./godep ./godep/strip ./gpm ./cfg ./dependency ./importer ./msg ./repo ./mirrors
 
 integration-test:
-	${GLIDE_GO_EXECUTABLE} build
+	sh -c 'cd cmd/glide && ${GLIDE_GO_EXECUTABLE} build -o ../../glide'
 	./glide up
 	./glide install
 

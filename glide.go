@@ -11,7 +11,7 @@ import (
 	"github.com/Masterminds/glide/repo"
 )
 
-func commands() []cli.Command {
+func Commands() []cli.Command {
 	return []cli.Command{
 		{
 			Name:      "create",
