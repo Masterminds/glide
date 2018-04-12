@@ -59,6 +59,12 @@ func stripGodepWorkspaceHandler(path string, info os.FileInfo, err error) error 
 		return nil
 	}
 
+	// As of Go 1.10, it seems `info` will be `nil` when an error is present.
+	// We can skip further execution in this case.
+	if err != nil {
+		return nil
+	}
+
 	name := info.Name()
 	p := filepath.Dir(path)
 	pn := filepath.Base(p)
