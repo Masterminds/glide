@@ -42,6 +42,19 @@ func TestResolveLocalShallow(t *testing.T) {
 }
 
 func TestResolveLocalDeep(t *testing.T) {
+	// create package of same name with sys package
+	err := os.MkdirAll(filepath.Join(os.Getenv("GOPATH"), "src/strings"), os.ModePerm)
+	if err != nil {
+		t.Fatalf("Failed to create package of test case: %s", err)
+	}
+	// remove package of same name with sys package
+	defer func() {
+		err = os.Remove(filepath.Join(os.Getenv("GOPATH"), "src/strings"))
+		if err != nil {
+			t.Fatalf("Failed to remove package of test case: %s", err)
+		}
+	}()
+
 	r, err := NewResolver("../")
 	if err != nil {
 		t.Fatal(err)
