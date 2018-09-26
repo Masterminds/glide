@@ -72,10 +72,10 @@ func CustomRename(o, n string) error {
 	// Handking windows cases first
 	if runtime.GOOS == "windows" {
 		msg.Debug("Detected Windows. Moving files using windows command")
-		cmd := exec.Command("cmd.exe", "/c", "move", o, n)
+		cmd := exec.Command("cmd.exe", "/c", "xcopy /s/y", o, n+"\\")
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("Error moving files: %s. output: %s", err, output)
+			return fmt.Errorf("Error moving MY files: %s. output: %s", err, output)
 		}
 
 		return nil
