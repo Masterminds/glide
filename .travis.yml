@@ -1,11 +1,11 @@
 language: go
 
 go:
-  - 1.5.x
-  - 1.6.x
   - 1.7.x
   - 1.8.x
   - 1.9.x
+  - 1.10.x
+  - 1.11.x
   - tip
 
 # Setting sudo access to false will let Travis CI use containers rather than
@@ -18,7 +18,7 @@ sudo: false
 # in the vendor directory. We don't need to test all dependent packages.
 # Only testing this project.
 script:
-  - GO15VENDOREXPERIMENT=1 make test integration-test verify-version
+  - make test integration-test verify-version
 
 notifications:
   webhooks:
