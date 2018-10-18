@@ -148,7 +148,7 @@ func (s *GitRepo) Update() error {
 		return nil
 	}
 
-	out, err = s.RunFromDir("git", "pull")
+	out, err = s.RunFromDir("git", "reset", "--hard")
 	if err != nil {
 		return NewRemoteError("Unable to update repository", err, string(out))
 	}
@@ -158,7 +158,19 @@ func (s *GitRepo) Update() error {
 
 // UpdateVersion sets the version of a package currently checked out via Git.
 func (s *GitRepo) UpdateVersion(version string) error {
-	out, err := s.RunFromDir("git", "checkout", version)
+
+	// If version is a remote branch, prepend s.RemoteLocation (aka "origin")
+	branches, err := s.Branches() // Remote branches
+	if err != nil {
+		return NewLocalError("Unable to query for repo branches", err, "")
+	}
+	for _, branch := range branches {
+		if version == branch {
+			version = s.RemoteLocation + "/" + branch // e.g. "origin/develop"
+		}
+	}
+
+	out, err := s.RunFromDir("git", "reset", "--hard", version)
 	if err != nil {
 		return NewLocalError("Unable to update checked out version", err, string(out))
 	}
@@ -366,7 +378,7 @@ func (s *GitRepo) Ping() bool {
 
 // EscapePathSeparator escapes the path separator by replacing it with several.
 // Note: this is harmless on Unix, and needed on Windows.
-func EscapePathSeparator(path string) (string) {
+func EscapePathSeparator(path string) string {
 	switch runtime.GOOS {
 	case `windows`:
 		// On Windows, triple all path separators.
@@ -379,7 +391,7 @@ func EscapePathSeparator(path string) (string) {
 		// used with --prefix, like this: --prefix=C:\foo\bar\ -> --prefix=C:\\\foo\\\bar\\\
 		return strings.Replace(path,
 			string(os.PathSeparator),
-			string(os.PathSeparator) + string(os.PathSeparator) + string(os.PathSeparator),
+			string(os.PathSeparator)+string(os.PathSeparator)+string(os.PathSeparator),
 			-1)
 	default:
 		return path
@@ -404,7 +416,7 @@ func (s *GitRepo) ExportDir(dir string) error {
 		return NewLocalError("Unable to create directory", err, "")
 	}
 
-	path = EscapePathSeparator( dir )
+	path = EscapePathSeparator(dir)
 	out, err := s.RunFromDir("git", "checkout-index", "-f", "-a", "--prefix="+path)
 	s.log(out)
 	if err != nil {
@@ -412,7 +424,7 @@ func (s *GitRepo) ExportDir(dir string) error {
 	}
 
 	// and now, the horror of submodules
-	path = EscapePathSeparator( dir + "$path" + string(os.PathSeparator) )
+	path = EscapePathSeparator(dir + "$path" + string(os.PathSeparator))
 	out, err = s.RunFromDir("git", "submodule", "foreach", "--recursive", "git checkout-index -f -a --prefix="+path)
 	s.log(out)
 	if err != nil {
