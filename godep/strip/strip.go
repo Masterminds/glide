@@ -70,7 +70,10 @@ func stripGodepWorkspaceHandler(path string, info os.FileInfo, err error) error 
 				godepMark[pp] = true
 
 				msg.Info("Removing: %s", path)
-				return os.RemoveAll(path)
+				if err := os.RemoveAll(path); err != nil {
+					return err
+				}
+				return filepath.SkipDir
 			}
 
 			msg.Debug("%s is not a directory. Skipping removal", path)
