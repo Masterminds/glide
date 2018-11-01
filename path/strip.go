@@ -19,6 +19,10 @@ func getWalkFunction(searchPath string, removeAll func(p string) error) func(pat
 		if path == searchPath {
 			return nil
 		}
+		// Skip if FileInfo is nil
+		if info == nil {
+			return nil
+		}
 
 		if info.Name() == "vendor" && info.IsDir() {
 			msg.Info("Removing: %s", path)

@@ -58,7 +58,10 @@ func stripGodepWorkspaceHandler(path string, info os.FileInfo, err error) error 
 	if path == vPath {
 		return nil
 	}
-
+	// Skip if FileInfo is nil
+	if info == nil {
+		return nil
+	}
 	name := info.Name()
 	p := filepath.Dir(path)
 	pn := filepath.Base(p)
@@ -81,6 +84,10 @@ func stripGodepWorkspaceHandler(path string, info os.FileInfo, err error) error 
 }
 
 func rewriteGodepfilesHandler(path string, info os.FileInfo, err error) error {
+	// Skip if filepath is nil
+	if info == nil {
+		return nil
+	}
 	name := info.Name()
 
 	if info.IsDir() {

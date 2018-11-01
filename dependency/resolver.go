@@ -5,6 +5,7 @@ import (
 	"errors"
 	"runtime"
 	"sort"
+
 	//"go/build"
 	"os"
 	"path/filepath"
@@ -269,6 +270,10 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 	err := filepath.Walk(r.basedir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil && err != filepath.SkipDir {
 			return err
+		}
+		// Skip if FileInfo is nil
+		if fi == nil {
+			return nil
 		}
 		pt := strings.TrimPrefix(path, r.basedir+string(os.PathSeparator))
 		pt = strings.TrimSuffix(pt, string(os.PathSeparator))
@@ -701,6 +706,10 @@ func (r *Resolver) resolveList(queue *list.List, testDeps, addTest bool) ([]stri
 				return err
 			}
 
+			// Skip if FileInfo is nil
+			if fi == nil {
+
+			}
 			// Skip files.
 			if !fi.IsDir() {
 				return nil
