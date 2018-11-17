@@ -324,6 +324,10 @@ func NormalizeName(name string) (string, string) {
 	}
 
 	name = toSlash(name)
+
+	replacer := strings.NewReplacer("https://", "", "http://", "")
+	name = replacer.Replace(name)
+
 	root := GetRootFromPackage(name)
 	extra := strings.TrimPrefix(name, root)
 	if len(extra) > 0 && extra != "/" {
