@@ -1,11 +1,11 @@
-package main
+package glide
 
 import (
 	"testing"
 )
 
 func TestCommandsNonEmpty(t *testing.T) {
-	commands := commands()
+	commands := Commands()
 	if len(commands) == 0 {
 		t.Fail()
 	}
