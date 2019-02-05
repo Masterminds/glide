@@ -141,7 +141,7 @@ func addPkgsToConfig(conf *cfg.Config, names []string, insecure, nonInteract, te
 
 		root, subpkg := util.NormalizeName(name)
 		if len(root) == 0 {
-			return 0, fmt.Errorf("Package name is required for %q.", name)
+			return 0, fmt.Errorf("package name is required for %q", name)
 		}
 
 		if conf.HasDependency(root) {

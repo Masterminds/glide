@@ -56,7 +56,7 @@ func Load() error {
 	var err error
 	ov, err = ReadMirrorsFile(op)
 	if err != nil {
-		return fmt.Errorf("Error reading existing mirrors.yaml file: %s", err)
+		return fmt.Errorf("error reading existing mirrors.yaml file: %s", err)
 	}
 
 	msg.Info("Loading mirrors from mirrors.yaml file")

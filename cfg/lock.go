@@ -51,7 +51,7 @@ func (lf *Lockfile) MarshalYAML() (interface{}, error) {
 			if lf.Imports[i].Name == imp.Name {
 				found = true
 				if lf.Imports[i].Version != imp.Version {
-					return lf, fmt.Errorf("Generating lock YAML produced conflicting versions of %s. import (%s), testImport (%s)", imp.Name, lf.Imports[i].Version, imp.Version)
+					return lf, fmt.Errorf("generating lock YAML produced conflicting versions of %s. import (%s), testImport (%s)", imp.Name, lf.Imports[i].Version, imp.Version)
 				}
 			}
 		}
@@ -212,7 +212,7 @@ func NewLockfile(ds, tds Dependencies, hash string) (*Lockfile, error) {
 			if ds[ii].Name == tds[i].Name {
 				found = true
 				if ds[ii].Reference != tds[i].Reference {
-					return &Lockfile{}, fmt.Errorf("Generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].Reference, tds[i].Reference)
+					return &Lockfile{}, fmt.Errorf("generating lock produced conflicting versions of %s. import (%s), testImport (%s)", tds[i].Name, ds[ii].Reference, tds[i].Reference)
 				}
 				break
 			}

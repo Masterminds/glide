@@ -49,7 +49,7 @@ func CustomRemoveAll(p string) error {
 		if err != nil {
 			exitCode := getExitCode(err)
 			if exitCode != winErrorFileNotFound && exitCode != winErrorPathNotFound {
-				return fmt.Errorf("Error removing files: %s. output: %s", err, output)
+				return fmt.Errorf("error removing files: %s. output: %s", err, output)
 			}
 		}
 		return nil
@@ -58,7 +58,7 @@ func CustomRemoveAll(p string) error {
 		output, err2 := cmd.CombinedOutput()
 		msg.Debug("Detected Windows Subsystem for Linux. Removing files using subsystem command")
 		if err2 != nil {
-			return fmt.Errorf("Error removing files: %s. output: %s", err2, output)
+			return fmt.Errorf("error removing files: %s. output: %s", err2, output)
 		}
 		return nil
 	}
@@ -75,7 +75,7 @@ func CustomRename(o, n string) error {
 		cmd := exec.Command("cmd.exe", "/c", "move", o, n)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("Error moving files: %s. output: %s", err, output)
+			return fmt.Errorf("error moving files: %s. output: %s", err, output)
 		}
 
 		return nil
@@ -84,7 +84,7 @@ func CustomRename(o, n string) error {
 		output, err2 := cmd.CombinedOutput()
 		msg.Debug("Detected Windows Subsystem for Linux. Removing files using subsystem command")
 		if err2 != nil {
-			return fmt.Errorf("Error moving files: %s. output: %s", err2, output)
+			return fmt.Errorf("error moving files: %s. output: %s", err2, output)
 		}
 
 		return nil

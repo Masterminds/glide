@@ -107,7 +107,7 @@ func parseGomfile(filename string) ([]Gom, error) {
 			if !valid {
 				skip--
 				if skip < 0 {
-					return nil, fmt.Errorf("Syntax Error at line %d", n)
+					return nil, fmt.Errorf("syntax Error at line %d", n)
 				}
 			}
 			valid = false
@@ -120,7 +120,7 @@ func parseGomfile(filename string) ([]Gom, error) {
 			name = unquote(items[0])
 			parseOptions(items[1], options)
 		} else {
-			return nil, fmt.Errorf("Syntax Error at line %d", n)
+			return nil, fmt.Errorf("syntax Error at line %d", n)
 		}
 		if envs != nil {
 			options["group"] = envs

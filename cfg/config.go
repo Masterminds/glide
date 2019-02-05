@@ -352,13 +352,13 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 			// Make sure the details are the same or return an error.
 			v := imports[val]
 			if dep.Reference != v.Reference {
-				return d, fmt.Errorf("Import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Reference, v.Reference)
+				return d, fmt.Errorf("import %s repeated with different versions '%s' and '%s'", dep.Name, dep.Reference, v.Reference)
 			}
 			if dep.Repository != v.Repository || dep.VcsType != v.VcsType {
-				return d, fmt.Errorf("Import %s repeated with different Repository details", dep.Name)
+				return d, fmt.Errorf("import %s repeated with different Repository details", dep.Name)
 			}
 			if !reflect.DeepEqual(dep.Os, v.Os) || !reflect.DeepEqual(dep.Arch, v.Arch) {
-				return d, fmt.Errorf("Import %s repeated with different OS or Architecture filtering", dep.Name)
+				return d, fmt.Errorf("import %s repeated with different OS or Architecture filtering", dep.Name)
 			}
 			imports[checked[dep.Name]].Subpackages = stringArrayDeDupe(v.Subpackages, dep.Subpackages...)
 		}
@@ -519,7 +519,7 @@ func (d *Dependency) GetRepo(dest string) (vcs.Repo, error) {
 		case vcs.Bzr:
 			return vcs.NewBzrRepo(remote, dest)
 		default:
-			return nil, fmt.Errorf("Unknown VCS type %s set for %s", VcsType, d.Name)
+			return nil, fmt.Errorf("unknown VCS type %s set for %s", VcsType, d.Name)
 		}
 	}
 

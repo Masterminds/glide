@@ -158,7 +158,7 @@ func GlideWD(dir string) (string, error) {
 
 	base := filepath.Dir(dir)
 	if base == dir {
-		return "", fmt.Errorf("Cannot resolve parent of %s", base)
+		return "", fmt.Errorf("cannot resolve parent of %s", base)
 	}
 
 	return GlideWD(base)

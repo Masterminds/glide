@@ -184,7 +184,7 @@ func VcsVersion(dep *cfg.Dependency) error {
 	}
 	_, err = v.DetectVcsFromFS(cwd)
 	if empty == false && err == v.ErrCannotDetectVCS {
-		return fmt.Errorf("Cache directory missing VCS information for %s", dep.Name)
+		return fmt.Errorf("cache directory missing VCS information for %s", dep.Name)
 	}
 
 	repo, err := dep.GetRepo(cwd)
