@@ -1,15 +1,29 @@
 language: go
+dist: xenial
 
 go:
   - 1.6.x
   - 1.7.x
   - 1.8.x
   - 1.9.x
+  - 1.10.x
+  - 1.11.x
+  - 1.12.x
   - master
 
 before_script:
   - git version
   - svn --version
+  # Need a more up to date verion of mercurial to handle TLS with
+  # bitbucket properly. Also need python greater than 2.7.9.
+  - pyenv versions && pyenv rehash && pyenv versions
+  - pyenv global 2.7.15
+  - openssl ciphers -v | awk '{print $2}' | sort | uniq
+  - sudo pip install mercurial --upgrade
+  # The below is a complete hack to have hg use the pyenv version of python
+  - sudo sed -i '1s/.*/\#\!\/usr\/bin\/env\ python/' /usr/local/bin/hg
+  - hg --version
+
 
 # Setting sudo access to false will let Travis CI use containers rather than
 # VMs to run the tests. For more details see:

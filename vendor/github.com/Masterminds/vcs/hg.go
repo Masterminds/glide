@@ -1,7 +1,9 @@
 package vcs
 
 import (
+	"bytes"
 	"encoding/xml"
+	"errors"
 	"os"
 	"os/exec"
 	"regexp"
@@ -110,12 +112,20 @@ func (s *HgRepo) UpdateVersion(version string) error {
 
 // Version retrieves the current version.
 func (s *HgRepo) Version() (string, error) {
-	out, err := s.RunFromDir("hg", "--debug", "identify")
-	if err != nil {
-		return "", NewLocalError("Unable to retrieve checked out version", err, string(out))
+	c := s.CmdFromDir("hg", "--debug", "identify")
+	stdout, stderr := new(bytes.Buffer), new(bytes.Buffer)
+	c.Stdout = stdout
+	c.Stderr = stderr
+	if err := c.Run(); err != nil {
+		return "", NewLocalError("Unable to retrieve checked out version", err, stderr.String())
 	}
-
-	parts := strings.SplitN(string(out), " ", 2)
+	if stderr.Len() > 0 {
+		// "hg --debug identify" can print out errors before it actually prints
+		// the version.
+		// https://github.com/Masterminds/vcs/issues/90
+		return "", NewLocalError("Unable to retrieve checked out version", errors.New("Error output printed before identify"), stderr.String())
+	}
+	parts := strings.SplitN(stdout.String(), " ", 2)
 	sha := parts[0]
 	return strings.TrimSpace(sha), nil
 }

@@ -34,7 +34,6 @@ func TestVCSLookup(t *testing.T) {
 		"https://example.com/foo/bar/baz.hg":                               {work: true, t: Hg},
 		"https://gopkg.in/tomb.v1":                                         {work: true, t: Git},
 		"https://golang.org/x/net":                                         {work: true, t: Git},
-		"https://speter.net/go/exp/math/dec/inf":                           {work: true, t: Git},
 		"https://git.openstack.org/foo/bar":                                {work: true, t: Git},
 		"git@github.com:Masterminds/vcs.git":                               {work: true, t: Git},
 		"git@example.com:foo.git":                                          {work: true, t: Git},
@@ -109,29 +108,5 @@ func TestVCSFileLookup(t *testing.T) {
 
 	if ty != Git {
 		t.Errorf("Detected wrong type from file:// path. Found type %v", ty)
-	}
-}
-
-func TestNotFound(t *testing.T) {
-	_, _, err := detectVcsFromRemote("https://mattfarina.com/notfound")
-	if err == nil || !strings.HasSuffix(err.Error(), " Not Found") {
-		t.Errorf("Failed to find not found repo")
-	}
-
-	_, err = NewRepo("https://mattfarina.com/notfound", "")
-	if err == nil || !strings.HasSuffix(err.Error(), " Not Found") {
-		t.Errorf("Failed to find not found repo")
-	}
-}
-
-func TestAccessDenied(t *testing.T) {
-	_, _, err := detectVcsFromRemote("https://bitbucket.org/mattfarina/private-repo-for-vcs-testing")
-	if err == nil || err.Error() != "Access Denied" {
-		t.Errorf("Failed to detect access denied")
-	}
-
-	_, err = NewRepo("https://bitbucket.org/mattfarina/private-repo-for-vcs-testing", "")
-	if err == nil || err.Error() != "Access Denied" {
-		t.Errorf("Failed to detect access denied")
 	}
 }
