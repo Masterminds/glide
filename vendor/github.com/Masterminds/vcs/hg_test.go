@@ -2,12 +2,11 @@ package vcs
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
-	"time"
-	//"log"
-	"os"
 	"testing"
+	"time"
 )
 
 // Canary test to ensure HgRepo implements the Repo interface.

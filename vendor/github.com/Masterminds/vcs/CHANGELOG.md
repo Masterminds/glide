@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.13.1 (2019-07-09)
+
+### Fixed
+
+- #101: Updated bitbucket API call as previous API was removed
+- #97: Fixed travis ci building
+- #95: Fixed "git clean" invocation for submodule
+
+## 1.13.0 (2019-02-27)
+
+### Changed
+
+- #92: Allow non-200 remote lookup responses for Go style redirects
+
+### Fixed
+
+- #91: For Mercurial/Hg return an error if Version() called and Hg prints to stderr
+- #87 and #93: Fix CI issues
+
 ## 1.12.0 (2017-09-11)
 
 ### Changed
