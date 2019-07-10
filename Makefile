@@ -31,7 +31,7 @@ build-all:
 	gox -verbose \
 	-ldflags "-X main.version=${VERSION}" \
 	-os="linux darwin windows freebsd openbsd netbsd" \
-	-arch="amd64 386 armv5 armv6 armv7 arm64 s390x" \
+	-arch="amd64 386 armv5 armv6 armv7 arm64 s390x ppc64le" \
 	-osarch="!darwin/arm64" \
 	-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
 
