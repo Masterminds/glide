@@ -1,4 +1,16 @@
-# Release 0.13.2 (unreleased)
+# Release 0.13.3 (2019-07-12)
+
+## Fixed
+
+- #1056: Fixed issue where Glide is not detecting crypto/ed25519, now in the stdlib (thanks @martinkunc)
+- #1033: Fixed segfault with Glide 0.13.2 when stripping Godep workspace (thanks @databus23)
+
+# Release 0.13.2 (2018-09-26)
+
+## Fixed
+
+- #956: Fixed Error handling nested vendor folders (thanks @apynes2)
+- #953: Fixed issue where error was not propagating
 
 # Release 0.13.1 (2017-11-07)
 
