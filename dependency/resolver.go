@@ -5,6 +5,7 @@ import (
 	"errors"
 	"runtime"
 	"sort"
+
 	//"go/build"
 	"os"
 	"path/filepath"
@@ -975,6 +976,10 @@ var PackagesAddedToStdlib = map[string]struct{}{
 	// Some packages, such as github.com/RoaringBitmap/roaring are importing
 	// it with build flags in files for go1.9.
 	"math/bits": struct{}{},
+
+	// crypto/ed25519 is a package being added to the Go 1.13 standard library.
+	// It is importing itself  with build flags in files for go1.13.
+	"crypto/ed25519": struct{}{},
 }
 
 // FindPkg takes a package name and attempts to find it on the filesystem
