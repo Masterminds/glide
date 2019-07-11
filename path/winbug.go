@@ -69,12 +69,13 @@ func CustomRemoveAll(p string) error {
 // at https://github.com/golang/go/issues/20841.
 func CustomRename(o, n string) error {
 
-	// Handking windows cases first
+	// Handling windows cases first
 	if runtime.GOOS == "windows" {
-		msg.Debug("Detected Windows. Moving files using windows command")
-		cmd := exec.Command("cmd.exe", "/c", "move", o, n)
+		msg.Debug("Detected Windows. Moving files using windows command (robocopy)")
+		cmd := exec.Command("cmd.exe", "/c", "robocopy /s /move /nfl /ndl /njh /njs /nc /ns /np /r:1 /w:1", o, n)
 		output, err := cmd.CombinedOutput()
-		if err != nil {
+		// robocopy exits with 1 for success. See https://ss64.com/nt/robocopy-exit.html
+		if err != nil && err.Error() != "exit status 1" {
 			return fmt.Errorf("Error moving files: %s. output: %s", err, output)
 		}
 
