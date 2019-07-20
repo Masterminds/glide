@@ -723,6 +723,10 @@ func (d *VersionHandler) Process(pkg string) (e error) {
 	if d.Imported[root] == false {
 		d.Imported[root] = true
 		p := d.pkgPath(root)
+		if _, err := os.Stat(p); os.IsNotExist(err) {
+			dep := cfg.Dependency{Name: root}
+			VcsGet(&dep)
+		}
 		f, deps, err := importer.Import(p)
 		if f && err == nil {
 			for _, dep := range deps {
