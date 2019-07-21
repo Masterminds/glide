@@ -4,12 +4,16 @@ VERSION ?= $(shell git describe --tags)
 VERSION_INCODE = $(shell perl -ne '/^var version.*"([^"]+)".*$$/ && print "v$$1\n"' glide.go)
 VERSION_INCHANGELOG = $(shell perl -ne '/^\# Release (\d+(\.\d+)+) / && print "$$1\n"' CHANGELOG.md | head -n1)
 
-build:
-	${GLIDE_GO_EXECUTABLE} build -o glide -ldflags "-X main.version=${VERSION}" glide.go
+glide:
+	${GLIDE_GO_EXECUTABLE} build -o glide -ldflags "-X main.version=$(VERSION)" glide.go
 
 install: build
-	install -d ${DESTDIR}/usr/local/bin/
-	install -m 755 ./glide ${DESTDIR}/usr/local/bin/glide
+	install -d ${DESTDIR}${PREFIX}/bin/
+	install -m 755 ./glide ${DESTDIR}${PREFIX}/bin/glide
+	
+	install -d ${DESTDIR}${PREFIX}/share/doc/glide
+	install -m 644 LICENSE ${DESTDIR}${PREFIX}/share/doc/glide/LICENSE
+	install -m 644 README.md ${DESTDIR}${PREFIX}/share/doc/glide/README.md
 
 test:
 	${GLIDE_GO_EXECUTABLE} test . ./gb ./path ./action ./tree ./util ./godep ./godep/strip ./gpm ./cfg ./dependency ./importer ./msg ./repo ./mirrors
@@ -39,6 +43,7 @@ dist: build-all
 	cd dist && \
 	$(DIST_DIRS) cp ../LICENSE {} \; && \
 	$(DIST_DIRS) cp ../README.md {} \; && \
+	$(DIST_DIRS) cp ../VERSION {} \; && \
 	$(DIST_DIRS) tar -zcf glide-${VERSION}-{}.tar.gz {} \; && \
 	$(DIST_DIRS) zip -r glide-${VERSION}-{}.zip {} \; && \
 	cd ..
@@ -55,4 +60,12 @@ verify-version:
 		exit 1; \
 	fi
 
-.PHONY: build test install clean bootstrap-dist build-all dist integration-test verify-version
+sdist:
+	mkdir -p dist
+	git archive --prefix=glide-$(VERSION)/ HEAD| tar -C dist -xf -
+	echo $(VERSION) > dist/glide-$(VERSION)/VERSION
+	cd dist && tar -zcf glide-$(VERSION)-src.tar.gz glide-$(VERSION)
+	cd dist && zip -qr glide-$(VERSION)-src.zip glide-$(VERSION)
+	rm -rf dist/glide-$(VERSION)
+
+.PHONY: build test install clean bootstrap-dist build-all dist integration-test verify-version sdist
