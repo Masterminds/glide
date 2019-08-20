@@ -72,10 +72,23 @@ func CustomRename(o, n string) error {
 	// Handking windows cases first
 	if runtime.GOOS == "windows" {
 		msg.Debug("Detected Windows. Moving files using windows command")
-		cmd := exec.Command("cmd.exe", "/c", "move", o, n)
+
+		// fix issue: https://github.com/Masterminds/glide/issues/960.
+		// "Unable to export dependencies to vendor directory: Error moving files: exit status 1"
+		// using XCOPY and RMDIR to replace MOVE
+		cmd := exec.Command("cmd.exe", "/C","XCOPY", "/Y", "/E", "/I", "/Q", o, n)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("Error moving files: %s. output: %s", err, output)
+			return fmt.Errorf("Error copying files: %s. output: %s", err, output)
+		}
+
+		cmd = exec.Command("cmd.exe", "/C", "RMDIR", "/S", "/Q", o)
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			exitCode := getExitCode(err)
+			if exitCode != winErrorFileNotFound && exitCode != winErrorPathNotFound {
+				return fmt.Errorf("Error removing files: %s. output: %s", err, output)
+			}
 		}
 
 		return nil
