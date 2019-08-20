@@ -36,6 +36,7 @@ import:
   - package: github.com/Masterminds/structable
   - package: github.com/Masterminds/cookoo/color
   - package: github.com/Masterminds/cookoo/convert
+  - package: golang.org/x/crypto
 
 testImport:
   - package: github.com/kylelemons/go-gypsy
@@ -174,5 +175,23 @@ func TestOwners(t *testing.T) {
 		cfg.Owners[0].Email != "bar@example.com" ||
 		cfg.Owners[0].Home != "https://example.com" {
 		t.Error("Unable to parse owners from yaml")
+	}
+}
+
+func TestRemote(t *testing.T) {
+	tests := []struct {
+		name   string
+		remote string
+	}{
+		{"golang.org/x/crypto", "https://go.googlesource.com/crypto"},
+		{"gopkg.in/yaml.v2", "https://gopkg.in/yaml.v2"},
+		{"github.com/Masterminds/glide", "https://github.com/Masterminds/glide"},
+	}
+	for _, tt := range tests {
+		d := Dependency{Name: tt.name}
+		r := d.Remote()
+		if r != tt.remote {
+			t.Errorf("Bad remote - want %s, got %s", tt.remote, r)
+		}
 	}
 }

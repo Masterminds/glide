@@ -469,6 +469,11 @@ func (d *Dependency) Remote() string {
 		r = d.Repository
 	} else {
 		r = "https://" + d.Name
+		repo, err := vcs.NewRepo("https://"+d.Name, "")
+		// TODO: change the function signature and return the error (?)
+		if err == nil {
+			r = repo.Remote()
+		}
 	}
 
 	f, nr, _ := mirrors.Get(r)
