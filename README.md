@@ -119,10 +119,21 @@ For a development version it is also possible to `go get github.com/Masterminds/
 
 To build from source you can:
 
+```sh
+GO15VENDOREXPERIMENT=1
+mdkir -p $GOPATH/src/github.com/Masterminds/glide
+cd $GOPATH/src/github.com/Masterminds/glide
+git clone https://github.com/Masterminds/glide.git .
+make build
+# make install # to install system wide, /usr/local
+# or
+# go install -ldflags "-X main.version=0.10.2-86-g5865b8e" glide.go # to install into $GOBIN
+```
+
 1. Clone this repository into `$GOPATH/src/github.com/Masterminds/glide` and
    change directory into it
 2. If you are using Go 1.5 ensure the environment variable GO15VENDOREXPERIMENT is set, for
-   example by running `export GO15VENDOREXPERIMENT=1`. In Go 1.6 it is enabled by default and
+   example by running `export GO15VENDOREXPERIMENT=1`. Since Go 1.6 it is enabled by default and
    in Go 1.7 it is always enabled without the ability to turn it off.
 3. Run `make build`
 
