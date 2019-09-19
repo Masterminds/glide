@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/vcs"
 )
@@ -20,7 +21,10 @@ import (
 // the current OS/ARCH instead of all possible permutations.
 // This is not concurrently safe which is ok for the current application. If
 // other needs arise it may need to be re-written.
+const DefaultGoGetTimeout time.Duration = time.Second * 5
+
 var ResolveCurrent = false
+var GoGetTimeout = DefaultGoGetTimeout
 
 // goRoot caches the GOROOT variable for build contexts. If $GOROOT is not set in
 // the user's environment, then the context's root path is 'go env GOROOT'.
@@ -98,7 +102,10 @@ func getRootFromGoGet(pkg string) string {
 		u.RawQuery = u.RawQuery + "&go-get=1"
 	}
 	checkURL := u.String()
-	resp, err := http.Get(checkURL)
+	goGetCli := &http.Client{
+		Timeout: GoGetTimeout,
+	}
+	resp, err := goGetCli.Get(checkURL)
 	if err != nil {
 		addToRemotePackageCache(pkg, pkg)
 		return pkg
