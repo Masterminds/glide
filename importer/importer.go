@@ -1,4 +1,5 @@
-// Package importer imports dependency configuration from Glide, Godep, GPM, GB and gom
+// Package importer imports dependency configuration from Glide, Godep, GPM, GB, gom
+// and Trash
 package importer
 
 import (
@@ -11,11 +12,13 @@ import (
 	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/gom"
 	"github.com/Masterminds/glide/gpm"
+	"github.com/Masterminds/glide/trash"
 )
 
 var i = &DefaultImporter{}
 
-// Import uses the DefaultImporter to import from Glide, Godep, GPM, GB and gom.
+// Import uses the DefaultImporter to import from Glide, Godep, GPM, GB, gom
+// and Trash.
 func Import(path string) (bool, []*cfg.Dependency, error) {
 	return i.Import(path)
 }
@@ -30,10 +33,10 @@ type Importer interface {
 	Import(path string) (bool, []*cfg.Dependency, error)
 }
 
-// DefaultImporter imports from Glide, Godep, GPM, GB and gom.
+// DefaultImporter imports from Glide, Godep, GPM, GB, gom and Trash.
 type DefaultImporter struct{}
 
-// Import tries to import configuration from Glide, Godep, GPM, GB and gom.
+// Import tries to import configuration from Glide, Godep, GPM, GB, gom and Trash.
 func (d *DefaultImporter) Import(path string) (bool, []*cfg.Dependency, error) {
 
 	// Try importing from Glide first.
@@ -81,6 +84,15 @@ func (d *DefaultImporter) Import(path string) (bool, []*cfg.Dependency, error) {
 	// Try importing from gom
 	if gom.Has(path) {
 		deps, err := gom.Parse(path)
+		if err != nil {
+			return false, []*cfg.Dependency{}, err
+		}
+		return true, deps, nil
+	}
+
+	// Try importing from Trash
+	if trash.Has(path) {
+		deps, err := trash.Parse(path)
 		if err != nil {
 			return false, []*cfg.Dependency{}, err
 		}
