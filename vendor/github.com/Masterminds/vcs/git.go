@@ -145,7 +145,10 @@ func (s *GitRepo) Update() error {
 	}
 
 	if detached {
-		return nil
+		err := s.UpdateVersion("master")
+		if err != nil {
+			return NewLocalError("Cannot set detached to master", err, "")
+		}
 	}
 
 	out, err = s.RunFromDir("git", "pull")
