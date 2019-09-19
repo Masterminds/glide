@@ -35,7 +35,7 @@ using that instead of Glide. Glide is now mostly unmaintained.
     - bzr
     - hg
     - svn
-* Support custom local and global plugins (see docs/plugins.md)
+* Support custom local and global plugins (see `docs/plugins.md`)
 * Repository caching and data caching for improved performance.
 * Flatten dependencies resolving version differences and avoiding the inclusion
   of a package multiple times.
@@ -87,7 +87,7 @@ A project is structured like this:
                   |-- ... etc.
 ```
 
-*Take a look at [the Glide source code](http://github.com/Masterminds/glide)
+*Take a look at [the Glide source code](https://github.com/Masterminds/glide)
 to see this philosophy in action.*
 
 ## Install
@@ -121,7 +121,7 @@ To build from source you can:
 
 1. Clone this repository into `$GOPATH/src/github.com/Masterminds/glide` and
    change directory into it
-2. If you are using Go 1.5 ensure the environment variable GO15VENDOREXPERIMENT is set, for
+2. If you are using Go 1.5 ensure the environment variable `GO15VENDOREXPERIMENT` is set, for
    example by running `export GO15VENDOREXPERIMENT=1`. In Go 1.6 it is enabled by default and
    in Go 1.7 it is always enabled without the ability to turn it off.
 3. Run `make build`
@@ -455,7 +455,7 @@ The package will not be fetched for other architectures or OSes.
 ## LICENSE
 
 This package is made available under an MIT-style license. See
-LICENSE.txt.
+`LICENSE.txt`.
 
 ## Thanks!
 
