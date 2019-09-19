@@ -54,6 +54,10 @@ The `glide get` command can have a [version or range](versions.md) passed in wit
 
 The version is separated from the package name by an anchor (`#`). If no version or range is specified and the dependency uses Semantic Versions Glide will prompt you to ask if you want to use them.
 
+If you have test dependency that should be omitted in production you can use `--test` flag. This will place your dependency in `testImport` section in `glide.lock` file. E.g. 
+
+    $ glide get --test github.com/bouk/monkey
+
 ## glide update (aliased to up)
 
 Download or update all of the libraries listed in the `glide.yaml` file and put
