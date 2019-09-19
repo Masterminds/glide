@@ -186,12 +186,6 @@ func NewResolver(basedir string) (*Resolver, error) {
 		return nil, err
 	}
 
-	basedir, err = checkForBasedirSymlink(basedir)
-
-	if err != nil {
-		return nil, err
-	}
-
 	vdir := filepath.Join(basedir, "vendor")
 
 	buildContext, err := util.GetBuildContext()
@@ -267,11 +261,17 @@ func (r *Resolver) ResolveLocal(deep bool) ([]string, []string, error) {
 	tl := list.New()
 	alreadySeen := map[string]bool{}
 	talreadySeen := map[string]bool{}
-	err := filepath.Walk(r.basedir, func(path string, fi os.FileInfo, err error) error {
+
+	basedir, err := filepath.EvalSymlinks(r.basedir)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = filepath.Walk(basedir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil && err != filepath.SkipDir {
 			return err
 		}
-		pt := strings.TrimPrefix(path, r.basedir+string(os.PathSeparator))
+		pt := strings.TrimPrefix(path, basedir+string(os.PathSeparator))
 		pt = strings.TrimSuffix(pt, string(os.PathSeparator))
 		if r.Config.HasExclude(pt) {
 			msg.Debug("Excluding %s", pt)
@@ -1116,23 +1116,6 @@ func srcDir(fi os.FileInfo) bool {
 	}
 
 	return true
-}
-
-// checkForBasedirSymlink checks to see if the given basedir is actually a
-// symlink. In the case that it is a symlink, the symlink is read and returned.
-// If the basedir is not a symlink, the provided basedir argument is simply
-// returned back to the caller.
-func checkForBasedirSymlink(basedir string) (string, error) {
-	fi, err := os.Lstat(basedir)
-	if err != nil {
-		return "", err
-	}
-
-	if fi.Mode()&os.ModeSymlink != 0 {
-		return os.Readlink(basedir)
-	}
-
-	return basedir, nil
 }
 
 // helper func to merge, dedupe, and sort strings
