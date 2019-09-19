@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/vcs"
 )
@@ -334,4 +335,9 @@ func NormalizeName(name string) (string, string) {
 	}
 
 	return root, extra
+}
+
+// Date formats short date string in UTC
+func Date(t time.Time) string {
+	return t.UTC().Format("2006-01-02")
 }

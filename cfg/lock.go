@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/glide/util"
 	"gopkg.in/yaml.v2"
 )
 
@@ -76,6 +78,12 @@ func (lf *Lockfile) WriteFile(lockpath string) error {
 	o, err := lf.Marshal()
 	if err != nil {
 		return err
+	}
+	for _, l := range lf.Imports {
+		o = bytes.Replace(o, []byte("version: "+l.Version), []byte("version: "+l.Version+" # "+l.Dep.Original+", "+util.Date(l.Dep.CommitInfo.Date)), 1)
+	}
+	for _, l := range lf.DevImports {
+		o = bytes.Replace(o, []byte("version: "+l.Version), []byte("version: "+l.Version+" # "+l.Dep.Original+", "+util.Date(l.Dep.CommitInfo.Date)), 1)
 	}
 	return ioutil.WriteFile(lockpath, o, 0666)
 }
@@ -155,13 +163,14 @@ func (l Locks) Swap(i, j int) {
 
 // Lock represents an individual locked dependency.
 type Lock struct {
-	Name        string   `yaml:"name"`
-	Version     string   `yaml:"version"`
-	Repository  string   `yaml:"repo,omitempty"`
-	VcsType     string   `yaml:"vcs,omitempty"`
-	Subpackages []string `yaml:"subpackages,omitempty"`
-	Arch        []string `yaml:"arch,omitempty"`
-	Os          []string `yaml:"os,omitempty"`
+	Name        string      `yaml:"name"`
+	Version     string      `yaml:"version"`
+	Repository  string      `yaml:"repo,omitempty"`
+	VcsType     string      `yaml:"vcs,omitempty"`
+	Subpackages []string    `yaml:"subpackages,omitempty"`
+	Arch        []string    `yaml:"arch,omitempty"`
+	Os          []string    `yaml:"os,omitempty"`
+	Dep         *Dependency `yaml:"-"`
 }
 
 // Clone creates a clone of a Lock.
@@ -174,6 +183,7 @@ func (l *Lock) Clone() *Lock {
 		Subpackages: l.Subpackages,
 		Arch:        l.Arch,
 		Os:          l.Os,
+		Dep:         l.Dep,
 	}
 }
 
@@ -187,6 +197,7 @@ func LockFromDependency(dep *Dependency) *Lock {
 		Subpackages: dep.Subpackages,
 		Arch:        dep.Arch,
 		Os:          dep.Os,
+		Dep:         dep,
 	}
 }
 

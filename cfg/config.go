@@ -369,14 +369,29 @@ func (d Dependencies) DeDupe() (Dependencies, error) {
 
 // Dependency describes a package that the present package depends upon.
 type Dependency struct {
-	Name        string   `yaml:"package"`
-	Reference   string   `yaml:"version,omitempty"`
-	Pin         string   `yaml:"-"`
-	Repository  string   `yaml:"repo,omitempty"`
-	VcsType     string   `yaml:"vcs,omitempty"`
-	Subpackages []string `yaml:"subpackages,omitempty"`
-	Arch        []string `yaml:"arch,omitempty"`
-	Os          []string `yaml:"os,omitempty"`
+	Name        string          `yaml:"package"`
+	Reference   string          `yaml:"version,omitempty"`
+	Pin         string          `yaml:"-"`
+	Original    string          `yaml:"-"`
+	CommitInfo  *vcs.CommitInfo `yaml:"-"`
+	Repository  string          `yaml:"repo,omitempty"`
+	VcsType     string          `yaml:"vcs,omitempty"`
+	Subpackages []string        `yaml:"subpackages,omitempty"`
+	Arch        []string        `yaml:"arch,omitempty"`
+	Os          []string        `yaml:"os,omitempty"`
+}
+
+func (dep *Dependency) RefString() string {
+	refString := dep.Reference
+	if refString == dep.Pin {
+		refString = refString[0:7]
+	}
+	if refString != "" && refString != dep.Original {
+		refString = " (" + refString + ")"
+	} else {
+		refString = ""
+	}
+	return refString
 }
 
 // A transitive representation of a dependency for importing and exploting to yaml.
@@ -532,6 +547,8 @@ func (d *Dependency) Clone() *Dependency {
 	return &Dependency{
 		Name:        d.Name,
 		Reference:   d.Reference,
+		Original:    d.Original,
+		CommitInfo:  d.CommitInfo,
 		Pin:         d.Pin,
 		Repository:  d.Repository,
 		VcsType:     d.VcsType,

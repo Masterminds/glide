@@ -164,6 +164,7 @@ func VcsVersion(dep *cfg.Dependency) error {
 
 	// If there is no reference configured there is nothing to set.
 	if dep.Reference == "" {
+		dep.Original = "master"
 		// Before exiting update the pinned version
 		repo, err := dep.GetRepo(cwd)
 		if err != nil {
@@ -173,6 +174,11 @@ func VcsVersion(dep *cfg.Dependency) error {
 		if err != nil {
 			return err
 		}
+		dep.CommitInfo, err = repo.CommitInfo(dep.Pin)
+		if err != nil {
+			dep.CommitInfo = nil
+		}
+
 		return nil
 	}
 
@@ -240,9 +246,17 @@ func VcsVersion(dep *cfg.Dependency) error {
 	if err := repo.UpdateVersion(ver); err != nil {
 		return err
 	}
+	dep.Original = ver
 	dep.Pin, err = repo.Version()
+	if dep.Pin == dep.Original {
+		dep.Original = dep.Original[0:7]
+	}
 	if err != nil {
 		return err
+	}
+	dep.CommitInfo, err = repo.CommitInfo(dep.Pin)
+	if err != nil {
+		dep.CommitInfo = nil
 	}
 
 	return nil
