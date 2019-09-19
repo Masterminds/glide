@@ -4,7 +4,7 @@ This is a quick start guide to using Glide once you have it installed.
 
 ## Initially Detecting Project Dependencies
 
-Glide can detect the dependencies in use on a project and create an initial `glide.yaml` file for you. This detection can import the configuration from Godep, GPM, Gom, and GB. To do this change into the top level directory for the project and run:
+Glide can detect the dependencies in use on a project and create an initial `glide.yaml` file for you. This detection can import the configuration from Godep, GPM, Gom, GB, and Vndr. To do this change into the top level directory for the project and run:
 
     $ glide init
 
@@ -18,7 +18,7 @@ To fetch the dependencies and set them to any versions specified in the `glide.y
 
     $ glide up
 
-The `up` is short for `update`. This will fetch any dependencies specified in the `glide.yaml` file, walk the dependency tree to make sure any dependencies of the dependencies are fetched, and set them to the proper version. While walking the tree it will make sure versions are set and configuration from Godep, GPM, Gom, and GB is imported.
+The `up` is short for `update`. This will fetch any dependencies specified in the `glide.yaml` file, walk the dependency tree to make sure any dependencies of the dependencies are fetched, and set them to the proper version. While walking the tree it will make sure versions are set and configuration from Godep, GPM, Gom, GB, and Vndr is imported.
 
 The fetched dependencies are all placed in the `vendor/` folder at the root of the project. The `go` toolchain will use the dependencies here prior to looking in the `GOPATH` or `GOROOT` if you are using Go 1.6+ or Go 1.5 with the Go 1.5 Vendor Experiment enabled.
 

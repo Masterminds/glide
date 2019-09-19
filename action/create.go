@@ -14,6 +14,7 @@ import (
 	"github.com/Masterminds/glide/msg"
 	gpath "github.com/Masterminds/glide/path"
 	"github.com/Masterminds/glide/util"
+	"github.com/Masterminds/glide/vndr"
 )
 
 // Create creates/initializes a new Glide repository.
@@ -204,6 +205,9 @@ func guessImportDeps(base string, config *cfg.Config) {
 	} else if d, ok := guessImportGB(absBase); ok {
 		msg.Info("Importing GB configuration")
 		deps = d
+	} else if d, ok := guessImportVNDR(absBase); ok {
+		msg.Info("Importing VNDR configuration")
+		deps = d
 	}
 
 	for _, i := range deps {
@@ -237,6 +241,15 @@ func guessImportGPM(dir string) ([]*cfg.Dependency, bool) {
 
 func guessImportGB(dir string) ([]*cfg.Dependency, bool) {
 	d, err := gb.Parse(dir)
+	if err != nil || len(d) == 0 {
+		return []*cfg.Dependency{}, false
+	}
+
+	return d, true
+}
+
+func guessImportVNDR(dir string) ([]*cfg.Dependency, bool) {
+	d, err := vndr.Parse(dir)
 	if err != nil || len(d) == 0 {
 		return []*cfg.Dependency{}, false
 	}

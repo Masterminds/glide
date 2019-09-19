@@ -11,6 +11,7 @@ import (
 	"github.com/Masterminds/glide/godep"
 	"github.com/Masterminds/glide/gom"
 	"github.com/Masterminds/glide/gpm"
+	"github.com/Masterminds/glide/vndr"
 )
 
 var i = &DefaultImporter{}
@@ -81,6 +82,15 @@ func (d *DefaultImporter) Import(path string) (bool, []*cfg.Dependency, error) {
 	// Try importing from gom
 	if gom.Has(path) {
 		deps, err := gom.Parse(path)
+		if err != nil {
+			return false, []*cfg.Dependency{}, err
+		}
+		return true, deps, nil
+	}
+
+	// Try importing from vndr
+	if vndr.Has(path) {
+		deps, err := vndr.Parse(path)
 		if err != nil {
 			return false, []*cfg.Dependency{}, err
 		}

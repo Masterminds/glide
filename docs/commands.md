@@ -46,7 +46,7 @@ You can download one or more packages to your `vendor` directory and have it add
 
     $ glide get github.com/Masterminds/cookoo
 
-When `glide get` is used it will introspect the listed package to resolve its dependencies including using Godep, GPM, Gom, and GB config files.
+When `glide get` is used it will introspect the listed package to resolve its dependencies including using Godep, GPM, Gom, GB, and Vndr config files.
 
 The `glide get` command can have a [version or range](versions.md) passed in with the package name. For example,
 
@@ -63,7 +63,7 @@ dependency packages to fetch anything that's needed and read in any configuratio
     $ glide up
 
 This will recurse over the packages looking for other projects managed by Glide,
-Godep, gb, gom, and GPM. When one is found those packages will be installed as needed.
+Godep, gb, gom, GPM, and Vndr. When one is found those packages will be installed as needed.
 
 A `glide.lock` file will be created or updated with the dependencies pinned to
 specific versions. For example, if in the `glide.yaml` file a version was
