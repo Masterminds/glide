@@ -39,6 +39,7 @@ func Parse(dir string) ([]*cfg.Dependency, error) {
 	if err != nil {
 		return buf, err
 	}
+	defer file.Close()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		parts, ok := parseGodepsLine(scanner.Text())

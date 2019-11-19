@@ -71,6 +71,7 @@ func parseGomfile(filename string) ([]Gom, error) {
 			return nil, err
 		}
 	}
+	defer f.Close()
 	br := bufio.NewReader(f)
 
 	goms := make([]Gom, 0)

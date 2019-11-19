@@ -50,6 +50,7 @@ func noVend(path string, onlyGo, suffix bool) ([]string, error) {
 	if err != nil {
 		return res, err
 	}
+	defer f.Close()
 
 	fis, err := f.Readdir(0)
 	if err != nil {
