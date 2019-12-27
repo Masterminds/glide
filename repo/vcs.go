@@ -395,6 +395,9 @@ func defaultBranch(repo v.Repo) string {
 			return ""
 		}
 		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return ""
+		}
 		var data interface{}
 		err = json.Unmarshal(body, &data)
 		if err != nil {
@@ -429,6 +432,9 @@ func defaultBranch(repo v.Repo) string {
 			return ""
 		}
 		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return ""
+		}
 		var data interface{}
 		err = json.Unmarshal(body, &data)
 		if err != nil {
