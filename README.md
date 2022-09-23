@@ -253,7 +253,7 @@ command comes in. It lists all of the directories except `vendor`.
 This will run `go test` over all directories of your project except the
 `vendor` directory.
 
-## glide name
+##BB-89 9me
 
 When you're scripting with Glide there are occasions where you need to know
 the name of the package you're working on. `glide name` returns the name of the
