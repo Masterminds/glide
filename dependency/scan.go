@@ -164,6 +164,7 @@ func readBuildTags(p string) ([]string, error) {
 	if err != nil {
 		return []string{}, err
 	}
+	defer d.Close()
 
 	objects, err := d.Readdir(-1)
 	if err != nil {
